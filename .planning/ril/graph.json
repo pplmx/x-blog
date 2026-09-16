@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 373,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T22:55:14+00:00",
+  "updated_at": "2026-09-16T22:57:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27574,6 +27574,31 @@
       "title": "Round 370 liked-posts recall search closed (DEC-414)",
       "rationale": "TASK-432 delivered end-to-end: backend q filter, frontend debounced search box, 10 backend tests + 10 page tests, e2e journey, docs; all VERIFY gates green (1767 backend @93.72%, 2296 vitest, e2e 3/3).",
       "alternatives_rejected": "None - closed as planned; no scope change."
+    },
+    "DEC-415": {
+      "id": "DEC-415",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:57:39+00:00",
+      "updated_at": "2026-09-16T22:57:39+00:00",
+      "touched_round": 373,
+      "title": "Manage the liked list from /liked: per-card unlike (DEC-415)",
+      "rationale": "Every reader-owned list surface has a management control except /liked: bookmarks has per-row remove and the to-read/done toggle, but a liked post can only be removed by visiting the post and hitting the heart. A reader curating the 'posts I appreciated' list has no in-place way to take a like back on the page that shows it. The backend DELETE /me/likes/{post_id} (idempotent 204, decrements the public counter) already exists - this round is the missing frontend control: a per-card unlike button on /liked that removes the card optimistically (single-flight per row, restores on failure), pairing with the round-370 search to make /liked fully usable.",
+      "alternatives_rejected": "Reading-insights analytics on /history deferred (bigger scope, less certain acceptance); mark-all-read on notifications deferred (pure convenience, weak story). Unlike-on-liked is the clearest existing gap with a vertically-sliceable shape."
+    },
+    "TASK-433": {
+      "id": "TASK-433",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:57:39+00:00",
+      "updated_at": "2026-09-16T22:57:39+00:00",
+      "touched_round": 373,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Per-card unlike control on /liked (TASK-433)",
+      "detail": "Add an unlike button to each /liked card calling unlikeReaderPost; optimistic in-place row removal + total decrement, single-flight per row, restore + error copy on failure; disabled state while in flight. zh+en locale keys. Backend untouched (DELETE /me/likes/{post_id} exists). Vertical slice: frontend + page tests + e2e + docs."
     }
   },
   "edges": [
@@ -41068,6 +41093,12 @@
       "to": "DEC-413",
       "type": "supersedes",
       "created_at": "2026-09-16T22:55:14+00:00"
+    },
+    {
+      "from": "DEC-415",
+      "to": "TASK-433",
+      "type": "governs",
+      "created_at": "2026-09-16T22:57:39+00:00"
     }
   ]
 }
