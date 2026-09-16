@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 const mockAuthors = [
-	{ id: 7, display_name: "Riki", post_count: 3 },
+	{ id: 7, display_name: "Riki", post_count: 3, bio: "Long-form on type systems." },
 	{ id: 9, display_name: "Ghost Writer", post_count: 0 },
 ];
 
@@ -91,6 +91,11 @@ describe("Authors index page (/authors)", () => {
 		expect(wrapper.text()).toContain("0 篇文章");
 		const link = wrapper.findAll("a").find((a) => a.attributes("href") === "/authors/7");
 		expect(link?.exists()).toBe(true);
+	});
+
+	it("shows a one-line window of the writer bio on the card when set (round 357)", async () => {
+		const wrapper = await mountAuthorsIndex();
+		expect(wrapper.text()).toContain("Long-form on type systems.");
 	});
 
 	it("renders the empty state when no author has a pen name", async () => {

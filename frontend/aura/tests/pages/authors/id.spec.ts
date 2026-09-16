@@ -177,6 +177,27 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("这位作者还没有发布任何文章");
 	});
 
+	it("renders the writer's public bio under the header when set (round 357)", async () => {
+		const wrapper = await mountAuthorsPage({
+			archive: {
+				...archiveWithPosts,
+				author: {
+					id: 7,
+					display_name: "Riki",
+					bio: "Writes about type systems and long-form essays.",
+				},
+			},
+		});
+		expect(wrapper.text()).toContain("Writes about type systems and long-form essays.");
+	});
+
+	it("omits the bio block when the writer has none (round 357)", async () => {
+		const wrapper = await mountAuthorsPage({ archive: archiveWithPosts });
+		expect(wrapper.text()).not.toContain("Writes about");
+		// The bio paragraph only exists when there is text to show.
+		expect(wrapper.find("p.mb-3").exists()).toBe(false);
+	});
+
 	it("renders the not-found state for a 404 (unknown / never-public author)", async () => {
 		const wrapper = await mountAuthorsPage({
 			archive: null,

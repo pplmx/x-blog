@@ -160,6 +160,15 @@ watch(
           <Icon icon="lucide:user" class="w-8 h-8 text-gray-400" />
           {{ t("authors.title", { name: authorName }) }}
         </h1>
+        <!-- Public "about this writer" (round 357): the bio a superuser sets
+             in admin/users, rendering under the name — the writer now speaks
+             for themselves on the page where a reader decides about them. -->
+        <p
+          v-if="archive?.author?.bio"
+          class="mb-3 max-w-3xl text-gray-600 dark:text-gray-300 whitespace-pre-line"
+        >
+          {{ archive.author.bio }}
+        </p>
         <div class="flex items-center gap-3">
           <p class="text-gray-500 dark:text-gray-400">
             {{ t("authors.desc", { name: authorName }) }}

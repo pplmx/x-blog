@@ -11,6 +11,10 @@ export interface AdminUser {
 	 *  null means no public identity — the login username stays fully private
 	 *  (admin login is no-oracle) but the author gets no byline/archive. */
 	display_name?: string | null;
+	/** Public "about this writer" bio (round 357): plain text rendered on the
+	 *  author's /authors/{id} archive header; null until a superuser writes
+	 *  one (whitespace-only folds to null, same as display_name). */
+	bio?: string | null;
 }
 
 export interface CreateAdminUserInput {
@@ -18,6 +22,8 @@ export interface CreateAdminUserInput {
 	password: string;
 	/** Optional public pen name for the new account (whitespace-only -> none). */
 	display_name?: string | null;
+	/** Optional public "about this writer" bio (whitespace-only -> none). */
+	bio?: string | null;
 }
 
 /** The signed-in admin's profile (id, username, role) — drives role-aware UI. */
@@ -64,11 +70,12 @@ export function deleteAdminUser(id: number): Promise<void> {
 	});
 }
 
-/** Edit an admin user's public pen name (superuser only; DEC-359/TASK-405).
- *  An explicit `display_name: null` clears it (back to no public identity). */
+/** Edit an admin user's public pen name and "about this writer" bio
+ *  (superuser only; DEC-359/TASK-405, bio round 357). An explicit
+ *  `display_name: null` / `bio: null` clears that field. */
 export function updateAdminUser(
 	id: number,
-	data: { display_name: string | null },
+	data: { display_name?: string | null; bio?: string | null },
 ): Promise<AdminUser> {
 	return command<AdminUser>(`/api/admin/users/${id}`, {
 		method: "PATCH",

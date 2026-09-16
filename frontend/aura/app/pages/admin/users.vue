@@ -65,6 +65,9 @@ function getErrorMessage(e: unknown): string {
 // Whitespace-only is saved as null (no public identity) — the same boundary
 // discipline the backend applies, so the create form never stores a blank.
 const newDisplayName = ref("");
+// Public "about this writer" (round 357): plain-text bio rendered on the
+// author's archive header. Optional at create, same blank-to-null rule.
+const newBio = ref("");
 
 async function handleCreate() {
 	if (isProcessing.value) return; // single-flight — Enter in the form can fire
@@ -85,11 +88,13 @@ async function handleCreate() {
 			username,
 			password: newPassword.value,
 			display_name: newDisplayName.value.trim() || null,
+			bio: newBio.value.trim() || null,
 		});
 		newUsername.value = "";
 		newPassword.value = "";
 		confirmPassword.value = "";
 		newDisplayName.value = "";
+		newBio.value = "";
 		actionSuccess.value = t("admin.users.created");
 		await refresh();
 	} catch (e) {
@@ -126,6 +131,42 @@ async function savePenName(userId: number) {
 		await updateAdminUser(userId, { display_name: pen || null });
 		actionSuccess.value = pen ? t("admin.users.penUpdated") : t("admin.users.penCleared");
 		cancelEditPen();
+		await refresh();
+	} catch (e) {
+		actionError.value = getErrorMessage(e);
+	} finally {
+		penBusy.value = false;
+	}
+}
+
+// Inline bio editing per row (round 357): the "about this writer" text that
+// renders on the writer's public archive header. Mirrors the pen-name editor:
+// one open at a time, Save with an empty field clears it (returns the writer
+// to no bio), Cancel discards the draft. A shared busy flag keeps the two
+// inline editors from firing PATCHes at once.
+const editingBioId = ref<number | null>(null);
+const editingBioValue = ref("");
+
+function startEditBio(userId: number, current: string | null | undefined) {
+	editingBioId.value = userId;
+	editingBioValue.value = current ?? "";
+}
+
+function cancelEditBio() {
+	editingBioId.value = null;
+	editingBioValue.value = "";
+}
+
+async function saveBio(userId: number) {
+	if (editingBioId.value !== userId) return; // single-flight
+	penBusy.value = true;
+	actionError.value = null;
+	actionSuccess.value = null;
+	try {
+		const bio = editingBioValue.value.trim();
+		await updateAdminUser(userId, { bio: bio || null });
+		actionSuccess.value = bio ? t("admin.users.bioUpdated") : t("admin.users.bioCleared");
+		cancelEditBio();
 		await refresh();
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
@@ -248,6 +289,17 @@ async function handleDelete(id: number) {
           maxlength="50"
           class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
+        <!-- Public "about this writer" (round 357): optional at create — the
+             plain-text bio rendered on the author's archive header. Leave
+             empty for no bio (same blank-to-null rule as the pen name). -->
+        <textarea
+          v-model="newBio"
+          :placeholder="t('admin.users.bioPlaceholder')"
+          :aria-label="t('admin.users.bioPlaceholder')"
+          maxlength="500"
+          rows="2"
+          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y sm:col-span-2"
+        />
         <button
           type="submit"
           :disabled="isProcessing"
@@ -367,6 +419,64 @@ async function handleDelete(id: number) {
               >
                 <Icon icon="lucide:pencil" class="w-3 h-3" />
                 {{ t("admin.users.editPenName") }}
+              </button>
+            </div>
+
+            <!-- Public "about this writer" bio (round 357): a plain-text line
+                 rendered on the writer's archive header. Inline edit mirrors
+                 the pen-name editor; Save with an empty field clears it. -->
+            <div
+              v-if="editingBioId === user.id"
+              class="mt-2 flex items-start gap-2"
+            >
+              <textarea
+                v-model="editingBioValue"
+                rows="2"
+                maxlength="500"
+                :placeholder="t('admin.users.bioPlaceholder')"
+                :aria-label="t('admin.users.bioPlaceholder')"
+                class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y flex-1"
+              />
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  :disabled="penBusy"
+                  class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                  @click="saveBio(user.id)"
+                >
+                  {{ t("admin.users.penSave") }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="penBusy"
+                  class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  @click="cancelEditBio"
+                >
+                  {{ t("admin.users.penCancel") }}
+                </button>
+              </div>
+            </div>
+            <div
+              v-else
+              class="mt-1 items-start gap-1.5 text-sm"
+            >
+              <Icon icon="lucide:user-round" class="w-3.5 h-3.5 text-gray-400 inline-block" />
+              <span
+                :class="user.bio
+                  ? 'text-gray-600 dark:text-gray-300'
+                  : 'text-gray-400 dark:text-gray-500'"
+                class="inline-block align-middle"
+              >
+                {{ user.bio || t("admin.users.noBio") }}
+              </span>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors ml-1"
+                :aria-label="t('admin.users.editBio')"
+                @click="startEditBio(user.id, user.bio)"
+              >
+                <Icon icon="lucide:pencil" class="w-3 h-3" />
+                {{ t("admin.users.editBio") }}
               </button>
             </div>
           </div>

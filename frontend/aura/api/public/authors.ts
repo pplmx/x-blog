@@ -1,5 +1,5 @@
 import { type Ref, unref } from "vue";
-import type { AuthorBrief, PostListResponse } from "../contracts/shared";
+import type { AuthorArchive, PostListResponse } from "../contracts/shared";
 import {
 	type ApiQueryOptions,
 	type ApiQueryPath,
@@ -13,16 +13,20 @@ type MaybeGetter<T> = T | Getter<T> | Ref<T>;
 
 /** A public author's archive (DEC-359/TASK-405): the author envelope rides on
  *  the (possibly empty) post list so the page can title itself by pen name
- *  even before the writer has published anything. */
+ *  even before the writer has published anything. The envelope carries the
+ *  archive-shaped author — AuthorArchive (round 357) — with the "about this
+ *  writer" bio; per-post lists keep the slim AuthorBrief. */
 export interface AuthorPostsResponse extends PostListResponse {
-	author?: AuthorBrief | null;
+	author?: AuthorArchive | null;
 }
 
-/** A writers-index row (round 346): pen name + published-post count. */
+/** A writers-index row (rounds 346/357): pen name + published-post count +
+ *  the public "about this writer" bio (null until a superuser writes one). */
 export interface AuthorIndex {
 	id: number;
 	display_name: string;
 	post_count: number;
+	bio?: string | null;
 }
 
 /** Every public writer, pen name + published-post count (round 346) — powers

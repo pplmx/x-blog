@@ -145,7 +145,8 @@ describe("Admin Users Page", () => {
 			await inputs[1].setValue("secretpass1");
 			await inputs[2].setValue("secretpass1");
 			// Fourth input is the optional pen name (DEC-359/TASK-405); the
-			// submit button follows (4 inputs + 1 button).
+			// bio textarea is separate (round 357); the submit button follows
+			// (4 inputs + 1 button).
 			await wrapper.find("button[type=submit]").trigger("submit");
 			await flushPromises();
 
@@ -153,6 +154,7 @@ describe("Admin Users Page", () => {
 				username: "newadmin",
 				password: "secretpass1",
 				display_name: null,
+				bio: null,
 			});
 		});
 
@@ -174,6 +176,7 @@ describe("Admin Users Page", () => {
 				username: "newadmin",
 				password: "secretpass1",
 				display_name: "Riki the Writer",
+				bio: null,
 			});
 		});
 
@@ -339,6 +342,76 @@ describe("Admin Users Page", () => {
 				await flushPromises();
 
 				expect(mockUpdateAdminUser).not.toHaveBeenCalled();
+			});
+		});
+
+		describe("public 'about this writer' bio (round 357)", () => {
+			const bioButtons = (wrapper: VueWrapper) => wrapper.findAll("button[aria-label='编辑简介']");
+			// The bio editor is a <textarea>; the create form's bio textarea is
+			// the first one, per-row editors are added after the pen-name input.
+			function bioEditor(wrapper: VueWrapper) {
+				const textareas = wrapper.findAll("textarea");
+				const bio = textareas[textareas.length - 1];
+				if (!bio) throw new Error("expected the bio editor textarea");
+				return bio;
+			}
+			function findButton(wrapper: VueWrapper, text: string) {
+				const button = wrapper.findAll("button").find((b) => b.text().includes(text));
+				if (!button) throw new Error(`expected a button containing "${text}"`);
+				return button;
+			}
+
+			it("shows an existing writer bio under the username", async () => {
+				mockFetchAdminUsers.mockReturnValue({
+					data: ref([
+						{
+							id: 1,
+							username: "admin",
+							is_superuser: true,
+							display_name: "Riki",
+							bio: "Long-form on type systems.",
+						},
+						{ id: 2, username: "editor", is_superuser: false },
+					]),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+				expect(wrapper.text()).toContain("Long-form on type systems.");
+				expect(wrapper.text()).toContain("无作者简介");
+			});
+
+			it("saves a writer bio inline via PATCH", async () => {
+				mockUpdateAdminUser.mockResolvedValue({});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				await bioButtons(wrapper)[0].trigger("click");
+				await bioEditor(wrapper).setValue("Design researcher by day.");
+				await findButton(wrapper, "保存").trigger("click");
+				await flushPromises();
+
+				expect(mockUpdateAdminUser).toHaveBeenCalledWith(1, {
+					bio: "Design researcher by day.",
+				});
+			});
+
+			it("clears the writer bio with an empty save (back to no bio)", async () => {
+				mockUpdateAdminUser.mockResolvedValue({});
+
+				const UsersPage = await loadPage();
+				const wrapper = await mountWithSuspense(UsersPage);
+
+				await bioButtons(wrapper)[0].trigger("click");
+				await bioEditor(wrapper).setValue("   ");
+				await findButton(wrapper, "保存").trigger("click");
+				await flushPromises();
+
+				expect(mockUpdateAdminUser).toHaveBeenCalledWith(1, { bio: null });
 			});
 		});
 	});

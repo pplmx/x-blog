@@ -14,10 +14,18 @@ export interface SeriesBrief {
 
 /** A post's public author (DEC-359/TASK-405): only the pen name — the login
  *  username is never exposed (admin login is no-oracle), and an author with no
- *  pen name is absent from the public surface entirely (author: null). */
+ *  pen name is absent from the public surface entirely (author: null). Stays
+ *  slim — bio is only on the person-shaped archive envelope, not every card. */
 export interface AuthorBrief {
 	id: number;
 	display_name: string;
+}
+
+/** A public author on their archive header (round 357): the slim AuthorBrief
+ *  plus the public "about this writer" bio, carried by AuthorPostsResponse.
+ *  Per-post lists keep AuthorBrief so a bio doesn't repeat on every card. */
+export interface AuthorArchive extends AuthorBrief {
+	bio?: string | null;
 }
 
 export interface PostList {
