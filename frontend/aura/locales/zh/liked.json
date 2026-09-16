@@ -13,6 +13,8 @@
 		"searchClear": "清除搜索词",
 		"emptySearch": "没有匹配「{q}」的文章",
 		"clearSearch": "清除搜索",
+		"unlike": "取消喜欢",
+		"unlikeFailed": "取消喜欢失败，请稍后再试",
 		"loadFailed": "无法加载你喜欢的文章——请检查网络后重试。",
 		"retry": "重试",
 		"authWarning": "你的登录似乎已过期——",

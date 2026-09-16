@@ -22,7 +22,7 @@ const { t } = useLang();
 const route = useRoute();
 const router = useRouter();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
-const { likeSyncIssue, clearLikeSyncIssue, mergeLocalToCloud } = useLikeSync();
+const { likeSyncIssue, clearLikeSyncIssue, mergeLocalToCloud, unlike } = useLikeSync();
 
 useSeo(() => ({
 	title: t("liked.seoTitle"),
@@ -159,6 +159,45 @@ function goToPage(pg: number | string) {
 function retry() {
 	void load();
 }
+
+// Per-card unlike (DEC-415, TASK-433): the page is the "posts I appreciated"
+// list, so taking a like back should happen in place, not by visiting the post.
+// useLikeSync.unlike() clears the local marker + persists + mirrors the DELETE
+// (idempotent 204, decrements the public counter); offline-safe (the next
+// merge re-conciliates). Single-flight per post like bookmarks' remove.
+const unlikingIds = ref<Set<number>>(new Set());
+const unlikeFailed = ref(false);
+
+async function handleUnlike(post: PostList) {
+	if (unlikingIds.value.has(post.id)) return; // single-flight per row
+	unlikingIds.value.add(post.id);
+	unlikeFailed.value = false;
+	const prev = pagination.value;
+	try {
+		await unlike(post.id);
+	} catch (cause) {
+		if (isStaleSession(cause)) {
+			logout();
+			void router.replace("/login");
+			return;
+		}
+		unlikeFailed.value = true;
+		unlikingIds.value.delete(post.id);
+		return;
+	}
+	// The like is gone (locally + mirrored) — drop the card and its count.
+	items.value = items.value.filter((p) => p.id !== post.id);
+	if (pagination.value) {
+		pagination.value = { ...pagination.value, total: Math.max(0, (prev?.total ?? 0) - 1) };
+	}
+	unlikingIds.value.delete(post.id);
+	// Drain-clamp (comments-page pattern): unliking the only item on the last
+	// page empties it under a non-zero total — reload so the stale-page clamp
+	// sends the reader back onto the last populated page.
+	if (items.value.length === 0 && (pagination.value?.total ?? 0) > 0) {
+		void load();
+	}
+}
 </script>
 
 <template>
@@ -254,34 +293,59 @@ function retry() {
 				{{ t("liked.countLabel", { count: pagination.total }) }}
 			</p>
 
+			<p v-if="unlikeFailed" class="text-sm text-red-500 dark:text-red-400 mb-4" role="alert">
+				{{ t("liked.unlikeFailed") }}
+			</p>
+
 			<div v-if="items.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-				<NuxtLink
+				<div
 					v-for="post in items"
 					:key="post.id"
-					:to="`/posts/${post.slug}`"
-					class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
+					class="relative group rounded-xl border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
 				>
-					<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
-						{{ post.title }}
-					</h2>
-					<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
-						<span v-if="post.author" class="inline-flex items-center gap-1">
-							<img
-								v-if="post.author.avatar_url"
-								:src="post.author.avatar_url"
-								:alt="post.author.display_name"
-								class="w-3.5 h-3.5 rounded-full object-cover"
-							>
-							<Icon v-else icon="lucide:user" class="w-3 h-3" />
-							{{ post.author.display_name }}
-						</span>
-						<span v-if="post.category" class="inline-flex items-center gap-1">
-							<Icon icon="lucide:folder" class="w-3 h-3" />
-							{{ post.category.name }}
-						</span>
-						<span>{{ post.likes }} {{ t("liked.likeCount") }}</span>
-					</div>
-				</NuxtLink>
+					<NuxtLink
+						:to="`/posts/${post.slug}`"
+						class="block p-4 rounded-xl"
+					>
+						<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
+							{{ post.title }}
+						</h2>
+						<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+							<span v-if="post.author" class="inline-flex items-center gap-1">
+								<img
+									v-if="post.author.avatar_url"
+									:src="post.author.avatar_url"
+									:alt="post.author.display_name"
+									class="w-3.5 h-3.5 rounded-full object-cover"
+								>
+								<Icon v-else icon="lucide:user" class="w-3 h-3" />
+								{{ post.author.display_name }}
+							</span>
+							<span v-if="post.category" class="inline-flex items-center gap-1">
+								<Icon icon="lucide:folder" class="w-3 h-3" />
+								{{ post.category.name }}
+							</span>
+							<span>{{ post.likes }} {{ t("liked.likeCount") }}</span>
+						</div>
+					</NuxtLink>
+
+					<!-- Unlike in place (DEC-415, TASK-433): the page's one management
+					     control — taking a like back without visiting the post. -->
+					<button
+						type="button"
+						:disabled="unlikingIds.has(post.id)"
+						:aria-busy="unlikingIds.has(post.id)"
+						:title="t('liked.unlike')"
+						:aria-label="t('liked.unlike')"
+						class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-300 dark:text-gray-600 hover:text-pink-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-default"
+						@click="handleUnlike(post)"
+					>
+						<Icon
+							:icon="unlikingIds.has(post.id) ? 'lucide:loader-circle' : 'lucide:heart-off'"
+							class="w-4 h-4"
+						/>
+					</button>
+				</div>
 			</div>
 
 			<!-- Empty state: a search with no matches names the term and offers a

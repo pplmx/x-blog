@@ -35,6 +35,10 @@ vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({ t: (k: string) => k, locale: ref("zh") }),
 }));
 
+let mockUnlikeReject: unknown = null;
+const mockUnlike = vi.fn(async () => {
+	if (mockUnlikeReject) throw mockUnlikeReject;
+});
 vi.mock("../../composables/useLikeSync", () => ({
 	useLikeSync: () => ({
 		likeSyncIssue: ref<string | null>(null),
@@ -42,6 +46,7 @@ vi.mock("../../composables/useLikeSync", () => ({
 		mergeLocalToCloud: async () => {
 			/* no-op in tests */
 		},
+		unlike: mockUnlike,
 	}),
 }));
 
@@ -90,7 +95,14 @@ beforeEach(() => {
 		pagination: { total: 0, page: 1, limit: 12, total_pages: 1 },
 	};
 	likesReject = null;
+	mockUnlikeReject = null;
 	fetchLikes.mockClear();
+	// Reset implementation too: an earlier test's manual-resolve mockImplementation
+	// must not leak into later unlike tests (vi.fn clears calls, not impls).
+	mockUnlike.mockReset();
+	mockUnlike.mockImplementation(async () => {
+		if (mockUnlikeReject) throw mockUnlikeReject;
+	});
 	mockReplace.mockClear();
 	vi.stubGlobal("useRoute", () => ({ path: "/liked", query: mockRouteQuery }));
 	vi.stubGlobal("navigateTo", vi.fn());
@@ -276,6 +288,87 @@ describe("Liked page", () => {
 		await flushPromises();
 		expect(fetchLikes).toHaveBeenLastCalledWith(1, 12, "");
 		expect(wrapper.find('button[aria-label="liked.searchClear"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+});
+
+describe("Liked page unlike (DEC-415, TASK-433)", () => {
+	it("renders a per-card unlike control", async () => {
+		likesPayload = {
+			items: [samplePost],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountLiked();
+		const btn = wrapper.find('button[aria-label="liked.unlike"]');
+		expect(btn.exists()).toBe(true);
+		expect(btn.attributes("title")).toBe("liked.unlike");
+		wrapper.unmount();
+	});
+
+	it("unliking removes the card, calls unlike(post.id), and decrements the count", async () => {
+		likesPayload = {
+			items: [samplePost],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountLiked();
+		expect(wrapper.text()).toContain("A liked post");
+
+		await wrapper.find('button[aria-label="liked.unlike"]').trigger("click");
+		await flushPromises();
+
+		expect(mockUnlike).toHaveBeenCalledWith(1);
+		// The card leaves the grid (the count row derives from pagination.total,
+		// now 0 — and the empty state takes over).
+		expect(wrapper.text()).not.toContain("A liked post");
+		expect(wrapper.text()).toContain("liked.empty");
+		wrapper.unmount();
+	});
+
+	it("disables the row's unlike button while its unlike is in flight", async () => {
+		let resolveUnlike!: (v: unknown) => void;
+		mockUnlike.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveUnlike = resolve;
+				}),
+		);
+		likesPayload = {
+			items: [samplePost, { ...samplePost, id: 2, title: "Second liked post" }],
+			pagination: { total: 2, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountLiked();
+		const btns = wrapper.findAll('button[aria-label="liked.unlike"]');
+		expect(btns.length).toBe(2);
+
+		await btns[0].trigger("click");
+		await flushPromises();
+		// Row 1's button is disabled + busy while its unlike is pending; row 2
+		// may still be clicked.
+		expect((btns[0].element as HTMLButtonElement).disabled).toBe(true);
+		expect(btns[0].attributes("aria-busy")).toBe("true");
+		expect((btns[1].element as HTMLButtonElement).disabled).toBe(false);
+
+		resolveUnlike(undefined);
+		await flushPromises();
+		const after = wrapper.findAll('button[aria-label="liked.unlike"]');
+		expect(after.every((b) => !(b.element as HTMLButtonElement).disabled)).toBe(true);
+		wrapper.unmount();
+	});
+
+	it("shows an unlike failure without dropping the card", async () => {
+		mockUnlikeReject = new Error("nope");
+		likesPayload = {
+			items: [samplePost],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountLiked();
+
+		await wrapper.find('button[aria-label="liked.unlike"]').trigger("click");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("liked.unlikeFailed");
+		// The card stays: a failed unlike must not claim success.
+		expect(wrapper.text()).toContain("A liked post");
 		wrapper.unmount();
 	});
 });

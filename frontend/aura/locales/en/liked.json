@@ -13,6 +13,8 @@
 		"searchClear": "Clear search term",
 		"emptySearch": "No liked posts match “{q}”",
 		"clearSearch": "Clear search",
+		"unlike": "Unlike",
+		"unlikeFailed": "Couldn't unlike this post — please try again",
 		"loadFailed": "Couldn't load your liked posts — check your connection and try again.",
 		"retry": "Retry",
 		"authWarning": "Looks like your session expired — ",
