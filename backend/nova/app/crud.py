@@ -3933,6 +3933,53 @@ def list_reader_public_comments(
     return items, total
 
 
+def search_comments(
+    db: Session,
+    query: str,
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[models.Comment], int]:
+    """Public comment search (round 366, DEC-405).
+
+    Approved comments on *publicly-visible* posts whose content matches every
+    whitespace-separated term (substring AND — the dialect-agnostic path
+    search_posts uses for CJK/mixed queries, DEC-084). Same public-visibility
+    predicate as list_reader_public_comments: is_approved AND the commented
+    post is published with its publish_at passed (a draft or scheduled post
+    never leaks its discussion). Threads on comment-DISABLED posts stay public
+    (the discussion remains visible), so they keep matching. Newest first with
+    an id tiebreak (shared with the other comment listings). Never touches
+    email/ip (PII).
+    """
+    now = utc_now_naive()
+    if not query.strip():
+        # Defense-in-depth: the router rejects blank q with 422, but this crud
+        # call must never degrade into an ILIKE '% %' that matches every public
+        # comment if a future caller forgets the boundary check.
+        return [], 0
+    # Whitespace-separated terms; run-on whitespace yields no empty terms.
+    terms = [t for t in query.split() if t]
+    query_where = (
+        models.Comment.is_approved.is_(True),
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        # Escape LIKE metacharacters per term (search_posts precedent, DEC-084):
+        # a reader searching "%" or "_" must find them literally, not match
+        # every comment / treat _ as a single-char wildcard.
+        *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in terms],
+    )
+    stmt = db.query(models.Comment).join(models.Post, models.Comment.post_id == models.Post.id).filter(*query_where)
+    total = stmt.count()
+    items = (
+        stmt.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
 # ---------------------------------------------------------------------------
 # Site settings (DEC-100, TASK-162): operator-controlled runtime key/values.
 # ---------------------------------------------------------------------------

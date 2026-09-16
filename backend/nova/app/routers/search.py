@@ -13,7 +13,7 @@ from ..database import get_db
 from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
-from ..schemas import NonNulStr, PageInt, PostList
+from ..schemas import CommentPostBrief, CommentPublic, NonNulStr, PageInt, PostList
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -222,5 +222,61 @@ def search(
             "limit": limit,
             "total": total,
             "total_pages": (total + limit - 1) // limit,
+        },
+    }
+
+
+@router.get("/comments")
+@limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
+def search_comments(
+    request: Request,  # noqa: ARG001
+    q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
+    page: PageInt = 1,
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Find a discussion: approved comments on public posts whose content
+    matches every term (round 366, DEC-405).
+
+    The search box currently spans posts only; a reader who remembers a terse
+    take in the thread (or wants every approved comment that mentions a topic)
+    had no way to find it. Same public-visibility gate as the post search and
+    list_reader_public_comments — is_approved AND the commented post is
+    published with its publish_at passed — so a draft/scheduled post never
+    leaks its discussion, and pending/rejected comments stay out. Threads on
+    comment-DISABLED posts remain public, so they keep matching. Every hit
+    carries a mark-safe highlighted snippet plus the post brief, so the result
+    can land the reader ON the comment (#comment-{id}, DEC-321). Newest first
+    with an id tiebreak.
+    """
+    if not q.strip():
+        # Whitespace-only q tokenizes to " " and would ILIKE '% %' nearly every
+        # public comment — reject at the boundary (same guard as /search,
+        # round-296 deep-dive).
+        raise HTTPException(status_code=422, detail="q must be a non-blank search term")
+    comments, total = crud.search_comments(db, query=q, page=page, limit=limit)
+
+    items = []
+    for c in comments:
+        base = CommentPublic.model_validate(c).model_dump()
+        post = c.post  # joinedload in crud.search_comments
+        items.append(
+            {
+                **base,
+                # Highlighted <mark>-safe snippet from the shared highlighter
+                # (escapes before marking, so comment text can never smuggle
+                # raw HTML — the same guarantee /search's snippets hold).
+                "snippet": _highlight_sqlite(c.content or "", q),
+                "post": (CommentPostBrief(id=post.id, title=post.title, slug=post.slug) if post else None),
+            }
+        )
+
+    return {
+        "items": items,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": (total + limit - 1) // limit if limit else 0,
         },
     }
