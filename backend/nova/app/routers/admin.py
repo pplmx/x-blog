@@ -59,6 +59,10 @@ class UserCreate(BaseModel):
     # NULL means no public identity — the username stays private (admin login
     # is no-oracle) but the author gets no byline/archive until one is chosen.
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
+    # Public "about this writer" (round 357): short plain-text bio rendered on
+    # the writer's /authors/{id} archive header. Same 500-char cap as the
+    # reader bio (round 352) so one request cannot bloat the row unbounded.
+    bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
 
     @field_validator("display_name", mode="before")
     @classmethod
@@ -68,6 +72,15 @@ class UserCreate(BaseModel):
         # validation so "   " becomes None (no public identity), the same
         # boundary discipline as the reader profile name fields (ISS-456).
         return (value.strip() or None) if isinstance(value, str) else value
+
+    @field_validator("bio", mode="before")
+    @classmethod
+    def strip_bio(cls, value: object) -> object:
+        # A whitespace-only bio is an empty bio: fold it to None (which under
+        # exclude_unset still counts as an explicit clear on save) — same
+        # boundary discipline as the reader bio validator.
+        stripped = (value.strip() or None) if isinstance(value, str) else value
+        return stripped or None
 
 
 class NameRequest(BaseModel):
@@ -85,6 +98,7 @@ class UserResponse(BaseModel):
     role: str
     is_superuser: bool
     display_name: str | None = None
+    bio: str | None = None
 
 
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
@@ -160,6 +174,7 @@ def create_user(
         role=ROLE_EDITOR,
         is_superuser=False,
         display_name=user_data.display_name,
+        bio=user_data.bio,
     )
     db.add(user)
     try:
@@ -172,20 +187,28 @@ def create_user(
 
 
 class UserUpdate(BaseModel):
-    """Editable admin-user fields (DEC-359, TASK-405).
+    """Editable admin-user fields (DEC-359, TASK-405; bio round 357).
 
-    Currently just the public pen name; the login username, role and password
-    all have their own gates. ``display_name`` distinguishes "omitted" (don't
-    change) from an explicit null (clear the byline / return to no public
-    identity).
+    Currently the public pen name plus the public "about this writer" bio; the
+    login username, role and password all have their own gates. ``display_name``
+    and ``bio`` distinguish "omitted" (don't change) from an explicit null
+    (clear the byline/bio / return to no public identity).
     """
 
     display_name: Annotated[NonNulStr, Field(min_length=1, max_length=50)] | None = Field(default=None)
+    bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
 
     @field_validator("display_name", mode="before")
     @classmethod
     def strip_display_name(cls, value: object) -> object:
         return (value.strip() or None) if isinstance(value, str) else value
+
+    @field_validator("bio", mode="before")
+    @classmethod
+    def strip_bio(cls, value: object) -> object:
+        # A whitespace-only bio is an empty bio: fold to None (explicit clear).
+        stripped = (value.strip() or None) if isinstance(value, str) else value
+        return stripped or None
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
@@ -197,11 +220,12 @@ def update_user(
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
-    """Edit an admin user's public pen name (superuser).
+    """Edit an admin user's public pen name and "about this writer" bio (superuser).
 
-    Without this the byline feature would only work for users created after
+    Without this the byline/bio feature would only work for users created after
     the fact — the seeded admin (or any pre-existing editor) could never gain
-    a public identity. An explicit ``display_name: null`` clears it.
+    a public identity. An explicit ``display_name: null`` clears the byline,
+    an explicit ``bio: null`` clears the bio.
     """
     user = db.query(auth.User).filter(auth.User.id == user_id).first()
     if not user:
@@ -209,6 +233,8 @@ def update_user(
     updates = user_data.model_dump(exclude_unset=True)
     if "display_name" in updates:
         user.display_name = updates["display_name"]
+    if "bio" in updates:
+        user.bio = updates["bio"]
     db.commit()
     db.refresh(user)
     return user

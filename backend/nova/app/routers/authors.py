@@ -38,7 +38,15 @@ def list_authors(db: Session = Depends(get_db)):
         .all()
     )
     counts = {author_id: int(count) for author_id, count in post_counts}
-    items = [{"id": u.id, "display_name": u.display_name, "post_count": counts.get(u.id, 0)} for u in writers]
+    items = [
+        {
+            "id": u.id,
+            "display_name": u.display_name,
+            "post_count": counts.get(u.id, 0),
+            "bio": u.bio,
+        }
+        for u in writers
+    ]
     return items
 
 

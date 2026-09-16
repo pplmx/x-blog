@@ -167,6 +167,106 @@ def test_admin_user_patch_sets_and_clears_pen_name(client, admin_token, admin_us
     assert me["display_name"] is None
 
 
+def _set_bio(client, headers, user_id: int, bio: str | None) -> None:
+    r = client.patch(f"/api/admin/users/{user_id}", headers=headers, json={"bio": bio})
+    assert r.status_code == 200, r.text
+
+
+def test_admin_user_patch_sets_and_clears_bio(client, admin_token, admin_user):
+    headers = _admin_headers(admin_token)
+    _set_pen_name(client, headers, admin_user.id, "Byline Here")
+    _set_bio(client, headers, admin_user.id, "Writes about Rust and distributed systems.")
+
+    r = client.get("/api/admin/users", headers=headers)
+    me = next(u for u in r.json() if u["id"] == admin_user.id)
+    assert me["bio"] == "Writes about Rust and distributed systems."
+
+    # Clearing (explicit null) removes the bio; the writer stays public.
+    _set_bio(client, headers, admin_user.id, None)
+    r = client.get("/api/admin/users", headers=headers)
+    me = next(u for u in r.json() if u["id"] == admin_user.id)
+    assert me["bio"] is None
+    assert me["display_name"] == "Byline Here"
+
+
+def test_admin_user_patch_bio_whitespace_and_boundary(client, admin_token, admin_user):
+    headers = _admin_headers(admin_token)
+    # Whitespace-only bio folds to None (empty bio = no bio), like the reader
+    # profile bio validator (ISS-456-style boundary discipline).
+    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "   "})
+    assert r.status_code == 200, r.text
+    assert r.json()["bio"] is None
+    # Over 500 chars is a 422 (schema boundary, same cap as the reader bio).
+    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 501})
+    assert r.status_code == 422
+    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 500})
+    assert r.status_code == 200
+    assert r.json()["bio"] == "x" * 500
+
+
+def test_admin_user_create_stores_bio(client, admin_token):
+    r = client.post(
+        "/api/admin/users",
+        headers=_admin_headers(admin_token),
+        json={
+            "username": f"bio{uuid4().hex[:6]}",
+            "password": "readerpass123",
+            "display_name": "Bio Writer",
+            "bio": "Posts weekly long-form essays.",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["bio"] == "Posts weekly long-form essays."
+
+
+def test_author_archive_envelope_carries_bio(client, admin_token, admin_user):
+    # The person-shaped archive envelope introduces the writer (round 357): the
+    # "about this writer" bio rides on the envelope's author, NOT on the
+    # per-post AuthorBrief (which would bloat every list payload with the same
+    # text). The username never leaks.
+    headers = _admin_headers(admin_token)
+    _set_pen_name(client, headers, admin_user.id, "Bio Archive Writer")
+    _set_bio(client, headers, admin_user.id, "Long-form on type systems.")
+    _create_post(client, headers, slug=f"bioarch-{uuid4().hex[:8]}")
+
+    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    assert body["author"]["display_name"] == "Bio Archive Writer"
+    assert body["author"]["bio"] == "Long-form on type systems."
+    # Per-post author briefs stay slim: no bio repetition on every card.
+    assert all("bio" not in p["author"] for p in body["items"])
+    _no_username_leak(body)
+
+
+def test_author_archive_envelope_bio_defaults_none(client, admin_token, admin_user):
+    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "No Bio Writer")
+    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    assert body["author"]["bio"] is None
+    assert "username" not in json.dumps(body)
+
+
+def test_public_authors_index_carries_bio(client, admin_token, admin_user, db_session):
+    headers = _admin_headers(admin_token)
+    _set_pen_name(client, headers, admin_user.id, "Index Bio Writer")
+    _set_bio(client, headers, admin_user.id, "Design researcher.")
+    # A second pen-named writer with no bio: index rows carry the bio
+    # independently (null for those without).
+    editor = auth.User(
+        username=f"ib{uuid4().hex[:6]}",
+        password=auth.get_password_hash("editorpass123"),
+        role="editor",
+        is_superuser=False,
+        display_name="Quiet Writer",
+    )
+    db_session.add(editor)
+    db_session.flush()
+
+    rows = client.get("/api/authors").json()
+    by_name = {r["display_name"]: r for r in rows}
+    assert by_name["Index Bio Writer"]["bio"] == "Design researcher."
+    assert by_name["Quiet Writer"]["bio"] is None
+    _no_username_leak({"rows": rows})
+
+
 def test_admin_user_patch_is_superuser_only_and_404_unknown(client, db_session, admin_token):
     editor = auth.User(
         username=f"u{uuid4().hex[:6]}",
@@ -414,5 +514,7 @@ def test_author_archive_envelope_identifies_author_even_when_empty(client, admin
     _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Nobody Yet")
     body = client.get(f"/api/authors/{admin_user.id}/posts").json()
     assert body["items"] == []
-    assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet"}
+    # The envelope is AuthorArchive (round 357): bio rides here (null until a
+    # superuser writes one) rather than on per-post AuthorBrief.
+    assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet", "bio": None}
     _no_username_leak(body)

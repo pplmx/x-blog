@@ -104,6 +104,12 @@ class User(Base):
     # /authors/{id} answers 404, keeping the username fully private until the
     # operator chooses a pen name.
     display_name: Mapped[str | None] = mapped_column(String(50))
+    # Short public "about this writer" (round 357): plain-text bio a superuser
+    # sets next to the pen name in admin/users, rendered under the writer's
+    # name on their public /authors/{id} archive header. Mirrors ReaderAccount
+    # bio (round 352): Text column, 500-char cap enforced at the schema
+    # boundary. NULL = no bio yet.
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Bumped on password change so previously-issued JWTs are invalidated
     # immediately (checked in get_current_user). (RIL round 16 security audit)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)

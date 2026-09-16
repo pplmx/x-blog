@@ -468,11 +468,14 @@ class AuthorBrief(BaseModel):
 class AuthorIndex(BaseModel):
     """A public writers-index row (DEC-359, round 346): pen name + how many
     published posts they have, so the /authors page can show contributors with
-    substance (a writer with nothing live yet appears with a zero)."""
+    substance (a writer with nothing live yet appears with a zero). The public
+    "about this writer" bio (round 357) rides here too so the index card can
+    show a line of who the writer is."""
 
     id: int
     display_name: str
     post_count: int = 0
+    bio: str | None = None
 
 
 class PostList(BaseModel):
@@ -522,6 +525,22 @@ class PostListResponse(BaseModel):
     pagination: PaginationMeta
 
 
+class AuthorArchive(BaseModel):
+    """A public author as shown on their archive header (round 357).
+
+    ``AuthorBrief`` stays slim for per-post lists (a bio on every card would
+    bloat every feed); the person-shaped archive envelope is where the writer
+    is introduced, so it carries the public "about this writer" bio. Same
+    no-oracle posture as AuthorBrief: only the pen name + bio, never the login
+    username.
+    """
+
+    id: int
+    display_name: str
+    bio: str | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AuthorPostsResponse(PostListResponse):
     """A public author's archive (DEC-359, TASK-405).
 
@@ -532,7 +551,7 @@ class AuthorPostsResponse(PostListResponse):
     carries the login username.
     """
 
-    author: AuthorBrief
+    author: AuthorArchive
 
 
 class PostRevisionSummary(BaseModel):
