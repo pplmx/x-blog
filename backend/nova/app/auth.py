@@ -153,6 +153,12 @@ class ReaderAccount(Base):
     # liked posts (reader_post_likes), browseable by anyone. Defaults OFF —
     # liking something is private taste; publishing it is an explicit choice.
     public_likes: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    # Public bookmarked-posts opt-in (round 363, DEC-399): when true, the
+    # reader's public profile gains a "Saved posts" tab listing their
+    # publicly-visible bookmarks, browseable by anyone. Like public_likes this
+    # defaults OFF and publishes only an INTENTIONAL signal (a deliberate save),
+    # never the passively auto-recorded reading history.
+    public_bookmarks: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     # Reader UI language (DEC-338, TASK-395): selects the language of the
     # reader's durable inbox notification titles and email copy. NULL means
     # "not chosen" and reads as the site default (zh), preserving existing

@@ -64,6 +64,9 @@ class ReaderProfile(BaseModel):
     # Opt-in publishing of the public "Liked posts" profile tab (round 360,
     # DEC-393) — false by default; a reader who likes being private stays so.
     public_likes: bool = False
+    # Opt-in publishing of the public "Saved posts" profile tab (round 363,
+    # DEC-399) — false by default, same privacy stance as public_likes.
+    public_bookmarks: bool = False
     created_at: datetime | None = None
 
 
@@ -640,6 +643,9 @@ class ReaderProfileUpdate(BaseModel):
     # Opt-in publishing of the public "Liked posts" profile tab (round 360,
     # DEC-393); explicit true/false only (exclude_unset contract below).
     public_likes: bool | None = None
+    # Opt-in publishing of the public "Saved posts" profile tab (round 363,
+    # DEC-399); explicit true/false only (exclude_unset contract below).
+    public_bookmarks: bool | None = None
 
     @field_validator("display_name", mode="before")
     @classmethod
@@ -766,6 +772,10 @@ def update_my_profile(
     # display_name must not flip the flag).
     if "public_likes" in payload.model_dump(exclude_unset=True):
         current_reader.public_likes = bool(payload.public_likes)
+    # The public-bookmarks opt-in (round 363, DEC-399) mirrors public_likes —
+    # applied only when explicitly present.
+    if "public_bookmarks" in payload.model_dump(exclude_unset=True):
+        current_reader.public_bookmarks = bool(payload.public_bookmarks)
     db.commit()
     db.refresh(current_reader)
     return current_reader

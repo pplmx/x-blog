@@ -2213,6 +2213,40 @@ def list_reader_post_likes_for_export(db: Session, reader_id: int) -> list[tuple
     return [(post, liked_at) for post, liked_at in rows if is_publicly_visible(post)]
 
 
+def list_reader_public_bookmarks(
+    db: Session,
+    reader_id: int,
+    page: int = 1,
+    limit: int | None = 100,
+) -> tuple[list[models.Post], int]:
+    """Return the reader's bookmarked posts, publicly-visible only, for their
+    public "Saved posts" tab (round 363, DEC-399).
+
+    Same shape and invariants as list_reader_post_likes: only publicly-visible
+    posts (never a draft/scheduled post on a read path), newest bookmark first,
+    paginated. ``limit=None`` is not needed here (no export call uses it yet)
+    but kept for symmetry with the sibling listers.
+    """
+    now = utc_now_naive()
+    query = (
+        db.query(models.Post)
+        .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
+        .filter(
+            models.ReaderBookmark.reader_id == reader_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    )
+    total = query.count()
+    query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
+        models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
+    )
+    if limit is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+    rows = query.all()
+    return [p for p in rows if is_publicly_visible(p)], total
+
+
 def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:
     """Return the reader's view-history row for a post, or None."""
     return (
@@ -2672,6 +2706,9 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
         # Opt-in public liked-posts flag (round 360, DEC-393) — like the bio
         # it is the reader's own choice and belongs in their portable bundle.
         "public_likes": bool(account and account.public_likes),
+        # Opt-in public bookmarks flag (round 363, DEC-399) — like public_likes
+        # it is the reader's own privacy choice and belongs in their bundle.
+        "public_bookmarks": bool(account and account.public_bookmarks),
         "created_at": account.created_at.isoformat() if account and account.created_at else None,
     }
 

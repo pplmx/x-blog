@@ -51,6 +51,10 @@ class ReaderPublicProfile(BaseModel):
     # to publish their likes (its likes endpoint 404s otherwise — no oracle
     # about what they like or why a tab is absent).
     public_likes: bool = False
+    # Opt-in public "Saved posts" tab (round 363, DEC-399): the profile page
+    # renders the tab only when the reader chose to publish their bookmarks
+    # (the endpoint 404s otherwise — same no-oracle stance as public_likes).
+    public_bookmarks: bool = False
     created_at: datetime | None = None
 
     @field_validator("created_at", mode="before")
@@ -174,6 +178,45 @@ def reader_public_likes(
     if reader is None or not reader.public_likes:
         raise HTTPException(status_code=404, detail="Not found")
     posts, total = crud.list_reader_post_likes(db, reader_id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return schemas.PostListResponse.model_validate(
+        {
+            "items": [schemas.PostList.model_validate(p) for p in posts],
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
+    )
+
+
+@router.get("/{reader_id}/bookmarks", response_model=schemas.PostListResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def reader_public_bookmarks(
+    reader_id: Annotated[int, Path(ge=1)],
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
+    page: PageInt = 1,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """A reader's saved posts, when they opted to publish them (round 363).
+
+    The curated-reading counterpart to the liked-posts discovery surface: the
+    profile page renders a "Saved posts" tab off this when
+    ReaderPublicProfile.public_bookmarks is true. Bookmarks are an INTENTIONAL
+    signal (a deliberate save — unlike passively auto-recorded reading
+    history, which the private /history stays), so publishing them is
+    privacy-clean when default off. Lists publicly-visible posts only (never a
+    draft/scheduled post on a read path), newest save first. Opt-out = 404 for
+    both unknown readers AND readers who didn't opt in — one indistinguishable
+    answer (same non-leak stance as the likes endpoint).
+    """
+    reader = crud.get_reader_public_profile(db, reader_id)
+    if reader is None or not reader.public_bookmarks:
+        raise HTTPException(status_code=404, detail="Not found")
+    posts, total = crud.list_reader_public_bookmarks(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
