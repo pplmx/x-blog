@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 365,
+  "round": 366,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T10:17:20+00:00",
+  "updated_at": "2026-09-16T11:57:02+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26846,6 +26846,90 @@
       "title": "close round 362: personalized 'Recommended for you' post-page strip delivered (DEC-397 superseded)",
       "rationale": "The highest-intent reading moment now personalizes: a signed-in reader finishing an article gets an affinity-scored 'Recommended for you' strip (same DEC-128 endpoint the homepage calls), keyed to their own history/bookmark signal rather than only the topic-similar related posts and the current author. Frontend-only slice on an existing endpoint (no DDL). Isolation is airtight: guests and readers with no affinity (cold start) see no strip and no orphaned heading; sign-out clears it reactively. Delivered by CHG-635 (app) + CHG-636 (docs), verified by EV-270 (frontend 2228 + typecheck/lint + browser e2e 2/2).",
       "alternatives_rejected": "Extending Related Posts with affinity (blurs two distinct surfaces and costs a heavier backend change); a dedicated recommendations page (home already owns the list surface; article-end strip is the right moment); another topic-similar row (same-kind patch, no new capability)."
+    },
+    "DEC-399": {
+      "id": "DEC-399",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T10:34:04+00:00",
+      "updated_at": "2026-09-16T10:34:04+00:00",
+      "touched_round": 366,
+      "title": "round 363 scope: opt-in public 'Saved posts' tab on reader profiles (curated reading list)",
+      "rationale": "Reader-to-reader discovery landed for comments (profile page) and liked posts (DEC-393, round 360), but a reader's CULTIVATED reading list -- what they found worth saving -- is invisible: /readers/{id} has only Comments + Liked tabs, and the readers router exposes only /{reader_id} and /{reader_id}/likes (verified live). Bookmarked posts are an INTENTIONAL signal (a deliberate save, like a like -- unlike passively auto-recorded reading history), so publishing them is privacy-clean when default off. Mirror the round-360 public_likes pattern exactly: additive ReaderAccount.public_bookmarks bool (sa.false(), migration), opt-in checkbox on /account, third 'Saved' tab on the public profile, public GET /api/readers/{id}/bookmarks (publicly-visible posts only) that 404s for both unknown and non-opted readers (no oracle, no draft/scheduled leak). Acceptance in one sentence: a reader who opts in publishes a 'Saved posts' tab on their public profile listing their saved posts for anyone to browse, and everyone else shows no tab. This is the strongest genuinely-missing capability from the round-362 gap sweep.",
+      "alternatives_rejected": "Public reading-trail (the sweep's top pick): publishes PASSIVE auto-recorded history (every page view) -- over-share even opt-in, and history is a reader-owned private model. Web Share API: rejected at DEC-350 as a convenience above copy-link + social row with no real problem; no new user signal. Guest recommendations: needs a new anonymous affinity endpoint with privacy/DOS scope; not a clean slice. Comment thread collapse: a UX nicety on an existing surface, below the value gate. RSS full/summary toggle: off-site consumers, minimal value."
+    },
+    "TASK-425": {
+      "id": "TASK-425",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T10:34:04+00:00",
+      "updated_at": "2026-09-16T11:57:01+00:00",
+      "touched_round": 366,
+      "category": "core-feature",
+      "severity": 5,
+      "confidence": 1,
+      "effort": "medium",
+      "title": "round 363: opt-in public 'Saved posts' tab on reader profiles -- ReaderAccount.public_bookmarks (additive sa.false() migration) + public GET /api/readers/{id}/bookmarks (publicly-visible only, 404 both unknown/non-opted) + profile en/zh + /account opt-in + third tab on /readers/{id} + both ReaderProfile interfaces + export flag + tests + e2e + docs (DEC-399)",
+      "summary": "Add an opt-in public bookmarks tab mirroring public_likes: additive public_bookmarks bool on ReaderAccount (default off, sa.false()), PublicReaderProfile.public_bookmarks, public GET /api/readers/{id}/bookmarks returning the reader's publicly-visible saved posts (newest save first, paginated), gated 404 for unknown/non-opted; rides PATCH /me, /me envelope, and the data export. Frontend: /account opt-in checkbox, third 'Saved' tab on /readers/{id} deep-linkable ?view=saved, both ReaderProfile interfaces + updateReaderProfile gain the flag, api/public/readers.ts getReaderPublicBookmarks, en/zh locale keys, unit + e2e (opt-in then guest browse; opt-out 404; never-opted no tab)."
+    },
+    "CHG-637": {
+      "id": "CHG-637",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T11:57:01+00:00",
+      "updated_at": "2026-09-16T11:57:01+00:00",
+      "touched_round": 366,
+      "title": "round 363 backend: reader_accounts.public_bookmarks flag + public GET /readers/{id}/bookmarks (DEC-399)",
+      "commit": "b6a59154"
+    },
+    "CHG-638": {
+      "id": "CHG-638",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T11:57:01+00:00",
+      "updated_at": "2026-09-16T11:57:01+00:00",
+      "touched_round": 366,
+      "title": "round 363 frontend: /account opt-in + third 'Saved posts' tab on /readers/{id} (DEC-399)",
+      "commit": "38b23793"
+    },
+    "CHG-639": {
+      "id": "CHG-639",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T11:57:01+00:00",
+      "updated_at": "2026-09-16T11:57:01+00:00",
+      "touched_round": 366,
+      "title": "round 363 docs: README + CHANGELOG (en/zh) record public Saved-posts tab (DEC-399)",
+      "commit": "fbc18ab4"
+    },
+    "EV-271": {
+      "id": "EV-271",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T11:57:01+00:00",
+      "updated_at": "2026-09-16T11:57:01+00:00",
+      "touched_round": 366,
+      "source": "e2e reader-profile-bookmarks.spec.ts + full verifies",
+      "summary": "Round 363 VERIFY green: backend 1692 passed (10 skipped, 93.80% cov) + ruff/pyright clean + migration round-trips dev-PG and SQLite (reviewer a29f4ca4c8185bd91 APPROVE, only LOW/informational); frontend 2233 vitest (account 87 incl. new public_bookmarks opt-in test, readers-id 19 incl. 5 saved-tab tests) + typecheck + lint; browser e2e reader-profile-bookmarks 3/3 (opt-in via /account UI -> guest browses tab; guest browse then opt-out -> 404 no leak; never-opted -> no tab + 404 no oracle).",
+      "confidence": 1.0
+    },
+    "DEC-400": {
+      "id": "DEC-400",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T11:57:02+00:00",
+      "updated_at": "2026-09-16T11:57:02+00:00",
+      "touched_round": 366,
+      "title": "close round 363: opt-in public 'Saved posts' profile tab delivered (DEC-399 superseded)",
+      "rationale": "Reader-to-reader discovery now has both explicit signals: likes (round 360) and the curated keep-list. A public_bookmarks flag (sa.false() additive migration i2k4m6n8p0r2, independent of public_likes) rides PATCH /me with the exclude_unset discipline and the data export; GET /readers/{id}/bookmarks publishes only publicly-visible posts (newest save first) and 404s identically for unknown and non-opted readers (no oracle, no draft/scheduled leak). Delivered by CHG-637 (backend) + CHG-638 (frontend) + CHG-639 (docs), verified by EV-271 (backend 1692 + migration round-trips + reviewer APPROVE; frontend 2233 + typecheck/lint; browser e2e 3/3).",
+      "alternatives_rejected": ""
     }
   },
   "edges": [
@@ -40052,6 +40136,42 @@
       "to": "TASK-424",
       "type": "governs",
       "created_at": "2026-09-16T10:17:20+00:00"
+    },
+    {
+      "from": "DEC-399",
+      "to": "TASK-425",
+      "type": "governs",
+      "created_at": "2026-09-16T10:34:04+00:00"
+    },
+    {
+      "from": "CHG-637",
+      "to": "TASK-425",
+      "type": "implements",
+      "created_at": "2026-09-16T11:57:02+00:00"
+    },
+    {
+      "from": "CHG-638",
+      "to": "TASK-425",
+      "type": "implements",
+      "created_at": "2026-09-16T11:57:02+00:00"
+    },
+    {
+      "from": "CHG-639",
+      "to": "TASK-425",
+      "type": "implements",
+      "created_at": "2026-09-16T11:57:02+00:00"
+    },
+    {
+      "from": "DEC-400",
+      "to": "DEC-399",
+      "type": "supersedes",
+      "created_at": "2026-09-16T11:57:02+00:00"
+    },
+    {
+      "from": "DEC-400",
+      "to": "TASK-425",
+      "type": "governs",
+      "created_at": "2026-09-16T11:57:02+00:00"
     }
   ]
 }
