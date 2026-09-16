@@ -11,6 +11,7 @@
 		"loadFailed": "Couldn't load the discussion — please try again",
 		"jumpTo": "Jump to the discussion",
 		"meta": "comment",
-		"readerLabel": "Commenter"
+		"readerLabel": "Commenter",
+		"subscribe": "Subscribe to the discussion RSS"
 	}
 }

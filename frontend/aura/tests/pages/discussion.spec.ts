@@ -131,6 +131,14 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).toContain("最新讨论");
 	});
 
+	it("offers a subscribe link to the discussion RSS feed (round 368)", async () => {
+		const wrapper = await mountDiscussionPage();
+		expect(wrapper.text()).toContain("订阅讨论 RSS");
+		const rss = wrapper.find('a[href="/rss/comments.xml"]');
+		expect(rss.exists()).toBe(true);
+		expect(rss.attributes("type")).toBe("application/rss+xml");
+	});
+
 	it("renders comment cards with commenter, post brief, and a deep link onto the comment", async () => {
 		const wrapper = await mountDiscussionPage();
 		// First card: guest commenter (nickname), its content, and the post brief.

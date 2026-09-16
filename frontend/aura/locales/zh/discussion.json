@@ -11,6 +11,7 @@
 		"loadFailed": "讨论加载失败，请稍后重试",
 		"jumpTo": "跳到讨论",
 		"meta": "评论",
-		"readerLabel": "评论者"
+		"readerLabel": "评论者",
+		"subscribe": "订阅讨论 RSS"
 	}
 }

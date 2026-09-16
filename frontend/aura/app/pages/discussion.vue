@@ -27,6 +27,27 @@ useSeo(() => ({
 	path: "/discussion",
 }));
 
+// Feed auto-discovery for the discussion (round 368, DEC-409): the RSS/Atom
+// feeds of the latest approved comments, so a feed-reader / "subscribe" flow
+// on this page finds the right subscriptions (same pattern as app.vue's
+// post-feed discovery).
+useHead({
+	link: [
+		{
+			rel: "alternate",
+			type: "application/rss+xml",
+			title: "Discussion RSS",
+			href: "/rss/comments.xml",
+		},
+		{
+			rel: "alternate",
+			type: "application/atom+xml",
+			title: "Discussion Atom",
+			href: "/rss/comments.atom.xml",
+		},
+	],
+});
+
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
 const { data: feed, pending, error, refresh: refreshFeed } = await useDiscussionFeed(page, 20);
@@ -74,6 +95,19 @@ const paginationTokens = computed(() =>
 			<p class="text-gray-500 dark:text-gray-400 mt-2">
 				{{ t("discussion.subtitle") }}
 			</p>
+			<!-- Subscribe to the discussion stream (round 368, DEC-409): the
+			     RSS/Atom feeds surface here so a reader can follow the
+			     conversation in their feed reader, matching the discovery
+			     links the post feeds get. -->
+			<a
+				href="/rss/comments.xml"
+				type="application/rss+xml"
+				class="inline-flex items-center gap-1.5 mt-3 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+				:title="t('discussion.subscribe')"
+			>
+				<Icon icon="lucide:rss" class="w-4 h-4" />
+				{{ t("discussion.subscribe") }}
+			</a>
 		</div>
 
 		<!-- Loading -->
