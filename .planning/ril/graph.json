@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 371,
+  "round": 372,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T21:39:11+00:00",
+  "updated_at": "2026-09-16T22:15:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27404,15 +27404,83 @@
     "TASK-431": {
       "id": "TASK-431",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T21:39:10+00:00",
-      "updated_at": "2026-09-16T21:39:10+00:00",
+      "updated_at": "2026-09-16T22:15:10+00:00",
       "touched_round": 371,
       "category": "core-feature",
       "severity": "medium",
       "title": "Keyword search over the reader own comment history (TASK-431)",
       "detail": "Add q filter to get_reader_comments (crud.py 3844) and GET /me/comments (reader.py 2614), escape aware LIKE on Comment.content. Frontend: debounced search box on /comments passing q to getMyComments, clearing resets page to 1, searching-aware empty state, zh+en locale keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
+    },
+    "CHG-660": {
+      "id": "CHG-660",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:14:27+00:00",
+      "updated_at": "2026-09-16T22:14:27+00:00",
+      "touched_round": 371,
+      "commit": "a322fe03",
+      "detail": "Backend q filter on get_reader_comments / GET /api/reader/me/comments: escape-aware LIKE on Comment.content, composes with status, scoped to caller"
+    },
+    "CHG-661": {
+      "id": "CHG-661",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:14:27+00:00",
+      "updated_at": "2026-09-16T22:14:27+00:00",
+      "touched_round": 371,
+      "commit": "ee2e26d8",
+      "detail": "Frontend debounced recall-search box on /comments + q through getMyComments; page-1 reset on new search; searching-aware empty state; zh/en locale keys"
+    },
+    "CHG-662": {
+      "id": "CHG-662",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:14:27+00:00",
+      "updated_at": "2026-09-16T22:14:27+00:00",
+      "touched_round": 371,
+      "commit": "3f2cdbe4",
+      "detail": "e2e journey: narrow history by term, search-aware empty state, clear-search reset restores full list"
+    },
+    "CHG-663": {
+      "id": "CHG-663",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:14:27+00:00",
+      "updated_at": "2026-09-16T22:14:27+00:00",
+      "touched_round": 371,
+      "commit": "b8c78773",
+      "detail": "README + CHANGELOG (en/zh) feature bullet, prose, and API table row for the q filter"
+    },
+    "EV-277": {
+      "id": "EV-277",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:14:48+00:00",
+      "updated_at": "2026-09-16T22:14:48+00:00",
+      "touched_round": 371,
+      "source": "pytest tests/test_reader_comments_search.py 9/9; full backend 1757 passed 93.72%; vitest 2286; typecheck+lint clean; e2e my-comments-search + my-comments + my-comments-filter 3/3 (DEC-411, TASK-431)",
+      "detail": "All rounds VERIFY gates green",
+      "confidence": 1.0
+    },
+    "DEC-412": {
+      "id": "DEC-412",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T22:15:10+00:00",
+      "updated_at": "2026-09-16T22:15:10+00:00",
+      "touched_round": 371,
+      "title": "Round 369 my-comments keyword search closed (DEC-412)",
+      "rationale": "TASK-431 delivered end-to-end: backend q filter, frontend debounced search box, 9 backend tests + 7 page tests, e2e journey, docs; all VERIFY gates green (1757 backend @93.72%, 2286 vitest, e2e 3/3).",
+      "alternatives_rejected": "None - closed as planned; no scope change."
     }
   },
   "edges": [
@@ -40841,6 +40909,36 @@
       "to": "TASK-431",
       "type": "governs",
       "created_at": "2026-09-16T21:39:11+00:00"
+    },
+    {
+      "from": "CHG-660",
+      "to": "TASK-431",
+      "type": "implements",
+      "created_at": "2026-09-16T22:14:47+00:00"
+    },
+    {
+      "from": "CHG-661",
+      "to": "TASK-431",
+      "type": "implements",
+      "created_at": "2026-09-16T22:14:48+00:00"
+    },
+    {
+      "from": "CHG-662",
+      "to": "TASK-431",
+      "type": "implements",
+      "created_at": "2026-09-16T22:14:48+00:00"
+    },
+    {
+      "from": "CHG-663",
+      "to": "TASK-431",
+      "type": "implements",
+      "created_at": "2026-09-16T22:14:48+00:00"
+    },
+    {
+      "from": "DEC-412",
+      "to": "DEC-411",
+      "type": "supersedes",
+      "created_at": "2026-09-16T22:15:10+00:00"
     }
   ]
 }
