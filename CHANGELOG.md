@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Reader two-factor authentication (round 364)**: reader accounts have
+  accumulated durable private data over rounds 358–363 — cloud-synced
+  bookmarks/likes/history, the GDPR export bundle, email, follows, notification
+  prefs and push devices — all behind a single email+password credential, so a
+  leaked password exposed the whole surface. A reader can now raise that to
+  password + a TOTP code (RFC 6238, works with any authenticator app) from
+  `/account`: setup hands back a base32 secret + `otpauth://` provisioning URI
+  (rendered as a QR), and enabling requires the current password AND a live
+  code — so a stolen session alone can't register a factor the owner can't
+  remove (security review MEDIUM). With 2FA on, `POST /api/reader/login`
+  returns NO access token — only a short-lived, single-purpose `mfa_token`
+  (own `aud=x-blog-reader-2fa` audience, 5-minute expiry, tied to
+  `token_version` so a password change kills outstanding challenges) — and
+  `POST /api/reader/login/2fa` exchanges code + token for the real session.
+  Every failure on that second step is one indistinguishable 401 (no oracle for
+  "is my stolen challenge still live?" vs "is the code wrong?"); disabling also
+  requires the current password AND a valid code, and the seed is cleared
+  (re-enroll from setup). Additive `two_factor_enabled` (`sa.false()`) +
+  nullable `two_factor_secret` columns (migration j3l7o9q1s5t3, round-trips
+  SQLite + Postgres); the secret is never serialized into any profile or token
+  response. `pyotp` added as the TOTP backend.
 - **Public "Saved posts" profiles (round 363)**: round 360 gave readers an
   opt-in "Liked posts" discovery tab; the companion curation axis is what a
   reader chose to KEEP (save-for-later / done queue) rather than merely
