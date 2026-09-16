@@ -138,6 +138,13 @@ const {
 	// Post search only fires in posts mode — the comments mode fetches its own
 	// result set and must not burn a rate-limit slot on /api/search too.
 	enabled: computed(() => mode.value === "posts" && !!query.value.trim()),
+	// watch:mode — toggling the search mode back to posts must refetch even
+	// though the underlying query params (q/page) are unchanged. Nuxt's
+	// `enabled` watcher only aborts when it flips to false; flipping it back to
+	// true does NOT re-run the fetch, and the URL getter is mode-independent,
+	// so without this watch the mode switch leaves the previous result set
+	// frozen (round 366).
+	watch: [mode],
 });
 function retrySearch() {
 	void refreshSearch();
@@ -157,6 +164,9 @@ const {
 	refresh: refreshComments,
 } = await useCommentSearch(commentSearchParams, {
 	enabled: computed(() => mode.value === "comments" && !!query.value.trim()),
+	// watch:mode — flipping INTO comments mode must fire the comment search
+	// (see the post-search watch:mode note above).
+	watch: [mode],
 });
 function retryComments() {
 	void refreshComments();
