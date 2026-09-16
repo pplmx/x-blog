@@ -46,6 +46,11 @@ class ReaderPublicProfile(BaseModel):
     bio: str | None = None
     # Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
     avatar_url: str | None = None
+    # Opt-in public "Liked posts" tab (round 360, DEC-393): carrying the flag
+    # on the profile lets the page render the tab only when the reader chose
+    # to publish their likes (its likes endpoint 404s otherwise — no oracle
+    # about what they like or why a tab is absent).
+    public_likes: bool = False
     created_at: datetime | None = None
 
     @field_validator("created_at", mode="before")
@@ -143,4 +148,41 @@ def reader_profile(
             limit=limit,
             total_pages=total_pages,
         ),
+    )
+
+
+@router.get("/{reader_id}/likes", response_model=schemas.PostListResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def reader_public_likes(
+    reader_id: Annotated[int, Path(ge=1)],
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
+    page: PageInt = 1,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """A reader's liked posts, when they opted to publish them (round 360).
+
+    The first reader-to-reader discovery surface: the profile page renders a
+    "Liked posts" tab off this when ReaderPublicProfile.public_likes is true.
+    Reuses the /me/likes listing (publicly-visible posts only, newest like
+    first) but scoped to WWW (no auth). Opt-out = 404 for both unknown readers
+    AND readers who didn't opt in — one indistinguishable answer, so the
+    endpoint is not an oracle for "does this reader exist" or "what do they
+    like" (same non-leak stance as the profile's missing-reader 404).
+    """
+    reader = crud.get_reader_public_profile(db, reader_id)
+    if reader is None or not reader.public_likes:
+        raise HTTPException(status_code=404, detail="Not found")
+    posts, total = crud.list_reader_post_likes(db, reader_id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return schemas.PostListResponse.model_validate(
+        {
+            "items": [schemas.PostList.model_validate(p) for p in posts],
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
     )

@@ -148,6 +148,11 @@ class ReaderAccount(Base):
     # public profile page and comments. Nullable — an avatar is optional, and
     # existing readers start without one (rendered as a placeholder/initial).
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Public liked-posts opt-in (round 360, DEC-393): when true, the reader's
+    # public profile gains a "Liked posts" tab listing their publicly-visible
+    # liked posts (reader_post_likes), browseable by anyone. Defaults OFF —
+    # liking something is private taste; publishing it is an explicit choice.
+    public_likes: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     # Reader UI language (DEC-338, TASK-395): selects the language of the
     # reader's durable inbox notification titles and email copy. NULL means
     # "not chosen" and reads as the site default (zh), preserving existing

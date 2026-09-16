@@ -2188,6 +2188,31 @@ def list_reader_post_likes(
     return [p for p in rows if is_publicly_visible(p)], total
 
 
+def list_reader_post_likes_for_export(db: Session, reader_id: int) -> list[tuple[models.Post, datetime | None]]:
+    """Complete liked-posts list for the reader data export (round 360).
+
+    Like list_reader_post_likes but carries each like's ``created_at`` (the
+    bundle wants when the reader liked the post) and is deliberately
+    unbounded — a backup must be complete, never capped at the list endpoint's
+    default limit (same stance as bookmarks, RIL ISS-288). Publicly-visible
+    posts only, newest like first; the same filters as the read path so a
+    liked post that became a draft no longer shows here.
+    """
+    now = utc_now_naive()
+    rows = (
+        db.query(models.Post, models.ReaderPostLike.created_at)
+        .join(models.ReaderPostLike, models.ReaderPostLike.post_id == models.Post.id)
+        .filter(
+            models.ReaderPostLike.reader_id == reader_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .order_by(models.ReaderPostLike.created_at.desc(), models.Post.id.desc())
+        .all()
+    )
+    return [(post, liked_at) for post, liked_at in rows if is_publicly_visible(post)]
+
+
 def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:
     """Return the reader's view-history row for a post, or None."""
     return (
@@ -2644,6 +2669,9 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     account_data = {
         "email": account.email if account else None,
         "display_name": account.display_name if account else None,
+        # Opt-in public liked-posts flag (round 360, DEC-393) — like the bio
+        # it is the reader's own choice and belongs in their portable bundle.
+        "public_likes": bool(account and account.public_likes),
         "created_at": account.created_at.isoformat() if account and account.created_at else None,
     }
 
@@ -2817,6 +2845,18 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
         # (round 276 deep-dive)
         "exported_at": utc_now_naive().isoformat(),
         "bookmarks": bookmarks,
+        # Liked posts (round 359/360): the durable reader likes now join the
+        # bundle — publicly-visible only (same invariant as the /me/likes read
+        # path), complete (never capped at the list default).
+        "likes": [
+            {
+                "post_id": post.id,
+                "title": post.title,
+                "slug": post.slug,
+                "liked_at": liked_at.isoformat() if liked_at else None,
+            }
+            for post, liked_at in list_reader_post_likes_for_export(db, reader_id)
+        ],
         "comments": comments,
         "history": history,
         "follows": follows,

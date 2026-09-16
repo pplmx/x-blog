@@ -61,6 +61,9 @@ class ReaderProfile(BaseModel):
     # public profile page; None until they write one.
     bio: str | None = None
     avatar_url: str | None = None
+    # Opt-in publishing of the public "Liked posts" profile tab (round 360,
+    # DEC-393) — false by default; a reader who likes being private stays so.
+    public_likes: bool = False
     created_at: datetime | None = None
 
 
@@ -220,9 +223,10 @@ class DataExportResponse(BaseModel):
     """A reader's portable data bundle (DEC-126/TASK-175; completed DEC-334).
 
     Now covers every reader-owned dataset: profile, bookmarks, comments,
-    history, follows (category/tag/series), notification preferences, the
-    durable inbox rows, and push-subscription device summaries (endpoints +
-    created_at only — never the cryptographic keys). Nothing cross-reader.
+    history, likes (round 359/360), follows (category/tag/series),
+    notification preferences, the durable inbox rows, and push-subscription
+    device summaries (endpoints + created_at only — never the cryptographic
+    keys). Nothing cross-reader.
     """
 
     account: dict
@@ -230,6 +234,7 @@ class DataExportResponse(BaseModel):
     bookmarks: list[dict] = []
     comments: list[dict] = []
     history: list[dict] = []
+    likes: list[dict] = []
     follows: dict = {}
     notification_prefs: dict | None = None
     notifications: list[dict] = []
@@ -617,6 +622,9 @@ class ReaderProfileUpdate(BaseModel):
     # Plain-text "about me" (round 352); None = no update, explicit null =
     # clear. Bounded so one request cannot bloat the account row unbounded.
     bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
+    # Opt-in publishing of the public "Liked posts" profile tab (round 360,
+    # DEC-393); explicit true/false only (exclude_unset contract below).
+    public_likes: bool | None = None
 
     @field_validator("display_name", mode="before")
     @classmethod
@@ -738,6 +746,11 @@ def update_my_profile(
     # exclude_unset contract: only an explicitly-present key is applied.
     if "bio" in payload.model_dump(exclude_unset=True):
         current_reader.bio = payload.bio
+    # The public-likes opt-in is boolean and unambiguous — apply it whenever
+    # present, keeping the exclude_unset discipline (a PATCH that only touches
+    # display_name must not flip the flag).
+    if "public_likes" in payload.model_dump(exclude_unset=True):
+        current_reader.public_likes = bool(payload.public_likes)
     db.commit()
     db.refresh(current_reader)
     return current_reader
