@@ -9,6 +9,8 @@
  * trail (see composables/useReadingHistory).
  */
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import type { ReaderHistoryInsights } from "~~/api/reader/history";
+import { getReaderHistoryInsights } from "~~/api/reader/history";
 import { parseApiDate } from "~~/composables/apiDate";
 import { type HistoryEntry, useReadingHistory } from "~~/composables/useReadingHistory";
 import { useSeo } from "~~/composables/useSeo";
@@ -65,9 +67,24 @@ useSeo(() => ({
 	path: "/history",
 }));
 
+// Reading insights (DEC-417/TASK-434): the "what/how much" aggregate —
+// distinct posts all-time + trailing 30 days, and the most-read categories —
+// beside the calendar shape (streak/heatmap). Best-effort parallel fetch:
+// never blocks or errors the page, and on any failure (incl. a dead session)
+// the panel simply stays hidden.
+const insights = ref<ReaderHistoryInsights | null>(null);
+
 // Load from the active source (server when signed in, else local).
 onMounted(() => {
 	void load();
+	if (!serverEnabled.value) return;
+	getReaderHistoryInsights()
+		.then((data) => {
+			insights.value = data;
+		})
+		.catch(() => {
+			insights.value = null;
+		});
 });
 
 // Single-action clear with an inline confirmation (destructive, no undo).
@@ -410,6 +427,36 @@ function heatMapSummary(): string {
           <span class="h-[11px] w-[11px] rounded-[2px] bg-indigo-500 dark:bg-indigo-600" />
           <span class="h-[11px] w-[11px] rounded-[2px] bg-violet-600 dark:bg-violet-500" />
           <span class="ml-1">{{ t('history.more') }}</span>
+        </div>
+      </div>
+
+      <!-- Reading insights (DEC-417/TASK-434): the "what/how much" shape
+           beyond the calendar heatmap — recent volume + most-read categories.
+           Best-effort; hidden for guests and when the fetch fails. -->
+      <div
+        v-if="insights"
+        class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
+      >
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readLast30d') }}</p>
+          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {{ insights.last_30_days }}
+            <span class="text-base font-medium text-gray-400 dark:text-gray-500 ml-1">{{ t('history.posts') }}</span>
+          </p>
+        </div>
+        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-fuchsia-50 to-transparent dark:from-fuchsia-900/20">
+          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.topCategories') }}</p>
+          <div v-if="insights.top_categories.length" class="flex flex-wrap gap-2 mt-1">
+            <span
+              v-for="c in insights.top_categories"
+              :key="c.name"
+              class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300"
+            >
+              {{ c.name }}
+              <span class="text-gray-400 dark:text-gray-500">{{ c.count }}</span>
+            </span>
+          </div>
+          <p v-else class="mt-2 text-sm text-gray-400 dark:text-gray-500">{{ t('history.noTopCategories') }}</p>
         </div>
       </div>
     </div>

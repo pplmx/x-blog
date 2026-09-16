@@ -55,6 +55,18 @@ vi.mock("../../composables/useReadingHistory", () => ({
 
 vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
 
+// Reading insights (DEC-417/TASK-434): page-level best-effort fetch, driven
+// only for signed-in (serverEnabled) readers. Tests flip the payload/reject.
+let mockInsightsPayload: unknown = null;
+let mockInsightsReject: unknown = null;
+const mockGetInsights = vi.fn(async () => {
+	if (mockInsightsReject) throw mockInsightsReject;
+	return mockInsightsPayload;
+});
+vi.mock("~~/api/reader/history", () => ({
+	getReaderHistoryInsights: () => mockGetInsights(),
+}));
+
 import HistoryPage from "../../app/pages/history.vue";
 
 const stubs = {
@@ -580,6 +592,74 @@ describe("Reading-history page (TASK-170)", () => {
 			// The max-count day's tooltip names the count.
 			const titles = wrapper.findAll("[title]").map((el) => el.attributes("title"));
 			expect(titles.some((t) => (t ?? "").includes("10 篇"))).toBe(true);
+		});
+	});
+
+	describe("reading insights (DEC-417, TASK-434)", () => {
+		beforeEach(() => {
+			mockInsightsPayload = null;
+			mockInsightsReject = null;
+			mockGetInsights.mockClear();
+		});
+
+		const statsBase: ReadingStats = {
+			totalPosts: 12,
+			totalReadingMinutes: 300,
+			activity: [],
+		};
+
+		it("renders totals and most-read categories for a signed-in reader", async () => {
+			mockServerEnabled.value = true;
+			mockStats.value = statsBase;
+			mockInsightsPayload = {
+				grand_total: 12,
+				last_30_days: 5,
+				top_categories: [
+					{ name: "Rust", count: 4 },
+					{ name: "Baking", count: 3 },
+				],
+			};
+			const wrapper = mountHistory();
+			await flushPromises();
+
+			expect(mockGetInsights).toHaveBeenCalledTimes(1);
+			expect(wrapper.text()).toContain("最近 30 天读过");
+			expect(wrapper.text()).toContain("5");
+			expect(wrapper.text()).toContain("常读分类");
+			expect(wrapper.text()).toContain("Rust");
+			expect(wrapper.text()).toContain("Baking");
+		});
+
+		it("keeps the panel hidden for guests (no server stats)", async () => {
+			mockServerEnabled.value = false;
+			mockStats.value = null;
+			mockInsightsPayload = { grand_total: 3, last_30_days: 1, top_categories: [] };
+			const wrapper = mountHistory();
+			await flushPromises();
+
+			expect(mockGetInsights).not.toHaveBeenCalled();
+			expect(wrapper.text()).not.toContain("最近 30 天读过");
+		});
+
+		it("stays hidden when the insights fetch fails (best-effort)", async () => {
+			mockServerEnabled.value = true;
+			mockStats.value = statsBase;
+			mockInsightsReject = new Error("network");
+			const wrapper = mountHistory();
+			await flushPromises();
+
+			expect(wrapper.text()).not.toContain("最近 30 天读过");
+			expect(wrapper.text()).not.toContain("常读分类");
+		});
+
+		it("renders a no-categories placeholder when top_categories is empty", async () => {
+			mockServerEnabled.value = true;
+			mockStats.value = statsBase;
+			mockInsightsPayload = { grand_total: 2, last_30_days: 1, top_categories: [] };
+			const wrapper = mountHistory();
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("暂无分类数据");
 		});
 	});
 });

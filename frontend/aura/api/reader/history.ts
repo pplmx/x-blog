@@ -147,6 +147,32 @@ export function getReaderHistoryStats(tz?: string): Promise<ReaderHistoryStats> 
 	});
 }
 
+/** A category name plus how many distinct posts of it the reader has read
+ *  (DEC-417/TASK-434). */
+export interface CategoryReadCount {
+	name: string;
+	count: number;
+}
+
+export interface ReaderHistoryInsights {
+	/** Distinct publicly-visible posts the reader has read, all-time. */
+	grand_total: number;
+	/** Distinct publicly-visible posts read in the trailing 30 days. */
+	last_30_days: number;
+	/** Most-read categories by distinct post count (top 5). */
+	top_categories: CategoryReadCount[];
+}
+
+/** Aggregated reading insights — what and how much the reader has read
+ *  (DEC-417/TASK-434): distinct publicly-visible posts all-time and in the
+ *  trailing 30 days, plus the most-read categories. Complements the
+ *  streak/heatmap stats with the content shape. Requires reader token. */
+export function getReaderHistoryInsights(): Promise<ReaderHistoryInsights> {
+	return command<ReaderHistoryInsights>("/api/reader/me/history/insights", {
+		headers: readerAuthHeaders(),
+	});
+}
+
 /** Clear the reader's entire reading history (requires reader token). */
 export function clearReaderHistory(): Promise<null> {
 	return command<null>("/api/reader/me/history", {
