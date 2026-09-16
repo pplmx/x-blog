@@ -187,9 +187,9 @@ test.describe("Web Push reader opt-in", () => {
 
 		await stubPushStack(page);
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill("e2epass123");
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 		await page.waitForFunction(() => !!localStorage.getItem("reader_token"));
 		const token = await page.evaluate(() => localStorage.getItem("reader_token"));
@@ -235,9 +235,9 @@ test.describe("Web Push reader opt-in", () => {
 
 		// 3. Sign in (this page-load transitions isAuthenticated false->true).
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill("e2epass123");
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 		await page.waitForFunction(() => !!localStorage.getItem("reader_token"));
 		const token = await page.evaluate(() => localStorage.getItem("reader_token"));

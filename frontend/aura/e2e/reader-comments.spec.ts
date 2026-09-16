@@ -46,9 +46,9 @@ test.describe("Reader-attributed comments", () => {
 
 		// Sign in via the reader /login flow.
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		// After login the default route is /bookmarks; navigate back to the post.
 		await page.waitForURL("**/bookmarks");
 		await page.goto(postHref);
@@ -138,9 +138,9 @@ test.describe("Reader-attributed comments", () => {
 		await postLink.waitFor({ state: "visible" });
 		const postHref = (await postLink.getAttribute("href")) as string;
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		// After login the default route is /bookmarks; navigate to the post.
 		await page.waitForURL("**/bookmarks");
 		await page.goto(postHref);

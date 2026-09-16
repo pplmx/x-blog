@@ -69,9 +69,9 @@ async function postAndApproveReaderComment(
 
 async function logReaderIn(page: import("@playwright/test").Page, email: string) {
 	await page.goto("/login");
-	await page.locator('input[type="email"]').fill(email);
+	await page.locator("main input[type='email']").fill(email);
 	await page.locator('input[type="password"]').fill(PASSWORD);
-	await page.locator("form").press("Enter");
+	await page.locator("main form").press("Enter");
 	await page.waitForURL("**/bookmarks");
 }
 

@@ -68,9 +68,9 @@ test.describe("Reader account settings", () => {
 		expect(reg.status()).toBe(201);
 
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 
 		// Open account settings from the header nav (auth-only link).
@@ -85,12 +85,15 @@ test.describe("Reader account settings", () => {
 		await expect(page.locator("text=已保存")).toBeVisible({ timeout: 5000 });
 
 		// --- Password: rotate; new logs in, old is rejected ---
-		// The account page has TWO `autocomplete="current-password"` inputs (the
-		// password-rotation form's current password and the delete-account
-		// confirmation field). Disambiguate by the rotation label's accessible
-		// name, otherwise Playwright strict mode rejects the bare attribute
-		// selector (pre-existing e2e break against the shared dev stack, ISS-121).
-		await page.getByRole("textbox", { name: "当前密码" }).fill(PASSWORD);
+		// The account page has multiple `autocomplete="current-password"` inputs
+		// across forms, and BOTH the email-change form and the rotation form label
+		// a field "当前密码" — so the bare role+name lookup matches two and strict
+		// mode rejects it. Scope to the rotation form (the one holding the
+		// new-password fields) so the current-password fill is unambiguous.
+		const rotationForm = page
+			.locator("main form")
+			.filter({ has: page.locator('input[autocomplete="new-password"]') });
+		await rotationForm.getByLabel("当前密码").fill(PASSWORD);
 		await page.locator('input[autocomplete="new-password"]').first().fill("freshpass789");
 		await page.locator('input[autocomplete="new-password"]').nth(1).fill("freshpass789");
 		await page.getByRole("button", { name: "修改密码" }).click();

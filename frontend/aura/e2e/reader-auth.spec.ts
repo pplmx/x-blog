@@ -56,9 +56,9 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 
 		// Sign in via the reader /login page.
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 
 		// The local bookmark was pushed up and the cloud list shows it.
@@ -89,9 +89,9 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 
 		// Sign in; mergeLocalToCloud keeps it (push + pull union).
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 		await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible({ timeout: 5000 });
 	});

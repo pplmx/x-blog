@@ -58,9 +58,9 @@ test.describe("Reader email change (DEC-357)", () => {
 
 		// Sign in with the old email.
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(oldEmail);
+		await page.locator("main input[type='email']").fill(oldEmail);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 
 		// Request the change from the account settings email section. The page

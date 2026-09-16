@@ -70,7 +70,7 @@ test.describe("Reader password-reset UI", () => {
 		await expect(page.locator("a", { hasText: "忘记密码" }).first()).toBeVisible();
 		await page.locator("a", { hasText: "忘记密码" }).first().click();
 		await page.waitForURL("**/forgot-password");
-		await expect(page.locator('input[type="email"]')).toBeVisible();
+		await expect(page.locator("main input[type='email']")).toBeVisible();
 	});
 
 	test("forgot-password submits a known email and lands the generic-success screen", async ({
@@ -82,8 +82,8 @@ test.describe("Reader password-reset UI", () => {
 		const email = freshEmail();
 		await registerReader(page.request, email);
 		await page.goto("/forgot-password");
-		await page.locator('input[type="email"]').fill(email);
-		await page.locator('button[type="submit"]').click();
+		await page.locator("main input[type='email']").fill(email);
+		await page.locator("main button[type='submit']").click();
 		await expect(page.getByRole("status")).toContainText("如果该邮箱已注册");
 		// And a reset email really landed in the sink for that address.
 		await expect.poll(() => resetTokenFromSink(email)).not.toBeNull();
@@ -98,8 +98,8 @@ test.describe("Reader password-reset UI", () => {
 		// SMTP), where the generic-success test above runs instead.
 		test.skip(await smtpIsUp(page.request), "requires SMTP unconfigured");
 		await page.goto("/forgot-password");
-		await page.locator('input[type="email"]').fill("reset-503@example.com");
-		await page.locator('button[type="submit"]').click();
+		await page.locator("main input[type='email']").fill("reset-503@example.com");
+		await page.locator("main button[type='submit']").click();
 		await expect(page.getByRole("alert")).toContainText("邮件服务暂不可用");
 	});
 
@@ -128,7 +128,7 @@ test.describe("Reader password-reset UI", () => {
 		const inputs = page.locator('input[type="password"]');
 		await inputs.nth(0).fill(newPassword);
 		await inputs.nth(1).fill(newPassword);
-		await page.locator('button[type="submit"]').click();
+		await page.locator("main button[type='submit']").click();
 
 		// Auto-login adopted the fresh session and routed to /account.
 		await page.waitForURL("**/account");

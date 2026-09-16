@@ -70,9 +70,9 @@ test.describe("Reader my-comments journey", () => {
 		await page.locator("section").filter({ hasText: "评论" }).first().waitFor({ state: "visible" });
 
 		await page.goto("/login");
-		await page.locator('input[type="email"]').fill(email);
+		await page.locator("main input[type='email']").fill(email);
 		await page.locator('input[type="password"]').fill(PASSWORD);
-		await page.locator("form").press("Enter");
+		await page.locator("main form").press("Enter");
 		await page.waitForURL("**/bookmarks");
 		await page.goto(postHref);
 		await page.locator("[id^='comment-content']").fill("A pending comment from my-comments e2e");

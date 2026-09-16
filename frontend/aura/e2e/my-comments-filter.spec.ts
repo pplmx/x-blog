@@ -32,9 +32,9 @@ async function registerAndLoginReader(
 	expect(reg.status()).toBe(201);
 
 	await page.goto("/login");
-	await page.locator('input[type="email"]').fill(email);
+	await page.locator("main input[type='email']").fill(email);
 	await page.locator('input[type="password"]').fill(PASSWORD);
-	await page.locator("form").press("Enter");
+	await page.locator("main form").press("Enter");
 	await page.waitForURL("**/bookmarks");
 
 	const login = await request.post("/api/reader/login", { data: { email, password: PASSWORD } });
