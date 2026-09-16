@@ -1540,6 +1540,31 @@ def increment_likes(db: Session, post_id: int) -> models.Post | None:
     return post
 
 
+def decrement_likes(db: Session, post_id: int) -> models.Post | None:
+    """Decrement the like count for a post using atomic SQL update, floored at 0.
+
+    The counter is a rough popularity badge (incrementable by guests too, so it
+    is never an exact reader count); unlike must not tear it below zero. Same
+    cache invalidation as increment_likes (the count is embedded in list
+    payloads). Used by the reader unlike path (round 359) when a durable like
+    row is actually removed.
+    """
+    stmt = (
+        update(models.Post).where(models.Post.id == post_id, models.Post.likes > 0).values(likes=models.Post.likes - 1)
+    )
+    db.execute(stmt)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    clear_counter_caches()
+    post = db.get(models.Post, post_id)
+    if post:
+        db.refresh(post)
+    return post
+
+
 def flag_comment(db: Session, comment_id: int, ip_key: str, reason: str | None = None) -> tuple[bool, int]:
     """Record a reader flag on a comment; idempotent per (comment, ip_key).
 
@@ -2080,6 +2105,87 @@ def clear_reader_bookmarks(db: Session, reader_id: int) -> int:
     )
     db.commit()
     return deleted
+
+
+# Reader post likes (cloud-synced likes, round 359)
+# ---------------------------------------------------------------------------
+
+
+def get_reader_post_like(db: Session, reader_id: int, post_id: int) -> models.ReaderPostLike | None:
+    """Return the reader's like for a post, or None."""
+    return (
+        db.query(models.ReaderPostLike)
+        .filter(
+            models.ReaderPostLike.reader_id == reader_id,
+            models.ReaderPostLike.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def add_reader_post_like(db: Session, reader_id: int, post_id: int) -> tuple[models.ReaderPostLike, bool]:
+    """Create a like; returns (like, created). Idempotent: re-adding an
+    existing like returns the existing row with created=False (merge-friendly —
+    the localStorage-first client re-sends the same set on login, mirroring
+    add_reader_bookmark). The durable row is what makes a signed-in reader's
+    like cross-device; the public counter is bumped separately by the caller."""
+    existing = get_reader_post_like(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    like = models.ReaderPostLike(reader_id=reader_id, post_id=post_id)
+    db.add(like)
+    if _commit_reader_upsert(db):
+        db.refresh(like)
+        return like, True
+    existing = get_reader_post_like(db, reader_id, post_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("reader-post-like insert lost the unique-key race but no row was found")
+
+
+def remove_reader_post_like(db: Session, reader_id: int, post_id: int) -> bool:
+    """Delete a like; returns True if one was removed. Idempotent."""
+    like = get_reader_post_like(db, reader_id, post_id)
+    if not like:
+        return False
+    db.delete(like)
+    db.commit()
+    return True
+
+
+def list_reader_post_likes(
+    db: Session,
+    reader_id: int,
+    page: int = 1,
+    limit: int | None = 100,
+) -> tuple[list[models.Post], int]:
+    """Return the reader's liked posts, publicly-visible only, newest like
+    first, paginated.
+
+    Post visibility can change after a like; the list must never leak a draft
+    or scheduled post on a read path (same invariant as list_reader_bookmarks)
+    — visibility is pushed into the SQL WHERE so pages are stable.
+    ``limit=None`` returns the complete list (the reader data export uses
+    that, RIL ISS-288).
+    """
+    now = utc_now_naive()
+    query = (
+        db.query(models.Post)
+        .join(models.ReaderPostLike, models.ReaderPostLike.post_id == models.Post.id)
+        .filter(
+            models.ReaderPostLike.reader_id == reader_id,
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    )
+    total = query.count()
+    query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
+        models.ReaderPostLike.created_at.desc(), models.Post.id.desc()
+    )
+    if limit is not None:
+        query = query.offset((page - 1) * limit).limit(limit)
+    rows = query.all()
+    return [p for p in rows if is_publicly_visible(p)], total
 
 
 def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:

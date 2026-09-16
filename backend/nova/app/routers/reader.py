@@ -1404,6 +1404,88 @@ def remove_bookmark(
     return None
 
 
+# ---------------------------------------------------------------------------
+# Cloud-synced likes (round 359)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/likes", response_model=schemas.PostListResponse)
+def list_my_likes(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: PageInt = 1,
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """A signed-in reader's liked posts (publicly-visible only), paginated.
+
+    The "posts I liked" surface the local client marker could never show:
+    bookmarks list what a reader saved to read, history lists what they read,
+    and now likes list what they appreciated. Same non-leak invariant as the
+    bookmark list — a liked post that became a draft/scheduled no longer
+    appears here (the like row is kept). Newest like first. Bounded paging.
+    """
+    posts, total = crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return schemas.PostListResponse.model_validate(
+        {
+            "items": [schemas.PostList.model_validate(p) for p in posts],
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
+    )
+
+
+@router.post("/me/likes/{post_id}", response_model=AddBookmarkResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def like_post(
+    request: Request,  # noqa: ARG001
+    post_id: IdInt,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Like a public post as a signed-in reader. Idempotent like a bookmark:
+    201 on first like (and the public counter is bumped exactly once), 200 on
+    re-like with already_existed=True (no double-count) — so a merge/re-login
+    client can re-send the whole local marker set without inflating counts.
+
+    Drafts/scheduled/unknown posts are uniformly 404 (no draft-existence
+    oracle, same guard as bookmark/comment-create paths).
+    """
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    like, created = crud.add_reader_post_like(db, current_reader.id, post.id)
+    if created:
+        # The durable per-reader row is the cross-device truth; the public
+        # counter is the aggregate badge. Bump it exactly once per NEW like.
+        crud.increment_likes(db, post.id)
+    response.status_code = 201 if created else 200
+    return AddBookmarkResponse(post_id=like.post_id, already_existed=not created)
+
+
+@router.delete("/me/likes/{post_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def unlike_post(
+    request: Request,  # noqa: ARG001
+    post_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Remove the reader's like of a post. Idempotent 204 like bookmark remove,
+    but only decrements the public counter when a like was actually removed
+    (an unlike of a never-liked post doesn't tear the count below its true
+    aggregate)."""
+    removed = crud.remove_reader_post_like(db, current_reader.id, post_id)
+    if removed:
+        crud.decrement_likes(db, post_id)
+    return None
+
+
 # Bookmark folders / collections (DEC-120/TASK-172)
 # ---------------------------------------------------------------------------
 

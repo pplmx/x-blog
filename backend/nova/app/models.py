@@ -456,6 +456,34 @@ class ReaderBookmark(Base):
     )
 
 
+class ReaderPostLike(Base):
+    """A signed-in reader's like of a post (cloud-synced likes, round 359).
+
+    Guest likes are anonymous + client-local (useLikes dedups in localStorage,
+    RIL ISS-038); a signed-in reader's like is durable here so it survives the
+    device, can be un-liked (decrementing the public count), and is listed on
+    the reader's "liked posts" surface — mirroring ReaderBookmark (DEC-059/
+    TASK-132) and the reading-history server trail (DEC-116/TASK-170). The
+    ``reader_id`` ↔ ``post_id`` pair is unique: one like per post per reader,
+    server-enforced. Additive table, no DB-level FK (DEC-009).
+    """
+
+    __tablename__ = "reader_post_likes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_post_likes_reader_post"),)
+
+    post: Mapped[Post] = relationship(
+        "Post",
+        primaryjoin="ReaderPostLike.post_id == Post.id",
+        foreign_keys="ReaderPostLike.post_id",
+    )
+
+
 class ReadingHistory(Base):
     """A reader's server-backed view history (DEC-116, TASK-170).
 
