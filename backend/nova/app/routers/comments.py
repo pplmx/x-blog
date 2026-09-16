@@ -469,6 +469,70 @@ class CommentApproval(BaseModel):
     approved: bool
 
 
+class DiscussionFeedItem(schemas.CommentPublic):
+    """One comment on the site-wide discussion feed (round 367, DEC-407).
+
+    The public comment shape plus the post it was left on — the feed card
+    deep-links onto the exact comment (``#comment-{id}``, DEC-321) via the
+    post brief, never just the post headline.
+    """
+
+    post: schemas.CommentPostBrief | None = None
+
+
+class DiscussionFeedPagination(BaseModel):
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+
+class DiscussionFeedResponse(BaseModel):
+    items: list[DiscussionFeedItem]
+    pagination: DiscussionFeedPagination
+
+
+@router.get("/feed", response_model=DiscussionFeedResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def discussion_feed(
+    request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
+    page: PageInt = 1,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Site-wide discussion feed (round 367, DEC-407).
+
+    Search (DEC-405) made the discussion FINDABLE; this makes it BROWSABLE — a
+    visitor who wants to see what people are saying right now has no surface
+    otherwise. Newest approved comments on publicly-visible posts, each with
+    the commenter identity (CommentPublic — emitted through CommentReaderProfile,
+    never email/ip), the content, and the post brief so the card can land the
+    reader ON the comment. Same visibility gate as comment search: pending/
+    rejected comments and comments on draft/scheduled posts never appear.
+    """
+    comments, total = crud.list_public_comment_feed(db, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    items = []
+    for c in comments:
+        base = schemas.CommentPublic.model_validate(c).model_dump()
+        post = c.post  # joinedload in list_public_comment_feed
+        items.append(
+            DiscussionFeedItem(
+                **base,
+                post=(schemas.CommentPostBrief(id=post.id, title=post.title, slug=post.slug) if post else None),
+            )
+        )
+    return DiscussionFeedResponse(
+        items=items,
+        pagination=DiscussionFeedPagination(
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=total_pages,
+        ),
+    )
+
+
 @router.get("/post/{post_id}", response_model=CommentListResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def list_comments(

@@ -3933,6 +3933,42 @@ def list_reader_public_comments(
     return items, total
 
 
+def list_public_comment_feed(
+    db: Session,
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[models.Comment], int]:
+    """Site-wide discussion feed (round 367, DEC-407).
+
+    Newest approved comments on *publicly-visible* posts — the blog's
+    conversation as a browsable stream, not just a search target (comment
+    search, DEC-405). Same visibility gate as list_reader_public_comments /
+    search_comments: is_approved AND the commented post is published with its
+    publish_at passed (drafts/scheduled posts never leak their discussion);
+    pending/rejected comments stay out; email/ip never ride the rows (serialized
+    through CommentPublic at the router). Newest first with an id tiebreak.
+    """
+    now = utc_now_naive()
+    query = (
+        db.query(models.Comment)
+        .join(models.Post, models.Comment.post_id == models.Post.id)
+        .filter(
+            models.Comment.is_approved.is_(True),
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    )
+    total = query.count()
+    items = (
+        query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    return items, total
+
+
 def search_comments(
     db: Session,
     query: str,
