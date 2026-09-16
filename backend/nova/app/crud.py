@@ -2158,6 +2158,7 @@ def list_reader_post_likes(
     reader_id: int,
     page: int = 1,
     limit: int | None = 100,
+    q: str | None = None,
 ) -> tuple[list[models.Post], int]:
     """Return the reader's liked posts, publicly-visible only, newest like
     first, paginated.
@@ -2166,7 +2167,10 @@ def list_reader_post_likes(
     or scheduled post on a read path (same invariant as list_reader_bookmarks)
     — visibility is pushed into the SQL WHERE so pages are stable.
     ``limit=None`` returns the complete list (the reader data export uses
-    that, RIL ISS-288).
+    that, RIL ISS-288). ``q`` (optional) filters to liked posts whose title or
+    excerpt matches the term (case-insensitive, escape-aware — DEC-413/TASK-432,
+    same recall-search pattern as history DEC-148) so a reader can recall a
+    specific appreciated post.
     """
     now = utc_now_naive()
     query = (
@@ -2178,6 +2182,14 @@ def list_reader_post_likes(
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
+    if q and q.strip():
+        term = f"%{escape_like_pattern(q.strip())}%"
+        query = query.filter(
+            or_(
+                models.Post.title.ilike(term, escape="\\"),
+                models.Post.excerpt.ilike(term, escape="\\"),
+            )
+        )
     total = query.count()
     query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
         models.ReaderPostLike.created_at.desc(), models.Post.id.desc()

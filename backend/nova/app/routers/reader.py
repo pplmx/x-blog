@@ -1673,6 +1673,7 @@ def remove_bookmark(
 @router.get("/me/likes", response_model=schemas.PostListResponse)
 def list_my_likes(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    q: str | None = Query(None, max_length=200, description="title/excerpt keyword filter"),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -1684,8 +1685,10 @@ def list_my_likes(
     and now likes list what they appreciated. Same non-leak invariant as the
     bookmark list — a liked post that became a draft/scheduled no longer
     appears here (the like row is kept). Newest like first. Bounded paging.
+    ``q`` (optional) filters to liked posts matching title/excerpt
+    (escape-aware — DEC-413/TASK-432, recall-search like history DEC-148).
     """
-    posts, total = crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit)
+    posts, total = crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
