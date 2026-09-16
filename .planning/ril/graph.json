@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 368,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T19:20:16+00:00",
+  "updated_at": "2026-09-16T19:29:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27206,6 +27206,29 @@
       "title": "close round 366: public comment search delivered (DEC-405 superseded)",
       "rationale": "The discussion is now searchable: GET /api/search/comments finds every approved comment on a publicly-visible post by content (every whitespace term must hit, escaped LIKE so %/_ match literally, newest first with id tiebreak, bounded page/limit) and returns a mark-safe highlighted snippet plus the comment post brief so a result deep-links ONTO the comment (#comment-id, DEC-321). The /search page gained a Comments mode (search-scope tablist; ?type=comments lives in the URL so a shared link lands in the right mode): comment hits render the snippet, commenter identity, and post brief; posts-only filters hide in comment mode; paging and term refinement preserve the mode. Visibility contract mirrors post search: pending/rejected comments and comments on draft/scheduled posts never leak, email/IP never leave the backend. Blank q is 422 at the router AND returns empty at the crud layer (defense-in-depth); snippet HTML is escaped-before-mark (XSS-safe by construction, tested). Major regression caught by e2e: Nuxt enabled-only flips abort but never re-run a fetch, so toggling mode left the active result set frozen - fixed with watch:[mode] on both searches (CHG-650). Delivered by CHG-648 (backend) + CHG-649 (frontend) + CHG-650 (fix+e2e) + CHG-651 (docs), verified by EV-274 (backend 1734 + frontend 2272 + typecheck/lint + browser e2e search-comments 2/2).",
       "alternatives_rejected": "Adding the search mode as a component-local toggle (not in the URL): a comment-search link could not deep-link into the mode (rejected - the URL-owned mode is the shareable contract). Searching thread text inside the existing /search without a mode split: conflates two result shapes in one list (rejected - comments need their own snippet/identity/brief rendering and posts-only filters must hide)."
+    },
+    "DEC-407": {
+      "id": "DEC-407",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:29:18+00:00",
+      "updated_at": "2026-09-16T19:29:18+00:00",
+      "touched_round": 368,
+      "title": "round 367 scope: public discussion feed (browse the blog conversation, land on each comment)",
+      "rationale": "Round 366 made the discussion SEARCHABLE; this round makes it BROWSABLE. Search-only means a visitor who wants to see what people are saying on the blog right now (without a term in mind) has no surface - the thread is the blog second content asset but its only entry points are per-post comment lists and a query box. The capability in one sentence: a visitor can open a public feed of the latest approved comments across all live posts - newest first, each hit carrying the commenter identity, the snippet/excerpt, the post brief, and a deep link onto the exact comment (#comment-id, DEC-321) - so the conversation is discoverable, not just findable. This is a whole new public page (net-new surface), not a filter on an existing one. Vertical slice: GET /api/comments/feed (newest approved comments on publicly-visible posts, same visibility gate as search_comments/list_reader_public_comments - never drafts/scheduled posts, never pending/rejected, no email/IP) + a public /discussion page (feed cards, pagination, SEO, locales en/zh) + backend unit tests + frontend page tests + e2e + docs.",
+      "alternatives_rejected": "Per-post discussion search (a search-this-thread box on /posts/{id}): mechanically a post_id filter on the just-shipped /api/search/comments - a missing dimension on an existing surface, exactly the value-gate patch reject. Reader-reading-report page: /me/history/stats already exposes totals/streak/heatmap; a richer rollup is a dashboard on existing data, weaker visibility than a public surface. Public reading-trail, thread collapse, Web Share, guest recs: previously rejected unchanged (DEC-350/399/401)."
+    },
+    "TASK-429": {
+      "id": "TASK-429",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:29:52+00:00",
+      "updated_at": "2026-09-16T19:29:52+00:00",
+      "touched_round": 368,
+      "category": "core-feature",
+      "title": "round 367: public discussion feed - GET /api/comments/feed (newest approved comments on public posts, same visibility gate as comment search, paginated, no email/IP) + /discussion page (feed cards + post brief + deep link onto each comment + pagination + SEO + locales en/zh) + backend unit tests + frontend page tests + e2e + docs (DEC-407)"
     }
   },
   "edges": [
