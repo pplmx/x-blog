@@ -77,6 +77,11 @@ async function handleSubmit() {
 		// Once authenticated, push any local bookmarks up and adopt the merged
 		// server list so /bookmarks is consistent post-login. (TASK-134)
 		await mergeLocalToCloud();
+		// Same for liked-post markers (round 359): a reader who liked posts
+		// while signed-out (or on an old device) keeps those likes — they're
+		// now durable cloud rows visible on /liked.
+		const { useLikeSync } = await import("~~/composables/useLikeSync");
+		await useLikeSync().mergeLocalToCloud();
 		navigateTo(redirectTarget.value, { replace: true });
 	} catch (e) {
 		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");

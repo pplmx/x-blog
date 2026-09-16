@@ -1,0 +1,17 @@
+{
+	"liked": {
+		"seoTitle": "喜欢的文章 — X-Blog",
+		"seoDesc": "你喜欢过的全部文章，跨设备同步。",
+		"title": "喜欢的文章",
+		"subtitle": "你喜欢的文章——登录后跨设备同步",
+		"countLabel": "{count} 篇文章",
+		"likeCount": "个赞",
+		"empty": "你还没有喜欢过任何文章。在喜欢的那篇文章上点一下爱心，它就会出现在这里。",
+		"emptyAction": "去浏览文章",
+		"loadFailed": "无法加载你喜欢的文章——请检查网络后重试。",
+		"retry": "重试",
+		"authWarning": "你的登录似乎已过期——",
+		"login": "请重新登录",
+		"dismiss": "关闭"
+	}
+}

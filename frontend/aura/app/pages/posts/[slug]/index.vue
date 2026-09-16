@@ -151,10 +151,14 @@ const likeError = ref<string | null>(null);
 // action bar for the whole article visit; auto-dismiss after a few seconds
 // (mirrors the resume-chip timer pattern).
 let likeErrorTimer: ReturnType<typeof setTimeout> | null = null;
-// Client-side "liked this post" dedup (RIL ISS-038): a visitor can like at most
-// once per post. isLiked drives the persisted button state; recordLike marks
-// before the API call so later clicks are no-ops.
+// "Liked this post" state. Guests: a client-side dedup marker (RIL ISS-038)
+// so an anonymous visitor can like at most once, driving the one-shot button
+// and the anonymous POST /like counter bump. Signed-in readers: the marker is
+// the UI mirror of a durable cloud like (round 359) — like()/unlike() mirror
+// to the reader likes API (a real unlike decrements the counter), and the
+// button becomes a toggle instead of a one-shot.
 const { isLiked, recordLike, undoLike, persist } = useLikes();
+const { like: likeSync, unlike: unlikeSync } = useLikeSync();
 const likedThisPost = computed(() => (post.value?.id ? isLiked(post.value.id) : false));
 
 function clearLikeError() {
@@ -162,34 +166,47 @@ function clearLikeError() {
 	likeErrorTimer = null;
 	likeError.value = null;
 }
-async function handleLike() {
+
+/** Optimistically flip a like state with a server round-trip, then reconcile
+ *  the rendered count from the response. Shared by like and unlike so the two
+ *  directions keep the same id/scoping discipline. */
+async function flipLike(op: "like" | "unlike") {
 	if (!post.value?.id || likeLoading.value) return;
-	if (likedThisPost.value) return; // already liked — no-op
-	// Capture the target id: the reader can SPA-navigate (related/prev-next) to
-	// another post while this request is in flight, and `post.value` would then
-	// point at the new post. The result must only ever apply to the post the
-	// click was for.
 	const targetId = post.value.id;
+	const wasLiked = isLiked(targetId);
+	// A signed-in reader toggles; a guest's like is a one-shot (the button is
+	// disabled once liked, so the unlike path is unreachable for guests).
+	if (op === "unlike" && !wasLiked) return;
+	if (op === "like" && wasLiked) return;
 	likeLoading.value = true;
 	clearLikeError();
-	recordLike(targetId); // optimistic local marker
+	// Optimistic local flip (persist so SPA nav keeps the state).
+	if (op === "like") {
+		recordLike(targetId);
+	} else {
+		undoLike(targetId);
+	}
 	persist();
 	try {
-		const liked = await likePost(targetId);
-		// POST /like returns the updated Post (response_model=schemas.Post); use
-		// it to refresh the rendered count instead of a discarded refetch, which
-		// left post.value.likes stale in the UI. Guard the assignment by id so a
-		// late resolve can never stomp the navigating-to post's payload.
-		if (liked) {
-			if (post.value?.id === targetId) {
-				post.value = liked;
+		if (isAuthenticated.value && op === "unlike") {
+			// Real unlike: DELETE the cloud row (decrements the counter) — the
+			// count comes back via a refetch since DELETE returns 204.
+			await unlikeSync(targetId);
+			if (post.value?.id === targetId) await refreshPost();
+		} else if (isAuthenticated.value) {
+			// Signed-in like: idempotent cloud POST (bumps once). The response
+			// is a 200/201 envelope without a Post body, so refetch the count.
+			await likeSync(targetId);
+			if (post.value?.id === targetId) await refreshPost();
+		} else {
+			// Guest like: anonymous POST /like returns the updated Post; use it
+			// to refresh the rendered count instead of a discarded refetch.
+			const liked = await likePost(targetId);
+			if (liked) {
+				if (post.value?.id === targetId) post.value = liked;
+			} else if (post.value?.id === targetId) {
+				await refreshPost();
 			}
-		} else if (post.value?.id === targetId) {
-			// No post payload returned: refresh through the useFetch seam
-			// (refreshPost) — calling usePost() here would silently no-op, since
-			// useFetch-driven composables must be called during setup, not from
-			// an event handler.
-			await refreshPost();
 		}
 	} catch (_err) {
 		// Show the banner only on the post the click was for: a failure that
@@ -204,16 +221,26 @@ async function handleLike() {
 				likeError.value = null;
 			}, 5000);
 		}
-		// Roll the optimistic "liked" marker back so a failed like doesn't leave
-		// the button permanently disabled & pre-filled (TASK-234). The marker
-		// was persisted before the request; undo + persist restores the prior
-		// local state and lets the reader retry. Use the captured id — undoing
-		// `post.value` here could un-like the wrong (new) post in localStorage.
-		undoLike(targetId);
+		// Roll the optimistic marker back so a failed flip doesn't leave the
+		// button stuck pre-filled (TASK-234). Use the captured id — undoing
+		// `post.value` here could flip the wrong (new) post's marker.
+		if (op === "like") {
+			undoLike(targetId);
+		} else {
+			recordLike(targetId);
+		}
 		persist();
 	} finally {
 		likeLoading.value = false;
 	}
+}
+
+function handleLike() {
+	void flipLike("like");
+}
+
+function handleUnlike() {
+	void flipLike("unlike");
 }
 
 const scrollProgress = ref(0);
@@ -802,7 +829,20 @@ function handleCommentSubmitted(created: Comment | undefined) {
         <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4" :class="{ 'opacity-60': pending }">
           <BookmarkButton :post-id="post.id" :post="post" variant="full" :disabled="pending" />
           <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-          <button type="button" :disabled="likeLoading || likedThisPost || pending" :title="likedThisPost ? t('post.liked') : t('post.likes')" :aria-pressed="likedThisPost ? 'true' : 'false'" :aria-label="likedThisPost ? t('post.liked') : t('post.likes')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed" :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'" @click="handleLike">
+          <!-- Like (round 359): a signed-in reader's like is a durable cloud
+               row and the button is a real toggle (second click un-likes and
+               decrements the count); a guest's like stays the one-shot
+               client-deduped POST /like (disabled once liked, no unlike). -->
+          <button
+            type="button"
+            :disabled="likeLoading || (!isAuthenticated && likedThisPost) || pending"
+            :title="likedThisPost ? t('post.liked') : t('post.likes')"
+            :aria-pressed="likedThisPost ? 'true' : 'false'"
+            :aria-label="likedThisPost ? t('post.liked') : t('post.likes')"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed"
+            :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'"
+            @click="likedThisPost && isAuthenticated ? handleUnlike() : handleLike()"
+          >
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
             {{ (post.likes ?? 0).toLocaleString() }}
           </button>

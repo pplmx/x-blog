@@ -1,0 +1,17 @@
+{
+	"liked": {
+		"seoTitle": "Liked posts — X-Blog",
+		"seoDesc": "Every post you've liked, synced across your devices.",
+		"title": "Liked posts",
+		"subtitle": "The posts you appreciated — synced wherever you're signed in",
+		"countLabel": "{count} posts",
+		"likeCount": "likes",
+		"empty": "You haven't liked any posts yet. Hit the heart on a post you enjoy and it'll show up here.",
+		"emptyAction": "Browse posts",
+		"loadFailed": "Couldn't load your liked posts — check your connection and try again.",
+		"retry": "Retry",
+		"authWarning": "Looks like your session expired — ",
+		"login": "sign in again",
+		"dismiss": "Dismiss"
+	}
+}

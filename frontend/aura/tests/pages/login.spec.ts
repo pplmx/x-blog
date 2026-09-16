@@ -115,8 +115,11 @@ describe("login redirect (deep-dive fix)", () => {
 		await wrapper.find('input[type="password"]').setValue("secret123");
 		await wrapper.find("form").trigger("submit.prevent");
 		await flushPromises();
-
-		expect(navMock).toHaveBeenCalledWith("/account", { replace: true });
+		// Login now awaits a lazily dynamic-imported useLikeSync merge after the
+		// bookmark merge; a module dynamic import doesn't settle within
+		// flushPromises, so wait for the navigation to actually fire instead of
+		// asserting a microtask-tick later.
+		await vi.waitFor(() => expect(navMock).toHaveBeenCalledWith("/account", { replace: true }));
 		vi.unstubAllGlobals();
 	});
 
@@ -136,8 +139,8 @@ describe("login redirect (deep-dive fix)", () => {
 		await wrapper.find('input[type="password"]').setValue("secret123");
 		await wrapper.find("form").trigger("submit.prevent");
 		await flushPromises();
-
-		expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true });
+		// See the ?redirect= test above: wait for the (post-merge) navigation.
+		await vi.waitFor(() => expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true }));
 		vi.unstubAllGlobals();
 	});
 });

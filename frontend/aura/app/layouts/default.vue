@@ -25,6 +25,7 @@ const navLinks = [
 	// stale href (the /follows entry used to sit between /history and /comments,
 	// rendering as an <a href="/comments"> that navigated to /follows — found via
 	// the my-comments e2e). Appending avoids the reuse entirely.
+	{ to: "/liked", labelKey: "reader.nav.liked", icon: "lucide:heart", authOnly: true },
 	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss", authOnly: true },
 	{
 		to: "/notifications",
