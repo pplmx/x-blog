@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Recommended for you on the post page (round 362)**: the homepage has had
+  an affinity-scored "Recommended for you" row since round 278 (DEC-128), but
+  the post page — the single highest-intent "what should I read next?" moment —
+  only offered topic-similar Related Posts and person-shaped
+  "More from this author", neither keyed to what the reader actually likes.
+  A signed-in reader who finishes an article now gets a personalized strip at
+  the article end, scored from their own reading-history/bookmark affinity
+  (the same `/api/reader/me/recommendations` call the homepage uses). Guests
+  and signed-out readers see nothing, and a reader with no affinity (cold
+  start) sees no orphaned heading — the strip appears only when there is
+  actually something to show.
 - **Bookmark To-read vs Done queue (round 361)**: a saved post used to be a
   single undifferentiated concept — bookmarks were "things to read later" and
   also "things I've already read and want to keep", conflated in one list with
