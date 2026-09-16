@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 374,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T23:20:28+00:00",
+  "updated_at": "2026-09-16T23:22:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27656,6 +27656,31 @@
       "title": "Round 371 in-place unlike on /liked closed (DEC-416)",
       "rationale": "TASK-433 delivered end-to-end: frontend per-card unlike + 4 page tests + e2e + docs; all VERIFY gates green (2300 vitest, e2e 4/4 incl regression, backend untouched 1767).",
       "alternatives_rejected": "None - closed as planned; no scope change."
+    },
+    "DEC-417": {
+      "id": "DEC-417",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:22:02+00:00",
+      "updated_at": "2026-09-16T23:22:02+00:00",
+      "touched_round": 374,
+      "title": "Reading insights on /history: what and how much you read (DEC-417)",
+      "rationale": "The reader self-quantification surface exists as a 52-week activity heatmap + streak (DEC-316), but it only shows the calendar shape - not what or how much was actually read. A reader who wants 'how many posts have I read in the last month' or 'which topics do I actually read most' has nowhere to look: history lists raw rows with no aggregate. Add a lightweight GET /api/reader/me/history/insights returning distinct-read totals (all-time + trailing 30 days) and the top categories by distinct reads (publicly-visible only, same non-leak invariant as the history list), plus a compact insights panel on /history.",
+      "alternatives_rejected": "Hours-read estimated from viewed_at timestamps rejected (no per-session duration is tracked, the estimate would be guesswork). Per-month bar chart deferred (the heatmap already covers calendar shape; keep this slice to total + recency + top categories)."
+    },
+    "TASK-434": {
+      "id": "TASK-434",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T23:22:03+00:00",
+      "updated_at": "2026-09-16T23:22:03+00:00",
+      "touched_round": 374,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Reading insights aggregate + /history panel (TASK-434)",
+      "detail": "Backend: GET /api/reader/me/history/insights returning grand_total distinct publicly-visible reads, last_30_days distinct reads, top_categories [{name,count}] top 5. Frontend: compact insights row on /history (3 numbers + top-category chips), only when signed-in server stats are shown; zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
     }
   },
   "edges": [
@@ -41180,6 +41205,12 @@
       "to": "DEC-415",
       "type": "supersedes",
       "created_at": "2026-09-16T23:20:27+00:00"
+    },
+    {
+      "from": "DEC-417",
+      "to": "TASK-434",
+      "type": "governs",
+      "created_at": "2026-09-16T23:22:03+00:00"
     }
   ]
 }
