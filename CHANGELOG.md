@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Writer bio (round 357)**: the person-shaped author surface (rounds 343-356)
+  built bylines, archives, indexes, follow — but never introduced the person.
+  A superuser now sets a short public "about this writer" text next to the pen
+  name in admin/users (same 500-char plain-text cap as the reader bio from
+  round 352), and it renders under the writer's name on their `/authors/{id}`
+  archive header — the page where a reader decides about them — plus a
+  one-line window on the writer's `/authors` index card. The archive envelope
+  carries it (a new `AuthorArchive` shape) while per-post bylines stay slim,
+  so no list payload repeats the text on every card. No-oracle posture holds:
+  a username-only admin still answers 404 with no bio to leak.
 - **More from this author (round 356)**: a reader who just finished and loved
   one post used to have no in-place path to the writer's other work — the
   related-posts block is topic-shaped (category/tags), and the archive was a
