@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Public "Saved posts" profiles (round 363)**: round 360 gave readers an
+  opt-in "Liked posts" discovery tab; the companion curation axis is what a
+  reader chose to KEEP (save-for-later / done queue) rather than merely
+  appreciate. A second `/account` checkbox (off by default, fuchsia, distinct
+  from the likes flag) now publishes a "Saved posts" tab on the public
+  `/readers/{id}` profile, fed by a public `GET /api/readers/{id}/bookmarks`
+  anyone can browse, newest save first. Privacy posture mirrors round 360
+  exactly: the flag defaults OFF, a reader who never opts in gets no tab, and
+  the endpoint 404s identically for an unknown reader and an opted-out one
+  (one indistinguishable answer — no oracle), while the published list is
+  filtered to publicly-visible posts only (no draft/scheduled leak). The flag
+  rides `/account` PATCH, the `/me` + public profile envelopes, and the
+  portable data export; additive `public_bookmarks` column (migration
+  i2k4m6n8p0r2, `sa.false()` default like the round-361 dialect fix), served
+  no-store per-reader.
 - **Recommended for you on the post page (round 362)**: the homepage has had
   an affinity-scored "Recommended for you" row since round 278 (DEC-128), but
   the post page — the single highest-intent "what should I read next?" moment —
