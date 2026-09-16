@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔍 **Liked-posts recall search (round 370)**: the last reader-owned surface
+  without keyword search finally gets it — bookmarks (DEC-124), `/history`
+  (DEC-148) and my-comments (round 369) could all be filtered by term, but the
+  `/liked` page (round 359) only paginated, so a reader who'd liked a lot of
+  posts couldn't find the one they now recalled. `/liked` now has a debounced
+  (300 ms) search box and `GET /api/reader/me/likes` takes an optional `q` that
+  matches the post title or excerpt case-insensitively (escape-aware LIKE),
+  composing with the public-visibility gate and pagination. A new search
+  restarts at page 1; a term with no match shows a "no liked posts match" empty
+  state with a one-click clear-search reset. The filter runs in SQL, so the
+  whole liked set is searched, not just the loaded grid. 93.72% coverage;
+  1767 backend tests, 2296 frontend tests, and a new liked-search e2e journey
+  all green.
 - 🔍 **My-comments keyword search (round 369)**: a reader with a long comment
   history can now find a single comment by what it says — recall-search for the
   comment you left, the last reader-owned surface still without it (bookmarks
