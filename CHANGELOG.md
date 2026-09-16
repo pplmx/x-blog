@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Cloud-synced likes + liked-posts list (round 359)**: a like used to be a
+  localStorage marker that a reader could only ever add — one-shot, device-
+  local, no list, no way back. A signed-in reader's like is now a durable,
+  cross-device cloud row: the post-page heart is a real toggle (a second click
+  un-likes and decrements the count — the server decrements only on a real
+  removal), a like made while signed out is promoted to a cloud row on sign-in
+  (the same "local wins for adds" merge bookmarks document), and a new
+  auth-gated `/liked` page — the "posts I appreciated" surface joining
+  bookmarks (saved to read) and history (read) — merges the server's liked set
+  down on mount, newest-like-first and paginated, so a like made on one device
+  shows up on the next. Guests keep the anonymous client-deduped like, and a
+  stale session surfaces a sign-in warning on `/liked` instead of silently
+  losing markers.
 - **Writer avatar (round 358)**: the person-shaped author surface had a
   voice (bio, round 357) but no face — every rendering was a generic user
   icon while readers had had avatars since round 299. A superuser now uploads
