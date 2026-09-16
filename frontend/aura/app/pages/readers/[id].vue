@@ -246,15 +246,16 @@ const paginationTokens = computed(() =>
 
 			<!-- Tabs: comments always; "Liked posts" only when the reader opted in
 				 (round 360, DEC-393). The opt-in flag on the profile drives this —
-				 no tab at all for readers who chose to keep their likes private. -->
+				 no Likes tab at all for readers who chose to keep their likes
+				 private (a tablist of one is still a valid tablist). -->
 			<div
 				class="mb-6 flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl w-fit"
-				:role="data.profile.public_likes ? 'tablist' : undefined"
+				role="tablist"
 			>
 				<button
 					type="button"
 					:aria-pressed="view === 'comments'"
-					:role="data.profile.public_likes ? 'tab' : undefined"
+					role="tab"
 					:aria-selected="view === 'comments'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
 					:class="view === 'comments'
