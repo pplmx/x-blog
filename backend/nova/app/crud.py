@@ -2663,6 +2663,56 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
     }
 
 
+def reader_history_insights(db: Session, reader_id: int, top_categories: int = 5) -> dict:
+    """Aggregate "what and how much" the reader has read (DEC-417/TASK-434).
+
+    The streak/heatmap (reader_history_stats, DEC-316) show the calendar shape
+    of reading; this adds the content shape: distinct publicly-visible posts
+    read all-time, in the trailing 30 days, and the most-read categories (by
+    distinct post count). One row per reader-post in ReadingHistory, so counts
+    are per-post (repeat visits on the same post count once). Same
+    public-visibility WHERE as list_reader_history so un-published/scheduled
+    posts neither leak nor count.
+    """
+    now = utc_now_naive()
+    since_30 = now - timedelta(days=30)
+    visibility = [
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    ]
+
+    base = (
+        db.query(models.Post)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(models.ReadingHistory.reader_id == reader_id)
+        .filter(*visibility)
+    )
+    base = base.filter(models.ReadingHistory.viewed_at.is_not(None))
+    grand_total = base.count()
+    last_30_days = base.filter(models.ReadingHistory.viewed_at >= since_30).count()
+
+    cat_rows = (
+        db.query(models.Category.name, func.count(models.Post.id))
+        .select_from(models.ReadingHistory)
+        .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
+        .join(models.Category, models.Category.id == models.Post.category_id)
+        .filter(
+            models.ReadingHistory.reader_id == reader_id,
+            models.ReadingHistory.viewed_at.is_not(None),
+            *visibility,
+        )
+        .group_by(models.Category.id, models.Category.name)
+        .order_by(func.count(models.Post.id).desc(), models.Category.name.asc())
+        .limit(top_categories)
+        .all()
+    )
+    return {
+        "grand_total": grand_total,
+        "last_30_days": last_30_days,
+        "top_categories": [{"name": name, "count": count} for name, count in cat_rows],
+    }
+
+
 def reader_series_progress(db: Session, reader_id: int, series: models.Series) -> dict:
     """Compute a reader's progress through a series from their history.
 

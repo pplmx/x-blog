@@ -605,6 +605,29 @@ class ReadingStatsResponse(BaseModel):
     activity: list[DayActivity] = []
 
 
+class CategoryReadCount(BaseModel):
+    """A category name plus how many distinct posts of it the reader has read
+    (reading insights, DEC-417/TASK-434)."""
+
+    name: str
+    count: int
+
+
+class ReadingInsightsResponse(BaseModel):
+    """Aggregated reading insights for the signed-in reader (DEC-417/TASK-434).
+
+    Complements the streak/heatmap (which show the calendar *shape* of reading)
+    with the *content* shape: how much was read all-time and recently, and
+    which categories dominate. Publicly-visible posts only — un-published posts
+    neither leak nor count. One row per reader-post in ReadingHistory, so
+    repeat visits on the same post count once.
+    """
+
+    grand_total: int = 0
+    last_30_days: int = 0
+    top_categories: list[CategoryReadCount] = []
+
+
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
 # real account hash. When the email is unknown we still run bcrypt against this
 # so the login endpoint's response *timing* does not reveal whether an email
@@ -2443,6 +2466,22 @@ def reading_history_stats(
         longest_streak=stats["longest_streak"],
         activity=[DayActivity(**a) for a in stats["activity"]],
     )
+
+
+@router.get("/me/history/insights", response_model=ReadingInsightsResponse)
+def reading_history_insights(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """A reader's reading insights: what and how much they've read (DEC-417).
+
+    Complements /me/history/stats (the calendar shape — streak/heatmap) with
+    the content shape: distinct publicly-visible posts read all-time and in
+    the trailing 30 days, plus the most-read categories. Same
+    public-visibility invariant as every history read path — un-published and
+    scheduled posts neither leak nor count.
+    """
+    return ReadingInsightsResponse(**crud.reader_history_insights(db, current_reader.id))
 
 
 class HistoryImportItem(BaseModel):
