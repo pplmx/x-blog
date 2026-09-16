@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 359,
+  "round": 361,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T01:34:56+00:00",
+  "updated_at": "2026-09-16T04:48:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26467,6 +26467,110 @@
       "title": "close round 358: writer avatar on the public author surface (TASK-420 by CHG-621+CHG-622+CHG-623, EV-265; DEC-390 supersedes DEC-389)",
       "rationale": "Round 358 gives the person-shaped author surface a face, mirroring the reader avatar (DEC-299): a superuser uploads a small profile picture next to the pen name in admin/users (same defense-in-depth validation + static/avatars storage) and it renders on every public rendering of the writer — PostCard byline chip, post-page byline, More-from-this-author strip, /authors index card and archive header. avatar_url rides on the slim AuthorBrief (a small URL, unlike the bio which stays off list payloads) so bylines can show the face everywhere. No-oracle holds: filename-scoped /static URL only, username-only admin still 404s. Verified: backend 1649 (cov 93.77%, ruff clean, pyright 0), migration round-trip on dev-PG, frontend 2193 (typecheck 0, biome 463 clean), e2e author-byline journey green in a real browser asserting avatar upload + archive/index face render + no-username gate + cleanup.",
       "alternatives_rejected": "Rejected: (1) self-service upload for authors — no admin self-care surface, PATCH /users is superuser-only, so whoever sets the pen name sets the face; (2) initial-letter avatar generation — fabricated identity when readers can upload real ones (DEC-299); (3) media-library static/uploads storage — media listing must stay images-in-posts-only (same reasoning DEC-299 chose static/avatars)."
+    },
+    "DEC-391": {
+      "id": "DEC-391",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T01:46:29+00:00",
+      "updated_at": "2026-09-16T01:46:29+00:00",
+      "touched_round": 361,
+      "title": "round 359 scope: cloud-synced reader likes + liked-posts list (TASK-421)",
+      "rationale": "Likes are today a client-local affinity marker: useLikes dedups in localStorage (RIL ISS-038) but a signed-in reader's likes never leave the device, cannot be revisited (no list), and cannot be un-liked (unlike never decrements the server counter). Bookmarks already got the seam (TASK-131/132/134: cloud sync + merge-on-login), reading history got a server trail (TASK-170) — likes are the one reading-artifact still device-bound on a community blog where liking a post is a first-class signal. Add reader-scoped post likes: a durable reader_post_likes table (reader_id+post_id UNIQUE), like/unlike endpoints that bind to the reader account (guest behavior unchanged), a GET /liked posts list (like the bookmark/history page), and merge-on-login from the local marker set so nothing is stranded on the old device. No-oracle: likes are anonymous counts in public payloads; only the owner sees their own list.",
+      "alternatives_rejected": "Rejected: (1) make like a global authenticated-only feature — would change anonymous behavior and remove the guest signal; keep guest dedup as-is; (2) render like counts into /follows or cards — the count already rides on PostList, no new surface needed; (3) push notifications for likes — no existing like-notification infra (DEC-064 covers replies/mentions only) and speculative follow-on beyond this slice."
+    },
+    "TASK-421": {
+      "id": "TASK-421",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T01:46:29+00:00",
+      "updated_at": "2026-09-16T04:48:24+00:00",
+      "touched_round": 361,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1,
+      "effort": "medium",
+      "title": "cloud-synced reader likes: reader_post_likes table + like/unlike endpoints + liked-posts list + merge-on-login (DEC-391)",
+      "summary": "Persist signed-in reader likes to a durable reader_post_likes table (reader_id, post_id, created_at, UNIQUE pair, additive migration); reader-scoped like/unlike (DELETE un-likes and DECREMENTS the public count, binding to the account so 1-like-per-reader is server-enforced); GET /api/reader/me/likes listing liked posts (paginated, like history/bookmarks); merge the client-side localStorage marker set up on login so a returning reader keeps their likes; a Frontend liked-posts page + reader-aware like button that reflects server state and offers unlike; en/zh locales; contract + page + e2e tests; README/CHANGELOG"
+    },
+    "CHG-624": {
+      "id": "CHG-624",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:43:36+00:00",
+      "updated_at": "2026-09-16T04:43:36+00:00",
+      "touched_round": 361,
+      "commit": "406ded5b",
+      "title": "backend reader likes: reader_post_likes table (migration) + like/unlike endpoints + liked-posts list + tests"
+    },
+    "CHG-625": {
+      "id": "CHG-625",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:43:36+00:00",
+      "updated_at": "2026-09-16T04:43:36+00:00",
+      "touched_round": 361,
+      "commit": "8d42231c",
+      "title": "fix e2e: newsletter footer on-ramp (DEC-351/355) broke bare input[type=email]/form/button[type=submit] login selectors on public pages; scope to <main> + account rotation-form disambiguation"
+    },
+    "CHG-626": {
+      "id": "CHG-626",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:43:36+00:00",
+      "updated_at": "2026-09-16T04:43:36+00:00",
+      "touched_round": 361,
+      "commit": "109551ed",
+      "title": "docs: round 359 cloud-synced likes in README + CHANGELOG (en/zh)"
+    },
+    "CHG-627": {
+      "id": "CHG-627",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:44:42+00:00",
+      "updated_at": "2026-09-16T04:44:42+00:00",
+      "touched_round": 361,
+      "commit": "3567e239",
+      "title": "frontend reader likes: useLikeSync (chained mirrored awaits, live-intent merge reconcile) + /liked page + post-page toggle + login merge + locales + tests + e2e"
+    },
+    "EV-266": {
+      "id": "EV-266",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:45:14+00:00",
+      "updated_at": "2026-09-16T04:45:14+00:00",
+      "touched_round": 361,
+      "source": "tests: frontend vitest 2200 pass; typecheck/lint clean; browser e2e reader-likes guest->login promotion + signed-in toggle green; backend pytest 1670 + migration on dev-PG green (406ded5b); live-intent/race review fixes verified",
+      "confidence": 1.0
+    },
+    "ISS-513": {
+      "id": "ISS-513",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:45:40+00:00",
+      "updated_at": "2026-09-16T04:45:40+00:00",
+      "touched_round": 361,
+      "title": "e2e gate break: newsletter footer on-ramp (DEC-351/355) made bare input[type=email]/form/button[type=submit] selectors ambiguous on public pages, strict-mode breaking ~15 login-flow specs (found while verifying round 359 reader-likes)"
+    },
+    "DEC-392": {
+      "id": "DEC-392",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T04:47:58+00:00",
+      "updated_at": "2026-09-16T04:47:58+00:00",
+      "touched_round": 361,
+      "title": "close round 359: cloud-synced reader likes + liked-posts list (TASK-421 by CHG-624+CHG-627+CHG-626, EV-266; CHG-625 resolves ISS-513; DEC-392 supersedes DEC-391)",
+      "rationale": "Round 359 upgrades a reader like from a localStorage-only marker (ISS-038) to a durable cross-device cloud row. Backend: additive reader_post_likes table (reader_id/post_id UNIQUE, migration e5g7i9k1m3o5 verified on dev-PG with up/down), authenticated GET/POST/DELETE /api/reader/me/likes (idempotent POST bumps the public count once; DELETE decrements only on a real removal), paginated newest-like-first list reusing the PostListResponse contract. Frontend: useLikeSync mirrors useBookmarkSync - per-post chained mirrors preserve like->unlike ordering, like()/unlike() await their cloud write so a count refetch cannot race the mutation, mergeLocalToCloud (login + /liked mount, once) pushes local up then pulls the server union with live-intent remove protection so an unlike during a merge is never resurrected; the post-page heart is a real toggle for signed-in readers (guests keep the anonymous client-deduped POST /like); new auth-gated /liked page with merge-once-on-mount, pagination, stale-session logout and a dismissable dead-session warning mirroring bookmarks. Verified: frontend 2200 vitest, typecheck 0, biome 470 clean, browser e2e reader-likes (guest->login promotion + signed-in toggle) and the full login-flow e2e set green; backend green on committed 406ded5b. Verification surfaced a pre-existing e2e gate break (ISS-513: newsletter footer selector collisions) fixed by CHG-625. Documented trade-off: a guest like later promoted to a reader row counts twice (distinct actors) - intentional, the count is a popularity badge.",
+      "alternatives_rejected": "Rejected: (1) stay device-local (status quo, ISS-038) - no cross-device persistence, no real unlike or surface; (2) server-side like with anonymous reader identity - no account binding, cannot power a liked-posts list or single-actor unlike; (3) porting bookmarks' clear-all/epoch machinery wholesale - likes have no clear-all, so only per-post chaining + remove-reconciliation were ported."
     }
   },
   "edges": [
@@ -39523,6 +39627,42 @@
       "to": "DEC-389",
       "type": "supersedes",
       "created_at": "2026-09-16T01:34:56+00:00"
+    },
+    {
+      "from": "DEC-391",
+      "to": "TASK-421",
+      "type": "governs",
+      "created_at": "2026-09-16T01:47:04+00:00"
+    },
+    {
+      "from": "CHG-624",
+      "to": "TASK-421",
+      "type": "implements",
+      "created_at": "2026-09-16T04:45:14+00:00"
+    },
+    {
+      "from": "CHG-627",
+      "to": "TASK-421",
+      "type": "implements",
+      "created_at": "2026-09-16T04:45:14+00:00"
+    },
+    {
+      "from": "CHG-626",
+      "to": "TASK-421",
+      "type": "implements",
+      "created_at": "2026-09-16T04:45:14+00:00"
+    },
+    {
+      "from": "CHG-625",
+      "to": "ISS-513",
+      "type": "resolves",
+      "created_at": "2026-09-16T04:45:40+00:00"
+    },
+    {
+      "from": "DEC-392",
+      "to": "DEC-391",
+      "type": "supersedes",
+      "created_at": "2026-09-16T04:48:24+00:00"
     }
   ]
 }
