@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 364,
+  "round": 365,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T09:14:23+00:00",
+  "updated_at": "2026-09-16T10:17:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26773,6 +26773,79 @@
       "title": "close round 361: read-later vs done bookmark queue states delivered (DEC-395 superseded)",
       "rationale": "The /bookmarks conflation is resolved: reader_bookmarks.done (additive, DEC-009) marks To-read vs Done; GET /me/bookmarks filters by done; idempotent PATCH /me/bookmarks/{id}/done; done rides the serializer + portable export; /bookmarks has All/To-read/Done chips + per-row toggle; cloud-synced and merge-preserved (local logged-out Done survives the pull). Review HIGH (SQLite TEXT 'false' default) fixed dialect-safe with sa.false() in both done and sibling public_likes. VERIFY green end-to-end.",
       "alternatives_rejected": "Marking done implicitly by simply having the bookmark exist (no explicit queue state) would keep the conflation. A DB-level FK on reader_bookmarks.done was not added (DEC-009 additive rule). Server-side auto-done on read-completion would surprise readers who save for later reference; manual toggle is explicit and predictable."
+    },
+    "DEC-397": {
+      "id": "DEC-397",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T09:40:03+00:00",
+      "updated_at": "2026-09-16T09:40:03+00:00",
+      "touched_round": 365,
+      "title": "round 362 scope: personalized 'Recommended for you' strip on the post page for signed-in readers",
+      "rationale": "The homepage has an affinity-based 'Recommended for you' (DEC-128, TASK-176) via GET /api/reader/me/recommendations, scoring posts from the reader's history/bookmark affinity. The post page -- the single highest-intent discovery moment ('what should I read next now that I finished THIS post') -- only offers content-similar Related Posts (public, topic-shaped) and More-from-this-author (person-shaped). Neither personalizes to what THIS reader actually likes across categories/tags/authors. Net additive frontend slice on an existing endpoint: a signed-in reader at the end of an article gets a 'Recommended for you' strip (same getReaderRecommendations call the homepage uses), guests see nothing; no backend/DDL change. Acceptance in one sentence: on a post page while signed in, a personalized recommendation strip renders near the article end (and vanishes on sign-out / never for guests).",
+      "alternatives_rejected": "Extending Related Posts to include affinity (blurring two distinct surfaces + heavier backend); a dedicated recommendations page (overkill vs an end-of-article strip; home already owns the list surface); reader-to-reader graph (oversized, rejected since DEC-297); dropping a second topic-similar row (a same-kind patch, no new capability)."
+    },
+    "TASK-424": {
+      "id": "TASK-424",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T09:40:35+00:00",
+      "updated_at": "2026-09-16T10:16:32+00:00",
+      "touched_round": 365,
+      "category": "core-feature",
+      "severity": 5,
+      "confidence": 1,
+      "effort": "small",
+      "title": "round 362: personalized 'Recommended for you' strip on the post page (signed-in readers) -- getReaderRecommendations on the article end + vanish on sign-out + locales en/zh + unit tests + e2e + docs (DEC-397)",
+      "summary": "Add an affinity-based 'Recommended for you' section to the post page for signed-in readers: reuses the DEC-128 /api/reader/me/recommendations endpoint the homepage already calls; renders after the article (below More-from-this-author / Related Posts), never for guests, disappears when the reader signs out. Frontend only (no backend/DDL): imports today's page already uses useReaderAuth.isAuthenticated; add a personalRecs ref + onMounted load (same pattern as the homepage getReaderRecommendations), grid markup matching Related Posts, en/zh locale keys, unit tests (guest hidden, signed-in renders, sign-out clears), e2e journey, README/CHANGELOG."
+    },
+    "CHG-635": {
+      "id": "CHG-635",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T10:16:32+00:00",
+      "updated_at": "2026-09-16T10:16:32+00:00",
+      "touched_round": 365,
+      "title": "personalized Recommended-for-you strip on the post page (frontend, DEC-397)",
+      "commit": "e1e9e3d4"
+    },
+    "CHG-636": {
+      "id": "CHG-636",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T10:16:32+00:00",
+      "updated_at": "2026-09-16T10:16:32+00:00",
+      "touched_round": 365,
+      "title": "README/CHANGELOG round 362 post-page recommendations docs",
+      "commit": "600c7996"
+    },
+    "EV-270": {
+      "id": "EV-270",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T10:16:32+00:00",
+      "updated_at": "2026-09-16T10:16:32+00:00",
+      "touched_round": 365,
+      "source": "e2e post-recommendations.spec.ts + full verifies",
+      "summary": "Round 362 VERIFY green: frontend 2228 vitest (+5 slug.spec recs tests) + typecheck + lint clean; browser e2e post-recommendations 2/2 (signed-in reader builds affinity by reading then sees the strip on another post; guest sees none). No backend/DDL change (reuses DEC-128 /api/reader/me/recommendations).",
+      "confidence": 1.0
+    },
+    "DEC-398": {
+      "id": "DEC-398",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T10:17:20+00:00",
+      "updated_at": "2026-09-16T10:17:20+00:00",
+      "touched_round": 365,
+      "title": "close round 362: personalized 'Recommended for you' post-page strip delivered (DEC-397 superseded)",
+      "rationale": "The highest-intent reading moment now personalizes: a signed-in reader finishing an article gets an affinity-scored 'Recommended for you' strip (same DEC-128 endpoint the homepage calls), keyed to their own history/bookmark signal rather than only the topic-similar related posts and the current author. Frontend-only slice on an existing endpoint (no DDL). Isolation is airtight: guests and readers with no affinity (cold start) see no strip and no orphaned heading; sign-out clears it reactively. Delivered by CHG-635 (app) + CHG-636 (docs), verified by EV-270 (frontend 2228 + typecheck/lint + browser e2e 2/2).",
+      "alternatives_rejected": "Extending Related Posts with affinity (blurs two distinct surfaces and costs a heavier backend change); a dedicated recommendations page (home already owns the list surface; article-end strip is the right moment); another topic-similar row (same-kind patch, no new capability)."
     }
   },
   "edges": [
@@ -39949,6 +40022,36 @@
       "to": "TASK-423",
       "type": "governs",
       "created_at": "2026-09-16T09:14:23+00:00"
+    },
+    {
+      "from": "DEC-397",
+      "to": "TASK-424",
+      "type": "governs",
+      "created_at": "2026-09-16T09:40:35+00:00"
+    },
+    {
+      "from": "CHG-635",
+      "to": "TASK-424",
+      "type": "implements",
+      "created_at": "2026-09-16T10:16:32+00:00"
+    },
+    {
+      "from": "CHG-636",
+      "to": "TASK-424",
+      "type": "implements",
+      "created_at": "2026-09-16T10:16:32+00:00"
+    },
+    {
+      "from": "DEC-398",
+      "to": "DEC-397",
+      "type": "supersedes",
+      "created_at": "2026-09-16T10:17:20+00:00"
+    },
+    {
+      "from": "DEC-398",
+      "to": "TASK-424",
+      "type": "governs",
+      "created_at": "2026-09-16T10:17:20+00:00"
     }
   ]
 }
