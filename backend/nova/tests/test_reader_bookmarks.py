@@ -229,3 +229,103 @@ class TestNoStoreCacheHeaders:
         token = _token(client)
         resp = client.get(BOOKMARKS, headers=_auth(token))
         assert resp.headers.get("cache-control", "").lower() == "no-store"
+
+
+class TestDoneQueueState:
+    """Round 361, DEC-395: To-read vs Done bookmark queue states.
+
+    A saved post starts To-read; the reader moves it to Done when it's read
+    (pruning the /bookmarks queue). The ``done`` flag is a per-bookmark bool,
+    filterable on the list, patchable idempotently, and appears in the
+    portable export bundle.
+    """
+
+    DONE = "/api/reader/me/bookmarks"
+
+    def test_new_bookmark_defaults_to_read(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, title="Default")
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token)).raise_for_status()
+        item = client.get(BOOKMARKS, headers=_auth(token)).json()["items"][0]
+        assert item["done"] is False
+
+    def test_mark_done_and_filter(self, client, db_session):
+        token = _token(client)
+        p1 = _create_post(db_session, title="Read me")
+        p2 = _create_post(db_session, title="Read later")
+        client.put(f"{BOOKMARKS}/{p1.id}", headers=_auth(token))
+        client.put(f"{BOOKMARKS}/{p2.id}", headers=_auth(token))
+
+        resp = client.patch(f"{self.DONE}/{p1.id}/done", json={"done": True}, headers=_auth(token))
+        assert resp.status_code == 200
+        assert resp.json() == {"post_id": p1.id, "done": True}
+
+        done = client.get(f"{BOOKMARKS}?done=true", headers=_auth(token)).json()
+        assert done["total"] == 1
+        assert done["items"][0]["id"] == p1.id
+        assert done["items"][0]["done"] is True
+
+        todo = client.get(f"{BOOKMARKS}?done=false", headers=_auth(token)).json()
+        assert todo["total"] == 1
+        assert todo["items"][0]["id"] == p2.id
+        assert todo["items"][0]["done"] is False
+
+    def test_mark_back_to_read(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session)
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+        client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        resp = client.patch(f"{self.DONE}/{post.id}/done", json={"done": False}, headers=_auth(token))
+        assert resp.status_code == 200
+        assert resp.json()["done"] is False
+        todo = client.get(f"{BOOKMARKS}?done=false", headers=_auth(token)).json()
+        assert [i["id"] for i in todo["items"]] == [post.id]
+
+    def test_mark_done_is_idempotent(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session)
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+        client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        again = client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        assert again.status_code == 200
+        assert again.json()["done"] is True
+
+    def test_mark_done_unbookmarked_404(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session)  # never saved
+        resp = client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        assert resp.status_code == 404
+
+    def test_mark_done_requires_reader_token(self, client, db_session):
+        post = _create_post(db_session)
+        assert client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}).status_code == 401
+
+    def test_mark_done_admin_token_rejected(self, client, admin_token, db_session):
+        post = _create_post(db_session)
+        resp = client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(admin_token))
+        assert resp.status_code == 401
+
+    def test_done_filter_caps_on_visibility(self, client, db_session):
+        """Done flag never resurrects a post that went non-public (TASK-129 invariant)."""
+        token = _token(client)
+        post = _create_post(db_session, title="Vanishing")
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+        client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        # Unpublish the post: it must vanish from the Done filter too.
+        from app.crud import update_post
+        from app.schemas import PostUpdate
+
+        update_post(db_session, post.id, PostUpdate(published=False))
+
+        done = client.get(f"{BOOKMARKS}?done=true", headers=_auth(token)).json()
+        assert done["total"] == 0
+        assert done["items"] == []
+
+    def test_done_in_export_bundle(self, client, db_session):
+        token = _token(client)
+        post = _create_post(db_session, title="Export me")
+        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+        client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
+        bundle = client.get("/api/reader/me/export", headers=_auth(token)).json()
+        done = [b for b in bundle["bookmarks"] if b["post_id"] == post.id]
+        assert done and done[0]["done"] is True

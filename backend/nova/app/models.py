@@ -436,6 +436,11 @@ class ReaderBookmark(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     folder_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Queue state (round 361, DEC-395): done separates "saved to read later"
+    # from "already read / keep this". Defaults false so every existing bookmark
+    # reads as To-read until the reader marks it done. Folders classify by
+    # topic; this tracks the queue.
+    done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_bookmarks_reader_post"),)

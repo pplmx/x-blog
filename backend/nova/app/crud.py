@@ -2679,13 +2679,16 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     # limit=None — a backup must be complete, never silently capped at the
     # list endpoint's default 100 bookmarks (RIL ISS-288).
     rows, _total = list_reader_bookmarks(db, reader_id, limit=None)
-    for post, _, folder_name in rows:
+    for post, _, folder_name, done in rows:
         bookmarks.append(
             {
                 "post_id": post.id,
                 "title": post.title,
                 "slug": post.slug,
                 "folder_name": folder_name,
+                # Queue state (round 361, DEC-395): whether this save is marked
+                # Done or still To-read.
+                "done": bool(done),
                 "created_at": post.created_at.isoformat() if post.created_at else None,
             }
         )
@@ -3448,26 +3451,29 @@ def list_reader_bookmarks(
     db: Session,
     reader_id: int,
     folder_id: int | None = None,
+    done: bool | None = None,
     page: int = 1,
     limit: int | None = 100,
-) -> tuple[list[tuple[models.Post, int | None, str | None]], int]:
-    """Return the reader's bookmark rows as (post, folder_id, folder_name),
-    publicly-visible only, newest bookmark first, paginated.
+) -> tuple[list[tuple[models.Post, int | None, str | None, bool]], int]:
+    """Return the reader's bookmark rows as (post, folder_id, folder_name,
+    done), publicly-visible only, newest bookmark first, paginated.
 
     Post timestamps/visibility can change after a bookmark is saved; the list
     must not leak a draft or scheduled post on a read path (same invariant as
     the public post/comment read paths) — visibility is pushed into the SQL
     WHERE so pages are stable and non-visible posts simply don't appear.
-    ``folder_id`` (if given) filters to that folder. Returns (items, total),
-    where total counts the reader's publicly-visible bookmarks (bounded paging
-    instead of loading every row — ISS-142; DEC-120/TASK-172). Pass
-    ``limit=None`` for the *complete* list (no offset/LIMIT) — the reader data
-    export uses that so its portable bundle is never silently truncated to
-    this default page size (RIL ISS-288).
+    ``folder_id`` (if given) filters to that folder; ``done`` (if given)
+    filters to the To-read (False) or Done (True) queue state (round 361,
+    DEC-395). Returns (items, total), where total counts the reader's
+    publicly-visible bookmarks (bounded paging instead of loading every row —
+    ISS-142; DEC-120/TASK-172). Pass ``limit=None`` for the *complete* list
+    (no offset/LIMIT) — the reader data export uses that so its portable
+    bundle is never silently truncated to this default page size (RIL
+    ISS-288).
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name)
+        db.query(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name, models.ReaderBookmark.done)
         .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
         .outerjoin(models.BookmarkFolder, models.ReaderBookmark.folder_id == models.BookmarkFolder.id)
         .filter(
@@ -3478,6 +3484,8 @@ def list_reader_bookmarks(
     )
     if folder_id is not None:
         query = query.filter(models.ReaderBookmark.folder_id == folder_id)
+    if done is not None:
+        query = query.filter(models.ReaderBookmark.done.is_(done))
     total = query.count()
     query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
         models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
@@ -3487,7 +3495,7 @@ def list_reader_bookmarks(
     rows = query.all()
     # SQL already guarantees visibility; the predicate stays as a belt-and-braces
     # guard against any drift between the SQL filter and is_publicly_visible.
-    return [(post, fid, fname) for post, fid, fname in rows if is_publicly_visible(post)], total
+    return [(post, fid, fname, d) for post, fid, fname, d in rows if is_publicly_visible(post)], total
 
 
 # Bookmark folders/collections (DEC-120/TASK-172)
@@ -3605,6 +3613,23 @@ def set_bookmark_folder(
     if folder_id is not None and not get_bookmark_folder(db, reader_id, folder_id):
         return None
     bookmark.folder_id = folder_id
+    db.add(bookmark)
+    db.commit()
+    db.refresh(bookmark)
+    return bookmark
+
+
+def set_reader_bookmark_done(db: Session, reader_id: int, post_id: int, done: bool) -> models.ReaderBookmark | None:
+    """Move a bookmark between To-read and Done (round 361, DEC-395).
+
+    Ownership-scoped: only the reader's own bookmark. Returns the updated
+    bookmark, or None if the post isn't bookmarked by this reader (404).
+    Idempotent — setting Done when it already is Done is a no-op.
+    """
+    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    if not bookmark:
+        return None
+    bookmark.done = done
     db.add(bookmark)
     db.commit()
     db.refresh(bookmark)

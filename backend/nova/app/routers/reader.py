@@ -117,6 +117,8 @@ class BookmarkItem(BaseModel):
     created_at: datetime | None = None
     folder_id: int | None = None
     folder_name: str | None = None
+    # Queue state (round 361, DEC-395): false = To-read, true = Done.
+    done: bool = False
     category: schemas.Category | None = None
     tags: list[schemas.Tag] = []
 
@@ -126,6 +128,7 @@ class BookmarkItem(BaseModel):
         post: models.Post,
         folder_id: int | None = None,
         folder_name: str | None = None,
+        done: bool = False,
     ) -> BookmarkItem:
         """Build from a Post row (created_at is the post's, not the bookmark's).
 
@@ -141,6 +144,7 @@ class BookmarkItem(BaseModel):
             created_at=post.created_at,
             folder_id=folder_id,
             folder_name=folder_name,
+            done=done,
             category=(schemas.Category.model_validate(post.category) if post.category else None),
             tags=[schemas.Tag.model_validate(t) for t in post.tags],
         )
@@ -202,6 +206,17 @@ class BookmarkFolderResponse(BaseModel):
 class AssignFolderResponse(BaseModel):
     post_id: int
     folder_id: int | None = None
+
+
+class BookmarkDone(BaseModel):
+    """Move a bookmark between To-read and Done (round 361, DEC-395)."""
+
+    done: bool
+
+
+class BookmarkDoneResponse(BaseModel):
+    post_id: int
+    done: bool
 
 
 class SeriesProgressResponse(BaseModel):
@@ -1311,6 +1326,7 @@ def revoke_my_push_subscription(
 def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     folder_id: IdInt | None = Query(None, description="filter to this folder"),
+    done: bool | None = Query(None, description="filter to Done (true) or To-read (false)"),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -1320,14 +1336,17 @@ def list_bookmarks(
     Non-public posts (draft/scheduled/unpublished) are excluded — a bookmark
     list is a read path and must not leak post existence/visibility changes.
     Newest bookmark first (the natural "recently saved" ordering). Optional
-    ``folder_id`` filters to that folder (DEC-120/TASK-172). Bounded paging
+    ``folder_id`` filters to that folder (DEC-120/TASK-172) and ``done`` to
+    the To-read/Done queue state (round 361, DEC-395). Bounded paging
     (page/limit, max 100) keeps setup/merge calls from loading every row
     (ISS-142); clients that need the full set page through ``total_pages``.
     """
-    rows, total = crud.list_reader_bookmarks(db, current_reader.id, folder_id=folder_id, page=page, limit=limit)
+    rows, total = crud.list_reader_bookmarks(
+        db, current_reader.id, folder_id=folder_id, done=done, page=page, limit=limit
+    )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return BookmarkListResponse(
-        items=[BookmarkItem.from_post(p, fid, fname) for p, fid, fname in rows],
+        items=[BookmarkItem.from_post(p, fid, fname, d) for p, fid, fname, d in rows],
         total=total,
         page=page,
         limit=limit,
@@ -1583,6 +1602,27 @@ def assign_bookmark_folder(
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark or folder not found")
     return AssignFolderResponse(post_id=bookmark.post_id, folder_id=bookmark.folder_id)
+
+
+@router.patch("/me/bookmarks/{post_id}/done", response_model=BookmarkDoneResponse)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def set_bookmark_done(
+    request: Request,  # noqa: ARG001
+    post_id: IdInt,
+    body: BookmarkDone,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Move a saved post between To-read and Done (round 361, DEC-395).
+
+    The /bookmarks page marks a saved post Done when it's read (pruning the
+    To-read queue) and back To-read otherwise. Idempotent; 404 if the post
+    isn't bookmarked by this reader.
+    """
+    bookmark = crud.set_reader_bookmark_done(db, current_reader.id, post_id, body.done)
+    if not bookmark:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return BookmarkDoneResponse(post_id=bookmark.post_id, done=bookmark.done)
 
 
 @router.get("/me/series/{slug}/progress", response_model=SeriesProgressResponse)

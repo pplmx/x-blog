@@ -30,9 +30,14 @@ def upgrade() -> None:
     """Upgrade schema."""
     # `and` short-circuits: the column probe only runs when the table exists.
     if sa.inspect(op.get_bind()).has_table("reader_accounts") and "public_likes" not in _cols("reader_accounts"):
+        # sa.false() (NOT the literal "false") — on SQLite the string form would
+        # compile to DEFAULT 'false', storing TEXT that bool() reads back as True
+        # (silently making an opted-out reader's likes public) and the integer
+        # bound read filters never match it (round-360 sibling of the same
+        # defect found in round 361's done column review).
         op.add_column(
             "reader_accounts",
-            sa.Column("public_likes", sa.Boolean(), nullable=False, server_default="false"),
+            sa.Column("public_likes", sa.Boolean(), nullable=False, server_default=sa.false()),
         )
 
 
