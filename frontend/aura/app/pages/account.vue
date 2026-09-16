@@ -82,6 +82,9 @@ const displayName = ref(reader.value?.display_name ?? "");
 // Short "about me" (round 352): a one-paragraph bio saved with the profile
 // and shown on the reader's public page. Empty text saves as a clear.
 const bio = ref(reader.value?.bio ?? "");
+// Opt-in public "Liked posts" tab (round 360, DEC-393): saved with the
+// profile; off by default so a reader who never touches it stays private.
+const publicLikes = ref(reader.value?.public_likes ?? false);
 const savingProfile = ref(false);
 const profileSaved = ref(false);
 const profileFailed = ref(false);
@@ -108,10 +111,15 @@ async function saveProfileName() {
 	profileFailed.value = false;
 	try {
 		const trimmedBio = bio.value.trim();
-		const updated = await updateReaderProfile({ display_name: name, bio: trimmedBio });
+		const updated = await updateReaderProfile({
+			display_name: name,
+			bio: trimmedBio,
+			public_likes: publicLikes.value,
+		});
 		setProfile(updated);
 		displayName.value = updated.display_name ?? "";
 		bio.value = updated.bio ?? "";
+		publicLikes.value = updated.public_likes ?? false;
 		profileSaved.value = true;
 	} catch {
 		profileFailed.value = true;
@@ -960,6 +968,22 @@ function shortEndpoint(endpoint: string): string {
               class="max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <span class="text-xs text-gray-400">{{ t('account.profile.bioHint') }}</span>
+          </label>
+          <!-- Public liked-posts opt-in (round 360, DEC-393): the first
+               reader-to-reader discovery surface — but only when the reader
+               chooses it. A checkbox saved with the profile, off by default. -->
+          <label class="flex items-start gap-3 text-sm cursor-pointer">
+            <input
+              v-model="publicLikes"
+              type="checkbox"
+              class="mt-0.5 w-4 h-4 accent-pink-600"
+            />
+            <span class="flex flex-col gap-1">
+              <span class="text-gray-700 dark:text-gray-300 font-medium">
+                {{ t('account.profile.publicLikesLabel') }}
+              </span>
+              <span class="text-xs text-gray-400">{{ t('account.profile.publicLikesHint') }}</span>
+            </span>
           </label>
           <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }} {{ reader?.email }} — {{ t('account.profile.emailChangeHint') }}</span>
           <div class="flex items-center gap-3">

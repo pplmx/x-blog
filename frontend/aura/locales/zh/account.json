@@ -34,7 +34,9 @@
 			"avatarUploading": "上传中…",
 			"avatarSaved": "头像已保存",
 			"avatarFailed": "头像更新失败，请稍后再试",
-			"avatarHint": "支持 PNG、JPEG、GIF 或 WebP，最大 5&nbsp;MB"
+			"avatarHint": "支持 PNG、JPEG、GIF 或 WebP，最大 5&nbsp;MB",
+			"publicLikesLabel": "在我的公开主页展示我喜欢的文章",
+			"publicLikesHint": "在你的公开主页上发布「喜欢的文章」标签页，让其他读者也能发现你欣赏的文章。默认为关——在打开之前，你的点赞始终是私密的。"
 		},
 		"email": {
 			"title": "修改登录邮箱",

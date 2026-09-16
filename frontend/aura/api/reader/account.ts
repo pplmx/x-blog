@@ -10,6 +10,9 @@ export interface ReaderProfile {
 	 *  profile page; null until the reader writes one. */
 	bio: string | null;
 	avatar_url: string | null;
+	/** Opt-in public "Liked posts" profile tab (round 360, DEC-393) — false by
+	 *  default; the reader's likes stay private unless they choose to publish. */
+	public_likes: boolean;
 	created_at: string | null;
 }
 
@@ -47,11 +50,13 @@ export function getReaderDataExport(): Promise<Record<string, unknown>> {
 	});
 }
 
-/** Update the reader's own profile (display_name, bio; email immutable —
- * explicit null bio clears it). */
+/** Update the reader's own profile (display_name, bio, public_likes; email
+ * immutable — explicit null bio clears it). */
 export function updateReaderProfile(body: {
 	display_name?: string;
 	bio?: string | null;
+	/** Opt-in publishing of the public "Liked posts" profile tab (round 360). */
+	public_likes?: boolean;
 }): Promise<ReaderProfile> {
 	return command<ReaderProfile>("/api/reader/me", {
 		method: "PATCH",

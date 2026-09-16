@@ -8,6 +8,11 @@
 		"countLabel": "( {count} )",
 		"empty": "This reader hasn't commented publicly yet.",
 		"postLink": "Post",
+		"likesTab": "Liked posts",
+		"likesCountLabel": "{count} posts",
+		"likesCountWord": "likes",
+		"likesEmpty": "This reader hasn't shared any liked posts yet.",
+		"likesLoadFailed": "Couldn't load this reader's liked posts — check your connection and try again.",
 		"loadFailed": "Couldn't load this reader's profile — check your connection and try again.",
 		"notFoundTitle": "Reader not found",
 		"notFoundDesc": "This reader doesn't exist or their account was deleted."

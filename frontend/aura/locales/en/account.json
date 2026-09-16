@@ -34,7 +34,9 @@
 			"avatarUploading": "Uploading…",
 			"avatarSaved": "Picture saved",
 			"avatarFailed": "Couldn't update picture — please try again",
-			"avatarHint": "PNG, JPEG, GIF or WebP, up to 5&nbsp;MB"
+			"avatarHint": "PNG, JPEG, GIF or WebP, up to 5&nbsp;MB",
+			"publicLikesLabel": "Show my liked posts on my public profile",
+			"publicLikesHint": "Publish a \"Liked posts\" tab on your public profile page so other readers can discover the posts you appreciate. Off by default — your likes stay private until you switch this on."
 		},
 		"email": {
 			"title": "Change sign-in email",

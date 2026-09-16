@@ -8,6 +8,9 @@ export interface ReaderProfile {
 	/** Short "about me" (round 352); null until the reader writes one. */
 	bio: string | null;
 	avatar_url: string | null;
+	/** Opt-in public "Liked posts" profile tab (round 360, DEC-393) — false by
+	 *  default; the reader's likes stay private unless they choose to publish. */
+	public_likes: boolean;
 	created_at: string | null;
 }
 

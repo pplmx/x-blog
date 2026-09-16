@@ -25,6 +25,8 @@ const SuspenseWrapper = (PageComponent: typeof ReaderProfilePage) => ({
 
 let mockPayload: unknown = null;
 let mockReject: unknown = null;
+let mockLikesPayload: unknown = null;
+let mockLikesReject: unknown = null;
 let mockReaderId = "5";
 let mockQuery: Record<string, string> = {};
 
@@ -32,6 +34,10 @@ vi.mock("~~/api/public/readers", () => ({
 	getReaderProfile: async () => {
 		if (mockReject) throw mockReject;
 		return mockPayload;
+	},
+	getReaderPublicLikes: async () => {
+		if (mockLikesReject) throw mockLikesReject;
+		return mockLikesPayload;
 	},
 }));
 
@@ -66,9 +72,31 @@ const samplePage = {
 	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
 };
 
+// An opted-in reader (round 360, DEC-393): public_likes true → the profile
+// gains a "Liked posts" tab fed by getReaderPublicLikes.
+const sampleLikerPage = {
+	...samplePage,
+	profile: { ...samplePage.profile, public_likes: true },
+};
+
+const sampleLikes = {
+	items: [
+		{
+			id: 30,
+			title: "Loved post",
+			slug: "loved-post",
+			category: { id: 1, name: "Tech" },
+			likes: 4,
+		},
+	],
+	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+};
+
 beforeEach(() => {
 	mockPayload = null;
 	mockReject = null;
+	mockLikesPayload = null;
+	mockLikesReject = null;
 	mockReaderId = "5";
 	mockQuery = {};
 });
@@ -194,5 +222,34 @@ describe("Reader profile page", () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("readerProfile.empty");
 		expect(vi.mocked(globalThis.navigateTo)).toHaveBeenCalledWith({ query: {} }, { replace: true });
+	});
+
+	it("hides the Likes tab unless the reader opted in (public_likes false)", async () => {
+		mockPayload = { ...samplePage, profile: { ...samplePage.profile, public_likes: false } };
+		// A ?view=likes deep link on a private reader falls back to comments —
+		// the deep link can't force a tab the reader never published.
+		mockQuery = { view: "likes" };
+		const wrapper = await mountPage();
+		expect(wrapper.text()).not.toContain("readerProfile.likesTab");
+		expect(wrapper.text()).toContain("a comment on a post");
+	});
+
+	it("renders the Likes tab for an opted-in reader (round 360)", async () => {
+		mockPayload = sampleLikerPage;
+		const wrapper = await mountPage();
+		// Default tab is comments; the Likes tab button is offered.
+		expect(wrapper.text()).toContain("readerProfile.likesTab");
+		expect(wrapper.text()).toContain("a comment on a post");
+	});
+
+	it("lists the reader's published liked posts when deep-linked to ?view=likes", async () => {
+		mockPayload = sampleLikerPage;
+		mockLikesPayload = sampleLikes;
+		mockQuery = { view: "likes" };
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("Loved post");
+		expect(wrapper.text()).toContain("Tech");
+		// The comment tab is not rendered on the likes view.
+		expect(wrapper.text()).not.toContain("a comment on a post");
 	});
 });

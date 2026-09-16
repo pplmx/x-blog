@@ -8,6 +8,11 @@
 		"countLabel": "（ {count} ）",
 		"empty": "这位读者还没有公开的评论。",
 		"postLink": "文章",
+		"likesTab": "喜欢的文章",
+		"likesCountLabel": "{count} 篇文章",
+		"likesCountWord": "个赞",
+		"likesEmpty": "这位读者还没有公开分享过喜欢的文章。",
+		"likesLoadFailed": "加载这位读者的喜欢列表失败，请检查网络后重试。",
 		"loadFailed": "加载读者主页失败，请检查网络后重试。",
 		"notFoundTitle": "读者不存在",
 		"notFoundDesc": "该读者不存在或账号已被删除。"

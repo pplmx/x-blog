@@ -1,4 +1,4 @@
-import type { Comment } from "../contracts/shared";
+import type { Comment, PostListResponse } from "../contracts/shared";
 import { command } from "../transport";
 
 /** Public reader profile (DEC-294, TASK-376) — no email, no last-login. */
@@ -9,6 +9,10 @@ export interface ReaderPublicProfile {
 	bio: string | null;
 	// Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
 	avatar_url: string | null;
+	/** Opt-in public "Liked posts" tab (round 360, DEC-393): when true the
+	 *  profile may render a Likes tab fed by getReaderPublicLikes; false for
+	 *  readers who chose not to publish (their likes stay private). */
+	public_likes: boolean;
 	created_at: string | null;
 }
 
@@ -38,6 +42,23 @@ export function getReaderProfile(
 	limit = 20,
 ): Promise<ReaderProfilePage> {
 	return command<ReaderProfilePage>(`/api/readers/${readerId}`, {
+		query: { page, limit },
+	});
+}
+
+/**
+ * A reader's published liked posts (GET /api/readers/{id}/likes, round 360).
+ * Public like the profile — anyone can browse a reader who opted in to the
+ * "Liked posts" tab. 404 (undefined) for unknown readers OR readers who never
+ * opted in: one indistinguishable answer, so the surface leaks neither whether
+ * the reader exists nor what they like.
+ */
+export function getReaderPublicLikes(
+	readerId: number,
+	page = 1,
+	limit = 20,
+): Promise<PostListResponse | null> {
+	return command<PostListResponse | null>(`/api/readers/${readerId}/likes`, {
 		query: { page, limit },
 	});
 }

@@ -404,7 +404,7 @@ describe("Account settings page", () => {
 		mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
 		const wrapper = await mountPage();
 
-		const checkbox = wrapper.get("input[type='checkbox']") as unknown as {
+		const checkbox = wrapper.get("ul input[type='checkbox']") as unknown as {
 			element: { checked: boolean };
 		};
 		expect(checkbox.element.checked).toBe(false);
@@ -417,7 +417,7 @@ describe("Account settings page", () => {
 		mockUpdatePushSubscriptionPrefs.mockResolvedValue(makeDevice({ want_new_posts: true }));
 		const wrapper = await mountPage();
 
-		await wrapper.get("input[type='checkbox']").setValue(true);
+		await wrapper.get("ul input[type='checkbox']").setValue(true);
 		await flushPromises();
 
 		expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
@@ -462,10 +462,10 @@ describe("Account settings page", () => {
 				}),
 		);
 		const wrapper = await mountPage();
-		await wrapper.get("input[type='checkbox']").setValue(true);
+		await wrapper.get("ul input[type='checkbox']").setValue(true);
 		// No flushPromises: the render after the pending change reflects the
 		// optimistic model, not a server reply.
-		const checkbox = wrapper.get("input[type='checkbox']") as unknown as {
+		const checkbox = wrapper.get("ul input[type='checkbox']") as unknown as {
 			element: { checked: boolean };
 		};
 		expect(checkbox.element.checked).toBe(true);
@@ -508,7 +508,11 @@ describe("Account settings page", () => {
 		await flushPromises();
 
 		// The bio textarea ships with the same save (empty -> empty string).
-		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName", bio: "" });
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+			display_name: "NewName",
+			bio: "",
+			public_likes: false,
+		});
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ display_name: "NewName" }));
 		expect(wrapper.text()).toContain("已保存");
 	});
@@ -542,10 +546,46 @@ describe("Account settings page", () => {
 		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
 			display_name: "Existing",
 			bio: "I like charts and lists.",
+			public_likes: false,
 		});
 		expect(setProfile).toHaveBeenCalledWith(
 			expect.objectContaining({ bio: "I like charts and lists." }),
 		);
+	});
+
+	it("opts the reader into the public liked-posts tab (round 360)", async () => {
+		isAuthenticated.value = true;
+		reader.value = {
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: null,
+			avatar_url: null,
+			public_likes: false,
+			created_at: "2024-01-01T00:00:00Z",
+		} as ReaderProfile;
+		mockUpdateMyProfile.mockResolvedValue({
+			id: 1,
+			email: "r@example.com",
+			display_name: "Existing",
+			bio: null,
+			public_likes: true,
+		} as ReaderProfile);
+		const wrapper = await mountPage();
+
+		// The opt-in checkbox ships with the profile save (off by default).
+		const checkbox = wrapper.get('input[type="checkbox"]');
+		expect((checkbox.element as HTMLInputElement).checked).toBe(false);
+		await checkbox.setValue(true);
+		await wrapper.get("form").trigger("submit");
+		await flushPromises();
+
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+			display_name: "Existing",
+			bio: "",
+			public_likes: true,
+		});
+		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ public_likes: true }));
 	});
 
 	it("clearing the display name does not disable Save (ISS-127)", async () => {
@@ -569,7 +609,11 @@ describe("Account settings page", () => {
 		await input.setValue("NewName");
 		await wrapper.get("form").trigger("submit");
 		await flushPromises();
-		expect(mockUpdateMyProfile).toHaveBeenCalledWith({ display_name: "NewName", bio: "" });
+		expect(mockUpdateMyProfile).toHaveBeenCalledWith({
+			display_name: "NewName",
+			bio: "",
+			public_likes: false,
+		});
 	});
 
 	it("explains an empty-name submit instead of silently doing nothing (round 264)", async () => {
@@ -1615,7 +1659,7 @@ describe("Account settings page", () => {
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [makeDevice()], total: 1 });
 			mockUpdatePushSubscriptionPrefs.mockRejectedValue(new Error("boom"));
 			const wrapper = await mountPage();
-			await wrapper.get("input[type='checkbox']").setValue(true);
+			await wrapper.get("ul input[type='checkbox']").setValue(true);
 			await flushPromises();
 			expect(wrapper.text()).toContain("保存失败，请稍后再试");
 		});
@@ -1638,7 +1682,7 @@ describe("Account settings page", () => {
 			});
 			mockUpdatePushSubscriptionPrefs.mockResolvedValue(makeDevice());
 			const wrapper = await mountPage();
-			await wrapper.get("input[type='checkbox']").setValue(false);
+			await wrapper.get("ul input[type='checkbox']").setValue(false);
 			await flushPromises();
 			// want=false drops the category scope (null), not the stale id.
 			expect(mockUpdatePushSubscriptionPrefs).toHaveBeenCalledWith(1, {
