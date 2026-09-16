@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 368,
+  "round": 369,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T19:29:52+00:00",
+  "updated_at": "2026-09-16T20:25:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27222,13 +27222,81 @@
     "TASK-429": {
       "id": "TASK-429",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T19:29:52+00:00",
-      "updated_at": "2026-09-16T19:29:52+00:00",
+      "updated_at": "2026-09-16T20:25:25+00:00",
       "touched_round": 368,
       "category": "core-feature",
       "title": "round 367: public discussion feed - GET /api/comments/feed (newest approved comments on public posts, same visibility gate as comment search, paginated, no email/IP) + /discussion page (feed cards + post brief + deep link onto each comment + pagination + SEO + locales en/zh) + backend unit tests + frontend page tests + e2e + docs (DEC-407)"
+    },
+    "CHG-652": {
+      "id": "CHG-652",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:22:13+00:00",
+      "updated_at": "2026-09-16T20:22:13+00:00",
+      "touched_round": 368,
+      "commit": "7e4aa3db",
+      "title": "round 367 backend: GET /api/comments/feed - newest approved comments on public posts, same visibility gate as comment search, commenter identity + post brief, no email/IP"
+    },
+    "CHG-653": {
+      "id": "CHG-653",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:22:13+00:00",
+      "updated_at": "2026-09-16T20:22:13+00:00",
+      "touched_round": 368,
+      "commit": "ad35c7e0",
+      "title": "round 367 frontend: /discussion page - feed cards (commenter + content + post brief), deep link onto each comment, paginated, SEO, locales en/zh, footer entry"
+    },
+    "CHG-654": {
+      "id": "CHG-654",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:22:14+00:00",
+      "updated_at": "2026-09-16T20:22:14+00:00",
+      "touched_round": 368,
+      "commit": "31dcab23",
+      "title": "round 367 e2e: discussion-feed journeys - browse newest discussion + land on a comment, footer entry"
+    },
+    "CHG-655": {
+      "id": "CHG-655",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:22:14+00:00",
+      "updated_at": "2026-09-16T20:22:14+00:00",
+      "touched_round": 368,
+      "commit": "3bc3965b",
+      "title": "round 367 docs: public discussion feed in README + CHANGELOG (en/zh)"
+    },
+    "EV-275": {
+      "id": "EV-275",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:22:48+00:00",
+      "updated_at": "2026-09-16T20:22:48+00:00",
+      "touched_round": 368,
+      "source": "backend 1741 passed + ruff/pyright + frontend 2279 vitest + typecheck/lint + browser e2e discussion-feed 2/2",
+      "summary": "Round 367 VERIFY green: backend 1741 passed (10 skipped, 93.71% cov) + ruff/pyright clean (feed visibility gate tested - pending/draft/scheduled never appear, reader identity via CommentReaderProfile, no email/ip). Frontend 2279 vitest passed + typecheck + lint; /discussion page 7 tests (cards, empty, error+retry, pagination, deep link) + useDiscussionFeed api client 1 test. Browser e2e discussion-feed 2/2: visitor browses the newest discussion and lands on the exact comment; footer links to /discussion.",
+      "confidence": 1.0
+    },
+    "DEC-408": {
+      "id": "DEC-408",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:24:46+00:00",
+      "updated_at": "2026-09-16T20:24:46+00:00",
+      "touched_round": 368,
+      "title": "close round 367: public discussion feed delivered (DEC-407 superseded)",
+      "rationale": "Comment search (DEC-405) made the discussion findable; the feed makes it browsable. GET /api/comments/feed (public, no auth, paginated) returns the newest approved comments on publicly-visible posts - same visibility gate as comment search (pending/rejected and draft/scheduled-post comments never leak; email/IP never leave the backend) - each carrying the commenter identity (CommentPublic via CommentReaderProfile) and the post brief. The new /discussion page renders feed cards (commenter + content + post brief) that deep-link ONTO the exact comment (#comment-id, DEC-321), is paginated with page-clamp, SEO'd, localized en/zh, and discoverable from a footer link (header nav avoided - at its overflow budget, ISS-125). Delivered by CHG-652 (backend) + CHG-653 (frontend) + CHG-654 (e2e) + CHG-655 (docs), verified by EV-275 (backend 1741 + frontend 2279 + typecheck/lint + browser e2e discussion-feed 2/2).",
+      "alternatives_rejected": "Per-post discussion search: mechanically a post_id filter on the just-shipped search endpoint - a missing dimension on an existing surface (value-gate patch reject). Reader reading-report page: me/history/stats already exposes totals/streak/heatmap; a richer rollup is a dashboard on existing data, weaker visibility than a public surface. Public reading-trail, thread collapse, Web Share, guest recs: previously rejected unchanged."
     }
   },
   "edges": [
@@ -40591,6 +40659,36 @@
       "to": "DEC-405",
       "type": "supersedes",
       "created_at": "2026-09-16T19:19:22+00:00"
+    },
+    {
+      "from": "CHG-652",
+      "to": "TASK-429",
+      "type": "implements",
+      "created_at": "2026-09-16T20:23:20+00:00"
+    },
+    {
+      "from": "CHG-653",
+      "to": "TASK-429",
+      "type": "implements",
+      "created_at": "2026-09-16T20:23:20+00:00"
+    },
+    {
+      "from": "CHG-654",
+      "to": "TASK-429",
+      "type": "implements",
+      "created_at": "2026-09-16T20:23:20+00:00"
+    },
+    {
+      "from": "CHG-655",
+      "to": "TASK-429",
+      "type": "implements",
+      "created_at": "2026-09-16T20:23:20+00:00"
+    },
+    {
+      "from": "DEC-408",
+      "to": "DEC-407",
+      "type": "supersedes",
+      "created_at": "2026-09-16T20:25:25+00:00"
     }
   ]
 }
