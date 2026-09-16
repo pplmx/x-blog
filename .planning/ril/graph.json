@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 367,
+  "round": 368,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T16:48:09+00:00",
+  "updated_at": "2026-09-16T19:20:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27114,6 +27114,98 @@
       "title": "close round 365: reader-to-reader follow with comment fan-out delivered (DEC-403 superseded)",
       "rationale": "The last un-followable identity gets a follow axis: a signed-in reader follows another reader from their public profile (follower_count public, is_following is the caller's own stance - optional auth, no PII), and the capability is the fan-out: an approved comment by the followed reader lands a deep-linked reader_comment inbox row, wired at the single _notify_comment_approved chokepoint. Deactivated followers and per-kind opt-outs are honored (reader_comment IS a NOTIFICATION_KINDS member with its own additive pref column - MEDIUM-1), the replied-to parent is excluded from a double push (reply still notifies them), and a fan-out failure can never break approval (log-without-rollback - the prior rollback expired the just-approved Comment mid-request). ReaderFollow.notify stays reserved for future per-follow control (MEDIUM-2 documented, not shipped: the DEC-171 opt-out closes the mute gap). Self-follow 400, unknown/inactive uniform 404, add/drop idempotent; /account one-click unfollow stops the fan-out. Delivered by CHG-644+CHG-645+CHG-646+CHG-647, verified by EV-273 (backend 1721 + migrations + frontend 2263 + typecheck/lint + browser e2e reader-profile-follow 3/3).",
       "alternatives_rejected": "Per-follow ReaderFollow.notify toggle (PATCH /follows/readers/{id}/notify): fine-grained noise control beyond the shipped coarse per-kind opt-out; a clean future round but scope now is the capability itself. Search-by-author remains rejected (DEC-403 alternatives)."
+    },
+    "DEC-405": {
+      "id": "DEC-405",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T16:57:12+00:00",
+      "updated_at": "2026-09-16T16:57:12+00:00",
+      "touched_round": 367,
+      "title": "round 366 scope: public comment search (find a discussion, jump to the exact comment)",
+      "rationale": "Search currently covers POSTS only (app/routers/search.py, DEC-070/284): a reader who remembers a terse take in the discussion (or wants to find every approved comment mentioning a topic) has no way to find it — the thread is the blog's second content asset and it is unsearchable. The capability in one sentence: a reader can search every APPROVED comment on a public post by content and land on the exact comment (#comment-{id} deep link, DEC-321), with highlighted snippets and the same public-visibility rules as post search (never drafts/scheduled posts, never pending/rejected comments, never email/IP). This is net-new search surface (a whole content type), not a missing button. Vertical slice: GET /api/search/comments (approved + public-post join, CJK-safe LIKE match, newest first, bounded) + a Comments mode on /search (+?type=comments) + locales en/zh + unit tests + e2e + docs.",
+      "alternatives_rejected": "Post reactions (emoji): derivative of the existing like button — a button on an existing surface (gate reject). email_reader_comment channel: mechanically identical to email_mention — one more toggle, no new consumption surface (gate reject). 'New since last visit' on the /follows feed: real but measurement/fuzz-heavy semantics with weak visibility. Public follower LIST on the reader profile: leaks who-follows-whom networks (privacy reject). Comment-thread collapse / RSS toggle / Web Share / guest recs: already rejected (DEC-350/401/403)."
+    },
+    "TASK-428": {
+      "id": "TASK-428",
+      "type": "task",
+      "status": "resolved",
+      "version": 4,
+      "created_at": "2026-09-16T16:57:12+00:00",
+      "updated_at": "2026-09-16T19:20:16+00:00",
+      "touched_round": 367,
+      "category": "core-feature",
+      "title": "round 366: public comment search - GET /api/search/comments (approved + public-post join, CJK-safe content LIKE, highlighted snippets, newest first, bounded) + Comments mode on /search with ?type=comments + api client + locales en/zh + unit tests + e2e + docs (DEC-405)",
+      "priority_score": 42.0
+    },
+    "CHG-648": {
+      "id": "CHG-648",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:15:22+00:00",
+      "updated_at": "2026-09-16T19:15:22+00:00",
+      "touched_round": 367,
+      "commit": "54c64fb6",
+      "title": "round 366 backend: GET /api/search/comments - approved+public-post join, escaped LIKE, mark-safe snippets, newest first, bounded; blank-q crud guard + XSS/limit/literal-percent tests"
+    },
+    "CHG-649": {
+      "id": "CHG-649",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:15:51+00:00",
+      "updated_at": "2026-09-16T19:15:51+00:00",
+      "touched_round": 367,
+      "commit": "17062a1d",
+      "title": "round 366 frontend: Comments mode on /search (?type=comments) - mode tablist, comment search client, result cards deep-linking onto the comment, posts-only filters hidden, mode kept across paging/term changes"
+    },
+    "CHG-650": {
+      "id": "CHG-650",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:15:51+00:00",
+      "updated_at": "2026-09-16T19:15:51+00:00",
+      "touched_round": 367,
+      "commit": "731dd9aa",
+      "title": "round 366 fix+e2e: watch:mode so a mode toggle refetches the active result set (enabled-only flips never re-run the fetch); search-comments e2e journeys (UI tab-switch lands on the comment, fresh deep link into comments mode)"
+    },
+    "CHG-651": {
+      "id": "CHG-651",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:15:51+00:00",
+      "updated_at": "2026-09-16T19:15:51+00:00",
+      "touched_round": 367,
+      "commit": "bd425b86",
+      "title": "round 366 docs: public comment search recorded in README + CHANGELOG (en/zh)"
+    },
+    "EV-274": {
+      "id": "EV-274",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:16:48+00:00",
+      "updated_at": "2026-09-16T19:16:48+00:00",
+      "touched_round": 367,
+      "source": "backend 1734 passed + ruff/pyright + frontend 2272 vitest + typecheck/lint + browser e2e search-comments 2/2",
+      "summary": "Round 366 VERIFY green: backend 1734 passed (10 skipped, 93.69% cov) + ruff/pyright clean (escaped LIKE per term, blank-q crud guard, XSS-safe snippet + limit-51 + literal percent/underscore tests). Frontend 2272 vitest passed + typecheck + lint; search page 58 assertions incl. comments mode; useCommentSearch api client 4 tests. Browser e2e search-comments 2/2: UI tab-switch to comments mode finds the seeded approved comment, deep-links onto it and lands on #comment-id; a fresh ?type=comments deep link lands straight in comments mode. The e2e surfaced a real bug - Nuxt enabled-only flips abort but never re-run a fetch, so the mode toggle left the result set frozen - fixed with watch:[mode] on both searches (731dd9aa).",
+      "confidence": 1.0
+    },
+    "DEC-406": {
+      "id": "DEC-406",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T19:18:57+00:00",
+      "updated_at": "2026-09-16T19:18:57+00:00",
+      "touched_round": 367,
+      "title": "close round 366: public comment search delivered (DEC-405 superseded)",
+      "rationale": "The discussion is now searchable: GET /api/search/comments finds every approved comment on a publicly-visible post by content (every whitespace term must hit, escaped LIKE so %/_ match literally, newest first with id tiebreak, bounded page/limit) and returns a mark-safe highlighted snippet plus the comment post brief so a result deep-links ONTO the comment (#comment-id, DEC-321). The /search page gained a Comments mode (search-scope tablist; ?type=comments lives in the URL so a shared link lands in the right mode): comment hits render the snippet, commenter identity, and post brief; posts-only filters hide in comment mode; paging and term refinement preserve the mode. Visibility contract mirrors post search: pending/rejected comments and comments on draft/scheduled posts never leak, email/IP never leave the backend. Blank q is 422 at the router AND returns empty at the crud layer (defense-in-depth); snippet HTML is escaped-before-mark (XSS-safe by construction, tested). Major regression caught by e2e: Nuxt enabled-only flips abort but never re-run a fetch, so toggling mode left the active result set frozen - fixed with watch:[mode] on both searches (CHG-650). Delivered by CHG-648 (backend) + CHG-649 (frontend) + CHG-650 (fix+e2e) + CHG-651 (docs), verified by EV-274 (backend 1734 + frontend 2272 + typecheck/lint + browser e2e search-comments 2/2).",
+      "alternatives_rejected": "Adding the search mode as a component-local toggle (not in the URL): a comment-search link could not deep-link into the mode (rejected - the URL-owned mode is the shareable contract). Searching thread text inside the existing /search without a mode split: conflates two result shapes in one list (rejected - comments need their own snippet/identity/brief rendering and posts-only filters must hide)."
     }
   },
   "edges": [
@@ -40440,6 +40532,42 @@
       "to": "TASK-427",
       "type": "implements",
       "created_at": "2026-09-16T16:48:09+00:00"
+    },
+    {
+      "from": "DEC-405",
+      "to": "TASK-428",
+      "type": "governs",
+      "created_at": "2026-09-16T16:57:52+00:00"
+    },
+    {
+      "from": "CHG-648",
+      "to": "TASK-428",
+      "type": "implements",
+      "created_at": "2026-09-16T19:18:19+00:00"
+    },
+    {
+      "from": "CHG-649",
+      "to": "TASK-428",
+      "type": "implements",
+      "created_at": "2026-09-16T19:18:19+00:00"
+    },
+    {
+      "from": "CHG-650",
+      "to": "TASK-428",
+      "type": "implements",
+      "created_at": "2026-09-16T19:18:20+00:00"
+    },
+    {
+      "from": "CHG-651",
+      "to": "TASK-428",
+      "type": "implements",
+      "created_at": "2026-09-16T19:18:20+00:00"
+    },
+    {
+      "from": "DEC-406",
+      "to": "DEC-405",
+      "type": "supersedes",
+      "created_at": "2026-09-16T19:19:22+00:00"
     }
   ]
 }
