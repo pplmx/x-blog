@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
+import pyotp
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
@@ -173,6 +174,16 @@ class ReaderAccount(Base):
     email_change_pending: Mapped[str | None] = mapped_column(String(254), nullable=True)
     email_change_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
     email_change_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Second factor (round 364, DEC-401): a reader with two_factor_enabled must
+    # present a TOTP code (RFC 6238, any authenticator app) at login — with
+    # 2FA on, POST /login returns a short-lived mfa_token instead of an access
+    # token, and the code is exchanged for the real session on /login/2fa.
+    # two_factor_secret holds the base32 seed both during setup AND after
+    # enable (it is needed to verify codes at every login); two_factor_enabled
+    # flips only after /me/2fa/enable proves possession via one code. Never
+    # serialized into any profile/token response.
+    two_factor_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
+    two_factor_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -274,6 +285,77 @@ def get_reader_for_password_reset(token: str, db: Session) -> ReaderAccount | No
     if reader is None or token_version != (reader.token_version or 0) or reader.is_active is False:
         return None
     return reader
+
+
+# 2FA challenge-token audience: a further audience apart from admin/reader/
+# password-reset so a challenge token can never act as any other credential.
+# It only unlocks /login/2fa for the reader it names, and only while it is
+# fresh — see TWO_FACTOR_EXPIRE_MINUTES below. (round 364, DEC-401)
+READER_2FA_AUDIENCE = "x-blog-reader-2fa"
+# Lifetime of a reader 2FA challenge token. Short: it is carried implicitly by
+# the browser through the second login step, and a long-lived token would widen
+# the replay window if it leaked before the code is entered.
+TWO_FACTOR_EXPIRE_MINUTES = int(os.getenv("TWO_FACTOR_EXPIRE_MINUTES", "5"))
+
+
+def create_reader_2fa_token(reader_id: int, token_version: int = 0) -> str:
+    """Create a short-lived, single-purpose 2FA challenge token.
+
+    Issued only by POST /login when the reader has 2FA enabled, in place of an
+    access token. It carries its own audience (x-blog-reader-2fa), the reader
+    ``sub`` and the reader's current ``token_version``, so a reader/admin/
+    password-reset token can never open the second step, and any password change
+    (a ``ver`` bump) kills outstanding challenges immediately. (DEC-401)
+    """
+    to_encode: dict = {"sub": str(reader_id), "ver": token_version, "aud": READER_2FA_AUDIENCE}
+    to_encode["exp"] = datetime.now(UTC) + timedelta(minutes=TWO_FACTOR_EXPIRE_MINUTES)
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_reader_for_2fa(token: str, db: Session) -> ReaderAccount | None:
+    """Resolve the reader a valid 2FA challenge token names, else None.
+
+    Mirrors ``get_reader_for_password_reset``: the audience must be the 2FA
+    audience, ``ver`` must equal the reader's current ``token_version``, and the
+    account must be active — the same invariants that keep every other token
+    kind from crossing into a different purpose.
+    """
+    payload = _decode_payload(token, audience=READER_2FA_AUDIENCE)
+    if payload is None or payload.get("aud") != READER_2FA_AUDIENCE:
+        return None
+    reader_id = payload.get("sub")
+    if reader_id is None:
+        return None
+    token_version = payload.get("ver", 0)
+    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    # `two_factor_enabled` is re-checked as defense-in-depth: a challenge issued
+    # while the reader had 2FA on must not resolve for a reader who has since
+    # turned it off (the secret transition also fails closed, but the flag makes
+    # the invariant explicit). (security review, DEC-401)
+    if (
+        reader is None
+        or reader.two_factor_enabled is False
+        or token_version != (reader.token_version or 0)
+        or reader.is_active is False
+    ):
+        return None
+    return reader
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    """Verify a 6-digit TOTP code against a stored seed with ±1-step clock skew.
+
+    ``code`` is normalized (whitespace stripped) and required to be all digits;
+    pyotp rejects non-numeric input with a ValueError which we fold into False so
+    a malformed code is a uniform rejection, never a 500.
+    """
+    normalized = code.strip()
+    if not normalized.isdigit():
+        return False
+    try:
+        return pyotp.TOTP(secret).verify(normalized, valid_window=1)
+    except Exception:  # noqa: BLE001 — any TOTP failure is a failed login
+        return False
 
 
 def _decode_payload(token: str, audience: str | None = None) -> dict | None:

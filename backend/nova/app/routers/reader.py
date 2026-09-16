@@ -15,6 +15,7 @@ from typing import Annotated, Literal
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import pyotp
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -67,13 +68,74 @@ class ReaderProfile(BaseModel):
     # Opt-in publishing of the public "Saved posts" profile tab (round 363,
     # DEC-399) — false by default, same privacy stance as public_likes.
     public_bookmarks: bool = False
+    # Reader-owned 2FA flag (round 364, DEC-401): whether login demands a TOTP
+    # second step. Exposed on the authenticated /me envelope only (the public
+    # profile never carries it) so /account can render the state; the TOTP
+    # secret itself is never serialized anywhere.
+    two_factor_enabled: bool = False
     created_at: datetime | None = None
 
 
 class ReaderLoginResponse(BaseModel):
-    access_token: str
-    token_type: str
-    reader: ReaderProfile
+    """Reader login result.
+
+    The happy path carries ``access_token`` + ``reader``. When the reader has
+    TOTP 2FA enabled (round 364, DEC-401) login carries NEITHER — only
+    ``two_factor_required`` and the short-lived single-purpose ``mfa_token``
+    that unlocks POST /login/2fa, where the code is exchanged for the real
+    session. The extra optional fields are additive, so existing clients keep
+    working unchanged on the single-step path.
+    """
+
+    access_token: str | None = None
+    token_type: str | None = None
+    reader: ReaderProfile | None = None
+    two_factor_required: bool = False
+    mfa_token: str | None = None
+
+
+class ReaderLogin2FA(BaseModel):
+    """Second step of a 2FA login: the challenge token + a TOTP code.
+
+    ``mfa_token`` is only ever issued by POST /login for a 2FA-enabled reader;
+    ``code`` is the current 6-digit authenticator code. Together they prove
+    "knows the password" (mfa_token = post-password grant) AND "possesses the
+    authenticator" (code), so the real access token can be issued."""
+
+    mfa_token: Annotated[NonNulStr, Field(min_length=1, max_length=2048)]
+    code: Annotated[NonNulStr, Field(min_length=6, max_length=8)]
+
+
+class TwoFactorSetupResponse(BaseModel):
+    """Fresh setup material for a reader enabling TOTP 2FA.
+
+    ``secret`` is the base32 seed (never exposed again after enable);
+    ``otpauth_uri`` is the provisioning URI an authenticator app or QR encodes."""
+
+    secret: str
+    otpauth_uri: str
+
+
+class TwoFactorEnable(BaseModel):
+    """Turn 2FA ON: the current password AND a valid code.
+
+    Requiring the password at enrollment (not just a live session) is what
+    stops a session thief from registering their OWN authenticator and locking
+    the owner out — a stolen session alone cannot enable a factor only the
+    account owner can verify (security review MEDIUM, DEC-401)."""
+
+    current_password: str = Field(min_length=1, max_length=72)
+    code: Annotated[NonNulStr, Field(min_length=6, max_length=8)]
+
+
+class TwoFactorDisable(BaseModel):
+    """Turn 2FA back off: the current password AND a valid code.
+
+    Both are required so neither a stolen session alone nor a stolen password
+    alone can silently drop the second factor (DEC-401)."""
+
+    current_password: str = Field(min_length=1, max_length=72)
+    code: Annotated[NonNulStr, Field(min_length=6, max_length=8)]
 
 
 class ReaderRegister(BaseModel):
@@ -603,7 +665,15 @@ def login(
     payload: ReaderLogin,
     db: Session = Depends(get_db),
 ):
-    """Authenticate a reader by email+password and return a reader-scoped JWT."""
+    """Authenticate a reader by email+password and return a reader-scoped JWT.
+
+    A reader with TOTP 2FA enabled (round 364, DEC-401) is NOT given an access
+    token here: the first step only proves the password, so the response carries
+    a short-lived single-purpose ``mfa_token`` (and ``two_factor_required``)
+    that the second step (POST /login/2fa) exchanges for the real session.
+    ``last_login_at`` is deliberately not bumped on the first step for 2FA
+    readers — the account is only "logged in" once the code is proven.
+    """
     reader = _authenticate_reader(db, payload.email, payload.password)
     if reader is None:
         # Same detail string as admin login so the response doesn't reveal
@@ -615,6 +685,50 @@ def login(
         )
     # Operator-deactivated accounts cannot sign in again (DEC-194, TASK-214).
     _reject_inactive(reader)
+    if reader.two_factor_enabled:
+        return {
+            "two_factor_required": True,
+            "mfa_token": auth.create_reader_2fa_token(reader.id, token_version=reader.token_version or 0),
+        }
+    reader.last_login_at = datetime.now(UTC)
+    db.commit()
+    access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "reader": ReaderProfile.model_validate(reader),
+    }
+
+
+@router.post("/login/2fa", response_model=ReaderLoginResponse)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def login_2fa(
+    request: Request,  # noqa: ARG001
+    payload: ReaderLogin2FA,
+    db: Session = Depends(get_db),
+):
+    """Second step of a 2FA login: exchange a challenge token + TOTP code for a
+    real reader session.
+
+    ``mfa_token`` is honored only if POST /login issued it moments ago and it
+    still matches the reader's current ``token_version``; ``code`` must be the
+    Nth 6-digit authenticator code for the stored seed. Any failure (bogus/
+    expired/stale challenge, wrong code) is one indistinguishable 401 — no
+    oracle for which part failed, so an attacker learns nothing about whether
+    the email or the code was wrong. (DEC-401)
+    """
+    reader = auth.get_reader_for_2fa(payload.mfa_token, db)
+    # One INDISTINGUISHABLE 401 for every failure mode — a bogus/expired/stale
+    # challenge AND a wrong code both land here with the same body, so an
+    # attacker who stole an mfa_token learns nothing about whether it is still
+    # live (security-review MEDIUM, DEC-401; the combined short-circuit also
+    # means the code is only verified once a valid challenge names a reader).
+    if reader is None or not auth.verify_totp(reader.two_factor_secret or "", payload.code):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired login attempt",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     reader.last_login_at = datetime.now(UTC)
     db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
@@ -907,6 +1021,86 @@ def change_my_password(
         "token_type": "bearer",
         "reader": ReaderProfile.model_validate(current_reader),
     }
+
+
+@router.post("/me/2fa/setup", response_model=TwoFactorSetupResponse)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def setup_two_factor(
+    request: Request,  # noqa: ARG001
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Generate fresh TOTP enrollment material (round 364, DEC-401).
+
+    Returns a new base32 secret + an otpauth:// provisioning URI (for an
+    authenticator QR or manual entry). Nothing is ENABLED yet — the reader must
+    prove possession via /me/2fa/enable. A repeat call before enabling simply
+    generates a fresh secret (the previous enrollment is discarded); once
+    enabled the secret is never re-exposed and this endpoint 409s.
+    """
+    if current_reader.two_factor_enabled:
+        raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
+    secret = pyotp.random_base32()
+    current_reader.two_factor_secret = secret
+    db.commit()
+    otpauth_uri = pyotp.TOTP(secret).provisioning_uri(name=current_reader.email, issuer_name="X-Blog")
+    return {"secret": secret, "otpauth_uri": otpauth_uri}
+
+
+@router.post("/me/2fa/enable", response_model=ReaderProfile)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def enable_two_factor(
+    request: Request,  # noqa: ARG001
+    payload: TwoFactorEnable,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Prove the account AND the authenticator, then turn 2FA on.
+
+    The current password is verified first (a session alone must not be able to
+    enroll a factor the owner can't remove — security review MEDIUM, DEC-401),
+    then the single code must match the stored seed. Either failure is a flat
+    400 with no hint of which half was wrong. Once enabled, POST /login starts
+    returning an mfa_token instead of an access token. Existing sessions stay
+    valid — enabling a second factor does not log the reader out.
+    """
+    if not auth.verify_password(payload.current_password, current_reader.password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+    if current_reader.two_factor_enabled:
+        raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
+    if not current_reader.two_factor_secret:
+        raise HTTPException(status_code=400, detail="Run /me/2fa/setup first")
+    if not auth.verify_totp(current_reader.two_factor_secret, payload.code):
+        raise HTTPException(status_code=400, detail="Invalid authentication code")
+    current_reader.two_factor_enabled = True
+    db.commit()
+    return current_reader
+
+
+@router.post("/me/2fa/disable", response_model=ReaderProfile)
+@limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
+def disable_two_factor(
+    request: Request,  # noqa: ARG001
+    payload: TwoFactorDisable,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Turn 2FA back off — only with the current password AND a valid code.
+
+    Both are required so neither a stolen session alone nor a stolen password
+    alone can silently drop the second factor. On success the seed is cleared,
+    so enrollment must restart from /me/2fa/setup.
+    """
+    if not auth.verify_password(payload.current_password, current_reader.password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+    if not current_reader.two_factor_enabled or not current_reader.two_factor_secret:
+        raise HTTPException(status_code=400, detail="Two-factor authentication is not enabled")
+    if not auth.verify_totp(current_reader.two_factor_secret, payload.code):
+        raise HTTPException(status_code=400, detail="Invalid authentication code")
+    current_reader.two_factor_enabled = False
+    current_reader.two_factor_secret = None
+    db.commit()
+    return current_reader
 
 
 #: Time-to-live of an email-change verification link (mirrors the password-reset
