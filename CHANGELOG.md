@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Writer avatar (round 358)**: the person-shaped author surface had a
+  voice (bio, round 357) but no face — every rendering was a generic user
+  icon while readers had had avatars since round 299. A superuser now uploads
+  a small profile picture next to the pen name in admin/users (the same
+  validated media pipeline + dedicated `static/avatars` storage as the reader
+  avatar), and that face renders everywhere the writer appears publicly: the
+  post byline chip, the post-page byline, the "More from this author" strip,
+  the `/authors` index card, and the archive header. No-oracle posture holds:
+  the avatar is a filename-scoped `/static` URL only, and a username-only
+  admin still answers 404 with nothing to leak.
 - **Writer bio (round 357)**: the person-shaped author surface (rounds 343-356)
   built bylines, archives, indexes, follow — but never introduced the person.
   A superuser now sets a short public "about this writer" text next to the pen

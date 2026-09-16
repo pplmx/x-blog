@@ -34,6 +34,12 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📚 **Series** - Group posts into ordered multi-part sequences with in-series prev/next navigation, and follow the current series in place from the post page for a new-part notification (DEC-290)
 - ✍️ **Author follow** - at a multi-editor blog a reader who loved one writer's posts subscribes to just that person: a follow button sits on every post byline AND the writer's public `/authors/{id}` archive header, every post page carries a "More from {author}" strip so the writer's other work is discoverable in place, and every new post lands in the follower's inbox as a durable row plus a Web Push (rounds 353/355/356)
 - 📝 **Writer bio** - the person-shaped author surface finally speaks for itself: a superuser sets a short public "about this writer" text (next to the pen name in admin/users, same 500-char plain-text cap as the reader bio) and it renders under the writer's name on their `/authors/{id}` archive header — plus a one-line window on the `/authors` index card — so a reader deciding about a writer learns who they actually are, not just what they published (round 357)
+- 🖼️ **Writer avatar** - the person-shaped author surface now has a face too: a superuser
+  uploads a small profile picture next to the pen name in admin/users (same validated,
+  re-encoded pipeline + `static/avatars` storage as the reader avatar, round 358) and it
+  renders on every public rendering of the writer — the post byline chip, the post-page
+  byline, the More-from-author strip, the `/authors` index card, and the archive header —
+  so a reader recognizes a writer at a glance instead of a generic user icon (round 358)
 - 📰 **Follows feed** - a signed-in reader gets a full paginated `/follows` page of every new post from their followed categories, series, tags and writers (beyond the home row's 12-post cap), with a "View all" entry from the home page — authored cards carry their byline (DEC-292, authors round 354)
 - 🔖 **Cloud Bookmark Sync** - Reader accounts keep your bookmarks synced across devices (sign in → local bookmarks merge to the cloud)
 - 📈 **Reader-local reading streak & heatmap** - the /history reading streak and 52-week activity heatmap count your days in YOUR calendar, not the server's: the page declares the browser's timezone and the backend buckets reads (and anchors "today") to your local timezone, so an evening read counts as today wherever you live (DEC-316)
