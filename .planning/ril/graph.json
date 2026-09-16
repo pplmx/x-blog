@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 358,
+  "round": 359,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T00:12:23+00:00",
+  "updated_at": "2026-09-16T01:34:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26383,6 +26383,90 @@
       "source": "backend 1643 pytest (cov 93.82%, ruff clean, pyright 0; same suite 1643 green on dev-PostgreSQL) + migration c3e5f7a9b1d4 up/down round-trip on dev-PG (users.bio TEXT nullable) + frontend 2187 vitest (typecheck 0, biome 463 clean) + e2e author-byline journey green in a real browser asserting bio renders on the archive header and index card with the no-username gate intact",
       "title": "round 357 VERIFY green: writer bio full vertical slice",
       "confidence": 1.0
+    },
+    "DEC-389": {
+      "id": "DEC-389",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:15:52+00:00",
+      "updated_at": "2026-09-16T00:15:52+00:00",
+      "touched_round": 359,
+      "title": "round 358 scope: author avatar on the public author surface (TASK-420)",
+      "rationale": "Rounds 343-357 built the person-shaped author surface and gave the writer a voice (bio, round 357) — but the writer has no face: every rendering (post byline, /authors index initial chip, archive header, follow chip) is a generic lucide:user icon. Readers got avatars way back in round 299 (DEC-299: reader avatar upload + render on profile and comments); the writer side mirrors that gap exactly. The author-avatar was explicitly deferred in DEC-387 as 'a separate identity slice needing upload infra for the admin User row'. Round 358 delivers it: users.avatar_url (String(255), DDL-preserving on head c3e5f7a9b1d4), a superuser-scoped upload+remove (mirror reader avatar: static/avatars namespace, content-type/magic/size/Pillow validation, never-larger re-encode, uuid filename, path-traversal guard), avatar_url on AuthorBrief (+ AuthorArchive/AuthorIndex) so it renders on every byline/chip without bloat (a URL is small; the bio stays off list payloads), admin users page avatar upload, and render on PostCard byline, post page byline, /authors index card, and archive header. No-oracle: username never leaks; a username-only admin still 404s with no avatar to leak.",
+      "alternatives_rejected": "Rejected: (1) merge avatar into the bio slice — DEC-387 already split it as its own identity slice; (2) a reader-style self-service upload for authors — admins have no self-care surface and PATCH /users is superuser-only, so the upload is superuser-only too (whoever sets the pen name sets the face); (3) initials-letter avatar generation — fabricated identity, readers already can upload real ones; (4) uploads into the admin media library static/uploads/ — the media listing must stay images-in-posts-only (same reasoning as DEC-299 choosing static/avatars)."
+    },
+    "TASK-420": {
+      "id": "TASK-420",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T00:15:53+00:00",
+      "updated_at": "2026-09-16T01:33:03+00:00",
+      "touched_round": 359,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1,
+      "effort": "medium",
+      "title": "author avatar: users.avatar_url + superuser upload/remove + render on bylines/index/archive (DEC-389)",
+      "summary": "Add users.avatar_url (String 255, DDL-preserving migration on c3e5f7a9b1d4); superuser POST/DELETE /api/admin/users/{id}/avatar reusing the reader-avatar validation+storage pattern (static/avatars namespace, content-type/magic/size/Pillow/never-larger, uuid filename, traversal guard); expose avatar_url on AuthorBrief/AuthorArchive/AuthorIndex; admin users page avatar upload/remove cell; render avatar on PostCard byline, post page byline, /authors index card, archive header; en/zh locales; contract + page + e2e tests; README/CHANGELOG"
+    },
+    "CHG-621": {
+      "id": "CHG-621",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-16T01:30:26+00:00",
+      "updated_at": "2026-09-16T01:32:32+00:00",
+      "touched_round": 359,
+      "commit": "045d04c0",
+      "title": "backend writer avatar: migration + endpoints + schemas + tests"
+    },
+    "CHG-622": {
+      "id": "CHG-622",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T01:33:02+00:00",
+      "updated_at": "2026-09-16T01:33:02+00:00",
+      "touched_round": 359,
+      "commit": "0b4e815d",
+      "title": "frontend writer avatar UI + renders + tests + e2e"
+    },
+    "CHG-623": {
+      "id": "CHG-623",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T01:33:40+00:00",
+      "updated_at": "2026-09-16T01:33:40+00:00",
+      "touched_round": 359,
+      "commit": "88510386",
+      "title": "docs: README + CHANGELOG en/zh"
+    },
+    "EV-265": {
+      "id": "EV-265",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T01:34:22+00:00",
+      "updated_at": "2026-09-16T01:34:22+00:00",
+      "touched_round": 359,
+      "source": "backend 1649 pytest (cov 93.77%, ruff clean, pyright 0) + migration d4f6a8c0e2f4 up/down round-trip on dev-PostgreSQL (users.avatar_url varchar 255) + frontend 2193 vitest (typecheck 0, biome 463 clean) + e2e author-byline journey green in a real browser: avatar upload through the API, face rendered on archive header and index card, no-username gate and cleanup intact",
+      "title": "round 358 VERIFY green: writer avatar full vertical slice",
+      "confidence": 1.0
+    },
+    "DEC-390": {
+      "id": "DEC-390",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T01:34:22+00:00",
+      "updated_at": "2026-09-16T01:34:22+00:00",
+      "touched_round": 359,
+      "title": "close round 358: writer avatar on the public author surface (TASK-420 by CHG-621+CHG-622+CHG-623, EV-265; DEC-390 supersedes DEC-389)",
+      "rationale": "Round 358 gives the person-shaped author surface a face, mirroring the reader avatar (DEC-299): a superuser uploads a small profile picture next to the pen name in admin/users (same defense-in-depth validation + static/avatars storage) and it renders on every public rendering of the writer — PostCard byline chip, post-page byline, More-from-this-author strip, /authors index card and archive header. avatar_url rides on the slim AuthorBrief (a small URL, unlike the bio which stays off list payloads) so bylines can show the face everywhere. No-oracle holds: filename-scoped /static URL only, username-only admin still 404s. Verified: backend 1649 (cov 93.77%, ruff clean, pyright 0), migration round-trip on dev-PG, frontend 2193 (typecheck 0, biome 463 clean), e2e author-byline journey green in a real browser asserting avatar upload + archive/index face render + no-username gate + cleanup.",
+      "alternatives_rejected": "Rejected: (1) self-service upload for authors — no admin self-care surface, PATCH /users is superuser-only, so whoever sets the pen name sets the face; (2) initial-letter avatar generation — fabricated identity when readers can upload real ones (DEC-299); (3) media-library static/uploads storage — media listing must stay images-in-posts-only (same reasoning DEC-299 chose static/avatars)."
     }
   },
   "edges": [
@@ -39409,6 +39493,36 @@
       "to": "DEC-387",
       "type": "supersedes",
       "created_at": "2026-09-16T00:09:54+00:00"
+    },
+    {
+      "from": "DEC-389",
+      "to": "TASK-420",
+      "type": "governs",
+      "created_at": "2026-09-16T00:16:13+00:00"
+    },
+    {
+      "from": "CHG-621",
+      "to": "TASK-420",
+      "type": "implements",
+      "created_at": "2026-09-16T01:33:03+00:00"
+    },
+    {
+      "from": "CHG-622",
+      "to": "TASK-420",
+      "type": "implements",
+      "created_at": "2026-09-16T01:33:03+00:00"
+    },
+    {
+      "from": "CHG-623",
+      "to": "TASK-420",
+      "type": "implements",
+      "created_at": "2026-09-16T01:33:40+00:00"
+    },
+    {
+      "from": "DEC-390",
+      "to": "DEC-389",
+      "type": "supersedes",
+      "created_at": "2026-09-16T01:34:56+00:00"
     }
   ]
 }
