@@ -42,6 +42,38 @@ const loadFailed = ref(false);
 const statusFilter = ref<MyCommentStatusFilter>("all");
 const currentPage = ref(1);
 
+// Keyword search over the reader's own comment history (DEC-411, TASK-431):
+// server-side `q` filter so a long history is searched in full, not just the
+// loaded page. Debounced like history's recall-search (DEC-148) so fast typing
+// doesn't fire a server call per keystroke; the loadSeq guard below drops
+// out-of-order responses.
+const searchQuery = ref("");
+const searching = computed(() => searchQuery.value.trim() !== "");
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+function onSearch() {
+	if (searchTimer) clearTimeout(searchTimer);
+	searchTimer = setTimeout(() => {
+		// A new term restarts from page 1 — a paging reader searching from a
+		// deep page would otherwise land beyond the (smaller) filtered total.
+		currentPage.value = 1;
+		void load();
+	}, 300);
+}
+function clearSearch() {
+	searchQuery.value = "";
+	if (searchTimer) clearTimeout(searchTimer);
+	currentPage.value = 1;
+	void load();
+}
+// Clear the pending debounce on unmount so a delayed search can't fire against
+// an unmounted component (wasted server call, same rule as history.vue).
+onUnmounted(() => {
+	if (searchTimer) {
+		clearTimeout(searchTimer);
+		searchTimer = null;
+	}
+});
+
 // Monotonic request sequence so a slow earlier response (e.g. a page-2 fetch)
 // cannot overwrite a newer filter tab's data after a fast response landed. Same
 // guard as useReadingHistory's recall-search (ISS-128) and HeaderSearch.
@@ -75,7 +107,7 @@ async function load() {
 	loading.value = true;
 	loadFailed.value = false;
 	try {
-		const data = await getMyComments(statusFilter.value, currentPage.value, 20);
+		const data = await getMyComments(statusFilter.value, currentPage.value, 20, searchQuery.value);
 		if (seq !== loadSeq) return; // stale response — a newer filter/page is in flight
 		// Deleting the last comment of the last page drains it: an empty page
 		// under a non-zero total must clamp back to the last valid page instead
@@ -226,6 +258,36 @@ function formatDate(dateStr: string): string {
       </button>
     </div>
 
+    <!-- Keyword search over the reader's own comment history (DEC-411,
+         TASK-431): mirrors history's recall-search — debounced, server-side,
+         composes with the status filter. -->
+    <div
+      v-if="isAuthenticated && !loading"
+      class="relative mb-6 max-w-sm"
+    >
+      <Icon
+        icon="lucide:search"
+        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+      />
+      <input
+        v-model="searchQuery"
+        type="search"
+        :placeholder="t('myComments.searchPlaceholder')"
+        :aria-label="t('myComments.searchAria')"
+        class="w-full pl-9 pr-9 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        @input="onSearch"
+      />
+      <button
+        v-if="searchQuery"
+        type="button"
+        :aria-label="t('myComments.searchClear')"
+        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+        @click="clearSearch"
+      >
+        <Icon icon="lucide:x" class="w-4 h-4" />
+      </button>
+    </div>
+
     <!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
          in" prompt never flashes at an already-authenticated reader. -->
     <div
@@ -283,7 +345,19 @@ function formatDate(dateStr: string): string {
       v-else-if="comments.length === 0"
       class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
     >
-      <template v-if="statusFilter !== 'all'">
+      <!-- Search with no matches names the term and offers a one-click reset
+           (same shape as the ISS-385 filtered-empty branch). -->
+      <template v-if="searching">
+        <p class="mb-3">{{ t('myComments.emptySearch', { q: searchQuery.trim() }) }}</p>
+        <button
+          type="button"
+          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          @click="clearSearch"
+        >
+          {{ t('myComments.clearSearch') }}
+        </button>
+      </template>
+      <template v-else-if="statusFilter !== 'all'">
         <p class="mb-3">
           {{ t('myComments.emptyFilter', { status: t(`myComments.filter.${statusFilter}`) }) }}
         </p>

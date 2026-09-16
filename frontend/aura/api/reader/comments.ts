@@ -27,17 +27,20 @@ export type MyCommentStatusFilter = "all" | MyCommentStatus;
 
 /**
  * The signed-in reader's own comment history across statuses (401 when no
- * token). Imperative command (client-only read invoked from onMounted / after
- * delete) — never a setup `useFetch`, whose non-setup execution can resolve
- * before the data ref arrives. (DEC-066, TASK-139/140)
+ * token). `q` (optional) filters to comments whose content matches the term —
+ * the endpoint escapes LIKE metacharacters, so % and _ match literally.
+ * Imperative command (client-only read invoked from onMounted / after delete)
+ * — never a setup `useFetch`, whose non-setup execution can resolve before the
+ * data ref arrives. (DEC-066, TASK-139/140; q filter DEC-411/TASK-431)
  */
 export function getMyComments(
 	status: MyCommentStatusFilter = "all",
 	page = 1,
 	limit = 20,
+	q?: string,
 ): Promise<MyCommentListResponse> {
 	return command<MyCommentListResponse>("/api/reader/me/comments", {
-		query: { status, page, limit },
+		query: { status, page, limit, q: q?.trim() || undefined },
 		headers: readerAuthHeaders(),
 	});
 }

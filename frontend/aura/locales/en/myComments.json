@@ -10,6 +10,11 @@
 		"countLabel": "{count} comments",
 		"empty": "You haven't commented yet",
 		"browse": "Browse posts",
+		"searchPlaceholder": "Search my comments…",
+		"searchAria": "Search my comments",
+		"searchClear": "Clear search term",
+		"emptySearch": "No comments match “{q}”",
+		"clearSearch": "Clear search",
 		"signInPrompt": "Sign in to review and manage your comments",
 		"signInLink": "Sign in",
 		"status": {

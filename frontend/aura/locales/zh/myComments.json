@@ -10,6 +10,11 @@
 		"countLabel": "共 {count} 条评论",
 		"empty": "还没有发表过评论",
 		"browse": "去发表评论",
+		"searchPlaceholder": "搜索我的评论…",
+		"searchAria": "搜索我的评论",
+		"searchClear": "清除搜索词",
+		"emptySearch": "没有匹配「{q}」的评论",
+		"clearSearch": "清除搜索",
 		"signInPrompt": "登录后可以查看和管理你的评论",
 		"signInLink": "前往登录",
 		"status": {

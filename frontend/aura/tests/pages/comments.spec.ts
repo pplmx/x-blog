@@ -343,10 +343,10 @@ describe("My comments page", () => {
 			const wrapper = await mountPage();
 			// Value "approved" maps to the "已通过" tab (third), via setStatus.
 			const tabs = wrapper.findAll("[aria-pressed]");
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
 			await tabs[2].trigger("click");
 			await flushPromises();
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("approved", 1, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("approved", 1, 20, "");
 		});
 
 		it("renders pagination and navigates pages when total_pages > 1", async () => {
@@ -367,7 +367,7 @@ describe("My comments page", () => {
 			// navigate to page 2
 			await nav.findAll("button")[1].trigger("click");
 			await flushPromises();
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 2, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 2, 20, "");
 		});
 
 		it("does not render pagination when there is a single page", async () => {
@@ -391,7 +391,7 @@ describe("My comments page", () => {
 			const pendingTab = wrapper.findAll("[aria-pressed]")[1];
 			await pendingTab.trigger("click");
 			await flushPromises();
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("pending", 1, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("pending", 1, 20, "");
 
 			// The empty branch names the filter and offers "show all", not the
 			// browse-to-posts CTA.
@@ -404,7 +404,7 @@ describe("My comments page", () => {
 			const showAll = wrapper.findAll("button").find((b) => b.text().includes("查看全部评论"));
 			await showAll?.trigger("click");
 			await flushPromises();
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
 		});
 
 		it("offers first/last + ellipsis far-page navigation on deep history (round 265)", async () => {
@@ -437,7 +437,7 @@ describe("My comments page", () => {
 			// Clicking the far last page navigates there.
 			await buttons[buttons.length - 1].trigger("click");
 			await flushPromises();
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 10, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 10, 20, "");
 		});
 
 		it("clamps back to the last valid page after deleting the only comment on it (deep-dive)", async () => {
@@ -491,10 +491,157 @@ describe("My comments page", () => {
 
 			// Clamped to page 1 and re-fetched: the drained page 2 was visited,
 			// then the clamp's re-fetch landed back on the populated page 1.
-			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20);
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
 			expect(wrapper.text()).toContain("A comment");
 			expect(wrapper.text()).not.toContain("还没有发表过评论");
 			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("keyword search (DEC-411, TASK-431)", () => {
+		// Fake timers drive the 300ms recall-search debounce deterministically.
+		// The page clears its pending timer onUnmounted, so unmount every wrapper
+		// to avoid leaking a real timer into later tests.
+		// Restore the default q-aware mock: an earlier filter test installs a
+		// custom mockImplementation that persists across the file (vi.clearAllMocks
+		// keeps implementations), and the search tests rely on mockData.value.
+		beforeEach(() => {
+			mockFetchMyComments.mockImplementation(() =>
+				Promise.resolve(mockData.value as MyCommentListResponse),
+			);
+		});
+		afterEach(() => {
+			vi.clearAllTimers();
+			vi.useRealTimers();
+		});
+
+		async function typeSearch(wrapper: ReturnType<typeof mountPage>, text: string) {
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue(text);
+			await input.trigger("input");
+			await vi.advanceTimersByTime(300);
+			await flushPromises();
+		}
+
+		function searchBox(wrapper: ReturnType<typeof mountPage>) {
+			return wrapper.find('input[type="search"]');
+		}
+
+		it("renders the search box for a signed-in reader", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = { items: [], total: 0 };
+			const wrapper = await mountPage();
+			expect(searchBox(wrapper).exists()).toBe(true);
+			expect(searchBox(wrapper).attributes("placeholder")).toBe("搜索我的评论…");
+			// Guests get the sign-in prompt, not a search box.
+			wrapper.unmount();
+			isAuthenticated.value = false;
+			const guest = await mountPage();
+			expect(guest.find('input[type="search"]').exists()).toBe(false);
+			guest.unmount();
+		});
+
+		it("debounces typing and refetches with the q term", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment({ content: "Rust borrow checker" })], total: 1 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			// Initial load uses a blank q.
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
+
+			await typeSearch(wrapper, "rust");
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "rust");
+			wrapper.unmount();
+		});
+
+		it("collapses fast keystrokes into a single request (300ms debounce)", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = { items: [], total: 0 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			const input = searchBox(wrapper);
+
+			await input.setValue("r");
+			await input.trigger("input");
+			await input.setValue("ru");
+			await input.trigger("input");
+			await input.setValue("rus");
+			await input.trigger("input");
+			// Only the trailing term fires once the quiet window elapses.
+			await vi.advanceTimersByTime(300);
+			await flushPromises();
+			const fetchCalls = mockFetchMyComments.mock.calls.length;
+			expect(fetchCalls).toBe(2); // initial load + one debounced search
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "rus");
+			wrapper.unmount();
+		});
+
+		it("a new search restarts from page 1, not a deep page", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = {
+				items: [makeComment()],
+				total: 2,
+				page: 1,
+				limit: 1,
+				total_pages: 2,
+			};
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+			const nav = wrapper.find("nav");
+			await nav.findAll("button")[1].trigger("click"); // page 2
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 2, 20, "");
+
+			// A search from the deep page must reset to page 1 (the filtered
+			// total is smaller, so a stale deep page would overshoot it).
+			await typeSearch(wrapper, "needle");
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "needle");
+			wrapper.unmount();
+		});
+
+		it("shows a searching-aware empty state with a clear-search reset", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = { items: [], total: 0, total_pages: 1 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+
+			await typeSearch(wrapper, "nothing-here");
+			// Neither the "never commented" copy nor the browse CTA — the search
+			// names the term and offers a one-click reset (ISS-385 shape).
+			expect(wrapper.text()).toContain("没有匹配「nothing-here」的评论");
+			expect(wrapper.text()).toContain("清除搜索");
+			expect(wrapper.text()).not.toContain("还没有发表过评论");
+
+			const clear = wrapper.findAll("button").find((b) => b.text().includes("清除搜索"));
+			await clear?.trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
+			wrapper.unmount();
+		});
+
+		it("the box's x button clears the term and refetches the full list", async () => {
+			vi.useFakeTimers();
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment()], total: 1 };
+			mockFetchMyComments.mockClear();
+			const wrapper = await mountPage();
+
+			await typeSearch(wrapper, "rust");
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "rust");
+
+			// The clear (x) button is rendered only while a term is present.
+			const x = wrapper.find('button[aria-label="清除搜索词"]');
+			expect(x.exists()).toBe(true);
+			await x.trigger("click");
+			await flushPromises();
+			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
+			expect(wrapper.find('button[aria-label="清除搜索词"]').exists()).toBe(false);
+			wrapper.unmount();
 		});
 	});
 });
