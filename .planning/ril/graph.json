@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 369,
+  "round": 370,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T20:28:46+00:00",
+  "updated_at": "2026-09-16T21:30:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27313,13 +27313,81 @@
     "TASK-430": {
       "id": "TASK-430",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T20:28:46+00:00",
-      "updated_at": "2026-09-16T20:28:46+00:00",
+      "updated_at": "2026-09-16T21:30:00+00:00",
       "touched_round": 369,
       "category": "core-feature",
       "title": "round 368: discussion RSS/Atom feed - comments feed in rss.py reusing list_public_comment_feed + shared xml helpers, RSS 2.0 + Atom variants, auto-discovery link tags on /discussion, backend unit tests (valid XML, items map to approved comments, visibility gate, no email/IP), docs (DEC-409)"
+    },
+    "CHG-656": {
+      "id": "CHG-656",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:24:57+00:00",
+      "updated_at": "2026-09-16T21:24:57+00:00",
+      "touched_round": 369,
+      "commit": "3b180d1b",
+      "title": "round 368 backend: discussion RSS/Atom feeds - comments.xml + comments.atom.xml from list_public_comment_feed, perma link onto each comment, same visibility gate as feed/search, cached + ETag"
+    },
+    "CHG-657": {
+      "id": "CHG-657",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:24:57+00:00",
+      "updated_at": "2026-09-16T21:24:57+00:00",
+      "touched_round": 369,
+      "commit": "91073f52",
+      "title": "round 368 frontend: subscribe link + RSS/Atom auto-discovery tags on /discussion"
+    },
+    "CHG-658": {
+      "id": "CHG-658",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-16T21:24:57+00:00",
+      "updated_at": "2026-09-16T21:27:09+00:00",
+      "touched_round": 369,
+      "commit": "f7b6e62a",
+      "title": "round 368 e2e + proxy: Nuxt origin proxies /rss/comments.xml + .atom.xml with the conditional-GET contract; discussion-rss e2e journeys (feed streams a comment with a deep link, page advertises the feeds)"
+    },
+    "CHG-659": {
+      "id": "CHG-659",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:27:09+00:00",
+      "updated_at": "2026-09-16T21:27:09+00:00",
+      "touched_round": 369,
+      "commit": "190d46ad",
+      "title": "round 368 docs: discussion RSS/Atom feeds in README + CHANGELOG (en/zh)"
+    },
+    "EV-276": {
+      "id": "EV-276",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:27:51+00:00",
+      "updated_at": "2026-09-16T21:27:51+00:00",
+      "touched_round": 369,
+      "source": "backend 1748 passed + ruff/pyright + frontend 2280 vitest + typecheck/lint + browser e2e discussion-rss 2/2",
+      "summary": "Round 368 VERIFY green: backend 1748 passed (10 skipped, 93.72% cov) + ruff/pyright clean (RSS+Atom items map to approved comments with perma deep-link onto each comment; visibility gate tested - pending/draft/scheduled never appear, no email/ip; conditional ETag reuse). Frontend 2280 vitest + typecheck + lint; /discussion gains a subscribe link + discovery tags (1 page test). Browser e2e discussion-rss 2/2: RSS feed streams the newest approved comment with a deep link onto it; the /discussion page advertises the feeds via subscribe link + discovery tags (needed dedicated Nuxt proxy routes - the rss catch-all only allows category/series/authors).",
+      "confidence": 1.0
+    },
+    "DEC-410": {
+      "id": "DEC-410",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T21:29:19+00:00",
+      "updated_at": "2026-09-16T21:29:19+00:00",
+      "touched_round": 369,
+      "title": "close round 368: discussion RSS/Atom delivered (DEC-409 superseded)",
+      "rationale": "The discussion is findable (comment search, DEC-405), browsable (/discussion, DEC-407) and now SUBSCRIBABLE: /rss/comments.xml (RSS 2.0) and /rss/comments.atom.xml (Atom) stream the newest approved comments site-wide, one item per comment carrying the commenter (display name/nickname) + post title and a perma link ON the comment (#comment-id, DEC-321). Same public-visibility gate as the feed/search: pending/rejected comments and comments on draft/scheduled posts never appear; content never carries email/ip. Feeds cached under scoped keys with ETag/conditional responses (same contract as the post feeds). The /discussion page surfaces a subscribe link + RSS/Atom auto-discovery tags, fronted by dedicated Nuxt proxy routes (the rss catch-all only allows category/series/authors). Delivered by CHG-656 (backend) + CHG-657 (frontend page) + CHG-658 (proxy + e2e) + CHG-659 (docs), verified by EV-276 (backend 1748 + frontend 2280 + typecheck/lint + browser e2e discussion-rss 2/2).",
+      "alternatives_rejected": "Per-post comment RSS (a feed per discussion): a narrower variant of the site-wide conversation feed - the site-wide stream is the /discussion analogue and serves the broadest reader need; per-post comment feeds can be layered later if usage shows demand (defer). Reading-report page: covered in DEC-407 alternatives. Email digest per post: existing thread-subscribe + weekly digest surfaces already cover it."
     }
   },
   "edges": [
@@ -40712,6 +40780,36 @@
       "to": "DEC-407",
       "type": "supersedes",
       "created_at": "2026-09-16T20:25:25+00:00"
+    },
+    {
+      "from": "CHG-656",
+      "to": "TASK-430",
+      "type": "implements",
+      "created_at": "2026-09-16T21:28:32+00:00"
+    },
+    {
+      "from": "CHG-657",
+      "to": "TASK-430",
+      "type": "implements",
+      "created_at": "2026-09-16T21:28:32+00:00"
+    },
+    {
+      "from": "CHG-658",
+      "to": "TASK-430",
+      "type": "implements",
+      "created_at": "2026-09-16T21:28:32+00:00"
+    },
+    {
+      "from": "CHG-659",
+      "to": "TASK-430",
+      "type": "implements",
+      "created_at": "2026-09-16T21:28:32+00:00"
+    },
+    {
+      "from": "DEC-410",
+      "to": "DEC-409",
+      "type": "supersedes",
+      "created_at": "2026-09-16T21:29:19+00:00"
     }
   ]
 }
