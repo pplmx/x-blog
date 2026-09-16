@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 366,
+  "round": 367,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T11:57:02+00:00",
+  "updated_at": "2026-09-16T14:05:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26930,6 +26930,87 @@
       "title": "close round 363: opt-in public 'Saved posts' profile tab delivered (DEC-399 superseded)",
       "rationale": "Reader-to-reader discovery now has both explicit signals: likes (round 360) and the curated keep-list. A public_bookmarks flag (sa.false() additive migration i2k4m6n8p0r2, independent of public_likes) rides PATCH /me with the exclude_unset discipline and the data export; GET /readers/{id}/bookmarks publishes only publicly-visible posts (newest save first) and 404s identically for unknown and non-opted readers (no oracle, no draft/scheduled leak). Delivered by CHG-637 (backend) + CHG-638 (frontend) + CHG-639 (docs), verified by EV-271 (backend 1692 + migration round-trips + reviewer APPROVE; frontend 2233 + typecheck/lint; browser e2e 3/3).",
       "alternatives_rejected": ""
+    },
+    "DEC-401": {
+      "id": "DEC-401",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T12:11:51+00:00",
+      "updated_at": "2026-09-16T12:11:51+00:00",
+      "touched_round": 367,
+      "title": "round 364 scope: TOTP two-factor authentication for reader accounts",
+      "rationale": "Reader accounts now guard durable private data accumulated over rounds 358-363 (cloud-synced bookmarks/likes/history, GDPR export bundle, email, follows, notification prefs, push devices) behind a single email+password credential — a leaked password exposes all of it. TOTP (RFC 6238) is a widely-understood second factor requiring no infrastructure (works with any authenticator app), so adding it is a clean, self-contained security slice with no content-pipeline coupling. Shape: two additive columns on reader_accounts (two_factor_enabled sa.false(), two_factor_secret nullable); an authenticated setup flow (generate secret + otpauth URI, verify one 6-digit code, then enable); login returns a short-lived, single-purpose mfa_token (own aud=x-blog-reader-2fa, 5-min exp, ver-tied) instead of an access_token when 2FA is on, and POST /login/2fa exchanges code+mfa_token for the real session; disabling requires the current password AND a valid code. Acceptance in one sentence: a reader who enables 2FA must enter a 6-digit authenticator code at every login, and the flow (setup/QR/verify/disable) is manageable from /account with en/zh UI and a browser e2e journey.",
+      "alternatives_rejected": "Reader-to-reader follow (gap-sweep top pick): the perceivable payoff is fan-out ('new comment from a reader you follow'), which the sweep itself defers to a follow-up round; the v1 slice (button + follower counts + /account row) delivers no consumption surface — a counter, not a capability, below the value-gate's 'real perceivable problem' line. Search-by-author filter: the one missing search axis but a filter-dimension addition on an existing surface — closest to the 'missing option/button' patch the gate rejects; lower user pain than account hardening. (Also already-rejected: public reading trail, Web Share API, guest recommendations, comment-thread collapse, RSS full/summary toggle — DEC-350/399.)"
+    },
+    "TASK-426": {
+      "id": "TASK-426",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-16T12:11:52+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "category": "core-feature",
+      "priority_score": 42.0,
+      "title": "round 364: TOTP two-factor authentication for reader accounts — additive ReaderAccount.two_factor_enabled/two_factor_secret (sa.false() migration) + pyotp + /me/2fa setup-enable-disable + login 2FA-required mfa_token carve-out + POST /login/2fa + /account enable/QR/disable UI + api client + locales en/zh + unit tests + security-review + e2e + docs (DEC-401)"
+    },
+    "CHG-640": {
+      "id": "CHG-640",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T14:05:41+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "title": "round 364 backend: TOTP two-factor auth for readers — columns + pyotp + setup/enable/disable + login mfa_token carve-out (DEC-401)",
+      "commit": "dad915bf"
+    },
+    "CHG-641": {
+      "id": "CHG-641",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T14:05:41+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "title": "round 364 frontend: /account 2FA section (QR + secret + password-gated enable, password+code disable) + second-step login UI (DEC-401)",
+      "commit": "23afca67"
+    },
+    "CHG-642": {
+      "id": "CHG-642",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T14:05:41+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "title": "round 364 docs: README + CHANGELOG (en/zh) record reader TOTP 2FA (DEC-401)",
+      "commit": "ecb04671"
+    },
+    "EV-272": {
+      "id": "EV-272",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T14:05:41+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "source": "backend full suite + security review a2c36e388c5ec0247 + migrations round-trip + browser e2e reader-2fa",
+      "summary": "Round 364 VERIFY green: backend 1708 passed (10 skipped, 93.78% cov) + ruff/pyright clean; pyotp 2.10 TOTP; migration j3l7o9q1s5t3 round-trips scratch SQLite and dev-PG (two_factor_enabled defaults false/0 on both, downgrade drops both, re-upgrade recreates). Security review a2c36e388c5ec0247: no CRITICAL/HIGH; the two MEDIUMs (no-oracle /login/2fa 401 detail split; enable gated only by session) and LOW-2 (flag re-check in challenge resolver) were fixed in-diff; LOWs 1 (mfa_token not single-use, bounded by 5-min TTL + live code + rate limit) and 3 (email-token sessions bypass 2FA by design) accepted. Frontend 2243 vitest (+10: login two-step 3, useReaderAuth 2FA 3, account 2FA 4) + typecheck + lint; browser e2e reader-2fa 3/3.",
+      "confidence": 1.0
+    },
+    "DEC-402": {
+      "id": "DEC-402",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T14:05:41+00:00",
+      "updated_at": "2026-09-16T14:05:41+00:00",
+      "touched_round": 367,
+      "title": "close round 364: reader TOTP two-factor authentication delivered (DEC-401 superseded)",
+      "rationale": "Reader accounts accumulating durable private data (cloud-synced bookmarks/likes/history, GDPR export) now require more than a single leaked password to take over: two additive columns (two_factor_enabled sa.false(), nullable base32 secret; migration j3l7o9q1s5t3 round-trips SQLite + dev-PG) + pyotp back a /me/2fa setup-enable-disable flow (enable AND disable both demand the current password + a live code) and a login carve-out where POST /login returns a 5-min aud=x-blog-reader-2fa ver-tied mfa_token instead of an access token, exchanged on /login/2fa. The security review a2c36e388c5ec0247 found no CRITICAL/HIGH; its two MEDIUMs (two distinct /login/2fa 401 details breaking the no-oracle invariant; enable gated only by session) and LOW-2 (re-check two_factor_enabled in the challenge resolver) were fixed in-diff. Delivered by CHG-640+CHG-641+CHG-642, verified by EV-272 (backend 1708 + migrations + frontend 2243 + typecheck/lint + browser e2e reader-2fa 3/3).",
+      "alternatives_rejected": ""
     }
   },
   "edges": [
@@ -40172,6 +40253,42 @@
       "to": "TASK-425",
       "type": "governs",
       "created_at": "2026-09-16T11:57:02+00:00"
+    },
+    {
+      "from": "DEC-401",
+      "to": "TASK-426",
+      "type": "governs",
+      "created_at": "2026-09-16T12:11:52+00:00"
+    },
+    {
+      "from": "CHG-640",
+      "to": "TASK-426",
+      "type": "implements",
+      "created_at": "2026-09-16T14:05:42+00:00"
+    },
+    {
+      "from": "CHG-641",
+      "to": "TASK-426",
+      "type": "implements",
+      "created_at": "2026-09-16T14:05:42+00:00"
+    },
+    {
+      "from": "CHG-642",
+      "to": "TASK-426",
+      "type": "implements",
+      "created_at": "2026-09-16T14:05:42+00:00"
+    },
+    {
+      "from": "DEC-402",
+      "to": "DEC-401",
+      "type": "supersedes",
+      "created_at": "2026-09-16T14:05:42+00:00"
+    },
+    {
+      "from": "DEC-402",
+      "to": "TASK-426",
+      "type": "governs",
+      "created_at": "2026-09-16T14:05:42+00:00"
     }
   ]
 }
