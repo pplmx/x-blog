@@ -44,6 +44,7 @@ def list_authors(db: Session = Depends(get_db)):
             "display_name": u.display_name,
             "post_count": counts.get(u.id, 0),
             "bio": u.bio,
+            "avatar_url": u.avatar_url,
         }
         for u in writers
     ]

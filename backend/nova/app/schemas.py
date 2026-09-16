@@ -460,6 +460,12 @@ class AuthorBrief(BaseModel):
 
     id: int
     display_name: str
+    # Public profile picture (round 358): a /static URL when a superuser set
+    # one, else null. Unlike the bio — which stays off list payloads so the
+    # text never repeats on every card — an avatar URL is one small string and
+    # is exactly what a byline needs to render the writer's face, so it rides
+    # on the slim per-post author too.
+    avatar_url: str | None = None
     # Validated out of the ORM User row (post.author); Pydantic v2 does not
     # inherit the parent's from_attributes for nested models.
     model_config = ConfigDict(from_attributes=True)
@@ -476,6 +482,7 @@ class AuthorIndex(BaseModel):
     display_name: str
     post_count: int = 0
     bio: str | None = None
+    avatar_url: str | None = None
 
 
 class PostList(BaseModel):
@@ -538,6 +545,7 @@ class AuthorArchive(BaseModel):
     id: int
     display_name: str
     bio: str | None = None
+    avatar_url: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 

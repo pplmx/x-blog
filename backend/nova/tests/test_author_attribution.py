@@ -66,7 +66,7 @@ def test_admin_create_defaults_author_to_writing_admin(client, admin_token, admi
     pid = _create_post(client, _admin_headers(admin_token))
 
     detail = client.get(f"/api/posts/{pid}").json()
-    assert detail["author"] == {"id": admin_user.id, "display_name": "Riki the Writer"}
+    assert detail["author"] == {"id": admin_user.id, "display_name": "Riki the Writer", "avatar_url": None}
     _no_username_leak(detail)
 
     row = db_session.query(auth.User).filter(auth.User.id == admin_user.id).one()
@@ -91,7 +91,7 @@ def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, a
     assert r.status_code == 201, r.text
     pid = r.json()["id"]
     detail = client.get(f"/api/posts/{pid}").json()
-    assert detail["author"] == {"id": admin_user.id, "display_name": "Route Writer"}
+    assert detail["author"] == {"id": admin_user.id, "display_name": "Route Writer", "avatar_url": None}
     _no_username_leak(detail)
 
 
@@ -109,7 +109,7 @@ def test_editor_created_post_is_authored_by_editor(client, db_session):
 
     pid = _create_post(client, _admin_headers(editor_token))
     detail = client.get(f"/api/posts/{pid}").json()
-    assert detail["author"] == {"id": editor.id, "display_name": "Editor Person"}
+    assert detail["author"] == {"id": editor.id, "display_name": "Editor Person", "avatar_url": None}
     _no_username_leak(detail)
 
 
@@ -130,7 +130,7 @@ def test_explicit_author_id_overrides_writer(client, admin_token, db_session):
         author_id=editor.id,
     )
     detail = client.get(f"/api/posts/{pid}").json()
-    assert detail["author"] == {"id": editor.id, "display_name": "Ghostwriter"}
+    assert detail["author"] == {"id": editor.id, "display_name": "Ghostwriter", "avatar_url": None}
 
 
 def test_post_without_pen_name_has_no_author(client, admin_token):
@@ -149,7 +149,7 @@ def test_public_list_includes_author_without_username(client, admin_token, admin
     listing = client.get("/api/posts?limit=50").json()
     authored = [p for p in listing["items"] if p["author"]]
     assert authored, "expected at least one authored post in the list"
-    assert all({"id", "display_name"} == set(a["author"]) for a in authored)
+    assert all({"id", "display_name", "avatar_url"} == set(a["author"]) for a in authored)
     _no_username_leak(listing)
 
 
@@ -418,7 +418,7 @@ def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_
     assert r.status_code == 200, r.text
 
     public = client.get(f"/api/posts/{pid}").json()
-    assert public["author"] == {"id": editor.id, "display_name": "Reassigned Writer"}
+    assert public["author"] == {"id": editor.id, "display_name": "Reassigned Writer", "avatar_url": None}
     detail = client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token)).json()
     assert detail["author_id"] == editor.id
     _no_username_leak(public)
@@ -516,5 +516,5 @@ def test_author_archive_envelope_identifies_author_even_when_empty(client, admin
     assert body["items"] == []
     # The envelope is AuthorArchive (round 357): bio rides here (null until a
     # superuser writes one) rather than on per-post AuthorBrief.
-    assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet", "bio": None}
+    assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet", "bio": None, "avatar_url": None}
     _no_username_leak(body)

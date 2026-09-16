@@ -1,10 +1,14 @@
 import logging
 import os
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Annotated, Literal
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
+from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +24,14 @@ from app.cache import (
 from app.crud import utc_now_naive
 from app.database import get_db
 from app.dates import inclusive_end_of_day, parse_bound
+from app.image_validation import (
+    ALLOWED_TYPES,
+    ALLOWED_TYPES_MAP,
+    MAX_SIZE,
+    has_matching_magic_bytes,
+    optimize_image,
+    verify_image_decodes,
+)
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import (
@@ -99,6 +111,7 @@ class UserResponse(BaseModel):
     is_superuser: bool
     display_name: str | None = None
     bio: str | None = None
+    avatar_url: str | None = None
 
 
 # A valid bcrypt hash of a random throwaway password, at the same cost as a
@@ -237,6 +250,119 @@ def update_user(
         user.bio = updates["bio"]
     db.commit()
     db.refresh(user)
+    return user
+
+
+# Author avatar storage lives in a dedicated static/avatars/ namespace (same
+# choice as the reader avatar, DEC-299): the admin media listing walks
+# static/uploads/ only, so a writer's profile picture must not appear in or
+# collide with the author's uploaded post images.
+AUTHOR_AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
+# Avatars are stored as `{uuid4}.{ext}` (same shape as media uploads); the
+# remove route whitelists the exact shape so a DB value can never become a
+# filesystem path outside the avatar dir (mirrors upload.py's _FILENAME_RE
+# and reader.py's reader-avatar guard).
+_AUTHOR_AVATAR_FILENAME_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|gif|webp)$"
+)
+
+
+def _delete_author_avatar_file(avatar_url: str | None) -> None:
+    """Best-effort delete of a stored author-avatar file, given its /static URL.
+
+    Only ever removes a file whose name matches the exact avatar shape (so a
+    corrupted/foreign avatar_url value can't be turned into a filesystem path —
+    path-traversal guard, same discipline as reader.py). A missing file is
+    fine — the URL is the source of truth and a stale row shouldn't fail the
+    write that cleans it up.
+    """
+    if not avatar_url:
+        return
+    name = avatar_url.rsplit("/", 1)[-1]
+    if not _AUTHOR_AVATAR_FILENAME_RE.match(name):
+        return
+    path = AUTHOR_AVATAR_DIR / name
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("could not remove stale author-avatar file %s", path)
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.post("/users/{user_id}/avatar", response_model=UserResponse)
+async def upload_user_avatar(
+    request: Request,  # noqa: ARG001
+    user_id: IdInt,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_superuser),
+):
+    """Set an admin user's public profile picture (superuser, round 358).
+
+    The face half of the writer identity surface (pen name + bio + avatar):
+    whoever sets the pen name and bio (superuser-only PATCH /users/{id}) also
+    sets the face. Same defense-in-depth validation as the reader avatar
+    (content-type whitelist, size cap, magic bytes, full Pillow decode,
+    never-larger re-encode that strips EXIF) via the shared
+    app.image_validation. The new avatar is written to static/avatars first,
+    then the DB row is updated and any previous avatar file removed, so a
+    failed write never leaves a dangling URL. The login username is never
+    exposed by any of this — avatar_url is a public /static URL only.
+    """
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, detail="Unsupported file type")
+    # Cap memory: read at most MAX_SIZE+1 bytes and reject before an oversized
+    # body balloons RAM (reading the whole stream first would buffer it all).
+    contents = await file.read(MAX_SIZE + 1)
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(400, detail="File too large (max 5MB)")
+    if not has_matching_magic_bytes(contents, file.content_type):
+        raise HTTPException(400, detail="File content does not match the declared image type")
+    try:
+        verify_image_decodes(contents)
+    except UnidentifiedImageError, OSError, ValueError:
+        raise HTTPException(400, detail="File is not a valid image")
+
+    contents = optimize_image(contents, file.content_type)
+
+    # Resolve the target user BEFORE writing anything to disk so an unknown id
+    # 404s without orphaning a file in static/avatars.
+    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    ext = ALLOWED_TYPES_MAP.get(file.content_type, "jpg")
+    filename = f"{uuid4()}.{ext}"
+    AUTHOR_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = AUTHOR_AVATAR_DIR / filename
+    filepath.write_bytes(contents)
+
+    previous = user.avatar_url
+    user.avatar_url = f"/static/avatars/{filename}"
+    db.commit()
+    db.refresh(user)
+    _delete_author_avatar_file(previous)
+    return user
+
+
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+@router.delete("/users/{user_id}/avatar", response_model=UserResponse)
+def remove_user_avatar(
+    request: Request,  # noqa: ARG001
+    user_id: IdInt,
+    db: Session = Depends(get_db),
+    _current_user: auth.User = Depends(get_current_superuser),
+):
+    """Remove an admin user's public profile picture (stored file + DB row)."""
+    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    previous = user.avatar_url
+    if previous:
+        user.avatar_url = None
+        db.commit()
+        db.refresh(user)
+        _delete_author_avatar_file(previous)
     return user
 
 

@@ -110,6 +110,12 @@ class User(Base):
     # bio (round 352): Text column, 500-char cap enforced at the schema
     # boundary. NULL = no bio yet.
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Public profile picture (round 358): a small image a superuser uploads
+    # next to the pen name/bio in admin/users, rendered on every public
+    # rendering of the writer (post bylines, /authors index card, archive
+    # header). Mirrors ReaderAccount.avatar_url (DEC-299): a /static URL
+    # string, stored file in the static/avatars namespace. NULL = no avatar.
+    avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Bumped on password change so previously-issued JWTs are invalidated
     # immediately (checked in get_current_user). (RIL round 16 security audit)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
