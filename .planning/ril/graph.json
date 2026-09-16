@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 357,
+  "round": 358,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-15T18:22:32+00:00",
+  "updated_at": "2026-09-16T00:12:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26299,6 +26299,90 @@
       "title": "close round 356: More from this author strip on the post page (TASK-418 by CHG-615+CHG-616+CHG-617; supersedes DEC-385) — VERIFY green: frontend 2181 (typecheck 0, biome 463 clean), e2e 2 journeys green",
       "rationale": "Round 356 closes the author arc's top of the funnel: a reader who just enjoyed a post can browse the writer's other work in place via a More-from-{author} strip (up to 4 recent posts, current excluded, view-all door), built on the existing public author archive endpoint — no backend or schema change. 3 page tests (render/exclude, empty-after-filter, unattributed hiding) plus an e2e assertion in the byline journey. The person-shaped follow surface (byline -> archive -> feed -> archive follow) now has its discovery block where the reader actually is.",
       "alternatives_rejected": "Rejected: merging author posts into the topic-shaped related block; a new dedicated endpoint (the archive already returns the envelope); a duplicate follow button in the strip header (the byline owns follow)."
+    },
+    "DEC-387": {
+      "id": "DEC-387",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-15T23:24:22+00:00",
+      "updated_at": "2026-09-15T23:24:22+00:00",
+      "touched_round": 358,
+      "title": "round 357 scope: writer bio on the author archive (TASK-419)",
+      "rationale": "Rounds 343-356 built the person-shaped author surface (bylines, archives, index, follow arc) — but the surface is anonymous: a reader who lands on /authors/{id} sees a pen name, a post list and a follow button, and learns nothing about who the writer actually is. Readers got a self-written bio on their public profile back in round 352 (auth.ReaderAccount.bio); the writer side has no equivalent. Add a short public 'about this writer' text (admin-set, same 500-char plain-text cap as the reader bio) and render it on the archive header, completing the identity surface mirror. Vertical slice: users.bio column (DDL-preserving migration, head b2c4d6e8f0a2), UserCreate/UserUpdate/UserResponse bio, archive-envelope-only author bio (AuthorBrief stays slim for per-post lists), admin users page inline bio edit, /authors/[id] header render, contract + page + e2e tests, docs.",
+      "alternatives_rejected": "Rejected: (1) an author avatar — a separate identity slice needing upload infra for the admin User row, out of scope for a bio round; (2) bio on every PostList author (AuthorBrief) — bloats every list payload; the archive envelope is the person-shaped surface. bio rides only on the author archive (AuthorPostsResponse.author) and the /api/authors index; (3) social links / favorites — speculative, no signal; (4) a separate public biography page — the archive header IS where a reader decides about a writer (round 355), no new route needed."
+    },
+    "TASK-419": {
+      "id": "TASK-419",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-15T23:24:39+00:00",
+      "updated_at": "2026-09-16T00:09:29+00:00",
+      "touched_round": 358,
+      "category": "core-feature",
+      "severity": 6,
+      "confidence": 1,
+      "effort": "medium",
+      "title": "writer bio on the author archive: users.bio column + admin bio edit + archive render (DEC-387)",
+      "summary": "Add users.bio (nullable Text, DDL-preserving migration head b2c4d6e8f0a2), bio on UserCreate/UserUpdate/UserResponse (500-char plain-text cap, whitespace->None, explicit null clears), expose bio on /api/authors and the archive envelope only (AuthorBrief stays slim), admin users page inline bio edit next to the pen name, render bio under the archive header name on /authors/{id}, en/zh locales, contract + page + e2e tests, README/CHANGELOG"
+    },
+    "CHG-618": {
+      "id": "CHG-618",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:09:08+00:00",
+      "updated_at": "2026-09-16T00:09:08+00:00",
+      "touched_round": 358,
+      "commit": "44e2cf8d",
+      "title": "backend writer bio: migration + model + schemas + routes + tests"
+    },
+    "CHG-619": {
+      "id": "CHG-619",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:09:08+00:00",
+      "updated_at": "2026-09-16T00:09:08+00:00",
+      "touched_round": 358,
+      "commit": "05aa7ecf",
+      "title": "frontend writer bio UI + tests + e2e"
+    },
+    "CHG-620": {
+      "id": "CHG-620",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:09:08+00:00",
+      "updated_at": "2026-09-16T00:09:08+00:00",
+      "touched_round": 358,
+      "commit": "5d088df1",
+      "title": "docs: README + CHANGELOG en/zh"
+    },
+    "DEC-388": {
+      "id": "DEC-388",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:09:54+00:00",
+      "updated_at": "2026-09-16T00:09:54+00:00",
+      "touched_round": 358,
+      "title": "close round 357: writer bio on the author archive (TASK-419 by CHG-618+CHG-619+CHG-620, EV-264; DEC-388 supersedes DEC-387)",
+      "rationale": "Round 357 closes the person-shaped author surface: a superuser sets a short public 'about this writer' bio and it renders under the writer's name on /authors/{id} (plus a one-line window on the /authors index card) — the writer now speaks for themselves on the page where a reader decides about them. Mirrors the reader bio (round 352); per-post AuthorBrief stays slim (bio rides only on the archive envelope + index). Verified: backend 1643 (cov 93.82%, ruff clean, pyright 0), PG round-trip (1643 on dev-PG) incl. migration up/down on b2c4d6e8f0a2 head, frontend 2187 (typecheck 0, biome 463 clean), e2e author-byline journey green in a real browser asserting bio render + index card + no-username gate. DDL-preserving migration c3e5f7a9b1d4.",
+      "alternatives_rejected": "Rejected: author avatar (separate identity slice needing upload infra); bio on every PostList author (bloats feeds); social links (no signal); a separate bio page (archive header is the decision surface)."
+    },
+    "EV-264": {
+      "id": "EV-264",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T00:12:23+00:00",
+      "updated_at": "2026-09-16T00:12:23+00:00",
+      "touched_round": 358,
+      "source": "backend 1643 pytest (cov 93.82%, ruff clean, pyright 0; same suite 1643 green on dev-PostgreSQL) + migration c3e5f7a9b1d4 up/down round-trip on dev-PG (users.bio TEXT nullable) + frontend 2187 vitest (typecheck 0, biome 463 clean) + e2e author-byline journey green in a real browser asserting bio renders on the archive header and index card with the no-username gate intact",
+      "title": "round 357 VERIFY green: writer bio full vertical slice",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -39295,6 +39379,36 @@
       "to": "DEC-385",
       "type": "supersedes",
       "created_at": "2026-09-15T18:21:52+00:00"
+    },
+    {
+      "from": "DEC-387",
+      "to": "TASK-419",
+      "type": "governs",
+      "created_at": "2026-09-15T23:24:51+00:00"
+    },
+    {
+      "from": "CHG-618",
+      "to": "TASK-419",
+      "type": "implements",
+      "created_at": "2026-09-16T00:09:28+00:00"
+    },
+    {
+      "from": "CHG-619",
+      "to": "TASK-419",
+      "type": "implements",
+      "created_at": "2026-09-16T00:09:29+00:00"
+    },
+    {
+      "from": "CHG-620",
+      "to": "TASK-419",
+      "type": "implements",
+      "created_at": "2026-09-16T00:09:29+00:00"
+    },
+    {
+      "from": "DEC-388",
+      "to": "DEC-387",
+      "type": "supersedes",
+      "created_at": "2026-09-16T00:09:54+00:00"
     }
   ]
 }
