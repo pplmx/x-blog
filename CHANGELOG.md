@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 💔 **In-place unlike on `/liked` (round 371)**: every reader-owned list
+  surface had a management control except the liked-posts page — bookmarks has
+  per-row remove and the To-read/Done toggle, but taking a like back meant
+  visiting the post and hitting the heart. Now each `/liked` card carries one:
+  a heart-off button that unlikes in place via the existing idempotent
+  `DELETE /api/reader/me/likes/{id}` (decrementing the public counter), drops
+  the card and its count immediately (single-flight per row, restored with an
+  error line if the request fails), and clears the local like marker too — so
+  the post-page heart reflects it on the next visit. The card was restructured
+  so the button sits outside the link (no interactive-inside-anchor), and a
+  drain-clamp reloads when the last page empties. Frontend-only: the backend
+  endpoint already existed. 2300 frontend tests and a new liked-unlike e2e
+  journey all green.
 - 🔍 **Liked-posts recall search (round 370)**: the last reader-owned surface
   without keyword search finally gets it — bookmarks (DEC-124), `/history`
   (DEC-148) and my-comments (round 369) could all be filtered by term, but the
