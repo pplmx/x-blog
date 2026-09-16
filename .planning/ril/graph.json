@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 369,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T20:25:25+00:00",
+  "updated_at": "2026-09-16T20:28:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27297,6 +27297,29 @@
       "title": "close round 367: public discussion feed delivered (DEC-407 superseded)",
       "rationale": "Comment search (DEC-405) made the discussion findable; the feed makes it browsable. GET /api/comments/feed (public, no auth, paginated) returns the newest approved comments on publicly-visible posts - same visibility gate as comment search (pending/rejected and draft/scheduled-post comments never leak; email/IP never leave the backend) - each carrying the commenter identity (CommentPublic via CommentReaderProfile) and the post brief. The new /discussion page renders feed cards (commenter + content + post brief) that deep-link ONTO the exact comment (#comment-id, DEC-321), is paginated with page-clamp, SEO'd, localized en/zh, and discoverable from a footer link (header nav avoided - at its overflow budget, ISS-125). Delivered by CHG-652 (backend) + CHG-653 (frontend) + CHG-654 (e2e) + CHG-655 (docs), verified by EV-275 (backend 1741 + frontend 2279 + typecheck/lint + browser e2e discussion-feed 2/2).",
       "alternatives_rejected": "Per-post discussion search: mechanically a post_id filter on the just-shipped search endpoint - a missing dimension on an existing surface (value-gate patch reject). Reader reading-report page: me/history/stats already exposes totals/streak/heatmap; a richer rollup is a dashboard on existing data, weaker visibility than a public surface. Public reading-trail, thread collapse, Web Share, guest recs: previously rejected unchanged."
+    },
+    "DEC-409": {
+      "id": "DEC-409",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:28:46+00:00",
+      "updated_at": "2026-09-16T20:28:46+00:00",
+      "touched_round": 369,
+      "title": "round 368 scope: discussion RSS/Atom feed (subscribe to the conversation)",
+      "rationale": "Comment search (366) made the discussion findable; /discussion (367) made it browsable; but it is still not SUBSCRIBABLE - a reader who wants the conversation as a stream (e.g. to keep up with replies across posts in their feed reader) cannot, because the site's RSS/Atom line-up covers posts only (site/category/tag/author/series feeds). The capability in one sentence: a visitor can subscribe to the latest approved comments site-wide as RSS 2.0 (and Atom), auto-discoverable from the /discussion page, with the same public-visibility gate as the feed/search (never pending/rejected, never draft/scheduled-post comments, no email/IP in the enclosure). This is a net-new subscription surface (a whole feed type the site never had), not a button on an existing one. Vertical slice: a comments feed in rss.py reusing list_public_comment_feed + the shared _cdata/html-escape helpers, rendered from the same envelope as /api/comments/feed, RSS + Atom variants with auto-discovery link tags on /discussion (matching the post feeds' discovery), plus backend unit tests (valid XML, items map to approved comments, visibility gate, no PII) + docs. Minimal/close surface to 366/367, tiny frontend delta (only discovery link tags), so the round stays a tight vertical slice.",
+      "alternatives_rejected": "Per-post comment RSS (a feed per discussion): a narrower variant of the site-wide conversation feed - the site-wide stream is the /discussion analogue and serves the broadest reader need; per-post comment feeds can be layered later if usage shows demand (defer). Comment email digest per post: covered by the existing thread-subscribe + weekly digest surfaces (reject as redundant). 'Subscribe to a reader' via RSS: reader-to-reader follow already delivers via inbox/push; RSS is out of its intent (reject)."
+    },
+    "TASK-430": {
+      "id": "TASK-430",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-16T20:28:46+00:00",
+      "updated_at": "2026-09-16T20:28:46+00:00",
+      "touched_round": 369,
+      "category": "core-feature",
+      "title": "round 368: discussion RSS/Atom feed - comments feed in rss.py reusing list_public_comment_feed + shared xml helpers, RSS 2.0 + Atom variants, auto-discovery link tags on /discussion, backend unit tests (valid XML, items map to approved comments, visibility gate, no email/IP), docs (DEC-409)"
     }
   },
   "edges": [
