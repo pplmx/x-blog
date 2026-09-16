@@ -13,6 +13,8 @@ export interface ReaderBookmarkItem {
 	created_at: string | null;
 	folder_id?: number | null;
 	folder_name?: string | null;
+	/** Queue state (round 361, DEC-395): false = To-read, true = Done. */
+	done?: boolean;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
 }
@@ -38,10 +40,10 @@ export interface BookmarkFolderListResponse {
 }
 
 /** Reactive cloud-synced bookmarks list for setup usage (requires reader token);
- *  optional folder filter. */
-export function useReaderBookmarks(folderId?: number | null) {
+ *  optional folder + done (queue-state) filter. */
+export function useReaderBookmarks(options?: { folderId?: number | null; done?: boolean }) {
 	return query<ReaderBookmarkListResponse>("/api/reader/me/bookmarks", {
-		query: { folder_id: folderId ?? undefined },
+		query: { folder_id: options?.folderId ?? undefined, done: options?.done },
 		headers: readerAuthHeaders(),
 		server: false,
 	});
@@ -53,9 +55,10 @@ export function getReaderBookmarks(
 	folderId?: number | null,
 	page?: number,
 	limit?: number,
+	done?: boolean,
 ): Promise<ReaderBookmarkListResponse> {
 	return command<ReaderBookmarkListResponse>("/api/reader/me/bookmarks", {
-		query: { folder_id: folderId ?? undefined, page, limit },
+		query: { folder_id: folderId ?? undefined, page, limit, done },
 		headers: readerAuthHeaders(),
 	});
 }
@@ -124,6 +127,19 @@ export function addReaderBookmark(postId: number): Promise<{ post_id: number }> 
 	return command<{ post_id: number }>(`/api/reader/me/bookmarks/${postId}`, {
 		method: "PUT",
 		headers: readerAuthHeaders(),
+	});
+}
+
+/** Move a bookmark between To-read and Done (round 361, DEC-395). Idempotent;
+ *  404 if the post isn't bookmarked by this reader. */
+export function setBookmarkDone(
+	postId: number,
+	done: boolean,
+): Promise<{ post_id: number; done: boolean }> {
+	return command<{ post_id: number; done: boolean }>(`/api/reader/me/bookmarks/${postId}/done`, {
+		method: "PATCH",
+		headers: { ...readerAuthHeaders(), "Content-Type": "application/json" },
+		body: { done },
 	});
 }
 

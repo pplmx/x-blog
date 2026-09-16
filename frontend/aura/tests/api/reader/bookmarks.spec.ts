@@ -9,6 +9,7 @@ import {
 	getReaderBookmarks,
 	removeReaderBookmark,
 	renameReaderBookmarkFolder,
+	setBookmarkDone,
 	useReaderBookmarkFolders,
 	useReaderBookmarks,
 } from "../../../api/reader/bookmarks.ts";
@@ -59,9 +60,15 @@ describe("reader bookmark queries", () => {
 	});
 
 	it("passes the folder filter through to the bookmarks list", () => {
-		useReaderBookmarks(3);
+		useReaderBookmarks({ folderId: 3 });
 
-		expect(queryCalls[0].options.query).toEqual({ folder_id: 3 });
+		expect(queryCalls[0].options.query).toEqual({ folder_id: 3, done: undefined });
+	});
+
+	it("passes the done queue filter through to the bookmarks list", () => {
+		useReaderBookmarks({ done: true });
+
+		expect(queryCalls[0].options.query).toEqual({ folder_id: undefined, done: true });
 	});
 
 	it("fetches bookmark folders reactively", () => {
@@ -145,5 +152,13 @@ describe("reader bookmark commands", () => {
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/bookmarks/9");
 		expect(commandCalls[0].options.method).toBe("DELETE");
+	});
+
+	it("moves a bookmark between To-read and Done with a PATCH body (DEC-395)", async () => {
+		await setBookmarkDone(9, true);
+
+		expect(commandCalls[0].path).toBe("/api/reader/me/bookmarks/9/done");
+		expect(commandCalls[0].options.method).toBe("PATCH");
+		expect(commandCalls[0].options.body).toEqual({ done: true });
 	});
 });

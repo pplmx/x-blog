@@ -107,6 +107,49 @@ describe("useBookmarks", () => {
 		});
 	});
 
+	describe("setDone / queue counts (round 361, DEC-395)", () => {
+		it("starts every bookmark in the To-read queue", () => {
+			const { addBookmark, toReadCount, doneCount } = useBookmarks();
+			addBookmark(mockBookmark);
+			expect(toReadCount.value).toBe(1);
+			expect(doneCount.value).toBe(0);
+		});
+
+		it("marks a bookmark Done (immutably) and moves counts", () => {
+			const { bookmarks, addBookmark, setDone, toReadCount, doneCount } = useBookmarks();
+			addBookmark(mockBookmark);
+			setDone(1, true);
+			expect(bookmarks.value[0].done).toBe(true);
+			expect(toReadCount.value).toBe(0);
+			expect(doneCount.value).toBe(1);
+		});
+
+		it("moves a Done bookmark back to To-read", () => {
+			const { bookmarks, addBookmark, setDone, toReadCount, doneCount } = useBookmarks();
+			addBookmark(mockBookmark);
+			setDone(1, true);
+			setDone(1, false);
+			expect(bookmarks.value[0].done).toBe(false);
+			expect(toReadCount.value).toBe(1);
+			expect(doneCount.value).toBe(0);
+		});
+
+		it("ignores an unknown id (no throw, no list change)", () => {
+			const { bookmarks, addBookmark, setDone } = useBookmarks();
+			addBookmark(mockBookmark);
+			setDone(999, true);
+			expect(bookmarks.value[0].done).toBeUndefined();
+		});
+
+		it("persists the done flag to localStorage", () => {
+			const { addBookmark, setDone } = useBookmarks();
+			addBookmark(mockBookmark);
+			setDone(1, true);
+			const stored = JSON.parse(localStorage.getItem("x_blog_bookmarks") ?? "[]") as Bookmark[];
+			expect(stored[0].done).toBe(true);
+		});
+	});
+
 	describe("persistence", () => {
 		it("persists bookmarks to localStorage", () => {
 			const { addBookmark } = useBookmarks();

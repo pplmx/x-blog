@@ -9,6 +9,8 @@ export interface Bookmark {
 	created_at: string;
 	folder_id?: number | null;
 	folder_name?: string | null;
+	/** Queue state (round 361, DEC-395): true = Done, false/absent = To-read. */
+	done?: boolean;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
 }
@@ -108,6 +110,17 @@ export function useBookmarks() {
 		saveToStorage(bookmarks.value);
 	}
 
+	/** Move a saved post between To-read and Done (round 361, DEC-395). The
+	 *  /bookmarks page marks a post Done when it's read, pruning the To-read
+	 *  queue; marking it back To-read restores it to the queue. */
+	function setDone(id: number, done: boolean): void {
+		if (!isClient()) return;
+		const target = bookmarks.value.find((b) => b.id === id);
+		if (!target) return;
+		bookmarks.value = bookmarks.value.map((b) => (b.id === id ? { ...b, done } : b));
+		saveToStorage(bookmarks.value);
+	}
+
 	/** Replace the whole list (used by cloud sync to adopt the merged server
 	 * list as the local truth; dedupes defensively by post id). */
 	function replaceBookmarks(items: Bookmark[]): void {
@@ -129,6 +142,11 @@ export function useBookmarks() {
 
 	const bookmarkCount = computed(() => bookmarks.value.length);
 
+	// Queue-state counts (round 361, DEC-395): a saved post is either still
+	// To-read (the queue) or already Done. `done` is false/absent when not set.
+	const toReadCount = computed(() => bookmarks.value.filter((b) => !b.done).length);
+	const doneCount = computed(() => bookmarks.value.filter((b) => b.done).length);
+
 	return {
 		bookmarks,
 		isBookmarked,
@@ -136,8 +154,11 @@ export function useBookmarks() {
 		removeBookmark,
 		toggleBookmark,
 		clearBookmarks,
+		setDone,
 		replaceBookmarks,
 		bookmarkCount,
+		toReadCount,
+		doneCount,
 		refresh,
 	};
 }

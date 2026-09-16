@@ -153,6 +153,7 @@ function toLocalBookmark(item: ReaderBookmarkItem): Bookmark {
 		created_at: item.created_at ?? new Date().toISOString(),
 		folder_id: item.folder_id ?? null,
 		folder_name: item.folder_name ?? null,
+		done: item.done ?? false,
 		category: item.category,
 		tags: item.tags,
 	};
@@ -219,6 +220,26 @@ export function useBookmarkSync() {
 		}
 	}
 
+	/** Mirror a To-read/Done flip to the cloud. Chained per post like the
+	 *  add/remove mirrors so a rapid done→to-read→done toggle stays ordered;
+	 *  offline-safe: errors are swallowed, the next merge reconciles.
+	 *  (round 361, DEC-395) */
+	async function mirrorDone(postId: number, done: boolean): Promise<void> {
+		if (!hasReaderToken()) return;
+		try {
+			await chainPostWrite(postId, () =>
+				withPendingWrite(async () => {
+					const { setBookmarkDone } = await import("~~/api/reader/bookmarks");
+					await setBookmarkDone(postId, done);
+					clearSyncIssue();
+				}),
+			);
+		} catch (err) {
+			// offline — next merge reconciles
+			noteFailure(err);
+		}
+	}
+
 	/** Reconcile local + cloud: push local up, adopt the server union down. */
 	async function mergeLocalToCloud(): Promise<void> {
 		if (!hasReaderToken()) return;
@@ -230,6 +251,12 @@ export function useBookmarkSync() {
 			// this page) is live intent that the pull must not wipe from the UI —
 			// even if its mirrorAdd hasn't landed yet, the next merge reconciles.
 			const startedWith = new Set(bookmarks.value.map((b) => b.id));
+			// Queue state (round 361, DEC-395): snapshot each local row's done so
+			// the pull below can't clobber it. The push only PUTs the post id —
+			// the server creates a fresh row with done=false — so a bookmark the
+			// reader marked Done while logged out would otherwise come back To-read
+			// on the first merge (the PATCH mirror only fires for signed-in marks).
+			const localDone = new Map(bookmarks.value.map((b) => [b.id, Boolean(b.done)]));
 			const epoch = clearEpoch;
 			// Push local bookmarks up (idempotent PUT; a full Bookmark carries the
 			// post id we PUT with). Re-check membership per PUT: the iterator holds
@@ -266,6 +293,13 @@ export function useBookmarkSync() {
 			//    resurrect them in the UI until the next merge.
 			// Id-deduped at the end; the next merge reconciles the server rows.
 			const pulled = all.map(toLocalBookmark);
+			// Re-apply the local done snapshot to rows this device already had:
+			// server rows this reader synced carry their own done (PATCH-mirrored),
+			// but a logged-out Done mark that was just pushed up has a server row
+			// that still reads done=false — local intent wins for those (DEC-395).
+			for (const b of pulled) {
+				if (localDone.has(b.id)) b.done = localDone.get(b.id);
+			}
 			const currentIds = new Set(bookmarks.value.map((b) => b.id));
 			const removedDuringMerge = new Set([...startedWith].filter((id) => !currentIds.has(id)));
 			const midMergeAdds = bookmarks.value.filter((b) => !startedWith.has(b.id));
@@ -297,6 +331,13 @@ export function useBookmarkSync() {
 	function remove(postId: number): void {
 		removeBookmark(postId);
 		void mirrorRemove(postId);
+	}
+
+	/** Flip a bookmark between To-read and Done locally, mirroring to the cloud
+	 *  when signed in (round 361, DEC-395). */
+	function setDone(postId: number, done: boolean): void {
+		store.setDone(postId, done);
+		void mirrorDone(postId, done);
 	}
 
 	/**
@@ -341,6 +382,7 @@ export function useBookmarkSync() {
 		clearSyncIssue,
 		add,
 		remove,
+		setDone,
 		clearAll,
 		mergeLocalToCloud,
 	};

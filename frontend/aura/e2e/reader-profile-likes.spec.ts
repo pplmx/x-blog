@@ -36,10 +36,13 @@ async function registerReader(
 // Seed the FULL session (token + profile) — useReaderAuth only reads the
 // profile from localStorage, so a bare token leaves reader null and the
 // /account profile form would render an empty (unsaveable) display name.
-async function signIn(page: import("@playwright/test").Page, session: {
-	access_token: string;
-	reader: Record<string, unknown>;
-}) {
+async function signIn(
+	page: import("@playwright/test").Page,
+	session: {
+		access_token: string;
+		reader: Record<string, unknown>;
+	},
+) {
 	await page.addInitScript((s) => {
 		localStorage.setItem("reader_token", s.access_token);
 		localStorage.setItem("reader_profile", JSON.stringify(s.reader));

@@ -9,8 +9,8 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
-const { bookmarks, bookmarkCount } = useBookmarks();
-const { add, remove, clearAll, mergeLocalToCloud, syncing, syncIssue, clearSyncIssue } =
+const { bookmarks, bookmarkCount, toReadCount, doneCount } = useBookmarks();
+const { add, remove, setDone, clearAll, mergeLocalToCloud, syncing, syncIssue, clearSyncIssue } =
 	useBookmarkSync();
 const {
 	folders,
@@ -122,6 +122,10 @@ onMounted(() => {
 // --- Folders (DEC-120, TASK-172) ------------------------------------------
 
 const activeFolderId = ref<"all" | number>("all");
+// Queue-state filter (round 361, DEC-395): "all" | "todo" (To-read) | "done".
+// A saved post is either still in the To-read queue or already read / kept
+// around — the reader marks it Done from the row's toggle.
+const queueFilter = ref<"all" | "todo" | "done">("all");
 const showManage = ref(false);
 // Folder create/rename/reassign failures surface here (deep-dive finding).
 const folderActionFailed = ref(false);
@@ -134,8 +138,13 @@ const searchText = computed(() => searchQuery.value.trim().toLowerCase());
 const searching = computed(() => searchText.value !== "");
 
 const filteredBookmarks = computed<Bookmark[]>(() => {
-	if (activeFolderId.value === "all") return bookmarks.value;
-	return bookmarks.value.filter((b) => b.folder_id === activeFolderId.value);
+	const byFolder =
+		activeFolderId.value === "all"
+			? bookmarks.value
+			: bookmarks.value.filter((b) => b.folder_id === activeFolderId.value);
+	if (queueFilter.value === "todo") return byFolder.filter((b) => !b.done);
+	if (queueFilter.value === "done") return byFolder.filter((b) => b.done);
+	return byFolder;
 });
 
 const searchedBookmarks = computed<Bookmark[]>(() => {
@@ -229,6 +238,7 @@ const assigningIds = ref(new Set<number>());
 watch(signedIn, (authed) => {
 	if (authed) return;
 	activeFolderId.value = "all";
+	queueFilter.value = "all";
 	searchQuery.value = "";
 	showManage.value = false;
 	assignFailed.value = false;
@@ -264,6 +274,23 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
 		}
 	} finally {
 		assigningIds.value.delete(bookmark.id);
+	}
+}
+
+// --- Queue state (round 361, DEC-395) ------------------------------------
+// Per-row flip between To-read and Done. Optimistic local update (the list
+// re-renders immediately); setDone fires the cloud PATCH when signed in and is
+// offline-safe (the next merge reconciles). A per-row in-flight Set prevents
+// two rapid toggles of the same row from clobbering each other.
+const togglingIds = ref(new Set<number>());
+
+function handleToggleDone(bookmark: Bookmark) {
+	if (togglingIds.value.has(bookmark.id)) return;
+	togglingIds.value.add(bookmark.id);
+	try {
+		setDone(bookmark.id, !bookmark.done);
+	} finally {
+		togglingIds.value.delete(bookmark.id);
 	}
 }
 </script>
@@ -392,6 +419,33 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       </div>
     </div>
 
+    <!-- Queue filter (round 361, DEC-395): All / To-read / Done -->
+    <div v-if="bookmarkCount > 0" class="mb-4">
+      <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('bookmarks.queueFilterLabel')">
+        <button
+          type="button"
+          :class="activeClass(queueFilter === 'all')"
+          @click="queueFilter = 'all'"
+        >
+          {{ t('bookmarks.queueAll') }} ({{ bookmarkCount }})
+        </button>
+        <button
+          type="button"
+          :class="activeClass(queueFilter === 'todo')"
+          @click="queueFilter = 'todo'"
+        >
+          {{ t('bookmarks.queueTodo') }} ({{ toReadCount }})
+        </button>
+        <button
+          type="button"
+          :class="activeClass(queueFilter === 'done')"
+          @click="queueFilter = 'done'"
+        >
+          {{ t('bookmarks.queueDone') }} ({{ doneCount }})
+        </button>
+      </div>
+    </div>
+
     <!-- Folder bar (signed-in only) -->
     <div v-if="signedIn" class="mb-6">
       <div class="flex flex-wrap items-center gap-2">
@@ -482,13 +536,24 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
       </NuxtLink>
     </div>
 
-    <!-- No results in the current folder/search -->
+    <!-- No results in the current queue/folder/search -->
     <div
       v-else-if="searchedBookmarks.length === 0"
       class="text-center py-16 text-gray-500 dark:text-gray-400"
     >
-      <Icon :icon="searching ? 'lucide:search-x' : 'lucide:folder-open'" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="text-lg">{{ searching ? t('bookmarks.noSearchResults') : t('bookmarks.noPostsInFolder') }}</p>
+      <Icon
+        :icon="searching ? 'lucide:search-x' : queueFilter === 'done' ? 'lucide:check-circle-2' : 'lucide:folder-open'"
+        class="w-12 h-12 mx-auto mb-4 text-gray-300"
+      />
+      <p class="text-lg">
+        {{
+          searching
+            ? t('bookmarks.noSearchResults')
+            : queueFilter === 'todo' || queueFilter === 'done'
+              ? t('bookmarks.noQueuePosts')
+              : t('bookmarks.noPostsInFolder')
+        }}
+      </p>
     </div>
 
     <!-- Bookmarks list -->
@@ -559,16 +624,40 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
             </div>
           </div>
 
-          <!-- Remove button (aria-label, not just a title tooltip, ISS-137) -->
-          <button
-            type="button"
-            @click.stop="handleRemove(bookmark)"
-            :title="t('bookmarks.remove')"
-            :aria-label="t('bookmarks.remove')"
-            class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-          >
-            <Icon icon="lucide:x" class="w-4 h-4" />
-          </button>
+          <div class="flex flex-col items-end gap-2">
+            <!-- Done badge (round 361, DEC-395): a saved post this reader has
+                 already read — keeps it out of the To-read queue but filed. -->
+            <span
+              v-if="bookmark.done"
+              class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+            >
+              <Icon icon="lucide:check" class="w-3 h-3" />
+              {{ t('bookmarks.doneBadge') }}
+            </span>
+
+            <!-- Queue toggle: mark Done (move out of To-read) / back To-read -->
+            <button
+              type="button"
+              @click.stop="handleToggleDone(bookmark)"
+              :disabled="togglingIds.has(bookmark.id)"
+              :title="t(bookmark.done ? 'bookmarks.markToRead' : 'bookmarks.markDone')"
+              :aria-label="t(bookmark.done ? 'bookmarks.markToRead' : 'bookmarks.markDone')"
+              class="shrink-0 p-2 text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <Icon :icon="bookmark.done ? 'lucide:rotate-ccw' : 'lucide:check-check'" class="w-4 h-4" />
+            </button>
+
+            <!-- Remove button (aria-label, not just a title tooltip, ISS-137) -->
+            <button
+              type="button"
+              @click.stop="handleRemove(bookmark)"
+              :title="t('bookmarks.remove')"
+              :aria-label="t('bookmarks.remove')"
+              class="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            >
+              <Icon icon="lucide:x" class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

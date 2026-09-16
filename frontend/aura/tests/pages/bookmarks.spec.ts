@@ -15,18 +15,23 @@ const mockRemoveBookmark = vi.fn();
 const mockAddBookmark = vi.fn();
 const mockClearAll = vi.fn();
 const mockBookmarkCount = computed(() => mockBookmarks.value.length);
+const mockToReadCount = computed(() => mockBookmarks.value.filter((b) => !b.done).length);
+const mockDoneCount = computed(() => mockBookmarks.value.filter((b) => b.done).length);
+const mockSetDone = vi.fn();
 
 vi.mock("../../composables/useBookmarks", () => ({
 	useBookmarks: () => ({
 		bookmarks: mockBookmarks,
 		removeBookmark: mockRemoveBookmark,
 		bookmarkCount: mockBookmarkCount,
+		toReadCount: mockToReadCount,
+		doneCount: mockDoneCount,
 	}),
 }));
 
 // Mock useBookmarkSync: the page's "Clear all" now goes through clearAll
 // (local wipe + cloud clear, TASK-233), not a bare clearBookmarks. `add` backs
-// the single-removal Undo.
+// the single-removal Undo; `setDone` backs the To-read/Done queue toggle.
 const mockSyncing = ref(false);
 const mockSyncIssue = ref<"auth" | null>(null);
 const mockClearSyncIssue = vi.fn();
@@ -35,6 +40,7 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 		bookmarks: mockBookmarks,
 		add: mockAddBookmark,
 		remove: mockRemoveBookmark,
+		setDone: mockSetDone,
 		clearAll: mockClearAll,
 		mergeLocalToCloud: vi.fn(() => Promise.resolve()),
 		syncing: mockSyncing,
@@ -467,6 +473,90 @@ describe("Bookmarks page", () => {
 			expect(wrapper.text()).toContain("文件夹操作失败，请检查网络后重试。");
 			expect(mockCreateFolder).toHaveBeenCalledWith("New Folder");
 			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("queue state (round 361, DEC-395)", () => {
+		const todo = { ...sampleBookmark, id: 1 };
+		const done = { ...sampleBookmark, id: 2, title: "Read Post", done: true };
+
+		beforeEach(() => {
+			mockSetDone.mockClear();
+			mockBookmarks.value = [todo, done];
+		});
+
+		it("shows queue filter chips with counts", () => {
+			mockBookmarks.value = [todo, done];
+			const wrapper = mountBookmarks();
+			expect(wrapper.text()).toContain("全部");
+			expect(wrapper.text()).toContain("待读");
+			expect(wrapper.text()).toContain("已读");
+		});
+
+		it("renders a Done badge on read bookmarks", () => {
+			const wrapper = mountBookmarks();
+			expect(wrapper.text()).toContain("Read Post");
+			expect(wrapper.findAll(".bg-emerald-100").length).toBe(1);
+		});
+
+		it("marks a bookmark Done via the row toggle (calls setDone)", async () => {
+			const wrapper = mountBookmarks();
+			const btn = wrapper
+				.findAll("button")
+				.find((b) => b.attributes("aria-label") === "标记为已读");
+			expect(btn).toBeDefined();
+			await btn?.trigger("click");
+			expect(mockSetDone).toHaveBeenCalledWith(1, true);
+		});
+
+		it("moves a Done bookmark back to To-read via the row toggle", async () => {
+			const wrapper = mountBookmarks();
+			const btn = wrapper.findAll("button").find((b) => b.attributes("aria-label") === "移回待读");
+			expect(btn).toBeDefined();
+			await btn?.trigger("click");
+			expect(mockSetDone).toHaveBeenCalledWith(2, false);
+		});
+
+		it("filters to To-read only", async () => {
+			const wrapper = mountBookmarks();
+			await wrapper
+				.findAll("button")
+				.find((b) => b.text().includes("待读"))
+				?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Test Bookmarked Post");
+			expect(wrapper.text()).not.toContain("Read Post");
+		});
+
+		it("filters to Done only", async () => {
+			const wrapper = mountBookmarks();
+			// "已读" appears both as a chip and the Done badge — target the chip
+			// via the group scope (the chips live in the role=group container).
+			const group = wrapper.find('[role="group"]');
+			await group
+				.findAll("button")
+				.find((b) => b.text().includes("已读"))
+				?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Read Post");
+			expect(wrapper.text()).not.toContain("Test Bookmarked Post");
+		});
+
+		it("shows the queue empty state when no posts match the active queue", async () => {
+			const wrapper = mountBookmarks();
+			const group = wrapper.find('[role="group"]');
+			await group
+				.findAll("button")
+				.find((b) => b.text().includes("已读"))
+				?.trigger("click");
+			await flushPromises();
+			// Only done is visible — flip to To-read where the list is empty.
+			await group
+				.findAll("button")
+				.find((b) => b.text().includes("待读"))
+				?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("Read Post");
 		});
 	});
 });

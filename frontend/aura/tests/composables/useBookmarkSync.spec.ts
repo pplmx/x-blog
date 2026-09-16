@@ -8,6 +8,7 @@ const addReaderBookmarkMock = vi.fn();
 const removeReaderBookmarkMock = vi.fn();
 const fetchReaderBookmarksMock = vi.fn();
 const clearReaderBookmarksMock = vi.fn(() => Promise.resolve(null));
+const setBookmarkDoneMock = vi.fn();
 
 vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../../api/reader/bookmarks")>();
@@ -17,6 +18,7 @@ vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 		removeReaderBookmark: removeReaderBookmarkMock,
 		getReaderBookmarks: fetchReaderBookmarksMock,
 		clearReaderBookmarks: clearReaderBookmarksMock,
+		setBookmarkDone: setBookmarkDoneMock,
 	};
 });
 
@@ -53,6 +55,9 @@ const sharedBookmarks = ref<
 		excerpt: string | null;
 		cover_image: string | null;
 		created_at: string;
+		folder_id?: number | null;
+		folder_name?: string | null;
+		done?: boolean;
 		category: { id: number; name: string } | null;
 		tags: { id: number; name: string }[];
 	}[]
@@ -66,6 +71,7 @@ beforeEach(() => {
 	removeReaderBookmarkMock.mockReset();
 	fetchReaderBookmarksMock.mockReset();
 	clearReaderBookmarksMock.mockReset();
+	setBookmarkDoneMock.mockReset();
 	// syncIssue is module-scoped (shared by every useBookmarkSync instance).
 	syncIssue.value = null;
 });
@@ -589,8 +595,82 @@ describe("useBookmarkSync", () => {
 		expect(bookmarksStore.bookmarks.value.map((b) => b.id)).toEqual([]);
 	});
 
+	it("merge preserves a local logged-out Done mark across the pull (DEC-395)", async () => {
+		localStorage.setItem("reader_token", "jwt.token");
+		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
+		// The server row is freshly PUT (it can't carry done) → reads To-read here.
+		fetchReaderBookmarksMock.mockResolvedValue({
+			items: [{ ...cloudItem, id: 9, done: false }],
+			total: 1,
+		});
+		const sync = useBookmarkSync();
+		const store = useBookmarks();
+		store.addBookmark({
+			...cloudItem,
+			created_at: "2026-01-02",
+			done: true, // marked Done while logged out — must survive the merge
+		});
+
+		await sync.mergeLocalToCloud();
+
+		const merged = store.bookmarks.value[0];
+		expect(merged.id).toBe(9);
+		expect(merged.done).toBe(true);
+	});
+
 	it("merge is a no-op when signed out", async () => {
 		await useBookmarkSync().mergeLocalToCloud();
 		expect(fetchReaderBookmarksMock).not.toHaveBeenCalled();
+	});
+});
+
+describe("setDone (round 361, DEC-395)", () => {
+	beforeEach(() => {
+		localStorage.setItem("reader_token", "jwt.token");
+	});
+
+	it("does not touch the cloud when logged out, but flips locally", () => {
+		localStorage.removeItem("reader_token");
+		const sync = useBookmarkSync();
+		sync.add({ ...cloudItem, created_at: "x" });
+		sync.setDone(9, true);
+		expect(setBookmarkDoneMock).not.toHaveBeenCalled();
+		expect(sync.bookmarks.value[0].done).toBe(true);
+	});
+
+	it("mirrors a done flip to the cloud when signed in", async () => {
+		setBookmarkDoneMock.mockResolvedValue(okFetch([null]));
+		const sync = useBookmarkSync();
+		sync.add({ ...cloudItem, created_at: "x" });
+		sync.setDone(9, true);
+		await vi.waitFor(() => expect(setBookmarkDoneMock).toHaveBeenCalledWith(9, true));
+	});
+
+	it("mirrors the flip back to To-read", async () => {
+		setBookmarkDoneMock.mockResolvedValue(okFetch([null]));
+		const sync = useBookmarkSync();
+		sync.add({ ...cloudItem, done: true, created_at: "x" });
+		sync.setDone(9, false);
+		await vi.waitFor(() => expect(setBookmarkDoneMock).toHaveBeenCalledWith(9, false));
+	});
+
+	it("flips the local row immediately (optimistic) before the mirror settles", async () => {
+		let resolveDone!: (v: unknown) => void;
+		setBookmarkDoneMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveDone = resolve;
+				}),
+		);
+		// The added bookmark rows live in the shared store, mirrored by add().
+		const sync = useBookmarkSync();
+		sync.add({ ...cloudItem, created_at: "x" });
+		sync.setDone(9, true);
+		// Local flips before the cloud PATCH resolves.
+		expect(sync.bookmarks.value[0].done).toBe(true);
+		// The dynamic-import chained mirror reaches the PATCH asynchronously.
+		await vi.waitFor(() => expect(setBookmarkDoneMock).toHaveBeenCalledWith(9, true));
+		resolveDone({});
+		await flushPromises();
 	});
 });
