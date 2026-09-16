@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import type { PostList } from "~~/api/contracts/shared";
 import { usePostSearch } from "~~/api/public/posts";
+import { type CommentSearchItem, useCommentSearch } from "~~/api/public/search";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
@@ -18,6 +20,14 @@ const route = useRoute();
 // is passed to useFetch, which re-runs when its URL changes.
 const query = computed(() => (route.query.q as string) || "");
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+
+// Search MODE (round 366, DEC-405): ?type=comments searches the DISCUSSION
+// (approved comments on public posts) instead of posts — the blog's thread is
+// its second content asset and used to be unsearchable. Lives in the URL so a
+// comment-search share link deep-links into the right mode; anything other
+// than "comments" is post search (the pre-existing default).
+type SearchMode = "posts" | "comments";
+const mode = computed<SearchMode>(() => (route.query.type === "comments" ? "comments" : "posts"));
 
 // Filter state lives in the URL query so a filtered search is shareable and
 // survives reload (DEC-084): category/tag by name, sort, and an effective
@@ -63,12 +73,38 @@ const activeFilters = computed(() => {
 
 // True when any narrowing filter (category/tag/sort/date) is active — gates the
 // one-click "clear filters" affordance so a filtered search isn't a trap that
-// needs every select manually reset (deep-dive finding).
+// needs every select manually reset (deep-dive finding). The search MODE
+// (?type=comments) is not a narrowing filter, so it never lights this up.
 const hasActiveFilters = computed(() => Object.keys(activeFilters.value).length > 0);
 
+// Every navigation that must survive a page turn or a mode switch goes through
+// these: pageQuery preserves the active post filters, the search mode, and q.
+const modeParam = computed(() => (mode.value === "comments" ? { type: "comments" } : {}));
+function pageQuery(extra: Record<string, string | undefined>): Record<string, string | undefined> {
+	return { ...activeFilters.value, ...modeParam.value, ...extra };
+}
+
 function clearFilters(): void {
-	// Drop every narrowing filter, keep the query, reset to page 1.
-	navigateTo({ query: { q: query.value, page: "1" } });
+	// Drop every narrowing filter but keep the query and search mode.
+	// Deliberately NOT pageQuery: that merges activeFilters back in, which
+	// would make the "clear" button a no-op for the filters it clears.
+	navigateTo({ query: { ...modeParam.value, q: query.value, page: "1" } });
+}
+
+function setMode(next: SearchMode): void {
+	if (next === mode.value) return;
+	if (next === "comments") {
+		navigateTo({ query: { q: query.value, type: "comments", page: "1" } });
+	} else {
+		const q: Record<string, string | undefined> = {
+			q: query.value,
+			page: "1",
+			...activeFilters.value,
+		};
+		delete q.type;
+		navigateTo({ query: q });
+	}
+	scrollToPageTop();
 }
 
 // Search params mirror the previous URL construction: `withQuery` omits empty
@@ -99,17 +135,59 @@ const {
 	error,
 	refresh: refreshSearch,
 } = await usePostSearch(searchParams, {
-	enabled: computed(() => !!query.value.trim()),
+	// Post search only fires in posts mode — the comments mode fetches its own
+	// result set and must not burn a rate-limit slot on /api/search too.
+	enabled: computed(() => mode.value === "posts" && !!query.value.trim()),
 });
 function retrySearch() {
 	void refreshSearch();
 }
 
+// Comment search (round 366, DEC-405): the reactive URL pattern is identical
+// to usePostSearch — a computed params object refetches on q/page/mode change.
+const commentSearchParams = computed(() => ({
+	q: query.value,
+	page: page.value,
+	limit: 10,
+}));
+const {
+	data: commentResult,
+	pending: commentsPending,
+	error: commentsError,
+	refresh: refreshComments,
+} = await useCommentSearch(commentSearchParams, {
+	enabled: computed(() => mode.value === "comments" && !!query.value.trim()),
+});
+function retryComments() {
+	void refreshComments();
+}
+
+// The ACTIVE result set is whatever the current mode renders: the post search
+// result or the comment search result. Every results-area binding goes through
+// these so a mode switch rides one rendering pipeline.
+const activeResult = computed(() =>
+	mode.value === "comments" ? commentResult.value : searchResult.value,
+);
+const activePending = computed(() =>
+	mode.value === "comments" ? commentsPending.value : pending.value,
+);
+const activeError = computed(() => (mode.value === "comments" ? commentsError.value : error.value));
+
+// Typed per-mode result lists so the template loops (posts vs comments) always
+// see the item shape their branch renders — the union on activeResult cannot
+// be narrowed by `mode` inside v-for.
+const activePosts = computed<PostList[]>(() =>
+	mode.value === "posts" ? (searchResult.value?.items ?? []) : [],
+);
+const activeComments = computed<CommentSearchItem[]>(() =>
+	mode.value === "comments" ? (commentResult.value?.items ?? []) : [],
+);
+
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
 const paginationTokens = computed(() =>
 	paginationPages(
-		searchResult.value?.pagination?.total_pages ?? 0,
-		searchResult.value?.pagination?.page ?? 1,
+		activeResult.value?.pagination?.total_pages ?? 0,
+		activeResult.value?.pagination?.page ?? 1,
 	),
 );
 
@@ -119,18 +197,14 @@ const paginationTokens = computed(() =>
 // except hand-editing the URL. When the server reports the last page we're past
 // it, jump the URL to that last page so the reader lands on real results.
 watch(
-	() => searchResult.value?.pagination,
+	() => activeResult.value?.pagination,
 	(p) => {
 		const requested = Number.parseInt(String(route.query.page), 10);
 		if (!p || Number.isNaN(requested) || requested < 2) return;
 		const last = p.total_pages ?? 1;
 		if (requested > last && last >= 1) {
-			const next = {
-				...(activeFilters.value as Record<string, string>),
-				q: query.value,
-				page: String(last),
-			};
-			navigateTo({ query: next, replace: true });
+			// pageQuery preserves the active mode + post filters.
+			navigateTo({ query: pageQuery({ q: query.value, page: String(last) }), replace: true });
 		}
 	},
 );
@@ -213,10 +287,10 @@ function handleSearchInput() {
 	}
 	if (q !== query.value) {
 		// New term: merge into the existing filters (category/tag/sort/date)
-		// instead of replacing the whole query — dropping them on every Enter
-		// made a refined search silently lose its filters (deep-dive finding).
-		// Page resets to 1 for the fresh result set.
-		navigateTo({ query: { ...activeFilters.value, q, page: "1" } });
+		// and search mode instead of replacing the whole query — dropping them
+		// on every Enter made a refined search silently lose its filters
+		// (deep-dive finding). Page resets to 1 for the fresh result set.
+		navigateTo({ query: pageQuery({ q, page: "1" }) });
 	}
 }
 
@@ -233,9 +307,11 @@ function handleTermCleared() {
 
 // Paging from the bottom of the results list swaps it in place; return the
 // reader to the top so the new page is visible above the fold (same behaviour
-// the home feed established for its pagination). Keeps every active filter.
+// the home feed established for its pagination). Keeps every active filter
+// and the search mode.
 function goToPage(pg: number | string) {
-	navigateTo({ query: { ...activeFilters.value, q: query.value, page: pg } });
+	// paginationTokens are numbers; the URL query is string-typed.
+	navigateTo({ query: pageQuery({ q: query.value, page: String(pg) }) });
 	scrollToPageTop();
 }
 </script>
@@ -304,21 +380,63 @@ function goToPage(pg: number | string) {
         </div>
       </div>
 
+      <!-- Search mode (round 366, DEC-405): posts (default) or comments.
+           ?type=comments lives in the URL, so a shared comment-search link
+           lands straight on the discussion mode. -->
+      <div
+        role="tablist"
+        :aria-label="t('search.mode.label')"
+        class="mb-6 flex w-fit items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-900"
+      >
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="mode === 'posts'"
+          :aria-pressed="mode === 'posts'"
+          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="mode === 'posts'
+            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+          @click="setMode('posts')"
+        >
+          <Icon icon="lucide:file-text" class="w-3.5 h-3.5 inline-block mr-1" />
+          {{ t('search.mode.posts') }}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="mode === 'comments'"
+          :aria-pressed="mode === 'comments'"
+          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="mode === 'comments'
+            ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+          @click="setMode('comments')"
+        >
+          <Icon icon="lucide:message-square" class="w-3.5 h-3.5 inline-block mr-1" />
+          {{ t('search.mode.comments') }}
+        </button>
+      </div>
+
       <!-- Header -->
       <div class="mb-8">
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
         >
-          {{ t("search.results.title") }}
+          {{ t(mode === "comments" ? "search.results.commentsTitle" : "search.results.title") }}
         </h1>
         <p class="text-gray-500 dark:text-gray-400 mt-2">
-          {{ t("search.results.summary", { query, count: searchResult?.pagination?.total || 0 }) }}
+          {{ t(
+            mode === "comments" ? "search.results.commentsSummary" : "search.results.summary",
+            { query, count: activeResult?.pagination?.total || 0 },
+          ) }}
         </p>
       </div>
 
       <!-- Filters (DEC-084): category/tag/date-range narrowing + sort. Values
-           live in the URL so a filtered search is shareable. -->
-      <div class="flex flex-wrap items-end gap-3 mb-6">
+           live in the URL so a filtered search is shareable. Posts-only — a
+           comment search has no taxonomy/sort/date dimensions. -->
+      <div v-if="mode === 'posts'" class="flex flex-wrap items-end gap-3 mb-6">
         <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t("search.filters.category") }}
           <select
@@ -391,7 +509,7 @@ function goToPage(pg: number | string) {
            tag fetch look like "there are no categories/tags" — say why the
            selects are thin and offer a retry. -->
       <p
-        v-if="taxonomyFailed"
+        v-if="mode === 'posts' && taxonomyFailed"
         role="alert"
         class="mb-6 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
       >
@@ -407,8 +525,9 @@ function goToPage(pg: number | string) {
       </p>
 
       <!-- Results area: only here do loading/error swap in, leaving the query
-           box and filters mounted (see note at the top of the results view). -->
-      <div v-if="pending" class="space-y-4">
+           box and filters mounted (see note at the top of the results view).
+           Which result set renders is decided by the active mode. -->
+      <div v-if="activePending" class="space-y-4">
         <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
         <div
           v-for="i in 3"
@@ -418,14 +537,15 @@ function goToPage(pg: number | string) {
       </div>
 
       <div
-        v-else-if="error"
+        v-else-if="activeError"
         class="text-center py-12 text-gray-500"
       >
         <p class="mb-4">{{ t("search.error") }}</p>
         <button
           type="button"
+          role="alert"
           class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retrySearch"
+          @click="mode === 'comments' ? retryComments() : retrySearch()"
         >
           {{ t("common.action.retry") }}
         </button>
@@ -433,7 +553,7 @@ function goToPage(pg: number | string) {
 
       <!-- Empty results -->
       <div
-        v-else-if="!searchResult?.items?.length"
+        v-else-if="!activeResult?.items?.length"
         class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
       >
         <div
@@ -467,58 +587,100 @@ function goToPage(pg: number | string) {
         v-else
         class="space-y-6"
       >
-        <div
-          v-for="post in searchResult.items"
-          :key="post.id"
-          class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-        >
-          <NuxtLink
-            :to="`/posts/${post.slug}`"
-            class="text-xl font-bold hover:text-blue-600"
+        <!-- POST results (default mode) -->
+        <template v-if="mode === 'posts'">
+          <div
+            v-for="post in activePosts"
+            :key="post.id"
+            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
           >
-            {{ post.title }}
-          </NuxtLink>
-          <p
-            v-if="post.snippet"
-            class="text-gray-600 mt-2 line-clamp-3"
-            v-html="sanitizeHtml(post.snippet)"
-          />
-          <p
-            v-else-if="post.excerpt"
-            class="text-gray-600 mt-2 line-clamp-2"
-          >
-            {{ post.excerpt }}
-          </p>
-          <div class="flex gap-4 mt-3 text-sm text-gray-500">
-            <span v-if="post.category">
-              {{ post.category.name }}
-            </span>
-            <span>
-              {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
-            </span>
-            <span>{{ post.views }} {{ t("search.posts.views") }}</span>
+            <NuxtLink
+              :to="`/posts/${post.slug}`"
+              class="text-xl font-bold hover:text-blue-600"
+            >
+              {{ post.title }}
+            </NuxtLink>
+            <p
+              v-if="post.snippet"
+              class="text-gray-600 mt-2 line-clamp-3"
+              v-html="sanitizeHtml(post.snippet)"
+            />
+            <p
+              v-else-if="post.excerpt"
+              class="text-gray-600 mt-2 line-clamp-2"
+            >
+              {{ post.excerpt }}
+            </p>
+            <div class="flex gap-4 mt-3 text-sm text-gray-500">
+              <span v-if="post.category">
+                {{ post.category.name }}
+              </span>
+              <span>
+                {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+              </span>
+              <span>{{ post.views }} {{ t("search.posts.views") }}</span>
+            </div>
           </div>
-        </div>
+        </template>
 
-        <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+        <!-- COMMENT results (round 366, DEC-405): a hit carries the post brief
+             and deep-links ONTO the comment (DEC-321), never just the post. -->
+        <template v-else>
+          <div
+            v-for="comment in activeComments"
+            :key="comment.id"
+            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+          >
+            <NuxtLink
+              :to="comment.post ? `/posts/${comment.post.slug}#comment-${comment.id}` : '#'"
+              class="inline-flex items-center gap-2 text-lg font-bold hover:text-emerald-600"
+            >
+              <Icon icon="lucide:message-square" class="w-4 h-4 text-emerald-500 shrink-0" />
+              {{ comment.post?.title ?? t("search.comments.orphanPost") }}
+            </NuxtLink>
+            <!-- The backend snippet is mark-safe (escaped before <mark>); go
+                 through sanitizeHtml like the post snippets. -->
+            <p
+              v-if="comment.snippet"
+              class="text-gray-600 mt-2 line-clamp-3"
+              v-html="sanitizeHtml(comment.snippet)"
+            />
+            <p v-else class="text-gray-600 mt-2 line-clamp-3">{{ comment.content }}</p>
+            <div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+              <span class="inline-flex items-center gap-1">
+                <Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
+                {{ comment.reader?.display_name ?? comment.nickname }}
+              </span>
+              <span>
+                {{ parseApiDate(comment.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+              </span>
+              <span class="text-emerald-500 dark:text-emerald-400">
+                {{ t("search.comments.jumpTo") }}
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Pagination (windowed with ellipsis, RIL TASK-083) — shared by both
+             modes; the active result set decides the page count. -->
         <div
-          v-if="searchResult.pagination.total_pages > 1"
+          v-if="activeResult!.pagination.total_pages > 1"
           class="flex justify-center gap-2 mt-8"
         >
           <button
             v-for="(pg, i) in paginationTokens"
             :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…' || pg === searchResult.pagination.page"
-            :aria-current="pg !== '…' && pg === searchResult.pagination.page ? 'page' : undefined"
+            :disabled="pg === '…' || pg === activeResult!.pagination.page"
+            :aria-current="pg !== '…' && pg === activeResult!.pagination.page ? 'page' : undefined"
             :class="[
               'px-3 py-1 rounded',
               pg === '…'
                 ? 'cursor-default text-gray-400'
-                : pg === searchResult.pagination.page
+                : pg === activeResult!.pagination.page
                   ? 'bg-blue-600 text-white cursor-default'
                   : 'border hover:bg-gray-50',
             ]"
-            @click="pg !== '…' && pg !== searchResult.pagination.page && goToPage(pg)"
+            @click="pg !== '…' && pg !== activeResult!.pagination.page && goToPage(pg)"
           >
             {{ pg }}
           </button>

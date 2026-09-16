@@ -12,9 +12,20 @@
 		},
 		"placeholder": "输入关键词...",
 		"error": "加载失败",
+		"mode": {
+			"label": "搜索范围",
+			"posts": "文章",
+			"comments": "评论"
+		},
 		"results": {
 			"title": "搜索结果",
-			"summary": "找到 \"{query}\" 相关文章 {count} 篇"
+			"summary": "找到 \"{query}\" 相关文章 {count} 篇",
+			"commentsTitle": "评论搜索结果",
+			"commentsSummary": "找到 \"{query}\" 相关评论 {count} 条"
+		},
+		"comments": {
+			"jumpTo": "跳到该评论",
+			"orphanPost": "评论"
 		},
 		"noResults": {
 			"title": "没有找到相关文章",

@@ -60,11 +60,36 @@ const mockEmptyResult = {
 	},
 };
 
+// A comment search hit (round 366, DEC-405): the Comment envelope + snippet +
+// post brief so a result can land ON the comment.
+const mockCommentResult = {
+	items: [
+		{
+			id: 77,
+			post_id: 9,
+			parent_id: null,
+			nickname: "Commenter One",
+			content: "the real answer is 42 in the discussion",
+			is_approved: true,
+			is_author_reply: false,
+			likes: 3,
+			created_at: "2024-03-01T09:00:00Z",
+			reader: null,
+			snippet: "the real answer is <mark>42</mark> in the discussion",
+			post: { id: 9, title: "Searchable Post", slug: "searchable-post" },
+		},
+	],
+	pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
+};
+
 async function mountSearchPage({
 	searchResult = mockSearchResult,
 	pending = false,
 	error = null,
 	searchResultRef = undefined,
+	commentResult = mockCommentResult,
+	commentPending = false,
+	commentError = null,
 	taxonomy = undefined,
 	routeQuery = { q: "test query" },
 }: {
@@ -72,6 +97,9 @@ async function mountSearchPage({
 	pending?: boolean;
 	error?: { message: string } | null;
 	searchResultRef?: { value: typeof mockSearchResult | null };
+	commentResult?: typeof mockCommentResult | null;
+	commentPending?: boolean;
+	commentError?: { message: string } | null;
 	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
 	taxonomy?: { categories?: { id: number; name: string }[]; tags?: { id: number; name: string }[] };
 	routeQuery?: Record<string, string>;
@@ -93,15 +121,33 @@ async function mountSearchPage({
 	// The search page uses `computed` without importing it (Nuxt auto-imports it)
 	vi.stubGlobal("computed", computed);
 
-	// Mock useFetch (used by useApi/useSearch internally)
+	// Mock useFetch (used by useApi/useSearch internally). The page drives TWO
+	// searches (round 366): posts via /api/search and comments via
+	// /api/search/comments — route each to its own mock payload.
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn(() => ({
-			data: (searchResultRef ?? ref(searchResult)) as unknown,
-			pending: ref(pending),
-			error: ref(error),
-			refresh: vi.fn(),
-		})),
+		vi.fn((url: unknown, _options: unknown) => {
+			const u =
+				typeof url === "function"
+					? url()
+					: typeof url === "string"
+						? url
+						: ((url as { value?: string }).value ?? "");
+			if (String(u).includes("/api/search/comments")) {
+				return {
+					data: ref(commentResult) as unknown,
+					pending: ref(commentPending),
+					error: ref(commentError),
+					refresh: vi.fn(),
+				};
+			}
+			return {
+				data: (searchResultRef ?? ref(searchResult)) as unknown,
+				pending: ref(pending),
+				error: ref(error),
+				refresh: vi.fn(),
+			};
+		}),
 	);
 
 	// The filter bar loads the category/tag lists via $fetch on mount (DEC-084);
@@ -559,8 +605,9 @@ describe("Search Page", () => {
 			await pageButtons[1].trigger("click");
 
 			// Verify navigateTo was called with the search query and page 2
+			// (the numeric token is stringified for the URL query).
 			expect(navigateToMock).toHaveBeenCalledWith({
-				query: { q: "test query", page: 2 },
+				query: { q: "test query", page: "2" },
 			});
 		});
 	});
@@ -860,5 +907,75 @@ describe("Search Page", () => {
 			const head = seoHead();
 			expect(head.path).not.toContain("q=");
 		});
+	});
+});
+
+describe("Comment search mode (round 366, DEC-405)", () => {
+	it("renders both mode tabs with posts selected by default", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" } });
+		const tabs = wrapper.findAll('[role="tab"]');
+		expect(tabs.length).toBeGreaterThanOrEqual(2);
+		// The first tab is posts (default mode) → selected.
+		expect(tabs[0].attributes("aria-selected")).toBe("true");
+		expect(tabs[1].attributes("aria-selected")).toBe("false");
+	});
+
+	it("renders comment results with a deep link onto the comment when ?type=comments", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "42", type: "comments" } });
+		// The comment hit renders its highlighted snippet, commenter, and the
+		// post brief — and the card deep-links ONTO the comment (DEC-321).
+		expect(wrapper.text()).toContain("Searchable Post");
+		expect(wrapper.text()).toContain("Commenter One");
+		expect(wrapper.text()).toContain("real answer is 42");
+		const link = wrapper.find('a[href="/posts/searchable-post#comment-77"]');
+		expect(link.exists()).toBe(true);
+		// The posts list is NOT rendered in comments mode.
+		expect(wrapper.text()).not.toContain("Search Result Post");
+	});
+
+	it("shows the empty-results state and hides post filters in comments mode", async () => {
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "zzz", type: "comments" },
+			commentResult: {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 0 },
+			},
+		});
+		expect(wrapper.text()).toContain("没有找到相关文章");
+		// Category/tag/sort/date filters are posts-only (a comment search has
+		// no taxonomy/date dimensions).
+		expect(wrapper.text()).not.toContain("分类");
+		expect(wrapper.text()).not.toContain("排序");
+	});
+
+	it("switching to the comments tab navigates to the comments-mode URL", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" } });
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		const commentsTab = wrapper.findAll('[role="tab"]').find((t) => t.text().includes("评论"));
+		expect(commentsTab).toBeDefined();
+		await commentsTab?.trigger("click");
+		await flushPromises();
+		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "nuxt", type: "comments", page: "1" } });
+	});
+
+	it("keeps the comments mode when paging a comment result", async () => {
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "42", type: "comments", page: "1" },
+			commentResult: {
+				...mockCommentResult,
+				pagination: { total: 11, page: 1, limit: 10, total_pages: 2 },
+			},
+		});
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		// A page turn must preserve ?type=comments (the active mode lives in the
+		// URL — dropping it would silently fall back to post search).
+		const page2 = wrapper.findAll("button").find((b) => b.text().trim() === "2");
+		expect(page2).toBeDefined();
+		await page2?.trigger("click");
+		await flushPromises();
+		// goToPage stringifies the numeric token for the URL query.
+		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "42", type: "comments", page: "2" } });
 	});
 });

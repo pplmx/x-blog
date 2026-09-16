@@ -12,9 +12,20 @@
 		},
 		"placeholder": "Enter keywords...",
 		"error": "Failed to load",
+		"mode": {
+			"label": "What to search",
+			"posts": "Articles",
+			"comments": "Comments"
+		},
 		"results": {
 			"title": "Search Results",
-			"summary": "Found {count} articles matching \"{query}\""
+			"summary": "Found {count} articles matching \"{query}\"",
+			"commentsTitle": "Comment Search Results",
+			"commentsSummary": "Found {count} comments matching \"{query}\""
+		},
+		"comments": {
+			"jumpTo": "Jump to the comment",
+			"orphanPost": "Comment"
 		},
 		"noResults": {
 			"title": "No matching articles found",
