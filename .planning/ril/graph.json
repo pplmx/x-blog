@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 375,
+  "round": 376,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-17T00:11:16+00:00",
+  "updated_at": "2026-09-17T00:26:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27765,15 +27765,50 @@
     "TASK-435": {
       "id": "TASK-435",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "abandoned",
+      "version": 2,
       "created_at": "2026-09-17T00:11:16+00:00",
-      "updated_at": "2026-09-17T00:11:16+00:00",
+      "updated_at": "2026-09-17T00:24:46+00:00",
       "touched_round": 375,
       "category": "core-feature",
       "severity": "medium",
       "title": "Subscribed-discussions list + management on /account (TASK-435)",
       "detail": "Backend: GET /me/thread-subscriptions (paginated, publicly-visible subscribed posts, unsubscribe_by via DELETE /me/thread-subscriptions/{post_id} idempotent 204). Frontend: 'Subscribed discussions' section on /account listing post title/thread + one-click unsubscribe (optimistic, single-flight); zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
+    },
+    "EV-281": {
+      "id": "EV-281",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:24:46+00:00",
+      "updated_at": "2026-09-17T00:24:46+00:00",
+      "touched_round": 375,
+      "source": "grep app/routers/reader.py:1609 GET /me/post-subscriptions; frontend/aura/api/reader/subscriptions.ts + app/pages/account.vue Followed discussions section",
+      "detail": "The DEC-419 premise was refuted during EXECUTE: a subscribed-discussions management surface already ships - GET /api/reader/me/post-subscriptions lists followed threads (publicly-visible only, paginated) and /account has a Followed discussions list with one-click unsubscribe (unsubscribeFromPostThread = DELETE /api/posts/{id}/subscription). The duplicate GET /me/thread-subscriptions endpoint and its tests were reverted (git revert bb47fabc).",
+      "confidence": 1.0
+    },
+    "DEC-420": {
+      "id": "DEC-420",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:24:46+00:00",
+      "updated_at": "2026-09-17T00:24:46+00:00",
+      "touched_round": 375,
+      "title": "Round 373 abandoned: subscribed-discussions management already exists (DEC-420)",
+      "rationale": "Gap analysis for round 373 proposed a subscribed-discussions list + management because 'every other followable identity has a list but comment threads do not'. That premise was false and refuted at EXECUTE: GET /api/reader/me/post-subscriptions (reader.py:1609) already lists followed threads and the /account page already has a Followed discussions section with one-click unsubscribe. The duplicate endpoint + tests were written and then reverted - the redundancy was not shipped. Lesson: verify the target surface end-to-end (backend + frontend + account page) BEFORE opening scope; a grep for the management UI would have caught this.",
+      "alternatives_rejected": "Shipping /me/thread-subscriptions as-is rejected - a redundant second endpoint for the same data violates the no-duplicate principle and would fork the account page's data source."
+    },
+    "HYP-022": {
+      "id": "HYP-022",
+      "type": "hypothesis",
+      "status": "superseded",
+      "version": 2,
+      "created_at": "2026-09-17T00:25:22+00:00",
+      "updated_at": "2026-09-17T00:26:42+00:00",
+      "touched_round": 376,
+      "confidence": 0.1,
+      "title": "Comment-thread subscriptions lack a management surface (invalidated)"
     }
   },
   "edges": [
@@ -41340,6 +41375,18 @@
       "to": "TASK-435",
       "type": "governs",
       "created_at": "2026-09-17T00:11:16+00:00"
+    },
+    {
+      "from": "DEC-420",
+      "to": "DEC-419",
+      "type": "supersedes",
+      "created_at": "2026-09-17T00:24:46+00:00"
+    },
+    {
+      "from": "EV-281",
+      "to": "HYP-022",
+      "type": "refutes",
+      "created_at": "2026-09-17T00:25:58+00:00"
     }
   ]
 }
