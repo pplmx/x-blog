@@ -1773,6 +1773,53 @@ def unlike_post(
     return None
 
 
+@router.get("/me/thread-subscriptions", response_model=schemas.PostListResponse)
+def list_thread_subscriptions(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: PageInt = 1,
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """The posts whose comment threads the reader follows (publicly-visible
+    only), newest-follow first, paginated (DEC-419/TASK-435).
+
+    The management list every other followable identity already had on /account
+    (categories/series/tags/authors/readers): thread subscriptions (DEC-078)
+    were followable on the post page but not listable or prunable in one place.
+    Same non-leak invariant as every follow list — a followed post that became
+    a draft/scheduled stops appearing (the row is kept; it reappears when the
+    post is public again).
+    """
+    posts, total = crud.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return schemas.PostListResponse.model_validate(
+        {
+            "items": [schemas.PostList.model_validate(p) for p in posts],
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            },
+        }
+    )
+
+
+@router.delete("/me/thread-subscriptions/{post_id}", status_code=204)
+def unsubscribe_thread(
+    post_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unfollow a post's comment thread from the reader's management list
+    (DEC-419/TASK-435). Idempotent 204 like every other unfollow: deleting a
+    follow that isn't present (or a post no longer public) is a no-op.
+    Scoped to the calling reader — another reader's follow is untouched.
+    """
+    crud.remove_comment_subscription(db, current_reader.id, post_id)
+    return None
+
+
 # Bookmark folders / collections (DEC-120/TASK-172)
 # ---------------------------------------------------------------------------
 
