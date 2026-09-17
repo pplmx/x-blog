@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 376,
+  "round": 377,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-17T00:26:42+00:00",
+  "updated_at": "2026-09-17T00:33:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27809,6 +27809,30 @@
       "touched_round": 376,
       "confidence": 0.1,
       "title": "Comment-thread subscriptions lack a management surface (invalidated)"
+    },
+    "EV-282": {
+      "id": "EV-282",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:33:15+00:00",
+      "updated_at": "2026-09-17T00:33:15+00:00",
+      "touched_round": 376,
+      "source": "verification sweep round 374: frontend/aura app/ components/ + api/ + backend routers",
+      "detail": "No value-gate-passing gap found. Verified already-shipped: thread-subscription management (/me/post-subscriptions + account page), comment flagging (CommentList + admin), admin moderation (search/filter/batch/superuser), post share/copy (ShareButtons), reading time, notifications mark-all-read, push-device management, bookmark/like/thread subscribe buttons, 2FA/export/email-change/password.",
+      "confidence": 1.0
+    },
+    "DEC-421": {
+      "id": "DEC-421",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:33:15+00:00",
+      "updated_at": "2026-09-17T00:33:15+00:00",
+      "touched_round": 376,
+      "title": "converged-idle: reader + operator feature surface is comprehensive (X-DEC)",
+      "rationale": "Feature-evolution reached the QUIESCE condition. Rounds 369-372 delivered my-comments search, liked-posts search, in-place unlike, and reading insights. Round 373's candidate (thread-subscription management) was refuted at EXECUTE - the surface already ships (/me/post-subscriptions + /account), and the duplicate endpoint + tests were reverted. Round 374's verification sweep (frontend app/ + components/ + backend routers) found no further value-gate-passing candidate: flagging, admin batch moderation, share/copy, reading time, mark-all-read, push-device management, and the reader follow lists all exist. Shipping more would be feature padding, not user value. Alternatives rejected: mark-all-read (exists), push-device mgmt (exists), thread list (exists), comment flags (exists), admin search/batch (exists), post share/reading-time (exists), reader insights (shipped round 372). The loop stops; it reactivates on a new operator direction (supersedes decision) or a real external signal (new issue, material requirement).",
+      "alternatives_rejected": "Manufacturing a thin convenience feature (e.g. notification search, manual bookmark ordering, dark-mode override) explicitly rejected - each is a single-button patch below the value gate, and accumulating them is the anti-pattern this decision exists to stop."
     }
   },
   "edges": [
