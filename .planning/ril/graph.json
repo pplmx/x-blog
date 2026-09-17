@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 374,
+  "round": 375,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-16T23:22:03+00:00",
+  "updated_at": "2026-09-17T00:05:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27672,15 +27672,83 @@
     "TASK-434": {
       "id": "TASK-434",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T23:22:03+00:00",
-      "updated_at": "2026-09-16T23:22:03+00:00",
+      "updated_at": "2026-09-17T00:05:43+00:00",
       "touched_round": 374,
       "category": "core-feature",
       "severity": "medium",
       "title": "Reading insights aggregate + /history panel (TASK-434)",
       "detail": "Backend: GET /api/reader/me/history/insights returning grand_total distinct publicly-visible reads, last_30_days distinct reads, top_categories [{name,count}] top 5. Frontend: compact insights row on /history (3 numbers + top-category chips), only when signed-in server stats are shown; zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
+    },
+    "CHG-671": {
+      "id": "CHG-671",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:01+00:00",
+      "updated_at": "2026-09-17T00:05:01+00:00",
+      "touched_round": 374,
+      "commit": "c7913d2f",
+      "detail": "Backend /me/history/insights: grand_total + last_30_days distinct publicly-visible reads, top_categories top 5; same visibility WHERE as list_reader_history"
+    },
+    "CHG-672": {
+      "id": "CHG-672",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:01+00:00",
+      "updated_at": "2026-09-17T00:05:01+00:00",
+      "touched_round": 374,
+      "commit": "94e773a9",
+      "detail": "Frontend insights panel on /history: last-30-days card + top-category chips beside the heatmap; best-effort parallel fetch hidden for guests/failure; zh/en keys"
+    },
+    "CHG-673": {
+      "id": "CHG-673",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:01+00:00",
+      "updated_at": "2026-09-17T00:05:01+00:00",
+      "touched_round": 374,
+      "commit": "23f0c1d8",
+      "detail": "e2e journey: sign in, seed views, /history shows the 30-day count + category chips"
+    },
+    "CHG-674": {
+      "id": "CHG-674",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:01+00:00",
+      "updated_at": "2026-09-17T00:05:01+00:00",
+      "touched_round": 374,
+      "commit": "da6313dd",
+      "detail": "README + CHANGELOG (en/zh) streak bullet, insights API table row, round-372 entry"
+    },
+    "EV-280": {
+      "id": "EV-280",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:02+00:00",
+      "updated_at": "2026-09-17T00:05:02+00:00",
+      "touched_round": 374,
+      "source": "pytest 1774 @93.74%; vitest 2304; typecheck+lint clean; e2e reading-insights 1/1 + history/history-search 2/2; ruff gate green (DEC-417, TASK-434)",
+      "detail": "round 372 verify gates",
+      "confidence": 1.0
+    },
+    "DEC-418": {
+      "id": "DEC-418",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:05:43+00:00",
+      "updated_at": "2026-09-17T00:05:43+00:00",
+      "touched_round": 374,
+      "title": "Round 372 reading insights closed (DEC-418)",
+      "rationale": "TASK-434 delivered end-to-end: backend aggregate endpoint + frontend /history panel + tests + e2e + docs; all VERIFY gates green (1774 backend @93.74%, 2304 vitest, e2e 3/3).",
+      "alternatives_rejected": "None - closed as planned; no scope change."
     }
   },
   "edges": [
@@ -41211,6 +41279,36 @@
       "to": "TASK-434",
       "type": "governs",
       "created_at": "2026-09-16T23:22:03+00:00"
+    },
+    {
+      "from": "CHG-671",
+      "to": "TASK-434",
+      "type": "implements",
+      "created_at": "2026-09-17T00:05:02+00:00"
+    },
+    {
+      "from": "CHG-672",
+      "to": "TASK-434",
+      "type": "implements",
+      "created_at": "2026-09-17T00:05:02+00:00"
+    },
+    {
+      "from": "CHG-673",
+      "to": "TASK-434",
+      "type": "implements",
+      "created_at": "2026-09-17T00:05:02+00:00"
+    },
+    {
+      "from": "CHG-674",
+      "to": "TASK-434",
+      "type": "implements",
+      "created_at": "2026-09-17T00:05:02+00:00"
+    },
+    {
+      "from": "DEC-418",
+      "to": "DEC-417",
+      "type": "supersedes",
+      "created_at": "2026-09-17T00:05:43+00:00"
     }
   ]
 }
