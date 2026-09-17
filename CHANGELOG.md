@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📊 **Reading insights on `/history` (round 372)**: the streak and 52-week
+  heatmap (DEC-316) showed the *calendar shape* of reading — but a reader
+  wondering "how many posts have I read in the last month" or "which topics do
+  I actually read most" had no aggregate to look at, only the raw row list. A
+  new `GET /api/reader/me/history/insights` returns the *content shape*:
+  distinct publicly-visible posts read all-time and in the trailing 30 days,
+  plus the most-read categories (top 5 by distinct post count, one row per
+  reader-post so repeat visits on the same post count once). The `/history`
+  page renders a compact insights panel beside the heatmap — a "read in the
+  last 30 days" card and most-read-category chips — for signed-in readers
+  only, fetched best-effort in parallel (hidden for guests and on any failure,
+  never blocking the list). Same public-visibility invariant as every history
+  read path: un-published and scheduled posts neither leak nor count.
+  1774 backend tests @93.74% (+7), 2304 frontend tests, and a new
+  reading-insights e2e journey all green.
 - 💔 **In-place unlike on `/liked` (round 371)**: every reader-owned list
   surface had a management control except the liked-posts page — bookmarks has
   per-row remove and the To-read/Done toggle, but taking a like back meant
