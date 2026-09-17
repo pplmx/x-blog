@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 375,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-17T00:05:43+00:00",
+  "updated_at": "2026-09-17T00:11:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27749,6 +27749,31 @@
       "title": "Round 372 reading insights closed (DEC-418)",
       "rationale": "TASK-434 delivered end-to-end: backend aggregate endpoint + frontend /history panel + tests + e2e + docs; all VERIFY gates green (1774 backend @93.74%, 2304 vitest, e2e 3/3).",
       "alternatives_rejected": "None - closed as planned; no scope change."
+    },
+    "DEC-419": {
+      "id": "DEC-419",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:11:16+00:00",
+      "updated_at": "2026-09-17T00:11:16+00:00",
+      "touched_round": 375,
+      "title": "Subscribed-discussions management: list + unsubscribe thread follows (DEC-419)",
+      "rationale": "Every followable identity has a management list on /account (categories, series, tags, authors, readers) except comment-thread subscriptions: a reader who followed several post discussions (DEC-078) has no way to see what they are following or prune the ones they lost interest in — unsubscribing means visiting each post. The backend has the model (comment_subscriptions) and post-scoped subscribe/unsubscribe but no reader-scoped list. Add GET /api/reader/me/thread-subscriptions (paginated, publicly-visible posts only, same invariant as bookmarks) + DELETE /api/reader/me/thread-subscriptions/{post_id} (idempotent 204), and a 'Subscribed discussions' list on /account with one-click unsubscribe.",
+      "alternatives_rejected": "Notifications mark-all-read and push-device management both already shipped (checked); putting the list on the notifications page rejected - /account is where every other follow list lives, thread subscriptions are follows of a discussion."
+    },
+    "TASK-435": {
+      "id": "TASK-435",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T00:11:16+00:00",
+      "updated_at": "2026-09-17T00:11:16+00:00",
+      "touched_round": 375,
+      "category": "core-feature",
+      "severity": "medium",
+      "title": "Subscribed-discussions list + management on /account (TASK-435)",
+      "detail": "Backend: GET /me/thread-subscriptions (paginated, publicly-visible subscribed posts, unsubscribe_by via DELETE /me/thread-subscriptions/{post_id} idempotent 204). Frontend: 'Subscribed discussions' section on /account listing post title/thread + one-click unsubscribe (optimistic, single-flight); zh+en keys. Vertical slice: backend + tests + frontend + page tests + e2e + docs."
     }
   },
   "edges": [
@@ -41309,6 +41334,12 @@
       "to": "DEC-417",
       "type": "supersedes",
       "created_at": "2026-09-17T00:05:43+00:00"
+    },
+    {
+      "from": "DEC-419",
+      "to": "TASK-435",
+      "type": "governs",
+      "created_at": "2026-09-17T00:11:16+00:00"
     }
   ]
 }
