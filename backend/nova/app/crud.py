@@ -2294,8 +2294,14 @@ def record_reading_history(
     top) and clears the saved offset.
     """
     existing = get_reading_history(db, reader_id, post_id)
+    # Denormalized reading-time estimate (ISS-451): recomputed on every upsert
+    # so it tracks the content the reader just saw, letting /me/history/stats
+    # SUM it in SQL instead of fetching full post content per row.
+    post = db.get(models.Post, post_id)
+    minutes = schemas.reading_minutes(post.content) if post else 1
     if existing:
         existing.viewed_at = datetime.now(UTC)
+        existing.reading_minutes = minutes
         if scroll_position is not None:
             existing.scroll_position = scroll_position
         if scroll_fraction is not None:
@@ -2308,6 +2314,7 @@ def record_reading_history(
         reader_id=reader_id,
         post_id=post_id,
         viewed_at=datetime.now(UTC),
+        reading_minutes=minutes,
         scroll_position=scroll_position,
         scroll_fraction=scroll_fraction,
     )
@@ -2418,6 +2425,10 @@ def _import_reader_history_pass(
         if row is not None:
             if viewed_at is not None and (row.viewed_at is None or viewed_at > row.viewed_at):
                 row.viewed_at = viewed_at
+                # The reader re-saw the post (and possibly its edited content):
+                # refresh the denormalized estimate like record_reading_history
+                # does (ISS-451).
+                row.reading_minutes = schemas.reading_minutes(post.content)
                 db.add(row)
             imported += 1
             continue
@@ -2426,6 +2437,7 @@ def _import_reader_history_pass(
                 reader_id=reader_id,
                 post_id=post.id,
                 viewed_at=viewed_at or utc_now_naive(),
+                reading_minutes=schemas.reading_minutes(post.content),
             )
         )
         imported += 1
@@ -2626,37 +2638,70 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
     read and the "today" window to the reader's local date; without it the
     legacy UTC bucketing is used. Uses the same public-visibility filter as
     the history list so un-published posts don't leak or count.
-    """
-    # joinedload category/tags like list_reader_history: the recent items are
-    # serialized via ReadingHistoryItem.from_post which reads post.category and
-    # post.tags — without eager loading that's a lazy SELECT per recent row on
-    # every /history page view (round-292 deep-dive).
-    rows = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
-        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(models.ReadingHistory.reader_id == reader_id)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
-        .all()
-    )
-    visible = [(post, viewed_at) for post, viewed_at in rows if is_publicly_visible(post)]
-    total_minutes = sum(schemas.reading_minutes(post.content or "") for post, _ in visible)
 
+    Cost (ISS-451): the summary used to scan the reader's ENTIRE history and
+    materialize every post row — including `content` — to compute minutes in
+    Python (multi-MB per pageview at scale). It now aggregates the denormalized
+    ``reading_history.reading_minutes`` in SQL and only pulls narrow
+    (viewed_at) timestamps for the streak/activity calendar, so no post content
+    ever leaves the database here.
+    """
+    now = utc_now_naive()
+    # Public-visibility filter pushed into SQL (was a per-object Python check):
+    # published and, when scheduled, already published — matches
+    # is_publicly_visible semantics so unpublished posts don't count or leak.
+    visibility = [
+        models.Post.published.is_(True),
+        or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    ]
+    base = (
+        db.query(models.ReadingHistory)
+        .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
+        .filter(models.ReadingHistory.reader_id == reader_id, *visibility)
+    )
+
+    # total_posts / total_reading_minutes / last_viewed_at: one aggregate row.
+    aggregate = base.with_entities(
+        func.count(),
+        func.coalesce(func.sum(models.ReadingHistory.reading_minutes), 0),
+        func.max(models.ReadingHistory.viewed_at),
+    ).first()
+    count, total_minutes, last_viewed_at = aggregate or (0, 0, None)
+    total_posts = int(count or 0)
+    total_minutes = int(total_minutes or 0)
+
+    # Streak/activity calendar: narrow per-day read counts from the history
+    # timestamps only (no post rows, no content).
+    viewed_rows = base.with_entities(models.ReadingHistory.viewed_at).filter(
+        models.ReadingHistory.viewed_at.is_not(None)
+    )
     today = _local_today(tz)
     counts: dict = {}
     dates: set = set()
-    for _post, viewed_at in visible:
-        if viewed_at is None:
-            continue
+    for (viewed_at,) in viewed_rows:
         d = _read_local_date(viewed_at, tz)
         counts[d] = counts.get(d, 0) + 1
         dates.add(d)
 
+    # recent: bounded LIMIT with eager category/tags — the recent items are
+    # serialized via ReadingHistoryItem.from_post which reads post.category and
+    # post.tags, so without eager loading that's a lazy SELECT per recent row
+    # (round-292 deep-dive).
+    recent = (
+        db.query(models.Post, models.ReadingHistory.viewed_at)
+        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+        .filter(models.ReadingHistory.reader_id == reader_id, *visibility)
+        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
+        .limit(recent_limit)
+        .all()
+    )
+
     return {
-        "total_posts": len(visible),
+        "total_posts": total_posts,
         "total_reading_minutes": total_minutes,
-        "last_viewed_at": visible[0][1] if visible else None,
-        "recent": visible[:recent_limit],
+        "last_viewed_at": last_viewed_at,
+        "recent": recent,
         "current_streak": _current_streak(dates, today=today),
         "longest_streak": _longest_streak(dates),
         "activity": _day_activity(counts, today=today),

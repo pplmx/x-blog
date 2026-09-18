@@ -317,6 +317,30 @@ class TestReadingStats:
         assert client.get(self.STATS, headers=_auth(t1)).json()["total_posts"] == 1
         assert client.get(self.STATS, headers=_auth(t2)).json()["total_posts"] == 0
 
+    def test_stats_sums_stored_minutes_not_live_content(self, client, db_session):
+        """ISS-451 regression: total_reading_minutes is a SQL aggregate of the
+        denormalized reading_history.reading_minutes column (the estimate as of
+        the last read), NOT a live scan of post content — so editing a post
+        after it was read leaves the reader's aggregate unchanged, and the
+        stats page never materializes content."""
+        from app.crud import update_post
+        from app.schemas import PostUpdate, reading_minutes
+
+        token = _token(client, email="minutes@example.com")
+        long_content = " ".join(f"word{i}" for i in range(460))  # round(460/200) -> 2 min
+        assert reading_minutes(long_content) == 2
+        post = _create_post(db_session, content=long_content)
+
+        client.post(f"{HISTORY}/{post.id}", headers=_auth(token))
+        body = client.get(self.STATS, headers=_auth(token)).json()
+        assert body["total_reading_minutes"] == 2
+
+        # Post shrinks to a 1-minute read after the reader already viewed it:
+        # the stored read-time estimate (2) must win.
+        update_post(db_session, post.id, PostUpdate(content="now tiny"))
+        body = client.get(self.STATS, headers=_auth(token)).json()
+        assert body["total_reading_minutes"] == 2
+
 
 class TestScrollPosition:
     """Per-post resume position (DEC-167, TASK-200).

@@ -507,6 +507,14 @@ class ReadingHistory(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     viewed_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    # Denormalized reading-time estimate (ISS-451): `reading_minutes(content)`
+    # as of the reader's last view of the post, maintained by the history
+    # write paths. Without it, /me/history/stats materialized every read row's
+    # full content per pageview (multi-MB at scale); with it the summary is
+    # pure SQL aggregation. Recomputed on every upsert so an edited post's
+    # minutes track the content actually last read. server_default keeps
+    # pre-migration rows valid until the data backfill re-computes them.
+    reading_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1", default=1)
     # Per-post resume position (DEC-167, TASK-200): last saved vertical scroll
     # offset in px, so a returning reader can be dropped back where they left
     # off. Nullable + additive. Updated in place by the record endpoint only

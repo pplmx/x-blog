@@ -1227,6 +1227,9 @@ class TestReaderUpsertIdempotency:
         ]
         existing = MagicMock()
         mock_db.query.return_value.filter.return_value.first.side_effect = [None, existing]
+        # The denormalized reading_minutes estimate (ISS-451) reads the post's
+        # content via db.get; a short post keeps minutes == 1.
+        mock_db.get.return_value = models.Post(content="# Hello")
 
         row, created = crud.record_reading_history(mock_db, 1, 2)
 
