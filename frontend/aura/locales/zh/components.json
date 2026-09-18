@@ -68,7 +68,14 @@
 			"liked": "已点赞",
 			"likeError": "点赞失败，请重试。",
 			"editLabel": "编辑你的评论",
-			"readerNoName": "读者"
+			"readerNoName": "读者",
+			"guestFollow": {
+				"label": "用邮箱订阅本讨论",
+				"placeholder": "you@example.com",
+				"subscribe": "订阅",
+				"sent": "请查收邮箱确认订阅",
+				"error": "订阅失败，请稍后再试"
+			}
 		},
 		"threadSubscribe": {
 			"follow": "订阅讨论",

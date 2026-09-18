@@ -102,6 +102,21 @@
 				"network": "网络异常，请稍后重试。"
 			},
 			"backToAccount": "返回账号设置"
+		},
+		"commentSubscribe": {
+			"confirmSeoTitle": "确认订阅讨论",
+			"confirmSeoDesc": "确认通过邮件订阅一篇讨论。",
+			"confirmTitle": "已订阅该讨论",
+			"confirmSuccess": "这篇讨论每当有新评论通过审核时，你都会收到一封邮件。",
+			"confirmInvalid": "这个确认链接无效，或已经被使用过。",
+			"confirmProcessing": "正在确认…",
+			"unsubSeoTitle": "取消订阅讨论邮件",
+			"unsubSeoDesc": "停止通过邮件订阅一篇讨论。",
+			"unsubTitle": "已取消订阅",
+			"unsubSuccess": "这篇讨论以后有新评论时，你将不再收到邮件。",
+			"unsubInvalid": "这个退订链接无效，或已经被使用过。",
+			"unsubProcessing": "正在取消订阅…",
+			"networkError": "网络错误，请稍后重试。"
 		}
 	}
 }

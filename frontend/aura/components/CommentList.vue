@@ -3,8 +3,11 @@
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('components.commentList.title') }} ({{ total }})</h2>
       <!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
-           to this discussion and get a push on each newly approved comment. -->
+           to this discussion and get a push on each newly approved comment.
+           Guests get the email variant (round 380, DEC-427) — it renders
+           nothing for signed-in readers, so the two never overlap. -->
       <ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
+      <GuestThreadFollow v-if="props.postId" :post-id="props.postId" />
     </div>
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
     <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>

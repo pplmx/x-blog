@@ -78,6 +78,43 @@ export function unsubscribeGuestReplyNotify(token: string): Promise<{
 	});
 }
 
+/**
+ * Subscribe an ANONYMOUS visitor to a post's comment thread by email
+ * (POST /api/posts/{postId}/comment-subscription/guest, DEC-427/TASK-438).
+ * Auth-free, 202, generic no-oracle response; a double opt-in email is sent
+ * and nothing else until the confirmation link is clicked. Guests only — a
+ * signed-in reader has the push thread-follow instead.
+ */
+export function subscribeGuestThread(
+	postId: number,
+	email: string,
+): Promise<{ subscribed: boolean }> {
+	return command<{ subscribed: boolean }>(`/api/posts/${postId}/comment-subscription/guest`, {
+		method: "POST",
+		body: { email },
+	});
+}
+
+/** Confirm a guest thread-follow via its emailed token (idempotent 200;
+ *  404 = unknown token). POST /api/posts/comment-subscription/guest/confirm. */
+export function confirmGuestThreadSubscription(token: string): Promise<{ confirmed: boolean }> {
+	return command<{ confirmed: boolean }>("/api/posts/comment-subscription/guest/confirm", {
+		method: "POST",
+		body: { token },
+	});
+}
+
+/** Flip a guest thread-follow's consent off via its emailed token (idempotent
+ *  200; 404 = unknown token). POST /api/posts/comment-subscription/guest/unsubscribe. */
+export function unsubscribeGuestThreadSubscription(
+	token: string,
+): Promise<{ unsubscribed: boolean }> {
+	return command<{ unsubscribed: boolean }>("/api/posts/comment-subscription/guest/unsubscribe", {
+		method: "POST",
+		body: { token },
+	});
+}
+
 /** One entry on the site-wide discussion feed (round 367, DEC-407). */
 export interface DiscussionFeedItem {
 	id: number;

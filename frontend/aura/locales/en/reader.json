@@ -102,6 +102,21 @@
 				"network": "A network error occurred. Please try again."
 			},
 			"backToAccount": "Back to account settings"
+		},
+		"commentSubscribe": {
+			"confirmSeoTitle": "Confirm discussion follow",
+			"confirmSeoDesc": "Confirm following a discussion by email.",
+			"confirmTitle": "You're following this discussion",
+			"confirmSuccess": "You'll receive an email whenever a new comment is approved on this thread.",
+			"confirmInvalid": "This confirmation link is not valid or has already been used.",
+			"confirmProcessing": "Confirming…",
+			"unsubSeoTitle": "Unsubscribe from discussion emails",
+			"unsubSeoDesc": "Stop following a discussion by email.",
+			"unsubTitle": "Unsubscribed",
+			"unsubSuccess": "You'll no longer receive emails when this discussion gets new comments.",
+			"unsubInvalid": "This unsubscribe link is not valid or has already been used.",
+			"unsubProcessing": "Unsubscribing…",
+			"networkError": "A network error occurred. Please try again."
 		}
 	}
 }
