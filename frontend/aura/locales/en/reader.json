@@ -35,6 +35,8 @@
 		"nav": {
 			"signIn": "Sign in",
 			"signOut": "Sign out",
+			"groupMy": "My",
+			"viewMyProfile": "My public profile",
 			"bookmarks": "Bookmarks",
 			"comments": "My comments",
 			"account": "Account",

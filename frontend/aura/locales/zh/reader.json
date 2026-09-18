@@ -35,6 +35,8 @@
 		"nav": {
 			"signIn": "登录",
 			"signOut": "退出登录",
+			"groupMy": "我的",
+			"viewMyProfile": "我的公开主页",
 			"bookmarks": "收藏",
 			"comments": "我的评论",
 			"account": "账号",

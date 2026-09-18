@@ -37,13 +37,10 @@ test.describe("Reading history page (TASK-169)", () => {
 		await postLink.click();
 		await page.waitForURL(/\/posts\//);
 
-		// Reach the history page through the nav entry link.
-		const navHistory = page.locator("nav a", { hasText: "阅读历史" }).first();
-		if (await navHistory.isVisible()) {
-			await navHistory.click();
-		} else {
-			await page.goto("/history");
-		}
+		// Reach the history page. This spec is a GUEST journey, and the personal
+		// links now live in the signed-in "My" avatar menu (round 382) — guests
+		// have no header entry, so navigate directly.
+		await page.goto("/history");
 		await page.waitForURL("**/history");
 		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
 

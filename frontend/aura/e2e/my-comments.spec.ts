@@ -83,14 +83,11 @@ test.describe("Reader my-comments journey", () => {
 		// instead of relying on network ordering — capture the pending comment's
 		// server id via the admin list after approval below.
 
-		// Open /comments from the header nav: pending status is author-visible.
-		await page
-			.locator('header a[href="/comments"]')
-			.first()
-			.click()
-			.catch(async () => {
-				await page.goto("/comments");
-			});
+		// Open /comments from the "My" avatar menu (round 382: personal links
+		// live in the avatar dropdown, not as flat header links): pending status
+		// is author-visible.
+		await page.getByRole("button", { name: "我的" }).click();
+		await page.getByRole("menuitem", { name: "我的评论" }).click();
 		await page.waitForURL("**/comments");
 		await expect(page.locator("h1", { hasText: "我的评论" })).toBeVisible({ timeout: 10000 });
 		// Target the per-comment pending badge by its tooltip title — a bare

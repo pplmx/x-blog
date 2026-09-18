@@ -5,40 +5,44 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 const route = useRoute();
 const { t } = useLang();
 const isHome = computed(() => route.path === "/");
-const { isAuthenticated, logout } = useReaderAuth();
+// `reader` drives the mobile "我的" group's public-profile link (round 352);
+// `logout` signs out from the same group.
+const { isAuthenticated, reader, logout } = useReaderAuth();
 
-const navLinks = [
+// Site content navigation — always visible, identical for guests and signed-in
+// readers so the bar width is stable across auth states (round 382, top-nav
+// "My" menu redesign). Search is the ever-present HeaderSearch widget, so the
+// standalone /search link was dropped as redundant.
+const contentLinks = [
 	{ to: "/", labelKey: "common.nav.home", icon: "lucide:home" },
 	{ to: "/about", labelKey: "common.nav.about", icon: "lucide:user" },
 	{ to: "/authors", labelKey: "common.nav.authors", icon: "lucide:users" },
 	{ to: "/categories", labelKey: "common.nav.categories", icon: "lucide:folder-open" },
 	{ to: "/series", labelKey: "common.nav.series", icon: "lucide:layers" },
 	{ to: "/archive", labelKey: "common.nav.archive", icon: "lucide:archive" },
-	{ to: "/search", labelKey: "common.nav.search", icon: "lucide:search" },
+];
+
+// Reader-personal links: EVERY entry is auth-gated and lives inside the single
+// "My" avatar menu (desktop: ReaderMenu dropdown; mobile: the trailing "我的"
+// group). This is the whole point — the signed-in bar adds exactly ONE node
+// (the avatar) over the guest bar, and the old SSR/appended-block hazard is
+// gone: there is only ever one authOnly node, appended last, never spliced mid-
+// list. (The previous flat layout kept 4 authOnly links in a trailing block
+// because a mid-list authOnly entry reuses an SSR node and leaves its stale
+// href — see the /follows→/comments href bug the my-comments e2e caught.)
+const myLinks = [
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },
 	{ to: "/history", labelKey: "reader.nav.history", icon: "lucide:history" },
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
-	// ALL authOnly links must stay in this trailing block (never spliced into the
-	// middle of the list): reader auth lives in localStorage, so SSR renders the
-	// guest nav and the client appends the signed-in links during hydration. A
-	// mid-list authOnly entry reuses the SSR node at that index and leaves its
-	// stale href (the /follows entry used to sit between /history and /comments,
-	// rendering as an <a href="/comments"> that navigated to /follows — found via
-	// the my-comments e2e). Appending avoids the reuse entirely.
-	{ to: "/liked", labelKey: "reader.nav.liked", icon: "lucide:heart", authOnly: true },
-	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss", authOnly: true },
+	{ to: "/liked", labelKey: "reader.nav.liked", icon: "lucide:heart" },
+	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss" },
 	{
 		to: "/notifications",
 		labelKey: "reader.nav.notifications",
 		icon: "lucide:bell",
-		authOnly: true,
 		badge: "unread",
 	},
-	{ to: "/account", labelKey: "reader.nav.account", icon: "lucide:settings", authOnly: true },
 ];
-const navLinksVisible = computed(() =>
-	navLinks.filter((l) => !l.authOnly || isAuthenticated.value),
-);
 
 // Unread notification badge (DEC-160, TASK-192; ISS-124/TASK-224): a
 // visibility-aware poll keeps the nav badge fresh for signed-in readers, and
@@ -137,25 +141,28 @@ onMounted(initTheme);
             X-Blog
           </NuxtLink>
 
-          <!-- Desktop nav (xl+; ISS-125/TASK-225): the full link set + search +
-               lang + theme + auth needs 1400px+ in English once the reader is
-               signed in. Below xl the mobile menu takes over; at xl the ROW
-               scrolls (scrollbar hidden) rather than clipping, and that scroll
-               is confined to the LINKS+search group. The chrome controls
-               (push subscribe, account, language, theme) sit OUTSIDE the scroll
-               container as fixed, always-visible siblings — so even a Firefox
-               wheel user (which doesn't map a vertical wheel to overflow-x
-               panning) always reaches sign-out/language/theme without relying
-               on horizontal scroll. The links group right-aligns via `margin-
-               left:auto` on its first item (NOT `justify-end`): flex-end
-               +overflow clips the left-most items (scrollLeft can't go
-               negative), whereas the auto margin collapses to 0 on overflow so
-               the group scrolls from its start. No nav item is ever
-               unreachable at any width/locale/auth state. -->
+          <!-- Desktop nav (xl+; ISS-125/TASK-225): the six content links +
+               search + chrome (push, avatar, language, theme) fit the xl bar —
+               round 382 moved every reader-personal link into the "My" avatar
+               menu, so signing in no longer lengthens the bar and the 1400px+
+               squeeze that forced internal scrolling is gone. Below xl the
+               mobile menu takes over; at xl the ROW still scrolls (scrollbar
+               hidden) rather than clipping if content links + locale ever
+               outgrow it, and that scroll is confined to the LINKS+search
+               group. The chrome controls (push subscribe, avatar, language,
+               theme) sit OUTSIDE the scroll container as fixed, always-visible
+               siblings — so even a Firefox wheel user (which doesn't map a
+               vertical wheel to overflow-x panning) always reaches
+               account/language/theme without relying on horizontal scroll. The
+               links group right-aligns via `margin-left:auto` on its first
+               item (NOT `justify-end`): flex-end +overflow clips the left-most
+               items (scrollLeft can't go negative), whereas the auto margin
+               collapses to 0 on overflow so the group scrolls from its start.
+               No nav item is ever unreachable at any width/locale/auth state. -->
           <div class="hidden xl:flex flex-1 min-w-0 items-center justify-end gap-1">
             <nav class="flex items-center gap-1 overflow-x-auto min-w-0">
               <NuxtLink
-                v-for="link in navLinksVisible"
+                v-for="link in contentLinks"
                 :key="link.to"
                 :to="link.to"
                 class="first:ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
@@ -165,13 +172,6 @@ onMounted(initTheme);
               >
                 <Icon :icon="link.icon" class="w-4 h-4" />
                 {{ t(link.labelKey) }}
-                <span
-                  v-if="link.badge && unreadCount > 0"
-                  role="status"
-                  aria-live="polite"
-                  aria-atomic="true"
-                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
-                >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
               </NuxtLink>
 
               <!-- Instant search suggestions -->
@@ -181,7 +181,10 @@ onMounted(initTheme);
             <!-- Web Push opt-in (new-post notifications) -->
             <SubscribeButton class="mx-1 shrink-0" compact />
 
-            <!-- Reader account: sign in (→ /login) / sign out (TASK-133) -->
+            <!-- Reader account: sign in (→ /login) for guests; the "My" avatar
+                 menu (ReaderMenu) holds the personal links + sign-out for
+                 signed-in readers (round 382). The avatar is the SINGLE
+                 auth-gated node in the desktop bar. -->
             <NuxtLink
               v-if="!isAuthenticated"
               to="/login"
@@ -190,15 +193,7 @@ onMounted(initTheme);
               <Icon icon="lucide:log-in" class="w-4 h-4" />
               {{ t('reader.nav.signIn') }}
             </NuxtLink>
-            <button
-              v-else
-              type="button"
-              class="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
-              @click="logout"
-            >
-              <Icon icon="lucide:log-out" class="w-4 h-4" />
-              {{ t('reader.nav.signOut') }}
-            </button>
+            <ReaderMenu v-else :links="myLinks" class="mx-1" />
 
             <!-- Language switcher -->
             <LanguageSwitcher class="mx-2 shrink-0" />
@@ -238,7 +233,7 @@ onMounted(initTheme);
         <div v-if="mobileMenuOpen" id="mobile-nav" class="xl:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div class="page-shell px-4 py-4 space-y-1">
             <NuxtLink
-              v-for="link in navLinksVisible"
+              v-for="link in contentLinks"
               :key="link.to"
               :to="link.to"
               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
@@ -249,13 +244,6 @@ onMounted(initTheme);
             >
               <Icon :icon="link.icon" class="w-4 h-4" />
               {{ t(link.labelKey) }}
-              <span
-                v-if="link.badge && unreadCount > 0"
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-                class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
-              >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
             </NuxtLink>
             <div class="px-4 py-2">
               <HeaderSearch />
@@ -266,8 +254,64 @@ onMounted(initTheme);
             <div class="px-4 py-2">
               <SubscribeButton />
             </div>
+            <!-- Mobile "我的" group (round 382): the personal links the desktop
+                 bar hides behind the avatar dropdown land here as a flat,
+                 always-expanded section — the panel scrolls, so vertical room
+                 is not a constraint. -->
+            <template v-if="isAuthenticated">
+              <div
+                class="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+              >
+                {{ t('reader.nav.groupMy') }}
+              </div>
+              <NuxtLink
+                v-if="reader?.id"
+                :to="`/readers/${reader.id}`"
+                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="mobileMenuOpen = false"
+              >
+                <Icon icon="lucide:user-round" class="w-4 h-4" />
+                {{ t('reader.nav.viewMyProfile') }}
+              </NuxtLink>
+              <NuxtLink
+                to="/account"
+                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="mobileMenuOpen = false"
+              >
+                <Icon icon="lucide:settings" class="w-4 h-4" />
+                {{ t('reader.nav.account') }}
+              </NuxtLink>
+              <NuxtLink
+                v-for="link in myLinks"
+                :key="link.to"
+                :to="link.to"
+                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                :class="route.path === link.to
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
+                @click="mobileMenuOpen = false"
+              >
+                <Icon :icon="link.icon" class="w-4 h-4" />
+                {{ t(link.labelKey) }}
+                <span
+                  v-if="link.badge && unreadCount > 0"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
+                >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+              </NuxtLink>
+              <button
+                type="button"
+                class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                @click="logout"
+              >
+                <Icon icon="lucide:log-out" class="w-4 h-4" />
+                {{ t('reader.nav.signOut') }}
+              </button>
+            </template>
             <NuxtLink
-              v-if="!isAuthenticated"
+              v-else
               to="/login"
               class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               @click="mobileMenuOpen = false"
@@ -275,15 +319,6 @@ onMounted(initTheme);
               <Icon icon="lucide:log-in" class="w-4 h-4" />
               {{ t('reader.nav.signIn') }}
             </NuxtLink>
-            <button
-              v-else
-              type="button"
-              class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="logout"
-            >
-              <Icon icon="lucide:log-out" class="w-4 h-4" />
-              {{ t('reader.nav.signOut') }}
-            </button>
             <button
               type="button"
               class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive } from "vue";
 
 import DefaultLayout from "../../app/layouts/default.vue";
+import ReaderMenu from "../../components/ReaderMenu.vue";
 import { useTheme } from "../../composables/useTheme";
 
 // The unread badge + poll lifecycle are mocked so tests can drive the badge
@@ -82,6 +83,12 @@ function mountLayout() {
 				PagesFooterLinks: {
 					template: '<div class="pages-footer-links-stub" />',
 				},
+			},
+			// Components are not auto-imported under bare vitest (only composables
+			// are), so register the REAL ReaderMenu — the layout test drives the
+			// "我的" dropdown (badge, personal links, sign-out) through it.
+			components: {
+				ReaderMenu,
 			},
 		},
 	});
@@ -229,6 +236,9 @@ describe("Default Layout", () => {
 							props: ["icon"],
 						},
 					},
+					components: {
+						ReaderMenu,
+					},
 				},
 			});
 		}
@@ -247,10 +257,30 @@ describe("Default Layout", () => {
 	});
 
 	describe("Reader account nav (TASK-133)", () => {
-		it("renders a bookmarks nav link", () => {
+		it("hides the personal links from guests — they live in the signed-in 'My' menu", () => {
 			const wrapper = mountLayout();
-			const bookmarks = wrapper.find('a[href="/bookmarks"]');
-			expect(bookmarks.exists()).toBe(true);
+			expect(wrapper.find('a[href="/bookmarks"]').exists()).toBe(false);
+			expect(wrapper.find('a[href="/history"]').exists()).toBe(false);
+			expect(wrapper.find('a[href="/account"]').exists()).toBe(false);
+		});
+
+		it("shows the personal links inside the 'My' menu when signed in", async () => {
+			localStorage.setItem("reader_token", "jwt.token");
+			const wrapper = mountLayout();
+
+			const myMenu = wrapper.find('button[aria-label="我的"]');
+			expect(myMenu.exists()).toBe(true);
+			// Menu closed → no personal links in the DOM yet.
+			expect(wrapper.find('a[href="/bookmarks"]').exists()).toBe(false);
+
+			await myMenu.trigger("click");
+			await wrapper.vm.$nextTick();
+			expect(wrapper.find('a[href="/bookmarks"]').exists()).toBe(true);
+			expect(wrapper.find('a[href="/history"]').exists()).toBe(true);
+			expect(wrapper.find('a[href="/comments"]').exists()).toBe(true);
+			expect(wrapper.find('a[href="/account"]').exists()).toBe(true);
+
+			localStorage.removeItem("reader_token");
 		});
 
 		it("shows sign-in link when unauthenticated", () => {
@@ -260,21 +290,26 @@ describe("Default Layout", () => {
 			expect(signIn.text()).toContain("登录");
 		});
 
-		it("shows sign-out instead of sign-in when a reader token exists", async () => {
+		it("replaces the sign-in link with the 'My' avatar menu when a reader token exists", async () => {
 			// useReaderAuth() re-reads localStorage on every call, so planting the
 			// token before mount flips the layout into the authenticated state.
 			localStorage.setItem("reader_token", "jwt.token");
 
 			const wrapper = mountLayout();
-			// Desktop: sign-in link gone, sign-out button present.
+			// Desktop: sign-in link gone, the avatar "我的" trigger present instead.
 			expect(wrapper.find('a[href="/login"]').exists()).toBe(false);
-			expect(wrapper.text()).toContain("退出登录");
+			expect(wrapper.find('button[aria-label="我的"]').exists()).toBe(true);
+
+			// The desktop "我的" dropdown exposes sign-out.
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
+			expect(wrapper.find('[role="menu"]').text()).toContain("退出登录");
 
 			// Mobile menu also exposes sign-out.
 			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
 			await menuButton.trigger("click");
 			await wrapper.vm.$nextTick();
-			expect(wrapper.text()).toContain("退出登录");
+			expect(wrapper.find("#mobile-nav").text()).toContain("退出登录");
 
 			localStorage.removeItem("reader_token");
 		});
@@ -316,7 +351,11 @@ describe("Default Layout", () => {
 			localStorage.setItem("reader_token", "jwt.token");
 			badgeMocks.unreadCount.value = 5;
 			const wrapper = mountLayout();
+			// The avatar badge is glanceable with the menu closed.
+			expect(wrapper.find('button[aria-label="我的"] [role="status"]').text()).toBe("5");
 
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			const badge = wrapper.find('a[href="/notifications"] [role="status"]');
 			expect(badge.exists()).toBe(true);
 			expect(badge.text()).toBe("5");
@@ -329,6 +368,10 @@ describe("Default Layout", () => {
 			badgeMocks.unreadCount.value = 150;
 			const wrapper = mountLayout();
 
+			expect(wrapper.find('button[aria-label="我的"] [role="status"]').text()).toBe("99+");
+
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			expect(wrapper.find('a[href="/notifications"] [role="status"]').text()).toBe("99+");
 
 			localStorage.removeItem("reader_token");
@@ -339,6 +382,10 @@ describe("Default Layout", () => {
 			badgeMocks.unreadCount.value = 0;
 			const wrapper = mountLayout();
 
+			expect(wrapper.find('button[aria-label="我的"] [role="status"]').exists()).toBe(false);
+
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			expect(wrapper.find('a[href="/notifications"] [role="status"]').exists()).toBe(false);
 
 			localStorage.removeItem("reader_token");
@@ -477,11 +524,13 @@ describe("Default Layout", () => {
 	});
 
 	describe("Reader sign-out wiring", () => {
-		it("signs out from the desktop nav and restores the sign-in link", async () => {
+		it("signs out from the desktop 'My' menu and restores the sign-in link", async () => {
 			localStorage.setItem("reader_token", "jwt.token");
 			const wrapper = mountLayout();
 			expect(wrapper.find('a[href="/login"]').exists()).toBe(false);
 
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			const signOut = wrapper.findAll("button").find((b) => b.text().includes("退出登录"));
 			expect(signOut).toBeDefined();
 			await signOut?.trigger("click");
@@ -503,6 +552,8 @@ describe("Default Layout", () => {
 			expect(badgeMocks.stopPolling).not.toHaveBeenCalled();
 
 			// Sign-out flips auth to false → the auth watch stops the poll.
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			const signOut = wrapper.findAll("button").find((b) => b.text().includes("退出登录"));
 			await signOut?.trigger("click");
 			await wrapper.vm.$nextTick();
@@ -526,9 +577,14 @@ describe("Default Layout", () => {
 			expect(wrapper.find('a[href="/account"]').exists()).toBe(false);
 		});
 
-		it("shows auth-only nav links for signed-in readers", () => {
+		it("shows auth-only nav links for signed-in readers inside the 'My' menu", async () => {
 			localStorage.setItem("reader_token", "jwt.token");
 			const wrapper = mountLayout();
+			// Closed menu → the links are not reachable as flat nav entries.
+			expect(wrapper.find('a[href="/follows"]').exists()).toBe(false);
+
+			await wrapper.find('button[aria-label="我的"]').trigger("click");
+			await wrapper.vm.$nextTick();
 			expect(wrapper.find('a[href="/follows"]').exists()).toBe(true);
 			expect(wrapper.find('a[href="/notifications"]').exists()).toBe(true);
 			expect(wrapper.find('a[href="/account"]').exists()).toBe(true);
