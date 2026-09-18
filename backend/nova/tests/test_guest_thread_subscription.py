@@ -53,6 +53,13 @@ def _unsubscribe(client, token):
     return client.post("/api/posts/comment-subscription/guest/unsubscribe", json={"token": token})
 
 
+def _digest(client, token, digest_weekly):
+    return client.post(
+        "/api/posts/comment-subscription/guest/digest",
+        json={"token": token, "digest_weekly": digest_weekly},
+    )
+
+
 def _comment(client, post_id, content, token=None, nickname="Guest", email=None):
     body = {"content": content, "nickname": nickname, "email": email or "guest@example.com"}
     client_headers = {"Authorization": f"Bearer {token}"} if token else {}
@@ -155,6 +162,32 @@ class TestSubscribeContract:
     def test_unknown_post_is_uniform_404(self, client):
         assert _subscribe(client, 999999, "nobody@example.com").status_code == 404
 
+    def test_subscribe_accepts_digest_weekly_cadence(self, client, db_session):
+        """The subscribe body may pick the weekly cadence up front (DEC-429)."""
+        from app import models
+
+        post = _create_post(db_session)
+        r = client.post(
+            BASE.format(post_id=post.id),
+            json={"email": "weekly@example.com", "digest_weekly": True},
+        )
+        assert r.status_code == 202
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "weekly@example.com")
+            .one()
+        )
+        assert row.digest_weekly is True
+        # Default stays per-comment.
+        r2 = client.post(BASE.format(post_id=post.id), json={"email": "instant@example.com"})
+        assert r2.status_code == 202
+        row2 = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "instant@example.com")
+            .one()
+        )
+        assert row2.digest_weekly is False
+
 
 class TestConfirmAndUnsubscribe:
     def test_confirm_flips_confirmed_and_is_idempotent(self, client, db_session, monkeypatch):
@@ -194,6 +227,47 @@ class TestConfirmAndUnsubscribe:
     def test_unknown_token_is_404(self, client):
         assert _confirm(client, "bogus").status_code == 404
         assert _unsubscribe(client, "bogus").status_code == 404
+        assert _digest(client, "bogus", True).status_code == 404
+
+    def test_confirm_reports_digest_weekly_cadence(self, client, db_session, monkeypatch):
+        """The confirm response rides the stored cadence back so the confirm page
+        can seed its weekly-summary toggle (DEC-429, newsletter parity)."""
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "seed@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "seed@example.com")
+            .one()
+        )
+        body = _confirm(client, row.token).json()
+        assert body["confirmed"] is True
+        assert body["digest_weekly"] is False
+        assert _digest(client, row.token, True).status_code == 200
+        body = _confirm(client, row.token).json()
+        assert body["digest_weekly"] is True
+
+    def test_digest_flip_is_idempotent(self, client, db_session, monkeypatch):
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "flip@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "flip@example.com")
+            .one()
+        )
+        assert _digest(client, row.token, True).json() == {"digest_weekly": True, "updated": True}
+        db_session.refresh(row)
+        assert row.digest_weekly is True
+        # Re-flipping to the same value is a 200 (idempotent).
+        assert _digest(client, row.token, True).status_code == 200
+        assert _digest(client, row.token, False).json() == {"digest_weekly": False, "updated": True}
+        db_session.refresh(row)
+        assert row.digest_weekly is False
 
 
 class TestThreadFanOut:
@@ -251,6 +325,27 @@ class TestThreadFanOut:
         _approve(client, auth_headers, created.json()["id"])
         assert _fanout_to(FakeSMTP, "mine@example.com") == []
 
+    def test_digest_weekly_subscriber_gets_no_per_comment_mail(self, client, db_session, monkeypatch, auth_headers):
+        """A follower on the weekly cadence is served by the digest only — one
+        channel per subscriber (DEC-429), so the approval fan-out stays silent."""
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "dig@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "dig@example.com")
+            .one()
+        )
+        assert _digest(client, row.token, True).status_code == 200
+        _confirm(client, row.token)
+        created = _comment(client, post.id, "for the weekly shrinker", email="other@example.com")
+        _approve(client, auth_headers, created.json()["id"])
+        assert _fanout_to(FakeSMTP, "dig@example.com") == []
+        # They still got exactly ONE mail so far: the double-opt-in confirm.
+        assert len(_to(FakeSMTP, "dig@example.com")) == 1
+
     def test_all_confirmed_subscribers_are_emailed(self, client, db_session, monkeypatch, auth_headers):
         from app import models
 
@@ -292,3 +387,135 @@ class TestThreadFanOut:
             headers=auth_headers,
         )
         assert resp.status_code == 200
+
+
+class TestThreadWeeklyDigest:
+    """The weekly thread-digest job (DEC-429): a confirmed follower on the
+    weekly cadence gets ONE summary email per (address, thread) with that
+    window's approved comments instead of a mail per comment; the window starts
+    at the last send and the job never raises."""
+
+    def _run(self, db_session, **kw):
+        from app.digest import send_weekly_digest
+
+        return send_weekly_digest(db_session, **kw)
+
+    def _confirm_digest_row(self, client, db_session, email, post_id):
+        from app import models
+
+        _subscribe(client, post_id, email)
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == email)
+            .one()
+        )
+        assert _digest(client, row.token, True).status_code == 200
+        _confirm(client, row.token)
+        return row
+
+    def test_confirmed_weekly_follower_gets_one_digest_email(self, client, db_session, monkeypatch, auth_headers):
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        row = self._confirm_digest_row(client, db_session, "dwk@example.com", post.id)
+        created = _comment(client, post.id, "digest me", email="other@example.com")
+        _approve(client, auth_headers, created.json()["id"])
+
+        summary = self._run(db_session)
+        assert summary["thread_subscribers"] == 1
+
+        msgs = _to(FakeSMTP, "dwk@example.com")
+        assert len(msgs) == 2  # the double-opt-in confirm + ONE digest
+        assert "本周 1 条新评论" in msgs[1]["Subject"]
+        body = _plain(msgs[1])
+        assert f"/posts/{post.slug}#comment-{created.json()['id']}" in body
+        assert "/comment-subscribe/unsubscribe" in body
+        db_session.refresh(row)
+        assert row.digest_sent_at is not None
+
+    def test_digest_aggregates_only_approved_comments_in_window(self, client, db_session, monkeypatch, auth_headers):
+        from datetime import UTC, datetime, timedelta
+
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        self._confirm_digest_row(client, db_session, "scope@example.com", post.id)
+        # Approved BEFORE the window (10 days ago) — must not appear.
+        old = _comment(client, post.id, "old news", email="other@example.com")
+        old_row = db_session.get(models.Comment, old.json()["id"])
+        old_row.created_at = datetime.now(UTC) - timedelta(days=10)
+        db_session.commit()
+        _approve(client, auth_headers, old.json()["id"])
+        # Still PENDING in the window — must not appear (moderation gate).
+        pending = _comment(client, post.id, "still pending", email="other2@example.com")
+        # Fresh approved comment — appears.
+        fresh = _comment(client, post.id, "fresh news", email="other3@example.com")
+        _approve(client, auth_headers, fresh.json()["id"])
+
+        self._run(db_session)
+        digest = _to(FakeSMTP, "scope@example.com")[-1]
+        body = _plain(digest)
+        assert f"#comment-{fresh.json()['id']}" in body
+        assert f"#comment-{old.json()['id']}" not in body
+        assert f"#comment-{pending.json()['id']}" not in body
+
+    def test_digest_is_idempotent_after_stamp(self, client, db_session, monkeypatch, auth_headers):
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        self._confirm_digest_row(client, db_session, "once@example.com", post.id)
+        created = _comment(client, post.id, "one summary lap", email="other@example.com")
+        _approve(client, auth_headers, created.json()["id"])
+
+        assert self._run(db_session)["thread_subscribers"] == 1
+        # The window now starts at the stamped send time: no new comments -> no mail.
+        assert self._run(db_session)["thread_subscribers"] == 0
+        assert len(_to(FakeSMTP, "once@example.com")) == 2  # confirm + the one digest
+
+    def test_pending_and_unsubscribed_rows_never_get_a_digest(self, client, db_session, monkeypatch, auth_headers):
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        # Weekly cadence but never confirmed — the confirm gate still applies.
+        _subscribe(client, post.id, "pend@example.com")
+        pend = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "pend@example.com")
+            .one()
+        )
+        _digest(client, pend.token, True)
+        # Confirmed weekly then unsubscribed — consent revoked.
+        _subscribe(client, post.id, "gone@example.com")
+        gone = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "gone@example.com")
+            .one()
+        )
+        _digest(client, gone.token, True)
+        _confirm(client, gone.token)
+        _unsubscribe(client, gone.token)
+        # One healthy weekly control.
+        self._confirm_digest_row(client, db_session, "ctl@example.com", post.id)
+        created = _comment(client, post.id, "for the control", email="other@example.com")
+        _approve(client, auth_headers, created.json()["id"])
+
+        summary = self._run(db_session)
+        assert summary["thread_subscribers"] == 1
+        # pend/gone still hold only their subscribe-time confirm email.
+        assert len(_to(FakeSMTP, "pend@example.com")) == 1
+        assert len(_to(FakeSMTP, "gone@example.com")) == 1
+        assert len(_to(FakeSMTP, "ctl@example.com")) == 2  # confirm + digest
+
+    def test_smtp_unconfigured_never_breaks_the_job(self, client, db_session, monkeypatch, auth_headers):
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        row = self._confirm_digest_row(client, db_session, "offwk@example.com", post.id)
+        created = _comment(client, post.id, "no smtp", email="other@example.com")
+        _approve(client, auth_headers, created.json()["id"])
+
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.delenv("SMTP_PORT", raising=False)
+        summary = self._run(db_session)
+        assert summary["reason"] == "smtp_not_configured"
+        db_session.refresh(row)
+        assert row.digest_sent_at is None

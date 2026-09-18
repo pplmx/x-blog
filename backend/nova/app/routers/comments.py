@@ -171,6 +171,8 @@ def _notify_guest_thread_subscribers(
     comments must not get an email about their own comment (same self-rule as
     the reader branch), and a signed-in commenter whose reader email matches a
     guest row is skipped too (they already get the reader fan-out above).
+    Followers on the weekly digest cadence are excluded here (DEC-429): the
+    digest job owns them, so a subscriber is served by exactly one channel.
     """
     subscribers = crud.list_confirmed_guest_comment_subscribers(db, post.id)
     if not subscribers:

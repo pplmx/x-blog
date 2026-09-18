@@ -43,8 +43,18 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.auth import ReaderAccount
-from app.crud import effective_publish_ts, utc_now_naive
-from app.emailer import _env, _is_en_site, is_email_configured, send_messages_flags
+from app.crud import (
+    effective_publish_ts,
+    list_confirmed_guest_thread_digest_subs,
+    utc_now_naive,
+)
+from app.emailer import (
+    _env,
+    _header_safe_title,
+    _is_en_site,
+    is_email_configured,
+    send_messages_flags,
+)
 from app.middleware import get_logger
 
 #: Rolling window: a reader never receives more than the last 7 days of posts,
@@ -164,8 +174,143 @@ def collect_newsletter_digest_recipients(
     return [(sub, newsletter_digest_window_start(sub, now_naive)) for sub in subs]
 
 
+def guest_thread_digest_window_start(sub: models.GuestCommentSubscription, now_naive: datetime) -> datetime:
+    """Where a guest thread-follower's digest window begins: their last thread
+    digest if one was ever sent, else the rolling 7-day cut — the mirror of
+    ``newsletter_digest_window_start`` for the (email, post) follow row, so a
+    backlog never floods a follower and a missed digest is bounded
+    (round 381, DEC-429)."""
+    if sub.digest_sent_at is None:
+        return now_naive - timedelta(days=WEEKLY_WINDOW_DAYS)
+    return max(sub.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
+
+
 def _format_date(ts: datetime) -> str:
     return ts.strftime("%Y-%m-%d")
+
+
+def _thread_created_lower_bound(db: Session, window_start: datetime) -> datetime:
+    """The comment ``created_at >=`` bound in the form the dialect stores.
+
+    ``Comment.created_at`` is stored AWARE on SQLite (the ORM default carries
+    ``+00:00`` via the sqlite3 adapter) but NAIVE on Postgres, so a naive
+    ``window_start`` must be adapted per dialect for string ordering to stay
+    aligned — the same split ``collect_digest_posts`` already makes."""
+    if _dialect_name(db) == "sqlite":
+        return window_start.replace(tzinfo=UTC)
+    return window_start
+
+
+def _comment_snippet(comment: models.Comment, *, limit: int = 140) -> str:
+    """A safe plain-text line for a digest entry: the first non-blank line of a
+    comment's markdown with the common block/heading markers peeled off, then
+    truncated. Just a summary flavor — the item deep-links onto the comment."""
+    for line in (comment.content or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        for marker in ("#", ">", "- ", "* ", "+ "):
+            if line.startswith(marker):
+                line = line[len(marker) :].lstrip()
+        return line[:limit]
+    return ""
+
+
+def collect_guest_thread_digest_deliveries(
+    db: Session, now_naive: datetime
+) -> list[tuple[models.GuestCommentSubscription, datetime, list[models.Comment]]]:
+    """Confirmed guest thread-followers on the weekly cadence, each with their
+    window start plus the APPROVED comments on their followed post created in
+    that window (the moderation gate — only visible comments are summarized,
+    the same rule as the per-comment fan-out). One row per (email, post) keeps
+    one digest per followed thread; ``digest_weekly`` defaults false, so no
+    follow is weekly until it opts in (DEC-429)."""
+    out: list[tuple[models.GuestCommentSubscription, datetime, list[models.Comment]]] = []
+    for sub in list_confirmed_guest_thread_digest_subs(db):
+        window_start = guest_thread_digest_window_start(sub, now_naive)
+        comments = (
+            db.query(models.Comment)
+            .filter(
+                models.Comment.post_id == sub.post_id,
+                models.Comment.is_approved.is_(True),
+                models.Comment.created_at >= _thread_created_lower_bound(db, window_start),
+            )
+            .order_by(models.Comment.created_at.asc())
+            .all()
+        )
+        if not comments:
+            continue
+        out.append((sub, window_start, comments))
+    return out
+
+
+def build_guest_thread_digest_message(
+    *,
+    from_addr: str,
+    to_email: str,
+    post: models.Post,
+    comments: Iterable[models.Comment],
+    base_url: str,
+    window_start: datetime,
+    now_naive: datetime,
+    unsubscribe_url: str,
+    locale: str = "zh",
+) -> EmailMessage:
+    """One weekly summary of a followed thread: the approved comments created
+    in the window, oldest first, each deep-linked onto the comment, carrying
+    the same per-subscription token unsubscribe footer as per-comment thread
+    mail so the consent stays revocable from the digest itself (DEC-429).
+
+    Guests have no account or stored locale, so ``locale`` is the site's
+    configured language (DEC-342 parity) and the footer links straight to the
+    unsubscribe page, not reader prefs. The post title and comment nicknames /
+    snippets are user-controlled, so they are HTML-escaped in the HTML part.
+    """
+    en = locale in ("en", "en-US")
+    base = base_url.rstrip("/")
+    items = list(comments)
+    unsubscribe = f"{base}{unsubscribe_url}"
+    title = _header_safe_title(post.title)
+    window = f"{_format_date(window_start)} ~ {_format_date(now_naive)}"
+    if en:
+        subject = f"{len(items)} new comment{'s' if len(items) != 1 else ''} on {title} this week"
+        text_lines = [
+            f"Here are the {len(items)} new comment{'s' if len(items) != 1 else ''} on {title} this week ({window}):",
+            "",
+        ]
+        html_parts = [
+            "<p>"
+            f"Here are the {len(items)} new comment{'s' if len(items) != 1 else ''} "
+            f"on {html.escape(title)} this week ({html.escape(window)}):"
+            "</p><ul>"
+        ]
+        view = "View"
+        footer = f"\n\nIf you no longer want these emails, click the link below to unsubscribe:\n{unsubscribe}"
+    else:
+        subject = f"《{title}》本周 {len(items)} 条新评论"
+        text_lines = [f"《{title}》本周（{window}）有 {len(items)} 条新评论：", ""]
+        html_parts = [f"<p>《{html.escape(title)}》本周（{html.escape(window)}）有 {len(items)} 条新评论：</p><ul>"]
+        view = "查看"
+        footer = f"\n\n如果你不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+    for c in items:
+        link = f"{base}/posts/{post.slug}#comment-{c.id}"
+        name = c.nickname or "Guest"
+        snippet = _comment_snippet(c)
+        text_lines.append(f"• {name}: {snippet}")
+        text_lines.append(f"  {link}")
+        html_parts.append(
+            f"<li><strong>{html.escape(name)}</strong>: {html.escape(snippet)} "
+            f'<a href="{html.escape(link, quote=True)}">{view}</a></li>'
+        )
+    text_lines.append(footer)
+    html_parts.append("</ul>")
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.set_content("\n".join(text_lines))
+    msg.add_alternative("".join(html_parts), subtype="html")
+    return msg
 
 
 def build_digest_message(
@@ -335,11 +480,12 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
     ``emailer.dispatch_notification_emails``).
 
     Summary keys: ``locked`` (another worker held the advisory lock),
-    ``readers`` (delivered), ``emails_sent`` (SMTP-accepted), ``posts``
-    (distinct posts eligible in the rolling window), ``skipped`` (opted-in
-    readers with no posts in window or no registered address), ``reason``
-    (machine-readable skip/error label when nothing was delivered; absent on a
-    normal empty-delivery)."""
+    ``readers`` (delivered), ``subscribers`` (guest NEWSLETTER delivered),
+    ``thread_subscribers`` (guest THREAD digests delivered), ``emails_sent``
+    (SMTP-accepted), ``posts`` (distinct posts eligible in the rolling window),
+    ``skipped`` (opted-in recipients with nothing in window or no address),
+    ``reason`` (machine-readable skip/error label when nothing was delivered;
+    absent on a normal empty-delivery)."""
     log = logger or get_logger("digest")
     now = now_naive or utc_now_naive()
     if not _acquire_digest_lock(db):
@@ -348,6 +494,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             "locked": True,
             "readers": 0,
             "subscribers": 0,
+            "thread_subscribers": 0,
             "emails_sent": 0,
             "posts": 0,
             "skipped": 0,
@@ -375,6 +522,11 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 skipped += 1
                 continue
             guest_deliveries.append((sub, window_start, eligible))
+        # Guest thread-followers on the weekly cadence (round 381, DEC-429):
+        # one digest per (email, post) aggregated from the APPROVED comments in
+        # the window — the periodic channel for the otherwise per-comment
+        # fan-out, in the same job so a single trigger serves all three.
+        thread_deliveries = collect_guest_thread_digest_deliveries(db, now)
 
         if dry_run:
             # No SMTP, no stamping — report exactly who/what would go out
@@ -385,16 +537,19 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 "dry_run": True,
                 "readers": len(deliveries),
                 "subscribers": len(guest_deliveries),
+                "thread_subscribers": len(thread_deliveries),
+                "thread_comments": sum(len(comments) for _, _, comments in thread_deliveries),
                 "emails_sent": 0,
                 "posts": len(posts),
                 "skipped": skipped,
             }
 
-        if not deliveries and not guest_deliveries:
+        if not deliveries and not guest_deliveries and not thread_deliveries:
             return {
                 "locked": False,
                 "readers": 0,
                 "subscribers": 0,
+                "thread_subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
                 "skipped": skipped,
@@ -407,6 +562,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
         built: list[EmailMessage] = []
         reader_targets: list[models.ReaderNotificationPref] = []
         guest_targets: list[models.NewsletterSubscriber] = []
+        thread_targets: list[models.GuestCommentSubscription] = []
         for pref, acct, window_start, eligible in deliveries:
             built.append(
                 build_digest_message(
@@ -442,15 +598,37 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 )
             )
             guest_targets.append(sub)
+        for sub, window_start, comments in thread_deliveries:
+            # A follow row can outlive its post (an admin deleting the post does
+            # not cascade to the additive table), so skip a post that is gone —
+            # the job must never raise and never mail a dead thread.
+            post = db.get(models.Post, sub.post_id)
+            if post is None:
+                continue
+            built.append(
+                build_guest_thread_digest_message(
+                    from_addr=from_addr,
+                    to_email=sub.email,
+                    post=post,
+                    comments=comments,
+                    base_url=base_url,
+                    window_start=window_start,
+                    now_naive=now,
+                    locale=guest_locale,
+                    unsubscribe_url=f"/comment-subscribe/unsubscribe?token={sub.token}",
+                )
+            )
+            thread_targets.append(sub)
 
         if not is_email_configured():
             return {
                 "locked": False,
                 "readers": 0,
                 "subscribers": 0,
+                "thread_subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
-                "skipped": skipped + len(deliveries) + len(guest_deliveries),
+                "skipped": skipped + len(deliveries) + len(guest_deliveries) + len(thread_deliveries),
                 "reason": "smtp_not_configured",
             }
 
@@ -466,20 +644,28 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
                 "locked": False,
                 "readers": 0,
                 "subscribers": 0,
+                "thread_subscribers": 0,
                 "emails_sent": 0,
                 "posts": len(posts),
-                "skipped": skipped + len(deliveries) + len(guest_deliveries),
+                "skipped": skipped + len(deliveries) + len(guest_deliveries) + len(thread_deliveries),
                 "reason": "smtp_error",
             }
 
         # Stamp idempotency ONLY on delivered recipients, after SMTP accepted
-        # the specific message (never a batch-wide assumption) — readers and
-        # guests stamped from their own slices of the acceptance flags.
-        reader_flags, guest_flags = delivered[: len(reader_targets)], delivered[len(reader_targets) :]
+        # the specific message (never a batch-wide assumption) — readers,
+        # newsletter guests and thread followers stamped from their own slices
+        # of the acceptance flags.
+        n_readers, n_guests = len(reader_targets), len(guest_targets)
+        reader_flags = delivered[:n_readers]
+        guest_flags = delivered[n_readers : n_readers + n_guests]
+        thread_flags = delivered[n_readers + n_guests :]
         for pref, was_sent in zip(reader_targets, reader_flags, strict=True):
             if was_sent:
                 pref.digest_sent_at = now
         for sub, was_sent in zip(guest_targets, guest_flags, strict=True):
+            if was_sent:
+                sub.digest_sent_at = now
+        for sub, was_sent in zip(thread_targets, thread_flags, strict=True):
             if was_sent:
                 sub.digest_sent_at = now
         db.commit()
@@ -487,6 +673,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             "locked": False,
             "readers": len(deliveries),
             "subscribers": len(guest_deliveries),
+            "thread_subscribers": len(thread_deliveries),
             "emails_sent": sum(delivered),
             "posts": len(posts),
             "skipped": skipped,

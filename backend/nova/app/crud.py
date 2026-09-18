@@ -3936,7 +3936,7 @@ def get_guest_comment_subscription(db: Session, email: str, post_id: int) -> mod
 
 
 def add_guest_comment_subscription(
-    db: Session, email: str, post_id: int
+    db: Session, email: str, post_id: int, digest_weekly: bool = False
 ) -> tuple[models.GuestCommentSubscription, bool]:
     """Record a guest's intent to follow a post's thread; returns (row, created).
 
@@ -3945,13 +3945,17 @@ def add_guest_comment_subscription(
     never idempotently re-confirms and never mails twice (the endpoint fires
     the double-opt-in email only on created=True). ``email`` is the caller's
     already-lowercased value; token is a fresh opaque secret (no-enumeration).
+    ``digest_weekly`` (round 381, DEC-429) records the follower's chosen
+    cadence at subscribe time; a resubscribe never overrides the stored choice.
     """
     from secrets import token_urlsafe
 
     existing = get_guest_comment_subscription(db, email, post_id)
     if existing:
         return existing, False
-    row = models.GuestCommentSubscription(email=email, post_id=post_id, token=token_urlsafe(32))
+    row = models.GuestCommentSubscription(
+        email=email, post_id=post_id, token=token_urlsafe(32), digest_weekly=digest_weekly
+    )
     db.add(row)
     if _commit_reader_upsert(db):
         db.refresh(row)
@@ -3992,12 +3996,43 @@ def unsubscribe_guest_comment_subscription(db: Session, token: str) -> bool:
 
 
 def list_confirmed_guest_comment_subscribers(db: Session, post_id: int) -> list[models.GuestCommentSubscription]:
-    """Confirmed guest followers of a post's thread (for the approval fan-out)."""
+    """Confirmed guest followers of a post's thread (for the approval fan-out).
+
+    Only per-comment rows are returned: a follower on the weekly digest cadence
+    (``digest_weekly``, DEC-429) is excluded here because the weekly job covers
+    them, so exactly one channel serves a subscriber (DEC-355 parity).
+    """
     return (
         db.query(models.GuestCommentSubscription)
         .filter(
             models.GuestCommentSubscription.post_id == post_id,
             models.GuestCommentSubscription.is_confirmed.is_(True),
+            models.GuestCommentSubscription.digest_weekly.is_(False),
+        )
+        .all()
+    )
+
+
+def set_guest_thread_digest(db: Session, token: str, digest_weekly: bool) -> bool:
+    """Flip a guest thread-subscription's cadence (weekly vs per-comment) via its
+    token (round 381, DEC-429). Idempotent; False on an unknown token (no oracle)."""
+    row = get_guest_comment_subscription_by_token(db, token)
+    if row is None:
+        return False
+    if row.digest_weekly != digest_weekly:
+        row.digest_weekly = digest_weekly
+        db.commit()
+    return True
+
+
+def list_confirmed_guest_thread_digest_subs(db: Session) -> list[models.GuestCommentSubscription]:
+    """Every confirmed guest thread-follower on the weekly cadence, for the
+    weekly comment-digest job (round 381, DEC-429)."""
+    return (
+        db.query(models.GuestCommentSubscription)
+        .filter(
+            models.GuestCommentSubscription.is_confirmed.is_(True),
+            models.GuestCommentSubscription.digest_weekly.is_(True),
         )
         .all()
     )

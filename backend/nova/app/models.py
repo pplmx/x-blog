@@ -585,6 +585,18 @@ class GuestCommentSubscription(Base):
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # Weekly-digest cadence (round 381, DEC-429): opt-in — a confirmed
+    # follower who prefers one weekly summary to a mail per approved comment
+    # flips ``digest_weekly`` (the token-gated cadence endpoint / the confirm
+    # page toggle, mirroring NewsletterSubscriber.digest_weekly). Defaults
+    # false so every existing follow stays per-comment until it opts in, and
+    # weekly rows are excluded from the per-comment fan-out so exactly one
+    # channel serves a subscriber (DEC-355 parity).
+    digest_weekly: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # Last weekly thread-digest send for this (email, post) row (naive UTC,
+    # utc_now_naive in digest.py) — the idempotency/window marker the weekly
+    # job uses so a follower is never re-mailed the same comments.
+    digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

@@ -324,6 +324,9 @@ def unsubscribe_from_post_thread(
 
 class GuestThreadSubscribeBody(BaseModel):
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)]
+    # Round 381 (DEC-429): the follower's cadence choice made at subscribe time
+    # — True = one weekly summary instead of a mail per approved comment.
+    digest_weekly: bool = False
 
     @field_validator("email", mode="before")
     @classmethod
@@ -335,6 +338,11 @@ class GuestThreadSubscribeBody(BaseModel):
 
 class GuestThreadTokenBody(BaseModel):
     token: Annotated[NonNulStr, Field(max_length=64)]
+
+
+class GuestThreadDigestBody(BaseModel):
+    token: Annotated[NonNulStr, Field(max_length=64)]
+    digest_weekly: bool
 
 
 @router.post("/{post_id}/comment-subscription/guest", status_code=202)
@@ -363,7 +371,7 @@ def guest_subscribe_to_post_thread(
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row, created = crud.add_guest_comment_subscription(db, email, post_id)
+    row, created = crud.add_guest_comment_subscription(db, email, post_id, digest_weekly=body.digest_weekly)
     if created:
         # Our insert won the race — this is the ONE confirmation email. A
         # resubscribed address (pending or confirmed) is never re-emailed.
@@ -390,10 +398,28 @@ def guest_confirm_post_thread(
     db: Session = Depends(get_db),
 ):
     """Activate a guest thread-follow after its confirmation link is clicked
-    (idempotent; an unknown token is 404 — no enumeration oracle)."""
+    (idempotent; an unknown token is 404 — no enumeration oracle). The stored
+    cadence choice rides back so the confirm page can seed its weekly-summary
+    toggle (DEC-429, mirroring the newsletter confirm response)."""
     if not crud.confirm_guest_comment_subscription(db, body.token):
         raise HTTPException(status_code=404, detail="Invalid token")
-    return {"confirmed": True}
+    row = crud.get_guest_comment_subscription_by_token(db, body.token)
+    return {"confirmed": True, "digest_weekly": row.digest_weekly if row else False}
+
+
+@router.post("/comment-subscription/guest/digest", status_code=200)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def guest_set_post_thread_digest(
+    request: Request,  # noqa: ARG001
+    body: GuestThreadDigestBody,
+    db: Session = Depends(get_db),
+):
+    """Flip a guest thread-follow's cadence via its emailed token (round 381,
+    DEC-429): weekly summary vs a mail per approved comment. Idempotent; an
+    unknown token is 404 — the token is the capability, no credentials."""
+    if not crud.set_guest_thread_digest(db, body.token, body.digest_weekly):
+        raise HTTPException(status_code=404, detail="Invalid token")
+    return {"digest_weekly": body.digest_weekly, "updated": True}
 
 
 @router.post("/comment-subscription/guest/unsubscribe", status_code=200)
