@@ -1081,7 +1081,9 @@ def approve_comment(db: Session, comment_id: int, approved: bool = True) -> mode
     comment.is_approved = approved
     # Reviewed_at distinguishes "still pending" from "reviewed and rejected" for
     # the author's comment history (DEC-066, TASK-139). Set on both outcomes.
-    comment.reviewed_at = datetime.now(UTC)
+    # Naive UTC (ISS-452): reviewed_at is a naive-UTC DateTime column; an aware
+    # write is a latent trap if the row is ever cached/serialized pre-flight.
+    comment.reviewed_at = utc_now_naive()
     db.commit()
     db.refresh(comment)
     # Approving (or rejecting) a comment changes the approved comment_count
@@ -1155,7 +1157,8 @@ def update_reader_comment(
     # is_approved is nullable; NULL is not public, so coerce for the bool contract.
     was_public = bool(comment.is_approved)
     comment.content = content
-    comment.edited_at = datetime.now(UTC)
+    # Naive UTC, like reviewed_at (ISS-452).
+    comment.edited_at = utc_now_naive()
     comment.is_approved = False
     comment.reviewed_at = None
     db.commit()
@@ -2300,7 +2303,8 @@ def record_reading_history(
     post = db.get(models.Post, post_id)
     minutes = schemas.reading_minutes(post.content) if post else 1
     if existing:
-        existing.viewed_at = datetime.now(UTC)
+        # Naive UTC (ISS-452): viewed_at is a naive-UTC DateTime column.
+        existing.viewed_at = utc_now_naive()
         existing.reading_minutes = minutes
         if scroll_position is not None:
             existing.scroll_position = scroll_position
@@ -2313,7 +2317,7 @@ def record_reading_history(
     row = models.ReadingHistory(
         reader_id=reader_id,
         post_id=post_id,
-        viewed_at=datetime.now(UTC),
+        viewed_at=utc_now_naive(),
         reading_minutes=minutes,
         scroll_position=scroll_position,
         scroll_fraction=scroll_fraction,

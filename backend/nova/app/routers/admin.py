@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
 from uuid import uuid4
@@ -1194,8 +1194,9 @@ def admin_batch_approve_comments(
         # Stamp reviewed_at on both outcomes so rejected comments leave the
         # moderation pending queue (get_pending_comments filters is_approved
         # AND reviewed_at is NULL) instead of lingering "pending" forever.
-        # Mirrors crud.approve_comment's aware-UTC stamp (DEC-066, TASK-139).
-        c.reviewed_at = datetime.now(UTC)
+        # Mirrors crud.approve_comment's naive-UTC stamp (DEC-066, TASK-139;
+        # ISS-452 keeps these writes consistent with the naive column).
+        c.reviewed_at = utc_now_naive()
     if changed:
         db.commit()
         # Approving/rejecting changes the approved comment_count embedded in the

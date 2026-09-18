@@ -1238,6 +1238,34 @@ class TestReaderUpsertIdempotency:
         assert mock_db.commit.call_count == 1
         mock_db.rollback.assert_called_once()
 
+    def test_record_reading_history_writes_naive_utc(self):
+        """ISS-452: viewed_at written by the history upsert (and the ORM
+        column default) is naive UTC — never an aware datetime — so no
+        tzoffset can leak into a cache/serialization layer above the DB."""
+        default = models.ReadingHistory.viewed_at.default.arg
+        assert callable(default)
+        # SQLAlchemy invokes column defaults with a context argument.
+        assert default(None).tzinfo is None
+
+        # Create path: hours stamped in the Python constructor must be naive.
+        create_db = MagicMock()
+        create_db.commit.return_value = None
+        create_db.query.return_value.filter.return_value.first.return_value = None
+        create_db.get.return_value = models.Post(content="# Hello")
+        row, created = crud.record_reading_history(create_db, 1, 2)
+        assert created is True
+        assert row.viewed_at.tzinfo is None
+
+        # Update path: the in-place viewed_at bump must also be naive.
+        existing = MagicMock()
+        update_db = MagicMock()
+        update_db.commit.return_value = None
+        update_db.query.return_value.filter.return_value.first.return_value = existing
+        update_db.get.return_value = models.Post(content="# Hello")
+        _, created = crud.record_reading_history(update_db, 1, 2)
+        assert created is False
+        assert existing.viewed_at.tzinfo is None
+
     def test_import_reader_history_recovers_from_duplicate_key_race(self):
         """Concurrent imports of the same previously-unseen post slug must not
         500 on the unique (reader_id, post_id) row (RIL ISS-419/TASK-321).
