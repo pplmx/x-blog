@@ -174,4 +174,78 @@ test.describe("Guest email thread-follow (TASK-438)", () => {
 
 		expect(messagesTo(guestEmail).length).toBe(2);
 	});
+
+	test("opting into a weekly summary on the confirm page stops per-comment mail", async ({
+		page,
+		request,
+	}) => {
+		test.skip(!(await smtpIsUp(request)), "requires the e2e SMTP sink");
+
+		const adminTok = await adminToken(request);
+		const adminH = { Authorization: `Bearer ${adminTok}` };
+		const uid = Date.now();
+		const guestEmail = freshEmail();
+		const postSlug = `guest-thread-weekly-e2e-${uid}`;
+
+		const post = await request.post("/api/posts", {
+			headers: adminH,
+			data: {
+				title: `Weekly thread ${uid}`,
+				slug: postSlug,
+				content: "# Hello",
+				published: true,
+			},
+		});
+		expect(post.status()).toBe(201);
+		const postId = ((await post.json()) as { id: number }).id;
+
+		// Guest subscribes the thread by email on the post page.
+		await page.goto(`/posts/${postSlug}`);
+		const commentSection = page.locator("section").filter({ hasText: "评论" }).first();
+		await commentSection.waitFor({ state: "visible" });
+		await commentSection.getByPlaceholder("you@example.com").fill(guestEmail);
+		await commentSection.getByRole("button", { name: "订阅" }).click();
+		await expect(commentSection).toContainText("请查收邮箱确认订阅");
+
+		const confirmRecord = messageFromSink(guestEmail);
+		expect(confirmRecord).toBeDefined();
+		const confirmMatch = /comment-subscribe\/confirm\?token=([A-Za-z0-9_-]+)/.exec(
+			confirmRecord?.text ?? "",
+		);
+		expect(confirmMatch).not.toBeNull();
+		const confirmToken = String(confirmMatch?.[1] ?? "");
+
+		// Confirm AND flip to the weekly cadence on the confirm page (DEC-429):
+		// the checkbox seeds from the server answer, then trips the token-gated
+		// cadence endpoint.
+		await page.goto(`/comment-subscribe/confirm?token=${confirmToken}`);
+		await expect(page.locator("body")).toContainText(
+			"这篇讨论每当有新评论通过审核时，你都会收到一封邮件。",
+			{
+				timeout: 10000,
+			},
+		);
+		// Scope to main: the footer newsletter form carries its own cadence
+		// checkbox, so the page-level role locator would be ambiguous.
+		await page.locator("main").getByRole("checkbox").check();
+
+		// A DIFFERENT guest comments and the author approves: a weekly follower
+		// gets NO per-comment email — only the earlier confirm remains.
+		const comment = await request.post(`/api/comments/post/${postId}`, {
+			data: {
+				nickname: "WeeklyOther",
+				email: freshEmail(),
+				content: "digest only please",
+			},
+		});
+		expect(comment.status()).toBe(201);
+		const commentId = ((await comment.json()) as { id: number }).id;
+		const approve = await request.patch(`/api/comments/${commentId}/approve`, {
+			headers: adminH,
+			data: { approved: true },
+		});
+		expect(approve.status()).toBe(200);
+
+		expect(messagesTo(guestEmail).length).toBe(1); // the confirm email only
+	});
 });
