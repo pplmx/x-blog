@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 👤 **Hide blocked readers' comments (round 386)**: round 379's reader
+  blocking (DEC-425) suppressed the notification fan-outs but promised more —
+  "a blocked commenter is invisible to them even mid-thread" — which no render
+  path honored: a blocked reader's comments kept showing in the post thread,
+  the discussion feed, and comment search. Blocking is a receiver-side opt-out,
+  so suppression now happens on the blocker's own device: the thread
+  (CommentList), the `/discussion` feed and comment search each load the
+  viewer's `/me/blocks` list once and drop rows authored by blocked readers,
+  while unblocked third-party replies survive via the existing parent-missing
+  promote (the blocked author is hidden, their audience is never censored).
+  Anonymous visitors and readers with an empty block list see today's exact
+  page, and pagination totals stay the server's real count (blocking is a
+  per-viewer view, not a global deletion). A Playwright journey covers all
+  three surfaces — thread → discussion feed → comment search. Frontend 2367
+  unit tests + the e2e journey all green (round 386, DEC-436/DEC-437).
 - ✏️ **Guest comment management (round 385)**: comment edit/delete was
   signed-in-reader only, so an anonymous commenter who made a typo had no way
   to fix or withdraw it (and every comment is moderated, so it became
