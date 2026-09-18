@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 380,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T05:07:04+00:00",
+  "updated_at": "2026-09-18T06:39:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28076,10 +28076,10 @@
     "TASK-438": {
       "id": "TASK-438",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-18T05:06:29+00:00",
-      "updated_at": "2026-09-18T05:06:29+00:00",
+      "updated_at": "2026-09-18T06:39:18+00:00",
       "touched_round": 380,
       "category": "core-feature",
       "severity": "high",
@@ -28089,13 +28089,80 @@
     "ISS-516": {
       "id": "ISS-516",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-18T05:06:29+00:00",
-      "updated_at": "2026-09-18T05:06:29+00:00",
+      "updated_at": "2026-09-18T06:39:18+00:00",
       "touched_round": 380,
       "title": "Anonymous visitors cannot follow a post discussion by email (thread-follow is reader-gated)",
       "description": "Comment-thread follow requires a reader account and redirects guests to /login, yet the blog already emails anonymous guests for the newsletter and for replies. A visitor who cares about one discussion either registers or misses every later comment."
+    },
+    "CHG-684": {
+      "id": "CHG-684",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:37:04+00:00",
+      "updated_at": "2026-09-18T06:37:04+00:00",
+      "touched_round": 380,
+      "commit": "9c257c8e",
+      "detail": "backend: guest_comment_subscriptions model + migration, subscribe/confirm/unsubscribe endpoints (auth-free, no-oracle), thread fan-out on comment approval (skip commenter's own guest email, best-effort SMTP-gated) + 15 tests"
+    },
+    "CHG-685": {
+      "id": "CHG-685",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:37:04+00:00",
+      "updated_at": "2026-09-18T06:37:04+00:00",
+      "touched_round": 380,
+      "commit": "55ae25d3",
+      "detail": "frontend: GuestThreadFollow control (guests only) in comment header, /comment-subscribe/confirm + /unsubscribe landing pages, auth-free api helpers, i18n en/zh + 15 vitest"
+    },
+    "CHG-686": {
+      "id": "CHG-686",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:37:04+00:00",
+      "updated_at": "2026-09-18T06:37:04+00:00",
+      "touched_round": 380,
+      "commit": "85cdf4f2",
+      "detail": "e2e: guest thread-follow journey - subscribe by email, confirm in-browser, per-approved-comment fan-out with token unsubscribe, second approval sends nothing"
+    },
+    "EV-285": {
+      "id": "EV-285",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:37:04+00:00",
+      "updated_at": "2026-09-18T06:37:04+00:00",
+      "touched_round": 380,
+      "source": "round 380 full VERIFY: pytest -n auto --cov=app (1814 passed, 10 skipped @93.72%); pnpm test 2332; nuxt typecheck 0; biome clean on changed files; e2e guest-thread-follow 1/1 against live backend + SMTP sink (2 captured mails: confirm + thread, post-unsub silent); Postgres-verified in round-380 backend run",
+      "detail": "Verified end-to-end: anonymous path (no reader token) exercises subscribe 202 double-opt-in, confirm idempotent, fan-out per approved comment with deep link + unsubscribe, commenter's-own skip, pending/unsubscribed silent; frontend guest-only render + token pages; PG migration applied on dev server.",
+      "confidence": 1.0
+    },
+    "CHG-687": {
+      "id": "CHG-687",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:38:13+00:00",
+      "updated_at": "2026-09-18T06:38:13+00:00",
+      "touched_round": 380,
+      "commit": "920cd8a3",
+      "detail": "docs: README + CHANGELOG (en/zh) round-380 guest thread-follow entry"
+    },
+    "DEC-428": {
+      "id": "DEC-428",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:39:02+00:00",
+      "updated_at": "2026-09-18T06:39:02+00:00",
+      "touched_round": 380,
+      "rationale": "TASK-438 delivered end-to-end and verified: guest_comment_subscriptions + auth-free subscribe/confirm/unsubscribe endpoints (newsletter-style double opt-in, one confirm email per new row, no oracle) + per-approved-comment thread fan-out skipping the commenter's own guest address + GuestThreadFollow guest-only control + /comment-subscribe/confirm + /unsubscribe token pages + 15 backend / 15 vitest / 1 e2e + docs. VERIFY gates all green: 1814 backend @93.72% (+15), 2332 vitest (+14), nuxt typecheck + pyright 0, biome clean, guest-thread-follow e2e 1/1 (sink captured confirm + thread, post-unsub silent), Postgres-verified, migration round-trip. Scoped out (kept as backlog): follows-feed hiding of blocked authors, /search/comments refinement, notification inbox filters.",
+      "alternatives_rejected": "Follows-feed content hiding of blocked authors, comment-search refinement, notification-inbox filters - deliberately deferred from DEC-427 to keep this slice tight; each still viable as its own round."
     }
   },
   "edges": [
@@ -41782,6 +41849,36 @@
       "to": "ISS-516",
       "type": "addresses",
       "created_at": "2026-09-18T05:07:04+00:00"
+    },
+    {
+      "from": "CHG-684",
+      "to": "TASK-438",
+      "type": "implements",
+      "created_at": "2026-09-18T06:39:18+00:00"
+    },
+    {
+      "from": "CHG-685",
+      "to": "TASK-438",
+      "type": "implements",
+      "created_at": "2026-09-18T06:39:18+00:00"
+    },
+    {
+      "from": "CHG-686",
+      "to": "TASK-438",
+      "type": "implements",
+      "created_at": "2026-09-18T06:39:18+00:00"
+    },
+    {
+      "from": "CHG-687",
+      "to": "TASK-438",
+      "type": "implements",
+      "created_at": "2026-09-18T06:39:18+00:00"
+    },
+    {
+      "from": "DEC-428",
+      "to": "DEC-427",
+      "type": "supersedes",
+      "created_at": "2026-09-18T06:39:18+00:00"
     }
   ]
 }
