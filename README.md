@@ -90,6 +90,13 @@ A modern full-stack blog application built with FastAPI + Nuxt
   commenter's @-mentions, replies, thread-comments and follow-activity from
   reaching them; `/account` lists blocked readers for one-click unblock that
   restores the fan-out (DEC-425, TASK-437)
+- 📧 **Guest thread-follow by email** - "Follow a discussion" was reader-gated, so a
+  visitor who wants to follow ONE post's comments by email had no on-ramp but
+  registering: a compact form in the comment header takes an address and double
+  opt-in confirms it (newsletter-style, no oracle, one confirmation email per new
+  row), then one email lands per APPROVED comment — deep-linked to the comment and
+  carrying a per-subscription one-click unsubscribe that stops all thread mail from
+  the inbox. No account ever needed (DEC-427, TASK-438)
 - 📧 **Digest operator console on `/admin/newsletter`** - the weekly digest
   (reader + guest) had complete backend machinery but zero admin surface: an
   operator could trigger it by CLI or the superuser endpoint but could not see

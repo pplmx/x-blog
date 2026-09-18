@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists blocked readers for one-click unblock that restores everything. 1799
   backend tests @93.77% (+18, Postgres-verified), 2318 frontend tests (+9), and
   a reader-block e2e journey all green (DEC-425, TASK-437).
+- 📧 **Guest thread-follow by email (round 380)**: comment-thread follow was
+  reader-gated, so a visitor wanting to follow ONE discussion by email had no
+  on-ramp but registering. A compact form on a post's comment header takes an
+  address and double opt-in confirms it (auth-free 202, generic no-oracle
+  answer, one confirmation email per new row, mirrored from the newsletter);
+  once confirmed, every new APPROVED comment fans out one email — deep-linked
+  to the comment and carrying a per-subscription one-click unsubscribe — and
+  pending/unsubscribed rows stay silent while a commenter's own address is
+  skipped. Never needs an account. 1814 backend tests @93.72% (+15,
+  Postgres-verified), 2332 frontend tests (+14), and a guest-thread-follow e2e
+  journey all green (DEC-427, TASK-438).
 - 📧 **Weekly-digest operator console (round 378)**: the weekly digest (for both
   readers and guests) ran on complete backend machinery with no admin reading
   surface —
