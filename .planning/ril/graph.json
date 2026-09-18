@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 379,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T03:43:19+00:00",
+  "updated_at": "2026-09-18T04:56:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27974,10 +27974,10 @@
     "TASK-437": {
       "id": "TASK-437",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-18T03:42:58+00:00",
-      "updated_at": "2026-09-18T03:42:58+00:00",
+      "updated_at": "2026-09-18T04:56:41+00:00",
       "touched_round": 379,
       "category": "core-feature",
       "severity": "high",
@@ -27987,13 +27987,80 @@
     "ISS-515": {
       "id": "ISS-515",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-18T03:42:58+00:00",
-      "updated_at": "2026-09-18T03:42:58+00:00",
+      "updated_at": "2026-09-18T04:55:26+00:00",
       "touched_round": 379,
       "title": "Reader cannot block/hide another reader (mentions/replies keep landing)",
       "description": "Reader-to-reader follows + @-mention fan-out exist but there is no block/ignore control: a harassing commenter can keep @-mentioning a reader, replying at them, and generating inbox/email entries with no opt-out. Repeatedly muting per-kind prefs is not the same as stopping one abusive person."
+    },
+    "CHG-680": {
+      "id": "CHG-680",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "commit": "3ae772e7",
+      "detail": "backend: reader_blocks model + migration, /me/blocks endpoints, is_blocked on public profile, dispatch-point suppression (mention/reply/thread/follow-activity) + 18 tests"
+    },
+    "CHG-681": {
+      "id": "CHG-681",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "commit": "13e7913a",
+      "detail": "frontend: ReaderBlockButton on readers/[id], blocked-readers section on /account, i18n, +9 vitest"
+    },
+    "CHG-682": {
+      "id": "CHG-682",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "commit": "72d3f1de",
+      "detail": "e2e: reader-block journey (block, mention suppression + control, unblock restore, cross-isolation)"
+    },
+    "CHG-683": {
+      "id": "CHG-683",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "commit": "e3c100e9",
+      "detail": "docs: README + CHANGELOG (en/zh) round-379 reader blocks entry"
+    },
+    "EV-284": {
+      "id": "EV-284",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "source": "round 379 full VERIFY: pytest -n auto --cov-fail-under=80 (1799 passed, 10 skipped @93.77%); pnpm test 2318; nuxt typecheck 0; pyright 0; e2e reader-block + reader-profile-follow 5/5; digest suite + reader_blocks on PostgreSQL 18.4; migration upgrade/downgrade on SQLite + PG scratch DB",
+      "detail": "Gap analysis confirmed block absent end-to-end pre-feature. Mixed: contract list drops deactivated; suppression verified by absent-kind + control (mention lands unblocked), unblock-restores test, and e2e. Migration autogen had one false-positive index (ix_reader_post_likes_id) removed.",
+      "confidence": 1.0
+    },
+    "DEC-426": {
+      "id": "DEC-426",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T04:54:49+00:00",
+      "updated_at": "2026-09-18T04:54:49+00:00",
+      "touched_round": 379,
+      "rationale": "TASK-437 delivered end-to-end: reader_blocks relation + GET/PUT/DELETE /me/blocks + dispatch-point suppression of a blocked commenter (mention/reply/thread/follow-activity) + Block button + /account management + 18 backend/9 vitest/2 e2e + docs. All VERIFY gates green: 1799 backend @93.77% (+18), 2318 vitest (+9), nuxt typecheck + pyright 0 errors, e2e 5/5, PostgreSQL 18.4 pass + migration round-trip. Scoped out (kept as backlog): hiding a blocked author posts from /me/follows-feed (content-hiding axis), guest email thread-follow, /search/comments refinement, notification inbox filters.",
+      "alternatives_rejected": "Follows-feed content hiding, guest thread-follow, comment-search refinement, notification filters - deliberately deferred to keep this slice tight; each still viable as its own round."
     }
   },
   "edges": [
@@ -41638,6 +41705,36 @@
       "to": "ISS-515",
       "type": "addresses",
       "created_at": "2026-09-18T03:43:19+00:00"
+    },
+    {
+      "from": "CHG-680",
+      "to": "TASK-437",
+      "type": "implements",
+      "created_at": "2026-09-18T04:55:25+00:00"
+    },
+    {
+      "from": "CHG-681",
+      "to": "TASK-437",
+      "type": "implements",
+      "created_at": "2026-09-18T04:55:25+00:00"
+    },
+    {
+      "from": "CHG-682",
+      "to": "TASK-437",
+      "type": "implements",
+      "created_at": "2026-09-18T04:55:25+00:00"
+    },
+    {
+      "from": "CHG-683",
+      "to": "TASK-437",
+      "type": "implements",
+      "created_at": "2026-09-18T04:55:26+00:00"
+    },
+    {
+      "from": "DEC-426",
+      "to": "DEC-425",
+      "type": "supersedes",
+      "created_at": "2026-09-18T04:55:26+00:00"
     }
   ]
 }
