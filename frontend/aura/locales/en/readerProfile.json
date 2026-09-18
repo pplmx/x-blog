@@ -27,6 +27,12 @@
 		"followingTitle": "Unfollow this reader",
 		"followFailed": "Couldn't update your follow — please try again",
 		"followerCountOne": "{count} follower",
-		"followerCountMany": "{count} followers"
+		"followerCountMany": "{count} followers",
+		"blockAction": "Block",
+		"blocked": "Blocked",
+		"blockTitle": "Block this reader so their mentions, replies and activity stop reaching you",
+		"blockedTitle": "Unblock this reader",
+		"blockConfirm": "Block this reader? Their @-mentions, replies and activity will stop reaching you. You can unblock them anytime.",
+		"blockFailed": "Couldn't update the block — please try again"
 	}
 }

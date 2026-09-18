@@ -130,6 +130,13 @@
 			"unfollowConfirm": "Unfollow this reader? You'll stop getting notified about their comments.",
 			"failed": "Couldn't do that — please try again"
 		},
+		"blocks": {
+			"title": "Blocked readers",
+			"note": "Blocked readers' @-mentions, replies and activity no longer reach you. They're never told and can keep commenting — this list is only yours.",
+			"empty": "You haven't blocked anyone. Open a commenter's profile to block them.",
+			"unblock": "Unblock",
+			"failed": "Couldn't do that — please try again"
+		},
 		"tags": {
 			"title": "Followed tags",
 			"note": "You'll be pushed a Web Push when a new post is published carrying these tags.",

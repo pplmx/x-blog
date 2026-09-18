@@ -80,6 +80,9 @@ const mockSetAuthorFollowNotify = vi.fn();
 // only the list + unfollow are wired.
 const mockFetchReaderFollows = vi.fn();
 const mockUnfollowReader = vi.fn();
+// Reader blocks (round 379, DEC-425) — list + one-click unblock.
+const mockFetchReaderBlocks = vi.fn();
+const mockUnblockReader = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
 const mockSetSeriesFollowNotify = vi.fn();
 const mockFetchReaderCategoryFollows = vi.fn();
@@ -106,6 +109,10 @@ vi.mock("~~/api/reader/follows", () => ({
 	setAuthorFollowNotify: mockSetAuthorFollowNotify,
 	getReaderFollows: mockFetchReaderFollows,
 	unfollowReader: mockUnfollowReader,
+}));
+vi.mock("~~/api/reader/blocks", () => ({
+	getBlockedReaders: mockFetchReaderBlocks,
+	unblockReader: mockUnblockReader,
 }));
 vi.mock("../../api/reader/account", () => ({
 	changeReaderPassword: mockChangeMyPassword,
@@ -1537,6 +1544,74 @@ describe("Account settings page", () => {
 
 			expect(mockUnfollowReader).not.toHaveBeenCalled();
 			vi.unstubAllGlobals();
+		});
+	});
+
+	describe("blocked readers (round 379, DEC-425)", () => {
+		function mockBlocks(
+			items: Array<{
+				reader_id: number;
+				display_name: string | null;
+				avatar_url: string | null;
+				blocked_at: string | null;
+			}> = [],
+		) {
+			mockFetchReaderBlocks.mockResolvedValue({ items, total: items.length });
+		}
+
+		it("shows an empty state when no one is blocked", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockBlocks([]);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("还没有屏蔽任何人");
+		});
+
+		it("lists blocked readers and unblocks in one click", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockFetchReaderBlocks
+				.mockResolvedValueOnce({
+					items: [{ reader_id: 12, display_name: "Riki", avatar_url: null, blocked_at: "x" }],
+					total: 1,
+				})
+				.mockResolvedValueOnce({ items: [], total: 0 });
+			mockUnblockReader.mockResolvedValue(null);
+
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("Riki");
+
+			const section = wrapper.findAll("section").find((s) => s.text().includes("已屏蔽的读者"));
+			expect(section).toBeDefined();
+			if (!section) throw new Error("blocked-readers section not found");
+			const unblockBtn = section.findAll("button").find((b) => b.text() === "取消屏蔽");
+			expect(unblockBtn).toBeDefined();
+			if (!unblockBtn) throw new Error("unblock button not found");
+
+			// Unblock needs no confirmation (unlike blocking) — restoring is
+			// always safe and it is the recovery path.
+			await unblockBtn.trigger("click");
+			await flushPromises();
+
+			expect(mockUnblockReader).toHaveBeenCalledWith(12);
+			expect(mockFetchReaderBlocks).toHaveBeenCalledTimes(2); // initial + reload
+			expect(wrapper.text()).toContain("还没有屏蔽任何人");
+		});
+
+		it("surfaces an unblock failure instead of silently dropping the row", async () => {
+			isAuthenticated.value = true;
+			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
+			mockBlocks([{ reader_id: 12, display_name: "Riki", avatar_url: null, blocked_at: "x" }]);
+			mockUnblockReader.mockRejectedValue(new Error("down"));
+
+			const wrapper = await mountPage();
+			const section = wrapper.findAll("section").find((s) => s.text().includes("已屏蔽的读者"));
+			if (!section) throw new Error("blocked-readers section not found");
+			const unblockBtn = section.findAll("button").find((b) => b.text() === "取消屏蔽");
+			await unblockBtn?.trigger("click");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("操作失败，请稍后再试");
 		});
 	});
 

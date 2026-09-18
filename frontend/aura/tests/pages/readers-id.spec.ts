@@ -67,6 +67,17 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReader: mockUnfollowReader,
 }));
 
+// Reader block (round 379, DEC-425): the header's ReaderBlockButton seeds from
+// the profile's is_blocked stance, so only the block/unblock seams are mocked.
+const { mockBlockReader, mockUnblockReader } = vi.hoisted(() => ({
+	mockBlockReader: vi.fn(),
+	mockUnblockReader: vi.fn(),
+}));
+vi.mock("~~/api/reader/blocks", () => ({
+	blockReader: mockBlockReader,
+	unblockReader: mockUnblockReader,
+}));
+
 const stubs = {
 	Icon: { template: "<svg class='icon-stub' :data-icon='icon' />", props: ["icon"] },
 	NuxtLink: { template: "<a class='nuxt-link-stub' :href='to'><slot/></a>", props: ["to"] },
@@ -152,6 +163,8 @@ beforeEach(() => {
 	mockQuery = {};
 	mockFollowReader.mockClear();
 	mockUnfollowReader.mockClear();
+	mockBlockReader.mockClear();
+	mockUnblockReader.mockClear();
 });
 
 afterEach(() => {
@@ -166,8 +179,9 @@ async function mountPage() {
 	}));
 	vi.stubGlobal("navigateTo", vi.fn());
 	const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
+	const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
 	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
-		global: { components: { ReaderFollowButton }, stubs },
+		global: { components: { ReaderFollowButton, ReaderBlockButton }, stubs },
 	});
 	await flushPromises();
 	return wrapper;
@@ -444,5 +458,100 @@ describe("Reader follow on the profile header (round 365, DEC-403)", () => {
 		expect(wrapper.findAll("button").some((b) => b.text() === "readerProfile.follow")).toBe(false);
 		// …and the sign-in prompt replaces the generic failure bubble.
 		expect(wrapper.text()).toContain("common.sessionExpired");
+	});
+});
+
+describe("Reader block on the profile header (round 379, DEC-425)", () => {
+	function scaledPayload(is_blocked: boolean) {
+		return {
+			...samplePage,
+			profile: { ...samplePage.profile, is_blocked },
+		};
+	}
+
+	it("shows no block control for a signed-out visitor", async () => {
+		mockPayload = scaledPayload(false);
+		const wrapper = await mountPage();
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).not.toContain("readerProfile.blockAction");
+	});
+
+	it("lets a signed-in reader block another reader from the header", async () => {
+		mockPayload = scaledPayload(false);
+		mockBlockReader.mockResolvedValue({
+			reader_id: 5,
+			display_name: "Riki",
+			avatar_url: null,
+			blocked_at: "x",
+		});
+		signIn(); // signed in, but viewing reader 5 — not themself
+		vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+		const wrapper = await mountPage();
+		const blockBtn = wrapper
+			.findAll("button")
+			.find((b) => b.text() === "readerProfile.blockAction");
+		expect(blockBtn).toBeDefined();
+		if (!blockBtn) throw new Error("block button not found");
+		expect(blockBtn.attributes("aria-pressed")).toBe("false");
+
+		await blockBtn.trigger("click");
+		await flushPromises();
+
+		expect(mockBlockReader).toHaveBeenCalledWith(5);
+		const blockedBtn = wrapper.findAll("button").find((b) => b.text() === "readerProfile.blocked");
+		expect(blockedBtn?.attributes("aria-pressed")).toBe("true");
+	});
+
+	it("seeds the button already-blocked from the profile's own stance", async () => {
+		mockPayload = scaledPayload(true);
+		signIn();
+
+		const wrapper = await mountPage();
+		const blockedBtn = wrapper.findAll("button").find((b) => b.text() === "readerProfile.blocked");
+		expect(blockedBtn?.attributes("aria-pressed")).toBe("true");
+		expect(mockBlockReader).not.toHaveBeenCalled();
+	});
+
+	it("declining the block confirm does not call the API", async () => {
+		mockPayload = scaledPayload(false);
+		signIn();
+		vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+
+		const wrapper = await mountPage();
+		const blockBtn = wrapper
+			.findAll("button")
+			.find((b) => b.text() === "readerProfile.blockAction");
+		await blockBtn?.trigger("click");
+		await flushPromises();
+
+		expect(mockBlockReader).not.toHaveBeenCalled();
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).not.toContain("readerProfile.blocked");
+	});
+
+	it("unblocks without a confirm and restores the action label", async () => {
+		mockPayload = scaledPayload(true);
+		mockUnblockReader.mockResolvedValue(null);
+		signIn();
+
+		const wrapper = await mountPage();
+		const blockedBtn = wrapper.findAll("button").find((b) => b.text() === "readerProfile.blocked");
+		await blockedBtn?.trigger("click");
+		await flushPromises();
+
+		expect(mockUnblockReader).toHaveBeenCalledWith(5);
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).toContain("readerProfile.blockAction");
+	});
+
+	it("hides the block control on the reader's OWN profile", async () => {
+		mockPayload = scaledPayload(false);
+		signIn({ id: 5 }); // the profile id — viewing themself
+
+		const wrapper = await mountPage();
+		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
+		expect(buttonTexts).not.toContain("readerProfile.blockAction");
+		expect(buttonTexts).not.toContain("readerProfile.blocked");
 	});
 });

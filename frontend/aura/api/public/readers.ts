@@ -24,6 +24,11 @@ export interface ReaderPublicProfile {
 	 *  follows this reader, always false for guests — the header renders the
 	 *  Follow/Following button off this. Not an oracle for anyone else. */
 	is_following: boolean;
+	/** The SIGNED-IN caller's own block stance (round 379, DEC-425): true when
+	 *  the caller blocked this reader, always false for guests — the header
+	 *  renders the Block/Unblock button off this. Same no-oracle rule as
+	 *  is_following. */
+	is_blocked: boolean;
 	created_at: string | null;
 }
 

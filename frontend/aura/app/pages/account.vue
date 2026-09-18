@@ -23,6 +23,7 @@ import {
 	uploadReaderAvatar,
 } from "~~/api/reader/account";
 import { requestEmailChange } from "~~/api/reader/auth";
+import { type BlockedReaderItem, getBlockedReaders, unblockReader } from "~~/api/reader/blocks";
 import type {
 	FollowedAuthorItem,
 	FollowedCategoryItem,
@@ -967,6 +968,46 @@ async function unfollowFollowedReader(item: FollowedReaderItem) {
 	}
 }
 
+/* Blocked readers (round 379, DEC-425): the harassment-control list opposite
+   the follows above. Each row is public identity + when the block was placed,
+   and the only action is unblock — unblocking is one click, so a reader can
+   take a block back the moment they change their mind. */
+const readerBlocks = ref<BlockedReaderItem[]>([]);
+const readerBlocksLoaded = ref(false);
+const readerBlocksLoadFailed = ref(false);
+const readerUnblockIds = ref(new Set<number>());
+const readerBlocksError = ref(false);
+
+async function loadReaderBlocks() {
+	if (!isAuthenticated.value) return;
+	readerBlocksLoadFailed.value = false;
+	try {
+		readerBlocks.value = (await getBlockedReaders()).items ?? [];
+	} catch (err) {
+		readerBlocks.value = [];
+		handleLoadFailure(err, () => {
+			readerBlocksLoadFailed.value = true;
+		});
+	}
+	readerBlocksLoaded.value = true;
+}
+
+async function unblockBlockedReader(item: BlockedReaderItem) {
+	if (readerUnblockIds.value.has(item.reader_id)) return; // single-flight per row
+	readerUnblockIds.value.add(item.reader_id);
+	readerBlocksError.value = false;
+	try {
+		await unblockReader(item.reader_id);
+		await loadReaderBlocks();
+	} catch (err) {
+		handleLoadFailure(err, () => {
+			readerBlocksError.value = true;
+		});
+	} finally {
+		readerUnblockIds.value.delete(item.reader_id);
+	}
+}
+
 onMounted(() => {
 	loadDevices();
 	loadCategories();
@@ -976,6 +1017,7 @@ onMounted(() => {
 	loadTagFollows();
 	loadAuthorFollows();
 	loadReaderFollows();
+	loadReaderBlocks();
 	// Keep the name/bio inputs in sync if the header "reader" profile loads
 	// after us.
 	displayName.value = reader.value?.display_name ?? displayName.value;
@@ -1902,6 +1944,79 @@ function shortEndpoint(endpoint: string): string {
         </ul>
         <p v-if="readerFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
           {{ t('account.readers.failed') }}
+        </p>
+      </section>
+
+      <!-- Blocked readers (round 379, DEC-425): the harassment-control list —
+           who this reader blocked, when, and one-click unblock. Blocking never
+           tells the other side, so this list is only the blocker's own. -->
+      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          {{ t('account.blocks.title') }}
+        </h2>
+        <p class="text-xs text-gray-400 mb-4">{{ t('account.blocks.note') }}</p>
+
+        <p
+          v-if="!readerBlocksLoaded"
+          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+        >
+          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
+          {{ t('account.loading') }}
+        </p>
+        <div v-else-if="readerBlocksLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.loadFailed') }}
+          <button
+            type="button"
+            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            @click="loadReaderBlocks"
+          >
+            {{ t('account.retry') }}
+          </button>
+        </div>
+        <p v-else-if="readerBlocks.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          {{ t('account.blocks.empty') }}
+        </p>
+        <ul v-else class="space-y-3">
+          <li
+            v-for="rb in readerBlocks"
+            :key="rb.reader_id"
+            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <div class="flex min-w-0 items-center gap-3">
+                <img
+                  v-if="rb.avatar_url"
+                  :src="rb.avatar_url"
+                  :alt="rb.display_name || 'avatar'"
+                  class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+                />
+                <span
+                  v-else
+                  class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-red-600 text-white text-sm font-bold"
+                >
+                  {{ (rb.display_name || "R").charAt(0).toUpperCase() }}
+                </span>
+                <NuxtLink
+                  :to="`/readers/${rb.reader_id}`"
+                  class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  {{ rb.display_name || t('readerProfile.anonymousName') }}
+                </NuxtLink>
+              </div>
+              <button
+                type="button"
+                :disabled="readerUnblockIds.has(rb.reader_id)"
+                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                @click="unblockBlockedReader(rb)"
+              >
+                <Icon icon="lucide:user-check" class="w-3.5 h-3.5" />
+                {{ t('account.blocks.unblock') }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-if="readerBlocksError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
+          {{ t('account.blocks.failed') }}
         </p>
       </section>
 

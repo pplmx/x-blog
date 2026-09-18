@@ -27,6 +27,12 @@
 		"followingTitle": "取消关注这位读者",
 		"followFailed": "更新关注状态失败，请稍后再试",
 		"followerCountOne": "{count} 位粉丝",
-		"followerCountMany": "{count} 位粉丝"
+		"followerCountMany": "{count} 位粉丝",
+		"blockAction": "屏蔽",
+		"blocked": "已屏蔽",
+		"blockTitle": "屏蔽这位读者，让 TA 的提及、回复和动态不再打扰你",
+		"blockedTitle": "取消屏蔽这位读者",
+		"blockConfirm": "要屏蔽这位读者吗？TA 的 @提及、回复和动态将不再送达你。之后可随时取消屏蔽。",
+		"blockFailed": "更新屏蔽状态失败，请稍后再试"
 	}
 }

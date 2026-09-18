@@ -290,6 +290,17 @@ const paginationTokens = computed(() =>
 					:initial-following="data.profile.is_following"
 					:initial-follower-count="data.profile.follower_count"
 				/>
+				<!-- Reader block (round 379, DEC-425): the harassment-control
+					 cousin — a signed-in reader can block this reader so their
+					 mentions / replies / thread-comments / follow-activity stop
+					 landing. One-way and invisible; the follower count and follow
+					 button stay untouched. -->
+				<div class="shrink-0">
+					<ReaderBlockButton
+						:reader-id="data.profile.id"
+						:initial-blocked="data.profile.is_blocked"
+					/>
+				</div>
 			</div>
 
 			<!-- Tabs: comments always; "Liked posts" only when the reader opted in
