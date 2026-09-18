@@ -203,6 +203,9 @@ def test_approval_emails_consenting_guest_a_manage_link(client, post, db_session
     text = _text_part(msg)
     assert "manage" in text
     assert token in text  # the deep link carries the secret the guest owns
+    # Flat top-level route (DEC-435/TASK-444): a child under /comments would
+    # nest and never mount (Nuxt page-nesting gotcha, per DEC-332).
+    assert f"/comment-manage?token={token}" in text
 
 
 def test_approval_does_not_email_a_non_consenting_guest(client, post, auth_headers, smtp_sink):

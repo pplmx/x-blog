@@ -406,7 +406,10 @@ def _maybe_email_guest_manage_link(comment: models.Comment, post: models.Post) -
             comment.email,
             post_title=post.title or "",
             post_url=f"/posts/{post.slug}#comment-{comment.id}",
-            manage_url=f"/comments/manage?token={comment.reply_notify_token}",
+            # Flat top-level route (DEC-435/TASK-444): a child under /comments
+            # would nest under the /comments page and never mount (Nuxt
+            # page-nesting gotcha, per DEC-332's /comment-reply-unsubscribe).
+            manage_url=f"/comment-manage?token={comment.reply_notify_token}",
         )
     except Exception:  # noqa: BLE001 — best effort, never fail the approval
         logger.exception("guest comment manage-email dispatch failed")

@@ -108,14 +108,14 @@ class TestGuestCommentManageEmailLanguage:
             "guest@example.com",
             post_title="Hello",
             post_url="/posts/hello#comment-1",
-            manage_url="/comments/manage?token=abc",
+            manage_url="/comment-manage?token=abc",
         )
         msg = _FakeSMTP.sent[0]
         assert msg["Subject"] == "你的评论已发布 — 可管理"
         text = _text_part(msg)
         assert "《Hello》" in text
         assert "评论" in text
-        assert "/comments/manage?token=abc" in text
+        assert "/comment-manage?token=abc" in text
 
     def test_en_site_gets_english_copy(self, monkeypatch, smtp_sink_fixture):
         monkeypatch.setenv("SITE_LANGUAGE", "en")
@@ -123,14 +123,14 @@ class TestGuestCommentManageEmailLanguage:
             "guest@example.com",
             post_title="Hello",
             post_url="/posts/hello#comment-1",
-            manage_url="/comments/manage?token=abc",
+            manage_url="/comment-manage?token=abc",
         )
         msg = _FakeSMTP.sent[0]
         assert msg["Subject"] == "Your comment is live — manage it"
         text = _text_part(msg)
         assert "Hello" in text
         assert "manage" in text
-        assert "/comments/manage?token=abc" in text
+        assert "/comment-manage?token=abc" in text
 
 
 class TestPasswordResetEmailLanguage:
