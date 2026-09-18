@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 377,
+  "round": 378,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-17T00:33:52+00:00",
+  "updated_at": "2026-09-17T15:54:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -26719,10 +26719,10 @@
     "HYP-021": {
       "id": "HYP-021",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-09-16T08:31:19+00:00",
-      "updated_at": "2026-09-16T08:31:19+00:00",
+      "updated_at": "2026-09-17T15:39:31+00:00",
       "touched_round": 364,
       "confidence": 1,
       "title": "server_default literal 'false' is dialect-unsafe: SQLite stores TEXT 'false' -> pre-existing rows read back True",
@@ -27829,10 +27829,58 @@
       "version": 1,
       "created_at": "2026-09-17T00:33:15+00:00",
       "updated_at": "2026-09-17T00:33:15+00:00",
-      "touched_round": 376,
+      "touched_round": 378,
       "title": "converged-idle: reader + operator feature surface is comprehensive (X-DEC)",
       "rationale": "Feature-evolution reached the QUIESCE condition. Rounds 369-372 delivered my-comments search, liked-posts search, in-place unlike, and reading insights. Round 373's candidate (thread-subscription management) was refuted at EXECUTE - the surface already ships (/me/post-subscriptions + /account), and the duplicate endpoint + tests were reverted. Round 374's verification sweep (frontend app/ + components/ + backend routers) found no further value-gate-passing candidate: flagging, admin batch moderation, share/copy, reading time, mark-all-read, push-device management, and the reader follow lists all exist. Shipping more would be feature padding, not user value. Alternatives rejected: mark-all-read (exists), push-device mgmt (exists), thread list (exists), comment flags (exists), admin search/batch (exists), post share/reading-time (exists), reader insights (shipped round 372). The loop stops; it reactivates on a new operator direction (supersedes decision) or a real external signal (new issue, material requirement).",
       "alternatives_rejected": "Manufacturing a thin convenience feature (e.g. notification search, manual bookmark ordering, dark-mode override) explicitly rejected - each is a single-button patch below the value gate, and accumulating them is the anti-pattern this decision exists to stop."
+    },
+    "DEC-422": {
+      "id": "DEC-422",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T15:41:35+00:00",
+      "updated_at": "2026-09-17T15:41:35+00:00",
+      "touched_round": 378,
+      "title": "Feature evolution reactivated: new operator direction (功能探索开发模式)",
+      "rationale": "Operator issued a new directive via /goal: enter feature exploration development mode (功能探索开发模式) and run graph-engineering. This supersedes DEC-421 converged-idle (QUIESCE at round 376). Per skill §11, the loop reactivates on a new operator direction recorded as a supersedes decision. The loop resumes in feature-evolution mode: source candidates from operator direction, graph backlog, and gap analysis; each candidate must pass the value gate (user-visible net-increment vertical slice, one-line acceptance) before entering SELECT. Dev PostgreSQL provided (10.112.9.49:13310, postgres/postgres) for Postgres-grained VERIFY of backend changes.",
+      "alternatives_rejected": "Remaining in converged-idle (no new engineering activity) rejected because the operator explicitly requested feature exploration; manufacturing thin convenience patches below the value gate remains rejected per DEC-421."
+    },
+    "DEC-423": {
+      "id": "DEC-423",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T15:53:40+00:00",
+      "updated_at": "2026-09-17T15:53:40+00:00",
+      "touched_round": 378,
+      "title": "Weekly digest admin console: 订户规模 + 预览/发送控制 (DEC-423)",
+      "rationale": "Feature-exploration mode (DEC-422) resumed. Gap analysis against the surfaced feature surface (§11.2) found the strongest fresh candidate: the weekly email digest has complete backend machinery (app/digest.py send_weekly_digest with advisory lock, idempotent digest_sent_at stamping, dry_run preview, summary dict; POST /api/admin/digests/send-weekly superuser trigger; weekly-digest cadence for both reader prefs email_weekly_digest and guest newsletter digest_weekly) but ZERO admin UI — /admin/newsletter only lists guest subscribers. An operator running a site with weekly digests cannot see how many readers/guests opted into the digest, when the last one went out, what the next one would contain, or trigger/preview it from the UI (only dry-run CLI + superuser endpoint). This is a real, perceivable operator problem (a monthly-running user-facing email feature with no monitoring/control surface) and a net-increment vertical slice: one lightweight overview endpoint + a digest panel on /admin/newsletter wired to the existing send-weekly endpoint. Not in DEC-421 (converged-idle) rejected list — it was never surfaced, it is not a single-button patch (solve: operator understands digest reach + last-run + preview + can send). Acceptance (one line): operator sees digest subscriber counts (readers + guests), last-sent time, and window post count on /admin/newsletter and can dry-run preview and trigger a send.",
+      "alternatives_rejected": "Per-tag RSS path (exists via ?tag_id scoping, minor route duplication), search expansion to readers/tags (nice-to-have, larger scope), share surface widening (single-button patch below value gate), public trending analytics (admin analytics already exist) — each rejected as below the value gate or overlapping existing surface for this round."
+    },
+    "TASK-436": {
+      "id": "TASK-436",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T15:53:52+00:00",
+      "updated_at": "2026-09-17T15:53:52+00:00",
+      "touched_round": 378,
+      "category": "core-feature",
+      "title": "Weekly digest admin console: overview + dry-run preview + trigger send on /admin/newsletter",
+      "description": "Backend: GET /api/admin/newsletter/digest/overview returning reader_digest_subscribers (active readers with email_weekly_digest), guest_digest_subscribers (confirmed + digest_weekly), last_sent_at (max of reader/guest digest_sent_at), window_posts (collect_digest_posts len). Frontend: digest panel on /admin/newsletter showing the counts + last sent, a dry-run preview (calls send-weekly?dry_run=true) and a send button (calls send-weekly, superuser). i18n en/zh. Tests: backend overview endpoint contract tests; Vitest for panel; verify Postgres where relevant.",
+      "severity": "high"
+    },
+    "ISS-514": {
+      "id": "ISS-514",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-17T15:54:17+00:00",
+      "updated_at": "2026-09-17T15:54:17+00:00",
+      "touched_round": 378,
+      "title": "Weekly digest has no operator overview/preview/send UI",
+      "description": "The weekly email digest runs with complete backend machinery but zero admin surface: an operator cannot see reader+guest digest subscriber counts, when the last digest was sent, what the next window would contain, or trigger a send from the UI. Digest is a user-facing recurring email; running it blind is an operational gap."
     }
   },
   "edges": [
@@ -41411,6 +41459,24 @@
       "to": "HYP-022",
       "type": "refutes",
       "created_at": "2026-09-17T00:25:58+00:00"
+    },
+    {
+      "from": "DEC-422",
+      "to": "DEC-421",
+      "type": "supersedes",
+      "created_at": "2026-09-17T15:41:47+00:00"
+    },
+    {
+      "from": "DEC-423",
+      "to": "TASK-436",
+      "type": "governs",
+      "created_at": "2026-09-17T15:54:17+00:00"
+    },
+    {
+      "from": "TASK-436",
+      "to": "ISS-514",
+      "type": "addresses",
+      "created_at": "2026-09-17T15:54:28+00:00"
     }
   ]
 }
