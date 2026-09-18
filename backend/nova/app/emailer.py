@@ -461,6 +461,115 @@ def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
     return bool(flags and flags[0])
 
 
+def send_guest_thread_confirm_email(to_addr: str, token: str, post_title: str) -> bool:
+    """Double opt-in confirmation for a guest thread-follow (DEC-427, TASK-438).
+
+    ``subscribe`` only records the (email, post) row and emails this confirm
+    link — the address receives no thread mail until the token link is
+    clicked. Direct SMTP send mirroring ``send_newsletter_confirm_email``
+    (the guest has no reader account, so the reader-keyed notifier does not
+    apply). Site-language copy like the other guest emails (DEC-342); the post
+    title is user-controlled, so it is escaped in the HTML part. Returns
+    whether SMTP accepted it; connection errors raise for the caller to
+    swallow (best effort).
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    link = f"{base_url.rstrip('/')}/comment-subscribe/confirm?token={token}"
+    if _is_en_site():
+        subject = f"Confirm following the discussion on {post_title}"
+        text = (
+            f"You asked to follow the discussion on {post_title}.\n"
+            "Click the link below to confirm (until you do, no discussion emails will be sent):\n\n"
+            f"{link}\n\n"
+            "If you didn't ask for this, you can ignore this email — your address won't be used."
+        )
+        html_body = (
+            f"<p>You asked to follow the discussion on {html.escape(post_title)}.</p>"
+            '<p><a href="' + html.escape(link, quote=True) + '">Confirm</a></p>'
+            "<p>If you didn't ask for this, you can ignore this email — your address won't be used.</p>"
+        )
+    else:
+        subject = f"确认订阅《{post_title}》的讨论"
+        text = (
+            f"你申请订阅《{post_title}》的讨论。\n"
+            "点击下面的链接确认订阅（不确认则不会收到任何讨论邮件）：\n\n"
+            f"{link}\n\n"
+            "如果你没有发起这个申请，请忽略这封邮件，你的邮箱不会被使用。"
+        )
+        html_body = (
+            f"<p>你申请订阅《{html.escape(post_title)}》的讨论。</p>"
+            '<p><a href="' + html.escape(link, quote=True) + '">确认订阅</a></p>'
+            "<p>如果你没有发起这个申请，请忽略这封邮件，你的邮箱不会被使用。</p>"
+        )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(f"{subject}\n\n{text}")
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
+def send_guest_thread_email(
+    to_addr: str,
+    *,
+    post_title: str,
+    comment_url: str,
+    unsubscribe_url: str,
+) -> bool:
+    """Notify an anonymous thread subscriber that a new comment is live (DEC-427).
+
+    The guest counterpart of the reader thread-comment fan-out: a confirmed
+    guest subscription to a post gets one email per APPROVED comment (moderation
+    gate — only visible comments are mailed, same rule as the reader push),
+    deep-linking to the comment and carrying a one-click unsubscribe token so
+    the consent stays revocable without an account (mirrors
+    ``send_guest_reply_email``). Direct SMTP send, gated on
+    ``is_email_configured()`` and best-effort (a failure never breaks the
+    approval). Site-language copy (DEC-342); the post title is escaped in HTML.
+    Returns whether SMTP accepted it; connection errors raise for the caller
+    to swallow.
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    link = f"{base_url.rstrip('/')}{comment_url}"
+    unsubscribe = f"{base_url.rstrip('/')}{unsubscribe_url}"
+    if _is_en_site():
+        subject = f"New comment on {post_title}"
+        text = (
+            f"There is a new comment on the discussion of {post_title}.\n"
+            f"View the comment: {link}\n\n"
+            f"If you no longer want these emails, click the link below to unsubscribe:\n{unsubscribe}"
+        )
+        html_body = (
+            f"<p>There is a new comment on the discussion of {html.escape(post_title)}.</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">View the comment</a></p>'
+            f'<p><a href="{html.escape(unsubscribe, quote=True)}">Unsubscribe from these emails</a></p>'
+        )
+    else:
+        subject = f"《{post_title}》有新评论"
+        text = (
+            f"《{post_title}》的讨论有一条新评论。\n"
+            f"查看评论：{link}\n\n"
+            f"如果你不想再收到这类邮件，请点击下面的链接取消订阅：\n{unsubscribe}"
+        )
+        html_body = (
+            f"<p>《{html.escape(post_title)}》的讨论有一条新评论。</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">查看评论</a></p>'
+            f'<p><a href="{html.escape(unsubscribe, quote=True)}">取消订阅此类邮件</a></p>'
+        )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(text)
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
 def _header_safe_title(title: str | None) -> str:
     """The post title as a safe email-header value.
 

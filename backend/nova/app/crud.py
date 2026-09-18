@@ -3923,6 +3923,86 @@ def remove_comment_subscription(db: Session, reader_id: int, post_id: int) -> bo
     return True
 
 
+def get_guest_comment_subscription(db: Session, email: str, post_id: int) -> models.GuestCommentSubscription | None:
+    """Return the guest thread-subscription row for an (email, post), or None."""
+    return (
+        db.query(models.GuestCommentSubscription)
+        .filter(
+            models.GuestCommentSubscription.email == email,
+            models.GuestCommentSubscription.post_id == post_id,
+        )
+        .first()
+    )
+
+
+def add_guest_comment_subscription(
+    db: Session, email: str, post_id: int
+) -> tuple[models.GuestCommentSubscription, bool]:
+    """Record a guest's intent to follow a post's thread; returns (row, created).
+
+    Idempotent per (email, post): a resubscribe returns the existing row with
+    created=False and its confirm state unchanged — so a repeated subscribe
+    never idempotently re-confirms and never mails twice (the endpoint fires
+    the double-opt-in email only on created=True). ``email`` is the caller's
+    already-lowercased value; token is a fresh opaque secret (no-enumeration).
+    """
+    from secrets import token_urlsafe
+
+    existing = get_guest_comment_subscription(db, email, post_id)
+    if existing:
+        return existing, False
+    row = models.GuestCommentSubscription(email=email, post_id=post_id, token=token_urlsafe(32))
+    db.add(row)
+    if _commit_reader_upsert(db):
+        db.refresh(row)
+        return row, True
+    existing = get_guest_comment_subscription(db, email, post_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("guest thread subscription insert lost the unique-key race but no row was found")
+
+
+def get_guest_comment_subscription_by_token(db: Session, token: str) -> models.GuestCommentSubscription | None:
+    """The guest thread-subscription row owning ``token``, or None (no oracle)."""
+    return db.query(models.GuestCommentSubscription).filter(models.GuestCommentSubscription.token == token).first()
+
+
+def confirm_guest_comment_subscription(db: Session, token: str) -> bool:
+    """Flip a guest thread-subscription to confirmed via its token. Idempotent."""
+    row = get_guest_comment_subscription_by_token(db, token)
+    if row is None:
+        return False
+    if not row.is_confirmed:
+        row.is_confirmed = True
+        row.confirmed_at = datetime.now(UTC)
+        db.commit()
+    return True
+
+
+def unsubscribe_guest_comment_subscription(db: Session, token: str) -> bool:
+    """Flip a guest thread-subscription's consent off via its token. Idempotent."""
+    row = get_guest_comment_subscription_by_token(db, token)
+    if row is None:
+        return False
+    if row.is_confirmed:
+        row.is_confirmed = False
+        row.confirmed_at = None
+        db.commit()
+    return True
+
+
+def list_confirmed_guest_comment_subscribers(db: Session, post_id: int) -> list[models.GuestCommentSubscription]:
+    """Confirmed guest followers of a post's thread (for the approval fan-out)."""
+    return (
+        db.query(models.GuestCommentSubscription)
+        .filter(
+            models.GuestCommentSubscription.post_id == post_id,
+            models.GuestCommentSubscription.is_confirmed.is_(True),
+        )
+        .all()
+    )
+
+
 def list_reader_comment_subscriptions(
     db: Session, reader_id: int, page: int = 1, limit: int = 100
 ) -> tuple[list[models.Post], int]:

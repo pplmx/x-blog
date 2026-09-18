@@ -20,6 +20,7 @@ from app.emailer import (
     email_channel_enabled,
     is_email_configured,
     send_guest_reply_email,
+    send_guest_thread_email,
 )
 from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
@@ -149,6 +150,49 @@ def _notify_thread_subscribers(
         "url": f"/posts/{post.slug}#comment-{new_comment_id}",
     }
     dispatch_to_subscriptions(subscriptions, payload, db, logger)
+
+
+def _notify_guest_thread_subscribers(
+    post: models.Post,
+    comment: models.Comment,
+    db: Session,
+) -> None:
+    """Guest thread-follow fan-out (DEC-427, TASK-438): email every CONFIRMED
+    guest subscriber of the post that a new comment is approved.
+
+    The anonymous counterpart of ``_notify_thread_subscribers`` — a guest
+    subscription is keyed by (email, post) with no account, so this goes
+    straight through the SMTP path (``send_guest_thread_email``, like the guest
+    reply-email, DEC-332) with a one-click unsubscribe token. Fires only for
+    APPROVED comments (every comment is moderated, so subscribers hear about
+    comments they can actually see — same rule as the reader fan-out).
+    Best effort: never fails the approval; SMTP unconfigured is a silent skip.
+    The commenter's own address is skipped — a guest who subscribes and then
+    comments must not get an email about their own comment (same self-rule as
+    the reader branch), and a signed-in commenter whose reader email matches a
+    guest row is skipped too (they already get the reader fan-out above).
+    """
+    subscribers = crud.list_confirmed_guest_comment_subscribers(db, post.id)
+    if not subscribers:
+        return
+    commenter_email = comment.email.strip().casefold() if comment.email else None
+    if comment.reader_id is not None:
+        account = db.get(auth.ReaderAccount, comment.reader_id)
+        if account is not None and account.email:
+            commenter_email = account.email.strip().casefold()
+    url = f"/posts/{post.slug}#comment-{comment.id}"
+    for sub in subscribers:
+        if commenter_email and sub.email.strip().casefold() == commenter_email:
+            continue
+        try:
+            send_guest_thread_email(
+                sub.email,
+                post_title=post.title or "",
+                comment_url=url,
+                unsubscribe_url=f"/comment-subscribe/unsubscribe?token={sub.token}",
+            )
+        except Exception:  # noqa: BLE001 — best effort, never fail the approval
+            logger.exception("guest thread fan-out email failed for %s", sub.email)
 
 
 def _notify_replied_to(
@@ -302,6 +346,10 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
         if parent is not None and parent.reader_id is not None:
             excluded.add(parent.reader_id)
         _notify_thread_subscribers(post, comment.id, excluded, db, commenter_id=comment.reader_id)
+        # Guest thread-follow (DEC-427, TASK-438): email this post's confirmed
+        # guest subscribers. Independent of the reader fan-out above — different
+        # rows, no account, straight SMTP.
+        _notify_guest_thread_subscribers(post, comment, db)
 
     # @-mention fan-out (DEC-322, TASK-389): an approved comment naming a
     # reader's display name (e.g. "@Riki") notifies them with a deep link to the

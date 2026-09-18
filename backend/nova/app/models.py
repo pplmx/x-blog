@@ -560,6 +560,37 @@ class CommentSubscription(Base):
     )
 
 
+class GuestCommentSubscription(Base):
+    """An anonymous email subscribed to a post's comment thread (round 380, DEC-427).
+
+    The auth-free cousin of CommentSubscription (DEC-078): thread-follow was
+    reader-gated, so an anonymous visitor reading a discussion had no way to be
+    emailed when it moved. One row per (email, post_id) pair; double opt-in
+    (``is_confirmed`` flips only after the emailed token link is clicked —
+    mirroring NewsletterSubscriber) so an address never receives thread mail
+    until its owner proved it. ``token`` is the per-subscriber secret the
+    confirm/unsubscribe links carry — a random opaque string stored as-is
+    (not a JWT), never returned by any read surface, so an unknown token is
+    indistinguishable from a never-existing subscription (no enumeration
+    oracle). "email" is normalized to lowercase at the API boundary (unique
+    pair). Additive table, no DB-level FK (SQLite alembic can't add FK-carrying
+    columns to existing tables, DEC-009); integrity (unknown post) is enforced
+    at the API layer.
+    """
+
+    __tablename__ = "guest_comment_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (UniqueConstraint("email", "post_id", name="uq_guest_thread_email_post"),)
+
+
 class ReaderNotification(Base):
     """A durable, in-app notification for a signed-in reader (DEC-160, TASK-192).
 

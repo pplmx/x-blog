@@ -1,5 +1,7 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
@@ -7,8 +9,12 @@ from app.auth import User, get_current_admin
 from app.cache import posts_list_cache
 from app.conditional import conditional_json
 from app.database import get_db
-from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
-from app.schemas import IdInt, PageInt
+from app.emailer import send_guest_thread_confirm_email
+from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
+from app.middleware import get_logger
+from app.schemas import EMAIL_PATTERN, IdInt, NonNulStr, PageInt
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -314,3 +320,92 @@ def unsubscribe_from_post_thread(
     not present (or a post no longer public) is still a 204 no-op."""
     crud.remove_comment_subscription(db, reader.id, post_id)
     return None
+
+
+class GuestThreadSubscribeBody(BaseModel):
+    email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)]
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_email(cls, value: object) -> object:
+        # Whitespace-only / padded input is normalized before pattern+length
+        # validation (mirrors the shared email writers / newsletter body).
+        return schemas._strip_blank(value) if isinstance(value, str) else value
+
+
+class GuestThreadTokenBody(BaseModel):
+    token: Annotated[NonNulStr, Field(max_length=64)]
+
+
+@router.post("/{post_id}/comment-subscription/guest", status_code=202)
+@limiter.limit(f"{RATE_LIMIT_NEWSLETTER}/minute")
+def guest_subscribe_to_post_thread(
+    request: Request,  # noqa: ARG001 — slowapi injects for the rate-limit key
+    post_id: IdInt,
+    body: GuestThreadSubscribeBody,
+    db: Session = Depends(get_db),
+):
+    """Guest thread-follow (DEC-427, TASK-438): an anonymous visitor subscribes
+    to a post's discussion by email, no account needed.
+
+    Records the (email, post) row and emails a double opt-in confirmation link
+    — the address receives no thread mail until the token link is clicked.
+    One generic message regardless of outcome (no existence oracle). Unknown /
+    not-publicly-visible posts are uniformly 404 (mirrors the public
+    comment/bookmark guard).
+
+    Anti-abuse (mirrors the newsletter): the confirmation email fires ONLY when
+    a NEW row is created, so a single attacker cannot turn each of N subscribe
+    calls into N outbound mails to a victim address; the unauthenticated entry
+    is on the dedicated tight per-IP bucket (``RATE_LIMIT_NEWSLETTER``).
+    """
+    email = body.email.strip().lower()
+    post = db.get(models.Post, post_id)
+    if not post or not crud.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    row, created = crud.add_guest_comment_subscription(db, email, post_id)
+    if created:
+        # Our insert won the race — this is the ONE confirmation email. A
+        # resubscribed address (pending or confirmed) is never re-emailed.
+        # Best-effort: a failure is swallowed; SMTP unconfigured -> pending.
+        try:
+            send_guest_thread_confirm_email(email, row.token, post.title or "")
+        except Exception:  # noqa: BLE001
+            logger.exception("guest thread confirm email failed for %s", email)
+    return {"subscribed": True, "message": "If this email is new, a confirmation link is on its way"}
+
+
+# Confirm / unsubscribe are TOKEN-only routes (mirroring the newsletter's
+# /api/newsletter/confirm + /unsubscribe): the emailed links carry just the
+# per-subscription token, and the token itself is the capability. They sit at
+# static three-segment paths under /api/posts, so the dynamic /{post_id} routes
+# never shadow them (FastAPI matches static paths first).
+
+
+@router.post("/comment-subscription/guest/confirm", status_code=200)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def guest_confirm_post_thread(
+    request: Request,  # noqa: ARG001
+    body: GuestThreadTokenBody,
+    db: Session = Depends(get_db),
+):
+    """Activate a guest thread-follow after its confirmation link is clicked
+    (idempotent; an unknown token is 404 — no enumeration oracle)."""
+    if not crud.confirm_guest_comment_subscription(db, body.token):
+        raise HTTPException(status_code=404, detail="Invalid token")
+    return {"confirmed": True}
+
+
+@router.post("/comment-subscription/guest/unsubscribe", status_code=200)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def guest_unsubscribe_post_thread(
+    request: Request,  # noqa: ARG001
+    body: GuestThreadTokenBody,
+    db: Session = Depends(get_db),
+):
+    """Flip a guest thread-follow's consent off via its emailed token
+    (idempotent; an unknown token is 404). Row + token stay, so a stale link
+    keeps working and the address is not re-emailed."""
+    if not crud.unsubscribe_guest_comment_subscription(db, body.token):
+        raise HTTPException(status_code=404, detail="Invalid token")
+    return {"unsubscribed": True}
