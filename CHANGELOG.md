@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔥 **Trending this week (round 387)**: the home page's Popular row ranked by
+  all-time views, so a brand-new post being read right now had no way to
+  surface. The home page now also shows a "Trending this week" row ranked by
+  in-window views from the analytics table that already counts every pageview
+  by day (`post_views_daily`, DEC-086) — each card carries the weekly read
+  count ("N reads this week"), distinct from the all-time counter. Public
+  `GET /api/posts/trending/list?days=7&limit=5` (published, effective-live
+  posts only; an empty window returns `[]` and the section hides, since fresh
+  installs track the daily table forward only). Backend 1843 + frontend 2371
+  unit tests + a Playwright journey (publish → view burst → appears in the
+  row) all green (round 387, DEC-438).
 - 👤 **Hide blocked readers' comments (round 386)**: round 379's reader
   blocking (DEC-425) suppressed the notification fan-outs but promised more —
   "a blocked commenter is invisible to them even mid-thread" — which no render
