@@ -1063,6 +1063,83 @@ def create_comment(
     return db_comment
 
 
+def get_guest_comment_by_token(db: Session, token: str) -> models.Comment | None:
+    """Fetch an ANONYMOUS comment by its per-comment management token (DEC-332).
+
+    ``reply_notify_token`` is the secret only the guest's approval/reply email
+    carries, so possession proves the guest (or an address they control) holds
+    the mail — the same ownership argument the unsubscribe endpoint uses. Only
+    consenting anonymous comments ever have a token; a reader-attributed
+    comment or a token-less guest comment can never match. Unknown token → None
+    (indistinguishable 404, ids are not enumerable). (round 385, DEC-435/
+    TASK-444)
+    """
+
+    if not token:
+        return None
+    return db.query(models.Comment).filter(models.Comment.reply_notify_token == token).first()
+
+
+def update_guest_comment(db: Session, token: str, content: str) -> tuple[models.Comment | None, bool]:
+    """Edit an ANONYMOUS comment proven by its management token (round 385).
+
+    Mirror of ``update_reader_comment`` (DEC-096) keyed by the token instead of
+    ``reader_id``: only ``content`` may change (post_id/parent_id/identity are
+    preserved), the body is stored raw and re-rendered through the sanitized
+    markdown pipeline, and ``edited_at`` is stamped. ``was_public`` reports
+    whether the comment was approved BEFORE the edit so the caller never
+    re-notifies subscribers of a comment that stayed public through the edit.
+
+    Moderation integrity, same rule as the reader path (and stricter for a
+    guest — there is no verified-reader trust tier to fast-path): an approved
+    comment that is edited has REPLACED its public content, so it re-enters the
+    moderation queue (approval reset, reviewed_at cleared) rather than silently
+    republishing author-supplied text over a moderator-approved body.
+    """
+
+    comment = get_guest_comment_by_token(db, token)
+    if comment is None:
+        return None, False
+    was_public = bool(comment.is_approved)
+    comment.content = content
+    comment.edited_at = utc_now_naive()
+    comment.is_approved = False
+    comment.reviewed_at = None
+    db.commit()
+    db.refresh(comment)
+    return comment, was_public
+
+
+def delete_guest_comment(db: Session, token: str) -> bool:
+    """Delete an ANONYMOUS comment proven by its management token (round 385).
+
+    Mirror of ``delete_reader_comment`` (DEC-096): False when the token matches
+    no comment; replies are reparented to this comment's parent (or promoted to
+    top-level) rather than blocking the delete, so a guest can withdraw a
+    comment that already has replies without orphaning the thread. Deeper
+    descendants ride along under the promoted reply.
+    """
+
+    comment = get_guest_comment_by_token(db, token)
+    if comment is None:
+        return False
+    target_parent = comment.parent_id
+    db.query(models.Comment).filter(models.Comment.parent_id == comment.id).update(
+        {models.Comment.parent_id: target_parent},
+        synchronize_session=False,
+    )
+    db.delete(comment)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete comment: it has dependent records")
+    # Removing an approved comment changes the approved comment_count surfaced
+    # on the cached public posts list (same as reader/admin delete).
+    clear_posts_list_cache()
+    return True
+
+
 def approve_comment(db: Session, comment_id: int, approved: bool = True) -> models.Comment | None:
     """Approve or reject a comment. Idempotent: applying the state the comment
     already has is a no-op (no reviewed_at bump, no cache clear), so a re-approve

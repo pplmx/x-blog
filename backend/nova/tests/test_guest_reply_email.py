@@ -258,10 +258,16 @@ class TestGuestReplyEmail:
         fresh_row = db_session.get(models.Comment, guest["id"])
         assert fresh_row.reply_notify_email is False
 
+        # Snapshot the sink: the guest's own approval may already have fired an
+        # unrelated mail (the round-385 approval-time manage link to the same
+        # address), so "no reply email after unsubscribe" is asserted by delta,
+        # not by the latest-record proxy (which would match that manage mail).
+        sent_before = len(FakeSMTP.sent)
+
         # A reply approved AFTER unsubscribe sends nothing.
         reply = _reply(client, post.id, guest["id"])
         assert _approve(client, reply["id"], auth_headers).status_code == 200
-        assert _guest_email_record("guest@example.com") is None
+        assert len(FakeSMTP.sent) == sent_before, [m["Subject"] for m in FakeSMTP.sent[sent_before:]]
 
     def test_unknown_unsubscribe_token_404(self, client):
         resp = client.post("/api/comments/reply-notify/unsubscribe", json={"token": "nope"})

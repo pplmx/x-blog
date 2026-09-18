@@ -1,7 +1,8 @@
 import os
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app import auth, crud, models, schemas
@@ -19,12 +20,13 @@ from app.emailer import (
     dispatch_notification_emails,
     email_channel_enabled,
     is_email_configured,
+    send_guest_comment_manage_email,
     send_guest_reply_email,
     send_guest_thread_email,
 )
 from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
-from app.schemas import IdInt, PageInt
+from app.schemas import IdInt, NonNulStr, PageInt
 from app.webpush import (
     dispatch_moderation_pending,
     dispatch_to_subscriptions,
@@ -371,6 +373,43 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     # push when the parent reader also follows the commenter.
     if post is not None and comment.reader_id is not None:
         _notify_reader_followers(post, comment, db)
+
+    # Guest manage email (round 385, DEC-435/TASK-444): an approved ANONYMOUS
+    # comment that consented to email gets a "your comment is live — manage it"
+    # message with the deep link to its token-gated manage page. The token only
+    # ever exists for consenting guests (DEC-332), so the send set is exactly
+    # the guests already receiving mail; best-effort like every fan-out.
+    if post is not None:
+        _maybe_email_guest_manage_link(comment, post)
+
+
+def _maybe_email_guest_manage_link(comment: models.Comment, post: models.Post) -> None:
+    """Best-effort approval-time manage email to an ANONYMOUS commenter.
+
+    Fires when a guest's own comment is approved (the moment it becomes
+    permanent on a moderated blog) and that guest has an email + management
+    token. A guest has no account, so the emailed deep link is the ONLY way
+    they can reach the token-gated manage endpoint (round 385) — and since the
+    token is delivered exclusively by mail, possession of the link proves the
+    commenter (or an address they control) holds it, mirroring the DEC-332
+    reply-email argument. Never raises (best effort, like every fan-out): a mail
+    failure must not break the approval that fired it.
+    """
+    # Only anonymous parents that consented AND have an address qualify — the
+    # token is set exclusively on such rows at create time (DEC-332).
+    if comment.reader_id is not None or not comment.email or comment.reply_notify_token is None:
+        return
+    if not is_email_configured():
+        return
+    try:
+        send_guest_comment_manage_email(
+            comment.email,
+            post_title=post.title or "",
+            post_url=f"/posts/{post.slug}#comment-{comment.id}",
+            manage_url=f"/comments/manage?token={comment.reply_notify_token}",
+        )
+    except Exception:  # noqa: BLE001 — best effort, never fail the approval
+        logger.exception("guest comment manage-email dispatch failed")
 
 
 def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Session) -> None:
@@ -811,6 +850,107 @@ class CommentFlagBody(BaseModel):
     """Optional reason when a reader flags a comment for moderation (DEC-108)."""
 
     reason: str | None = Field(default=None, max_length=200)
+
+
+class GuestCommentManageBody(BaseModel):
+    """Manage-body for a guest's own comment (round 385, DEC-435/TASK-444).
+
+    The token is the proof of authorship: it is the per-comment secret
+    (DEC-332) delivered exclusively by mail (approval/reply emails), so
+    possession of it demonstrates the address owns the comment. ``content``
+    mirrors CommentCreate's gate (min_length=1 post-strip; max 5000).
+    """
+
+    token: Annotated[NonNulStr, Field(min_length=1, max_length=64)]
+    content: Annotated[NonNulStr, Field(min_length=1, max_length=5000)] = ""
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def strip_content(cls, value: object) -> object:
+        return schemas._strip_blank(value) if isinstance(value, str) else value
+
+
+class GuestCommentManageResponse(BaseModel):
+    """Manage-page payload: the comment plus minimal post context (round 385)."""
+
+    comment: schemas.CommentPublic
+    post: schemas.CommentPostBrief | None = None
+
+
+@router.get("/manage", response_model=GuestCommentManageResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def get_guest_comment_manage(
+    request: Request,  # noqa: ARG001
+    token: str = Query(..., min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+):
+    """Load a guest's own comment for the management page (round 385).
+
+    The token is the ownership proof (only the guest's email carries it), and
+    an unknown token is a 404 so comment ids / tokens are not enumerable. The
+    response carries the comment plus the post it sits on so the page can
+    deep-link back to the thread. Moderation status rides on CommentPublic so
+    the page can tell "pending / approved / rejected" apart.
+    """
+    comment = crud.get_guest_comment_by_token(db, token)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    post_obj = db.get(models.Post, comment.post_id)
+    post_brief = (
+        schemas.CommentPostBrief(id=post_obj.id, title=post_obj.title or "", slug=post_obj.slug)
+        if post_obj is not None
+        else None
+    )
+    return GuestCommentManageResponse(comment=comment, post=post_brief)
+
+
+@router.patch("/manage", response_model=schemas.CommentPublic)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
+def edit_guest_comment_manage(
+    request: Request,  # noqa: ARG001
+    body: GuestCommentManageBody,
+    db: Session = Depends(get_db),
+):
+    """Edit a guest's own comment via its management token (round 385).
+
+    Same ownership semantics as the reader edit (DEC-096): only ``content`` may
+    change, the body is stored raw and re-rendered through the sanitized
+    markdown pipeline, ``edited_at`` is stamped, and the edit resets approval
+    — an approved comment whose text was replaced re-enters the moderation
+    queue rather than silently republishing author-supplied content over a
+    moderator-approved body (no auto-approve tier exists for anonymous
+    commenters, so it stays pending until a moderator reviews it). An unknown
+    token is a 404, indistinguishable from a non-existent comment.
+    """
+    updated, _was_public = crud.update_guest_comment(db, body.token, body.content.strip() if body.content else "")
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    # No moderation alert on edit — exactly like the reader path (DEC-096): the
+    # reset comment shows as pending in the admin queue, and an alert on every
+    # edit would let a guest spam moderators by toggling their own comment.
+    return updated
+
+
+@router.delete("/manage", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
+def delete_guest_comment_manage(
+    request: Request,  # noqa: ARG001
+    token: str = Query(..., min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+):
+    """Delete a guest's own comment via its management token (round 385).
+
+    Ownership-scoped exactly like the reader delete: an unknown token (or a
+    token matching no comment) is a 404, so ids are not enumerable. Replies are
+    reparented (crud.delete_guest_comment) so the thread stays coherent.
+    """
+    try:
+        deleted = crud.delete_guest_comment(db, token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return Response(status_code=204)
 
 
 @router.post("/{comment_id}/flag")

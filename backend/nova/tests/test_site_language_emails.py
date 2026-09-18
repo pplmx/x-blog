@@ -17,7 +17,7 @@ from email.message import EmailMessage
 
 import pytest
 
-from app.emailer import send_guest_reply_email, send_password_reset_email
+from app.emailer import send_guest_comment_manage_email, send_guest_reply_email, send_password_reset_email
 
 
 class _FakeSMTP:
@@ -96,6 +96,41 @@ class TestGuestReplyEmailLanguage:
         assert "Hello" in text
         assert "View the reply" in text
         assert "unsubscribe" in text.lower()
+
+
+class TestGuestCommentManageEmailLanguage:
+    """The round-385 guest manage email (DEC-435/TASK-444) sends directly from
+    the sender side, so it must render in the site's configured language like
+    the other sender-side guest emails (DEC-342)."""
+
+    def test_default_zh_copy(self, smtp_sink_fixture):
+        assert send_guest_comment_manage_email(
+            "guest@example.com",
+            post_title="Hello",
+            post_url="/posts/hello#comment-1",
+            manage_url="/comments/manage?token=abc",
+        )
+        msg = _FakeSMTP.sent[0]
+        assert msg["Subject"] == "你的评论已发布 — 可管理"
+        text = _text_part(msg)
+        assert "《Hello》" in text
+        assert "评论" in text
+        assert "/comments/manage?token=abc" in text
+
+    def test_en_site_gets_english_copy(self, monkeypatch, smtp_sink_fixture):
+        monkeypatch.setenv("SITE_LANGUAGE", "en")
+        assert send_guest_comment_manage_email(
+            "guest@example.com",
+            post_title="Hello",
+            post_url="/posts/hello#comment-1",
+            manage_url="/comments/manage?token=abc",
+        )
+        msg = _FakeSMTP.sent[0]
+        assert msg["Subject"] == "Your comment is live — manage it"
+        text = _text_part(msg)
+        assert "Hello" in text
+        assert "manage" in text
+        assert "/comments/manage?token=abc" in text
 
 
 class TestPasswordResetEmailLanguage:

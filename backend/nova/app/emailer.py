@@ -297,6 +297,66 @@ def send_guest_reply_email(
     return bool(flags and flags[0])
 
 
+def send_guest_comment_manage_email(
+    to_addr: str,
+    *,
+    post_title: str,
+    post_url: str,
+    manage_url: str,
+) -> bool:
+    """Tell an ANONYMOUS commenter their comment is live and how to manage it.
+
+    Fired at APPROVAL time for an anonymous comment that consented to email
+    (round 385, DEC-435/TASK-444). A guest has no account, so after the comment
+    is approved there is no UI that knows it is theirs — this is the only
+    on-ramp to the token-gated manage page (GET/PATCH/DELETE
+    /api/comments/manage, keyed by the same per-comment ``reply_notify_token``
+    that already rides the guest reply email from DEC-332). Mirrors
+    ``send_guest_reply_email`` exactly: direct SMTP (no reader account to key
+    dispatch on), gated on ``is_email_configured()``, best-effort (a mail
+    failure must never break the approval that fired it), sender-side copy in
+    the site's configured language with the user-controlled post title escaped.
+    Returns whether SMTP accepted it.
+    """
+    from_addr = _env("SMTP_FROM") or "no-reply@localhost"
+    base_url = _env("SITE_URL") or "http://localhost:3000"
+    link = f"{base_url.rstrip('/')}{post_url}"
+    manage = f"{base_url.rstrip('/')}{manage_url}"
+    if _is_en_site():
+        subject = "Your comment is live — manage it"
+        text = (
+            f"Your comment on {post_title} has been approved and is now public.\n"
+            f"View it: {link}\n"
+            f"Edit or delete it here (no account needed): {manage}\n"
+        )
+        html_body = (
+            f"<p>Your comment on {html.escape(post_title)} has been approved and is "
+            f"now public.</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">View it</a> · '
+            f'<a href="{html.escape(manage, quote=True)}">Edit or delete it</a></p>'
+        )
+    else:
+        subject = "你的评论已发布 — 可管理"
+        text = (
+            f"你在《{post_title}》的评论已被审核通过，现已公开发布。\n"
+            f"查看评论：{link}\n"
+            f"在此编辑或删除你的评论（无需注册账号）：{manage}\n"
+        )
+        html_body = (
+            f"<p>你在《{html.escape(post_title)}》的评论已被审核通过，现已公开发布。</p>"
+            f'<p><a href="{html.escape(link, quote=True)}">查看评论</a> · '
+            f'<a href="{html.escape(manage, quote=True)}">编辑或删除</a></p>'
+        )
+    msg = EmailMessage()
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+    msg.set_content(text)
+    msg.add_alternative(html_body, subtype="html")
+    flags = send_messages_flags([msg])
+    return bool(flags and flags[0])
+
+
 def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     """Send a reader's password-reset mail with its single-use reset link.
 
