@@ -1,10 +1,12 @@
 /**
  * Reading-history page journey (DEC-114, TASK-169).
  *
- * A reader who opens a post can reach the Reading history page (via the nav
- * entry link) and see that post listed newest-first; clearing history returns
- * the page to its empty state. The trail is client-side (localStorage), so
- * this needs only a live backend with at least one published post.
+ * A reader who opens a post can reach the Reading history page and see that
+ * post listed newest-first; clearing history returns the page to its empty
+ * state. The trail is client-side (localStorage), so this needs only a live
+ * backend with at least one published post. This is a guest journey — personal
+ * links live in the signed-in "My" avatar menu (round 382), so the page is
+ * reached by navigating directly.
  */
 
 import { expect, test } from "@playwright/test";
