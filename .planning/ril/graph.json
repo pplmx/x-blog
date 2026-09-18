@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 387,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T18:56:58+00:00",
+  "updated_at": "2026-09-18T19:00:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28663,6 +28663,18 @@
       "source": "backend pytest + frontend vitest + e2e: test_posts.py trending 4 passed (full file 1843); vitest 2371/2371; e2e trending-home 1 passed + reader-block 1 passed",
       "note": "Full VERIFY for round 387 (DEC-438): backend trending tests + full posts suite + ruff clean; frontend 2371 unit tests + typecheck + biome lint/format; both e2e journeys green against the live backend (trending-home with deterministic 30-view burst + prior-run cleanup, reader-block-hides-comments as regression). code-reviewer APPROVE: no CRITICAL/HIGH; three MEDIUM fixes folded in (e2e prior-run cleanup + top-4 wording, index.spec resetMockState trendingPosts isolation, vacuous-excludes-test made non-vacuous with a live control) + LOW views_window made required.",
       "confidence": 1.0
+    },
+    "DEC-439": {
+      "id": "DEC-439",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T19:00:00+00:00",
+      "updated_at": "2026-09-18T19:00:00+00:00",
+      "touched_round": 387,
+      "title": "Feature-evolution exhausted after round 387 (converged-idle, supersedes DEC-438)",
+      "rationale": "QUIESCE: after closing round 387 (public Trending this week), the active core-feature backlog is empty (ril.py tasks -> 0; TASK-445 and TASK-446 both resolved with change+evidence closure) and the repo is at high feature maturity. The round-387 gap analysis (swept admin analytics, recently-viewed, notifications single-read, follows, bookmark folders, i18n symmetry, post page, reading-time-on-lists) found the big-ticket reader/admin surfaces all shipped; the only surviving candidates were the same sub-value-gate class the round-386 gate already rejected — an unread-only notifications filter (backend param exists but frontend never wires it; literally the 'missing an option/button' class), persisted comment sort (newest is the right default for most), generalized admin settings (one real key; invented config), bookmark-folder reorder (no ordering semantics server-side). Continuing would be patch-accumulation, forbidden by the value gate. Stop the REPEAT: no further round-tick chore commits. Re-activation: a new operator direction (supersedes this decision) or a genuine external signal (new issue / material repo change); the first round after reactivation must re-run full VERIFY before claiming progress.",
+      "alternatives_rejected": "Shipping the thin class anyway (unread filter / sort persistence / admin settings generalization) — each is a button-or-option-level completion the value gate explicitly rejects as patch-accumulation; inventing a speculative big feature to fill the round — violates '禁止凭空堆砌功能' and risks hospital-cheese scope; emitting another round-tick chore commit without a feature — the exact idle-spin the QUIESCE program exists to stop."
     }
   },
   "edges": [
@@ -42613,6 +42625,12 @@
       "to": "TASK-446",
       "type": "implements",
       "created_at": "2026-09-18T18:56:58+00:00"
+    },
+    {
+      "from": "DEC-439",
+      "to": "DEC-438",
+      "type": "supersedes",
+      "created_at": "2026-09-18T19:00:00+00:00"
     }
   ]
 }
