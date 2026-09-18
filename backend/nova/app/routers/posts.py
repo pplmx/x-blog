@@ -227,6 +227,27 @@ def get_popular_posts(request: Request, limit: int = Query(5, ge=1, le=50), db: 
     return conditional_json(popular, request)
 
 
+@router.get("/trending/list", response_model=list[schemas.TrendingPost])
+def get_trending_posts(
+    request: Request,
+    days: int = Query(7, ge=1, le=30),
+    limit: int = Query(5, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Public time-windowed top posts (round 387, DEC-438).
+
+    Fresh-content discovery by in-window views from the ``post_views_daily``
+    analytics table — /popular/list (all-time) cannot surface a new-but-already-
+    read post. Each item carries ``views_window`` (the in-window sum). An empty
+    window returns ``[]`` (fresh installs track forward only).
+    """
+    trending = [
+        schemas.TrendingPost.model_validate(p).model_dump(mode="json")
+        for p in crud.get_trending_posts(db, days=days, limit=limit)
+    ]
+    return conditional_json(trending, request)
+
+
 @router.get("/{post_id}/related", response_model=list[schemas.PostList])
 def get_related_posts(
     request: Request,

@@ -527,6 +527,20 @@ class PaginationMeta(BaseModel):
     total_pages: int
 
 
+class TrendingPost(PostList):
+    """A public top-post by in-window views (round 387, DEC-438).
+
+    PostList plus the sum of views within the trending window (default: last 7
+    days) from ``post_views_daily``, so the home page can say 'N reads this
+    week' instead of the all-time counter. crud.get_trending_posts attaches it
+    as a transient attribute on the ORM instance; it is required (no default)
+    so serializing a plain Post as a TrendingPost fails loudly rather than
+    emitting a wrong '0 reads this week'.
+    """
+
+    views_window: int
+
+
 class PostListResponse(BaseModel):
     items: list[PostList]
     pagination: PaginationMeta

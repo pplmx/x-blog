@@ -1760,6 +1760,57 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
     return posts
 
 
+def get_trending_posts(db: Session, days: int = 7, limit: int = 5) -> list[models.Post]:
+    """Public time-windowed top posts by in-window views (round 387, DEC-438).
+
+    Fresh-content discovery for readers: unlike :func:`get_popular_posts`
+    (all-time cumulative ``Post.views``), ranks by the sum of ``views`` over
+    the last ``days`` days in the ``post_views_daily`` analytics table — a post
+    that is new but already being read surfaces even though its cumulative
+    count is small. Only published, effective-live posts qualify; each returned
+    Post carries a transient ``views_window`` attribute (the in-window sum) for
+    the response model. The table tracks forward only (no backfill), so a
+    fresh install yields an empty list and the caller's section hides.
+    """
+    today = utc_now_naive().date()
+    first = today - timedelta(days=days - 1)
+    now = utc_now_naive()
+
+    # In-window sums keyed by post_id (the same table admin analytics reads).
+    daily = (
+        db.query(
+            models.PostViewsDaily.post_id,
+            func.sum(models.PostViewsDaily.views).label("window_views"),
+        )
+        .filter(models.PostViewsDaily.day >= first)
+        .group_by(models.PostViewsDaily.post_id)
+        .subquery()
+    )
+
+    rows = (
+        db.query(models.Post, daily.c.window_views)
+        .join(daily, models.Post.id == daily.c.post_id)
+        .filter(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+        .options(
+            joinedload(models.Post.category),
+            joinedload(models.Post.tags),
+            joinedload(models.Post.series),
+        )
+        .order_by(daily.c.window_views.desc(), models.Post.id.desc())
+        .limit(limit)
+        .all()
+    )
+    posts = [p for p, _ in rows]
+    _populate_post_metrics(db, posts)
+    for post, window_views in rows:
+        # Transient attribute read by schemas.TrendingPost (from_attributes).
+        post.views_window = int(window_views)
+    return posts
+
+
 def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.Post]:
     """Get related posts based on category and tags.
 

@@ -769,3 +769,134 @@ def test_related_404_for_draft_post(client, auth_headers):
     assert draft.status_code == 201, draft.text
     resp = client.get(f"/api/posts/{draft.json()['id']}/related")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Round 387 (DEC-438): public "Trending this week" — /posts/trending/list
+# ---------------------------------------------------------------------------
+
+
+def test_trending_ranks_published_posts_by_in_window_views(client, db_session, auth_headers):
+    """Trending orders published posts by the sum of in-window daily views and
+    attaches views_window; posts with rows only outside the window are absent."""
+    from datetime import timedelta
+
+    from app import crud, models
+
+    ids = {}
+    for name, slug in [("Trend A", "trend-a"), ("Trend B", "trend-b"), ("Trend C", "trend-c")]:
+        r = client.post(
+            "/api/posts",
+            json={"title": name, "slug": slug, "content": "C", "published": True},
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        ids[name] = r.json()["id"]
+
+    today = crud.utc_now_naive().date()
+    # A: 3 views today; B: 2 views three days ago (both inside the 7d window);
+    # C: 5 views 40 days ago (outside — must not rank despite more cumulative).
+    db_session.add_all(
+        [
+            models.PostViewsDaily(post_id=ids["Trend A"], day=today, views=3),
+            models.PostViewsDaily(post_id=ids["Trend B"], day=today - timedelta(days=3), views=2),
+            models.PostViewsDaily(post_id=ids["Trend C"], day=today - timedelta(days=40), views=5),
+        ]
+    )
+    db_session.commit()
+
+    resp = client.get("/api/posts/trending/list")
+    assert resp.status_code == 200
+    items = resp.json()
+    item_ids = [i["id"] for i in items]
+    assert item_ids[0] == ids["Trend A"], items  # 3 in-window views beat 2
+    assert ids["Trend B"] in item_ids
+    assert ids["Trend C"] not in item_ids  # outside the window regardless of total
+    a = next(i for i in items if i["id"] == ids["Trend A"])
+    assert a["views_window"] == 3
+    # PostList fields still serialize (deep-linkable, comment_count populated).
+    assert a["slug"] == "trend-a"
+    assert "comment_count" in a
+
+
+def test_trending_days_param_widens_the_window(client, db_session, auth_headers):
+    """days=30 includes rows at 21 days out that the default 7d window drops."""
+    from datetime import timedelta
+
+    from app import crud, models
+
+    post = client.post(
+        "/api/posts",
+        json={"title": "Windows", "slug": "trend-windows", "content": "C", "published": True},
+        headers=auth_headers,
+    )
+    assert post.status_code == 201, post.text
+
+    today = crud.utc_now_naive().date()
+    db_session.add(models.PostViewsDaily(post_id=post.json()["id"], day=today - timedelta(days=21), views=4))
+    db_session.commit()
+
+    default = client.get("/api/posts/trending/list").json()
+    assert all(i["id"] != post.json()["id"] for i in default)
+
+    widened = client.get("/api/posts/trending/list?days=30").json()
+    hit = next((i for i in widened if i["id"] == post.json()["id"]), None)
+    assert hit is not None, widened
+    assert hit["views_window"] == 4
+
+
+def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session, auth_headers):
+    """Only effective-live posts rank: drafts and future-scheduled posts with
+    in-window daily rows are filtered out — while a live control post ranks, so
+    the negatives are asserted against a non-empty result."""
+    from datetime import timedelta
+
+    from app import crud, models
+
+    control = client.post(
+        "/api/posts",
+        json={"title": "Trend Control", "slug": "trend-control", "content": "C", "published": True},
+        headers=auth_headers,
+    ).json()
+    draft = client.post(
+        "/api/posts",
+        json={"title": "Trend Draft", "slug": "trend-draft", "content": "C", "published": False},
+        headers=auth_headers,
+    ).json()
+    scheduled = client.post(
+        "/api/posts",
+        json={
+            "title": "Trend Scheduled",
+            "slug": "trend-scheduled",
+            "content": "C",
+            "published": True,
+            "publish_at": (crud.utc_now_naive() + timedelta(days=2)).isoformat(),
+        },
+        headers=auth_headers,
+    ).json()
+
+    today = crud.utc_now_naive().date()
+    db_session.add_all(
+        [
+            models.PostViewsDaily(post_id=control["id"], day=today, views=7),
+            models.PostViewsDaily(post_id=draft["id"], day=today, views=9),
+            models.PostViewsDaily(post_id=scheduled["id"], day=today, views=9),
+        ]
+    )
+    db_session.commit()
+
+    items = client.get("/api/posts/trending/list").json()
+    # The live control ranks (non-vacuous: the draft/scheduled rows would
+    # otherwise be the only rows, making the negatives pass on an empty list).
+    assert any(i["id"] == control["id"] for i in items), items
+    assert items[0]["views_window"] == 7, items
+    assert all(i["id"] != draft["id"] for i in items)
+    assert all(i["id"] != scheduled["id"] for i in items)
+
+
+def test_trending_empty_window_returns_empty_list(client):
+    """A fresh install (no post_views_daily rows) returns [] — the home
+    section hides instead of erroring."""
+    resp = client.get("/api/posts/trending/list")
+    assert resp.status_code == 200
+    assert resp.json() == []
