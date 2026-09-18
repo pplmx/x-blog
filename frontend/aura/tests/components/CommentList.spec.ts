@@ -47,6 +47,18 @@ vi.mock("~~/api/reader/comments", () => ({
 	deleteMyComment: mockDeleteMyComment,
 }));
 
+// Blocked-reader suppression (round 386, DEC-437): stub the composable so a
+// test can inject a blocked set and observe that the rows disappear from the
+// rendered thread while unblocked rows stay.
+const mockBlockedSet = ref(new Set<number>());
+const mockLoadBlocked = vi.fn();
+vi.mock("~~/composables/useBlockedReaderIds", () => ({
+	useBlockedReaderIds: () => ({
+		blockedReaderIds: mockBlockedSet,
+		loadBlockedReaderIds: mockLoadBlocked,
+	}),
+}));
+
 import CommentList from "../../components/CommentList.vue";
 
 // Mock comment data
@@ -2041,5 +2053,105 @@ describe("Moderated-comment surfacing (DEC-310/TASK-383)", () => {
 		} finally {
 			Element.prototype.scrollIntoView = original;
 		}
+	});
+});
+
+describe("Blocked-reader suppression (round 386, DEC-437)", () => {
+	beforeEach(() => {
+		mockBlockedSet.value = new Set();
+		mockLoadBlocked.mockReset();
+	});
+
+	it("drops blocked readers' comments from the thread and keeps unblocked/guest rows", async () => {
+		// Give the two mock comments credited readers so the block filter can
+		// target them by id; a third comment stays anonymous (a guest).
+		const withReaders = {
+			...mockComments,
+			items: [
+				{ ...mockComments.items[0], reader: { id: 42, display_name: "Reader 42" } },
+				{ ...mockComments.items[1], reader: { id: 43, display_name: "Reader 43" } },
+				{
+					id: 3,
+					post_id: 1,
+					parent_id: null,
+					nickname: "Guest",
+					content: "a guest comment",
+					is_approved: true,
+					created_at: "2024-03-01T09:00:00Z",
+				},
+			],
+			total: 3,
+		};
+		const { wrapper } = await mountCommentList({ comments: withReaders });
+		// Nothing blocked yet: all three render.
+		expect(wrapper.find('li[id="comment-1"]').exists()).toBe(true);
+		expect(wrapper.find('li[id="comment-2"]').exists()).toBe(true);
+		expect(wrapper.find('li[id="comment-3"]').exists()).toBe(true);
+
+		// Block reader 42: its comment vanishes, the other reader and the guest
+		// comment stay (the guest has no reader id and cannot be blocked).
+		mockBlockedSet.value = new Set([42]);
+		await flushPromises();
+		expect(wrapper.find('li[id="comment-1"]').exists()).toBe(false);
+		expect(wrapper.find('li[id="comment-2"]').exists()).toBe(true);
+		expect(wrapper.find('li[id="comment-3"]').exists()).toBe(true);
+
+		// Block both readers: only the guest comment remains.
+		mockBlockedSet.value = new Set([42, 43]);
+		await flushPromises();
+		expect(wrapper.find('li[id="comment-1"]').exists()).toBe(false);
+		expect(wrapper.find('li[id="comment-2"]').exists()).toBe(false);
+		expect(wrapper.find('li[id="comment-3"]').exists()).toBe(true);
+	});
+
+	it("keeps an unblocked reply under a blocked comment (parent-missing promote)", async () => {
+		// A blocked reader's top-level comment has a reply by an unblocked
+		// reader: suppressing the blocked author must not censor the reply.
+		const thread = {
+			items: [
+				{ ...mockComments.items[0], id: 10, reader: { id: 42, display_name: "Blocked" } },
+				{
+					...mockComments.items[1],
+					id: 11,
+					parent_id: 10,
+					reader: { id: 43, display_name: "Keen" },
+				},
+			],
+			total: 2,
+		};
+		const { wrapper } = await mountCommentList({ comments: thread });
+		expect(wrapper.find('li[id="comment-11"]').exists()).toBe(true);
+
+		mockBlockedSet.value = new Set([42]);
+		await flushPromises();
+		// The blocked top-level row is gone; its unblocked reply is promoted and
+		// still rendered (the thread does not censor third-party content).
+		expect(wrapper.find('li[id="comment-10"]').exists()).toBe(false);
+		expect(wrapper.find('li[id="comment-11"]').exists()).toBe(true);
+	});
+
+	it("renders the empty state (not a blank thread) when every row is by a blocked reader", async () => {
+		// Both comments on the page are credited to one reader; blocking them
+		// leaves the filtered list empty while the server total stays > 0 (the
+		// truth of the thread) — the empty-page copy must show instead of a
+		// blank <ul> (round 386, DEC-437).
+		const allByBlocked = {
+			...mockComments,
+			items: [
+				{ ...mockComments.items[0], id: 21, reader: { id: 42, display_name: "All" } },
+				{ ...mockComments.items[1], id: 22, reader: { id: 42, display_name: "All" } },
+			],
+			total: 2,
+		};
+		const { wrapper } = await mountCommentList({ comments: allByBlocked });
+		expect(wrapper.find('li[id="comment-22"]').exists()).toBe(true);
+
+		mockBlockedSet.value = new Set([42]);
+		await flushPromises();
+		expect(wrapper.find('li[id="comment-21"]').exists()).toBe(false);
+		expect(wrapper.find('li[id="comment-22"]').exists()).toBe(false);
+		// total > 0 → the "this page is empty" copy, not "be the first".
+		expect(wrapper.text()).toContain("这一页暂时没有评论。");
+		expect(wrapper.text()).not.toContain("还没有评论，来发第一个评论吧！");
 	});
 });

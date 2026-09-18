@@ -14,6 +14,16 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computed, reactive, ref } from "vue";
 
+// Blocked-reader suppression (round 386, DEC-437): stub the composable so the
+// comment-search test can inject a blocked reader id and observe the hit vanish.
+const mockBlockedSet = ref(new Set<number>());
+vi.mock("~~/composables/useBlockedReaderIds", () => ({
+	useBlockedReaderIds: () => ({
+		blockedReaderIds: mockBlockedSet,
+		loadBlockedReaderIds: vi.fn(),
+	}),
+}));
+
 // Mock data matching PostListResponse
 const mockSearchResult = {
 	items: [
@@ -977,5 +987,48 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		await flushPromises();
 		// goToPage stringifies the numeric token for the URL query.
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "42", type: "comments", page: "2" } });
+	});
+
+	it("hides a blocked reader's comment hit from comment search (round 386, DEC-437)", async () => {
+		const withReaderHit = {
+			...mockCommentResult,
+			items: [
+				{ ...mockCommentResult.items[0], reader: { id: 77, display_name: "Blocked Author" } },
+			],
+		};
+
+		// Nothing blocked: the reader-attributed hit renders.
+		mockBlockedSet.value = new Set();
+		const wrapperVisible = await mountSearchPage({
+			routeQuery: { q: "42", type: "comments" },
+			commentResult: withReaderHit,
+		});
+		expect(wrapperVisible.text()).toContain("Blocked Author");
+
+		// Blocked: the same hit is filtered out of the results.
+		mockBlockedSet.value = new Set([77]);
+		const wrapperHidden = await mountSearchPage({
+			routeQuery: { q: "42", type: "comments" },
+			commentResult: withReaderHit,
+		});
+		expect(wrapperHidden.text()).not.toContain("Blocked Author");
+	});
+
+	it("renders the empty state when every comment hit is by a blocked reader (round 386, DEC-437)", async () => {
+		const allBlocked = {
+			...mockCommentResult,
+			items: [
+				{ ...mockCommentResult.items[0], reader: { id: 77, display_name: "Blocked Author" } },
+			],
+		};
+		// The block list gates the empty check: today's server-total gate would
+		// paint a blank results area under a misleading "N results" header.
+		mockBlockedSet.value = new Set([77]);
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "42", type: "comments" },
+			commentResult: allBlocked,
+		});
+		expect(wrapper.text()).toContain("没有找到相关文章");
+		expect(wrapper.text()).not.toContain("Blocked Author");
 	});
 });

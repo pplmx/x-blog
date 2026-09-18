@@ -16,6 +16,16 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { reactive, ref } from "vue";
 
+// Blocked-reader suppression (round 386, DEC-437): stub the composable so the
+// feed-filter test can inject a blocked reader id and observe the card vanish.
+const mockBlockedSet = ref(new Set<number>());
+vi.mock("~~/composables/useBlockedReaderIds", () => ({
+	useBlockedReaderIds: () => ({
+		blockedReaderIds: mockBlockedSet,
+		loadBlockedReaderIds: vi.fn(),
+	}),
+}));
+
 const mockFeed = {
 	items: [
 		{
@@ -179,5 +189,20 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		await flushPromises();
 		// Page 1 drops the param; page 2 sends it.
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { page: "2" } });
+	});
+
+	it("hides blocked readers' cards and keeps the rest (round 386, DEC-437)", async () => {
+		mockBlockedSet.value = new Set([5]); // Reader Five (feed item id 12)
+		const wrapper = await mountDiscussionPage();
+		// The blocked reader's card is gone; the anonymous guest card remains.
+		expect(wrapper.text()).not.toContain("Reader Five");
+		expect(wrapper.text()).toContain("this is the deepest take yet");
+	});
+
+	it("shows every card when nothing is blocked", async () => {
+		mockBlockedSet.value = new Set();
+		const wrapper = await mountDiscussionPage();
+		expect(wrapper.text()).toContain("Reader Five");
+		expect(wrapper.text()).toContain("this is the deepest take yet");
 	});
 });
