@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📧 **Weekly-digest operator console (round 378)**: the weekly digest (for both
+  readers and guests) ran on complete backend machinery with no admin reading
+  surface —
+  an operator could trigger it by CLI or the superuser endpoint but could not
+  see who opted into the weekly cadence, when the last one went out, or what
+  the next window held. A new digest panel on `/admin/newsletter`
+  (`GET /api/admin/newsletter/digest/overview`: active-reader and confirmed-guest
+  digest-subscriber counts, the max `digest_sent_at` as last-sent, and the
+  rolling-window public-post count) gives that reading surface, plus a dry-run
+  **preview** (`send-weekly?dry_run=true`, reports the summary without sending
+  or stamping) and a confirmed **send now** for superusers — the monitoring and
+  preview loop that completes the digest feature. 1781 backend tests @93.75%
+  (+7, Postgres-verified), 2309 frontend tests (+5), and a digest-panel e2e
+  journey all green (DEC-423, TASK-436).
 - 📊 **Reading insights on `/history` (round 372)**: the streak and 52-week
   heatmap (DEC-316) showed the *calendar shape* of reading — but a reader
   wondering "how many posts have I read in the last month" or "which topics do

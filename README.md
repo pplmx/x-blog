@@ -83,6 +83,15 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📧 **Guest email newsletter** - a footer form is the "email me new posts" on-ramp: any visitor enters an address, clicks the emailed double opt-in link, and is emailed once per new published post (deep-linked to the post, with a per-subscriber unsubscribe link); subscribe always answers with the same generic message (no existence oracle), scheduled posts surface the same exactly-once email, and mail failure never breaks the publish (DEC-351)
 - 📧 **Admin newsletter management** - admins see every newsletter subscriber (email, confirmed/pending chip, subscription date) on a filterable, searchable, paginated admin page, and remove an address entirely (row + token) when it was subscribed by someone else, the mailbox is dead, or the owner lost their token (DEC-354)
 - 📧 **Newsletter digest cadence** - a guest subscriber can choose one weekly summary instead of one email per post (the footer form's checkbox, or a toggle on the confirm page): digest subscribers are excluded from the per-post fan-out and get one aggregated, site-language digest per week with their token unsubscribe footer — the same weekly-digest machinery accounts get, now for guests (DEC-355)
+- 📧 **Digest operator console on `/admin/newsletter`** - the weekly digest
+  (reader + guest) had complete backend machinery but zero admin surface: an
+  operator could trigger it by CLI or the superuser endpoint but could not see
+  who opted into the weekly cadence or when the last one went out. A new digest
+  panel shows reader and guest digest-subscriber counts, the last-send time, and
+  how many posts the next window would carry, with a dry-run **preview**
+  (send-weekly?dry_run=true, nothing sent) and a confirmed **send now** for
+  superusers — the monitoring and preview loop next to the existing trigger
+  (DEC-423, TASK-436)
 - ✉️ **Change sign-in email** - a reader whose address changed can switch it from `/account` (new address + current password): the backend emails a single-use verification link to the NEW address (60-min expiry, a repeat request replaces a pending change), and opening it swaps the email, bumps the token version (revoking every pre-change session) and auto-signs in under the new address — no more being stranded on a dead inbox, and no endpoint reveals whether an address belongs to an account (DEC-357)
 - ✍️ **Author bylines & archive pages** - on a multi-editor blog every post now says who wrote it: an admin sets a public pen name (deliberately distinct from the login username — admin login is no-oracle, so the username never surfaces), that byline renders on the post page and every list card linking to `/authors/{id}`, and the per-author page lists just that writer's published posts, titled by pen name. The post editor's author picker lets any admin
   attribute a post to another pen-named writer (or the default "me") (DEC-359,
