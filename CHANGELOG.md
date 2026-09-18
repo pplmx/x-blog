@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📴 **Offline reading (round 384)**: the service worker existed only for web
+  push, and only for readers who opted in — everyone else had no offline story
+  at all. `/sw.js` is now registered app-wide in production builds and keeps a
+  network-first, bounded runtime cache of successful same-origin GETs: visiting
+  a post caches its document + JS/CSS chunks + images, so reloading it with the
+  connection off still renders the article. While online every request still
+  hits the network (the cache is only an offline fallback — nothing is ever
+  stale), the cache auto-evicts oldest entries past 60, and API/admin/feeds and
+  cross-origin requests pass through untouched. 2351 frontend unit tests + an
+  offline-reading e2e (register → visit a post → drop the network → reload →
+  article still renders) green (round 384).
+- 🐎 **Bounded reading-summary aggregation (round 383)**: `/me/history/stats`
+  used to scan a reader's entire history and materialize every post row —
+  including `content` — to compute reading-minutes in Python (multi-MB per
+  /history pageview for heavy readers). A denormalized
+  `reading_history.reading_minutes` column (maintained by the record/import
+  write paths, backfilled for existing rows so totals don't jump) lets the
+  summary aggregate in SQL: COUNT/SUM/MAX plus narrow viewed_at timestamps for
+  the streak heatmap; no post content ever leaves the database in that endpoint.
+  The estimate tracks the content as last READ, so editing a post afterwards no
+  longer mutates a reader's total. Migration verified on SQLite and
+  PostgreSQL 18 (round 383, ISS-451).
+- 🕳️ **Naive-UTC hardening (round 383)**: `comments.reviewed_at/edited_at` and
+  `reading_history.viewed_at` are naive-UTC DateTime columns, but four write
+  sites (crud approve/edit/record/import + the admin bulk-approve stamp + the
+  viewed_at ORM default) assigned aware `datetime.now(UTC)` — a latent trap if
+  a row is cached or serialized above the DB. Writes now use the `utc_now_naive`
+  helper consistently (round 383, ISS-452).
 - 🧭 **Compact top nav with a "My" avatar menu (round 382)**: the signed-in
   header had grown to 14 flat links plus search, push, language and theme — it
   needed 1400px+ in English (hidden-scrollbar overflow at xl) and its width
