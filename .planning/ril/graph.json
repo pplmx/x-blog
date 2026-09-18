@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 380,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T06:39:18+00:00",
+  "updated_at": "2026-09-18T06:50:21+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28163,6 +28163,34 @@
       "touched_round": 380,
       "rationale": "TASK-438 delivered end-to-end and verified: guest_comment_subscriptions + auth-free subscribe/confirm/unsubscribe endpoints (newsletter-style double opt-in, one confirm email per new row, no oracle) + per-approved-comment thread fan-out skipping the commenter's own guest address + GuestThreadFollow guest-only control + /comment-subscribe/confirm + /unsubscribe token pages + 15 backend / 15 vitest / 1 e2e + docs. VERIFY gates all green: 1814 backend @93.72% (+15), 2332 vitest (+14), nuxt typecheck + pyright 0, biome clean, guest-thread-follow e2e 1/1 (sink captured confirm + thread, post-unsub silent), Postgres-verified, migration round-trip. Scoped out (kept as backlog): follows-feed hiding of blocked authors, /search/comments refinement, notification inbox filters.",
       "alternatives_rejected": "Follows-feed content hiding of blocked authors, comment-search refinement, notification-inbox filters - deliberately deferred from DEC-427 to keep this slice tight; each still viable as its own round."
+    },
+    "DEC-429": {
+      "id": "DEC-429",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:49:38+00:00",
+      "updated_at": "2026-09-18T06:49:38+00:00",
+      "touched_round": 380,
+      "title": "round 381 scope: guest thread-follow digest cadence (weekly summary instead of per-comment email)",
+      "rationale": "Feature-evolution continues after round 380 (DEC-427 delivered guest thread-follow: one email per approved comment per followed thread). The newsletter learned this lesson in DEC-355: a guest following several active threads now gets multiple comment emails a day with NO cadence choice — the guest surface has no digest at all yet, unlike accounts (weekly digest DEC-201/326). Mirror DEC-355 1:1 on GuestCommentSubscription: opt-in digest_weekly bool (default false = per-comment stays the default, one channel per subscriber), digest_sent_at window stamp, token-gated cadence flip endpoint, fan-out skips weekly rows, and a weekly comment-digest slice inside the existing send_weekly_digest job (aggregates APPROVED comments in the window on the followed post and emails ONE summary per (address, thread) with the same token unsubscribe footer). Reuses newsletter_digest_window_start posture, the SMTP batch + per-recipient accepting flags + per-delivery digest_sent_at stamping, the CONFIRM page cadence-toggle pattern (round 354 newsletter confirm), and site-language guest copy. One-line acceptance: a guest who confirms a thread-follow picks 'weekly summary'; they stop getting per-comment emails and instead get one digest email per week listing that week's new approved comments on that thread, still with one-click unsubscribe.",
+      "alternatives_rejected": "Rejected for this round: follows-feed author-hiding (content axis, thin, deferred again from DEC-427/DEC-428); comment-search refinement (research aid, thin); notification-inbox kind filters (mostly present; polish); per-post comments RSS (thin duplication of guest thread email + existing /rss/comments.xml); reader thread-comment digest (larger, targets accounts that already have inbox+push+per-event email; the guest surface has no digest of any kind and reuses DEC-355's guest machinery 1:1). Aggregating one digest across ALL of a guest's followed threads was also considered and deferred (needs cross-row windowing + per-address grouping); per-(address, thread) is the single-round vertical that already caps the flood."
+    },
+    "TASK-439": {
+      "id": "TASK-439",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T06:50:01+00:00",
+      "updated_at": "2026-09-18T06:50:01+00:00",
+      "touched_round": 380,
+      "category": "core-feature",
+      "severity": "high",
+      "title": "Guest thread-follow digest cadence: weekly summary instead of one email per approved comment",
+      "description": "GuestCommentSubscription gains digest_weekly (default false, opt-in) + digest_sent_at (window stamp). POST .../comment-subscription/guest accepts optional digest_weekly; confirm returns it; new token-gated POST /api/posts/comment-subscription/guest/digest {token, digest_weekly} flips cadence idempotently (404 unknown token) mirroring the confirm/unsubscribe posture. _notify_guest_thread_subscribers skips digest_weekly rows (one channel). send_weekly_digest gains a thread slice: confirmed+digest_weekly rows, window = last digest_sent_at else rolling 7-day, aggregate APPROVED comments created in the window on the row's post, one per-(address, thread) digest email (site-language copy, deep links + token unsubscribe footer), stamp digest_sent_at only on accepted messages; dry_run preview; SMTP-down never breaks. Frontend: subscribe api accepts cadence, confirm page shows a weekly-summary toggle (mirrors newsletter/confirm.vue) seeded from confirm response and flipping via the token-gated endpoint, locale copy. Tests: backend contract + fan-out skip + job window/idempotency/SMTP-down, vitest confirm-page toggle, e2e asserts the weekly choice suppresses per-comment mail, docs.",
+      "effort": 3,
+      "unlock_factor": 1,
+      "confidence": 1
     }
   },
   "edges": [
@@ -41879,6 +41907,18 @@
       "to": "DEC-427",
       "type": "supersedes",
       "created_at": "2026-09-18T06:39:18+00:00"
+    },
+    {
+      "from": "DEC-429",
+      "to": "TASK-439",
+      "type": "governs",
+      "created_at": "2026-09-18T06:50:21+00:00"
+    },
+    {
+      "from": "TASK-439",
+      "to": "ISS-516",
+      "type": "addresses",
+      "created_at": "2026-09-18T06:50:21+00:00"
     }
   ]
 }
