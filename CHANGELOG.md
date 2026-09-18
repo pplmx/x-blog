@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ✏️ **Guest comment management (round 385)**: comment edit/delete was
+  signed-in-reader only, so an anonymous commenter who made a typo had no way
+  to fix or withdraw it (and every comment is moderated, so it became
+  permanent the moment it was approved). A guest who left an email now gets a
+  "your comment is live — manage it" email at approval carrying the same
+  per-comment secret token the reply email already used (DEC-332); that link
+  opens a flat `/comment-manage` page where they can edit the text (it
+  re-enters moderation, exactly like a signed-in reader's edit) or delete the
+  comment (replies are reparented so the thread stays intact). New token-gated
+  GET/PATCH/DELETE `/api/comments/manage` endpoints mirror the reader
+  ownership semantics; an unknown token is a 404 so nothing is enumerable.
+  Zero-DDL — it reuses the existing token column and delivery path. Backend
+  1839 + frontend 2358 unit tests + a Playwright journey (comment with consent
+  → approval → emailed link → edit → delete → link spent) all green
+  (round 385, DEC-435).
 - 📴 **Offline reading (round 384)**: the service worker existed only for web
   push, and only for readers who opted in — everyone else had no offline story
   at all. `/sw.js` is now registered app-wide in production builds and keeps a
