@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🚫 **Reader blocks (round 379)**: the blog had reader-to-reader follows,
+  public profiles and @-mention fan-out, but no way for a reader to stop a
+  barking commenter's mentions, replies and activity landing in their inbox.
+  A Block/Unblock toggle on a reader's public profile — one-way and invisible
+  (the blocked reader is never told and can keep commenting) — backs onto
+  GET/PUT/DELETE `/api/reader/me/blocks`, and every dispatch point drops a
+  blocker-of-the-commenter: @-mentions, replies, thread-comment broadcasts and
+  follow-activity each suppress a blocked commenter's fan-out, while `/account`
+  lists blocked readers for one-click unblock that restores everything. 1799
+  backend tests @93.77% (+18, Postgres-verified), 2318 frontend tests (+9), and
+  a reader-block e2e journey all green (DEC-425, TASK-437).
 - 📧 **Weekly-digest operator console (round 378)**: the weekly digest (for both
   readers and guests) ran on complete backend machinery with no admin reading
   surface —

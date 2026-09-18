@@ -83,6 +83,13 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 📧 **Guest email newsletter** - a footer form is the "email me new posts" on-ramp: any visitor enters an address, clicks the emailed double opt-in link, and is emailed once per new published post (deep-linked to the post, with a per-subscriber unsubscribe link); subscribe always answers with the same generic message (no existence oracle), scheduled posts surface the same exactly-once email, and mail failure never breaks the publish (DEC-351)
 - 📧 **Admin newsletter management** - admins see every newsletter subscriber (email, confirmed/pending chip, subscription date) on a filterable, searchable, paginated admin page, and remove an address entirely (row + token) when it was subscribed by someone else, the mailbox is dead, or the owner lost their token (DEC-354)
 - 📧 **Newsletter digest cadence** - a guest subscriber can choose one weekly summary instead of one email per post (the footer form's checkbox, or a toggle on the confirm page): digest subscribers are excluded from the per-post fan-out and get one aggregated, site-language digest per week with their token unsubscribe footer — the same weekly-digest machinery accounts get, now for guests (DEC-355)
+- 🚫 **Reader blocks** - the reader-to-reader follow and @-mention fan-out had
+  no off switch for an abusive sender: a signed-in reader can block another
+  commenter straight from their public profile (one-way and invisible — the
+  blocked reader is never told and can keep commenting), which stops that
+  commenter's @-mentions, replies, thread-comments and follow-activity from
+  reaching them; `/account` lists blocked readers for one-click unblock that
+  restores the fan-out (DEC-425, TASK-437)
 - 📧 **Digest operator console on `/admin/newsletter`** - the weekly digest
   (reader + guest) had complete backend machinery but zero admin surface: an
   operator could trigger it by CLI or the superuser endpoint but could not see
