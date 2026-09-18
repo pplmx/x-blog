@@ -27,6 +27,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -275,6 +276,86 @@ def admin_list_subscribers(
             "total_pages": (total + limit - 1) // limit if total else 0,
         },
     }
+
+
+class AdminDigestOverviewResponse(BaseModel):
+    """The operator-facing reading surface for the weekly digest (DEC-423).
+
+    Complements the ``send-weekly`` trigger with the numbers that say whether
+    the digest is alive: how many readers and guests opted into the weekly
+    cadence, when a digest last actually went out, and how many posts the
+    rolling window would contain right now.
+    """
+
+    reader_digest_subscribers: int
+    guest_digest_subscribers: int
+    #: Max digest_sent_at across reader prefs and newsletter rows (naive UTC —
+    #: reads with the same zone-less convention as the digest stamps); null
+    #: when nothing has ever been delivered.
+    last_sent_at: datetime | None
+    #: Public posts whose effective publish time falls in the digest window
+    #: (``collect_digest_posts`` length) — the superset a send is capped by
+    #: (per-recipient windows can shrink to their own ``digest_sent_at``).
+    window_posts: int
+
+
+@admin_router.get("/digest/overview", response_model=AdminDigestOverviewResponse)
+@limiter.limit(f"{RATE_LIMIT_READ}/minute")
+def admin_digest_overview(
+    request: Request,  # noqa: ARG001
+    _current_user: auth.User = Depends(auth.get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Report the weekly digest's current state (DEC-423, TASK-436).
+
+    Read-only monitoring surface next to ``POST /api/admin/digests/send-weekly``:
+    reader + guest subscriber counts on the weekly cadence, the last delivery
+    timestamp, and the number of posts the rolling window would carry. No mail
+    is sent, no locks taken, nothing stamped — pure aggregation, safe to poll.
+    """
+    from app.digest import collect_digest_posts
+
+    now_naive = utc_now_naive()
+
+    reader_count = (
+        db.query(auth.ReaderAccount)
+        .join(models.ReaderNotificationPref, models.ReaderNotificationPref.reader_id == auth.ReaderAccount.id)
+        .filter(
+            auth.ReaderAccount.is_active.is_(True),
+            models.ReaderNotificationPref.email_weekly_digest.is_(True),
+        )
+        .count()
+    )
+    guest_count = (
+        db.query(models.NewsletterSubscriber)
+        .filter(
+            models.NewsletterSubscriber.is_confirmed.is_(True),
+            models.NewsletterSubscriber.digest_weekly.is_(True),
+        )
+        .count()
+    )
+
+    # Latest non-null digest_sent_at across both recipient kinds (a reader pref
+    # or a guest row). MAX() skips NULLs and returns NULL on an all-NULL set,
+    # so this is exactly "the most recent stamp, or None if nothing went out".
+    sent_ts = db.query(func.max(models.ReaderNotificationPref.digest_sent_at)).scalar()
+    guest_ts = db.query(func.max(models.NewsletterSubscriber.digest_sent_at)).scalar()
+    last_sent: datetime | None = max(
+        (t for t in (sent_ts, guest_ts) if t is not None),
+        default=None,
+    )
+
+    # The same rolling-window superset the job itself uses — the number of
+    # posts a send would (at most) carry. Reuses the digest module's query so
+    # the preview and the job can never drift apart.
+    window_posts = len(collect_digest_posts(db, now_naive))
+
+    return AdminDigestOverviewResponse(
+        reader_digest_subscribers=reader_count,
+        guest_digest_subscribers=guest_count,
+        last_sent_at=last_sent,
+        window_posts=window_posts,
+    )
 
 
 @admin_router.delete("/subscribers/{subscriber_id}", status_code=204)
