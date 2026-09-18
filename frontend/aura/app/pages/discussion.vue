@@ -9,12 +9,13 @@
  * comment, and the post brief, deep-linking ONTO the exact comment
  * (`/posts/{slug}#comment-{id}`, DEC-321). Public, no auth, paginated.
  */
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import type { PaginationInfo } from "~~/api/contracts/shared";
-import { useDiscussionFeed } from "~~/api/public/comments";
+import { type DiscussionFeedItem, useDiscussionFeed } from "~~/api/public/comments";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
+import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -51,6 +52,19 @@ useHead({
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
 const { data: feed, pending, error, refresh: refreshFeed } = await useDiscussionFeed(page, 20);
+// Blocked-reader suppression (round 386, DEC-437): the feed is public, but a
+// signed-in viewer's own block list (a receiver-side opt-out, DEC-425) should
+// hide the blocked readers' cards. Loads asynchronously; the feed first paints
+// unadulterated and then filters once the list lands.
+const { blockedReaderIds, loadBlockedReaderIds } = useBlockedReaderIds();
+onMounted(() => {
+	void loadBlockedReaderIds();
+});
+const feedItems = computed<DiscussionFeedItem[]>(() =>
+	(feed.value?.items ?? []).filter(
+		(item) => !item.reader || !blockedReaderIds.value.has(item.reader.id),
+	),
+);
 function retry() {
 	void refreshFeed();
 }
@@ -132,7 +146,7 @@ const paginationTokens = computed(() =>
 
 		<!-- Empty -->
 		<div
-			v-else-if="!feed?.items?.length"
+			v-else-if="!feed || !feedItems.length"
 			class="flex flex-col items-center justify-center py-16 rounded-2xl border border-gray-100 dark:border-gray-800"
 		>
 			<Icon icon="lucide:messages-square" class="w-10 h-10 text-gray-300 dark:text-gray-600 mb-4" />
@@ -143,7 +157,7 @@ const paginationTokens = computed(() =>
 		<!-- Feed -->
 		<div v-else class="space-y-4">
 			<div
-				v-for="item in feed.items"
+				v-for="item in feedItems"
 				:key="item.id"
 				class="border border-gray-100 dark:border-gray-800 rounded-xl p-5 hover:shadow-md transition-shadow"
 			>

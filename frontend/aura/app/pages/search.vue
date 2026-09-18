@@ -6,6 +6,7 @@ import { type CommentSearchItem, useCommentSearch } from "~~/api/public/search";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
+import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -189,9 +190,17 @@ const activeError = computed(() => (mode.value === "comments" ? commentsError.va
 const activePosts = computed<PostList[]>(() =>
 	mode.value === "posts" ? (searchResult.value?.items ?? []) : [],
 );
-const activeComments = computed<CommentSearchItem[]>(() =>
-	mode.value === "comments" ? (commentResult.value?.items ?? []) : [],
-);
+// Blocked-reader suppression (round 386, DEC-437): a signed-in viewer's block
+// list (receiver-side opt-out, DEC-425) filters blocked authors' hits out of
+// comment search results, exactly like the thread and the discussion feed.
+const { blockedReaderIds, loadBlockedReaderIds } = useBlockedReaderIds();
+onMounted(() => {
+	void loadBlockedReaderIds();
+});
+const activeComments = computed<CommentSearchItem[]>(() => {
+	const items = mode.value === "comments" ? (commentResult.value?.items ?? []) : [];
+	return items.filter((c) => !c.reader || !blockedReaderIds.value.has(c.reader.id));
+});
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
 const paginationTokens = computed(() =>
@@ -561,9 +570,13 @@ function goToPage(pg: number | string) {
         </button>
       </div>
 
-      <!-- Empty results -->
+      <!-- Empty results. Gates on the lists that actually render, not the
+           server totals: in comments mode that is the blocked-filtered
+           activeComments, so a page whose every hit is by a blocked reader
+           shows the empty state instead of a blank area under a misleading
+           "N results" header (round 386, DEC-437). -->
       <div
-        v-else-if="!activeResult?.items?.length"
+        v-else-if="!activePosts.length && !activeComments.length"
         class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
       >
         <div

@@ -81,9 +81,12 @@
 
     <!-- Empty state: only a genuinely empty discussion says "be the first".
          An empty page under a non-zero total means deletion just drained the
-         last page — refreshing clamps back to it, and the copy stays truthful. -->
+         last page — refreshing clamps back to it, and the copy stays truthful.
+         Gates on the blocked-filtered visibleComments (round 386, DEC-437): a
+         page whose every row is by a blocked reader renders the empty state
+         instead of a blank thread. -->
     <div
-      v-else-if="comments.length === 0"
+      v-else-if="visibleComments.length === 0"
       class="text-center py-8 text-gray-500 dark:text-gray-400"
     >
       {{ total === 0 ? t('components.commentList.empty') : t('components.commentList.emptyPage') }}
@@ -478,6 +481,7 @@ import {
 } from "~~/api/public/comments";
 import { deleteMyComment, updateMyComment } from "~~/api/reader/comments";
 import { parseApiDate } from "~~/composables/apiDate";
+import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { commentMarkdownToHtml, loadPurify, sanitizeUrl } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
@@ -610,6 +614,24 @@ const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
+// Blocked-reader suppression (round 386, DEC-437): rows authored by readers
+// the signed-in viewer has blocked are dropped from the rendered thread (a
+// receiver-side opt-out, per DEC-425). The block list loads asynchronously, so
+// the thread first paints unadulterated and then filters once the list lands —
+// an unblocked reply to a blocked comment still renders via the tree's
+// parent-missing promote (we censor the blocked author, not their audience).
+const { blockedReaderIds, loadBlockedReaderIds } = useBlockedReaderIds();
+onMounted(() => {
+	void loadBlockedReaderIds();
+});
+
+// The flat list the tree is built from, minus blocked authors' rows. `total`
+// intentionally stays the server's real count (blocking is a per-viewer view,
+// not a global deletion), so pagination bounds remain stable.
+const visibleComments = computed<Comment[]>(() =>
+	comments.value.filter((c) => !c.reader || !blockedReaderIds.value.has(c.reader.id)),
+);
+
 // Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
 // once the list renders, scroll the anchor into view (comments carry scroll-mt
 // so the sticky header doesn't cover the target). The anchor may live on a page
@@ -686,8 +708,10 @@ function onSortChange(event: Event): void {
 }
 
 // Re-tokenize whenever the list changes (submit, pagination): the new rows
-// re-render as plain <pre><code> until this re-highlights them.
-watch(comments, async () => {
+// re-render as plain <pre><code> until this re-highlights them. Watches the
+// blocked-filtered list (which is what actually renders), so a block-list
+// landing that drops rows also re-syncs the highlighter to the remaining ones.
+watch(visibleComments, async () => {
 	await nextTick();
 	void highlightCommentCode();
 });
@@ -891,12 +915,12 @@ async function handleCommentFlag(comment: Comment): Promise<void> {
 // being dropped (RIL ISS-037).
 const byId = computed(() => {
 	const m = new Map<number, Comment>();
-	for (const c of comments.value) m.set(c.id, c);
+	for (const c of visibleComments.value) m.set(c.id, c);
 	return m;
 });
 const childrenByParent = computed(() => {
 	const m = new Map<number, Comment[]>();
-	for (const c of comments.value) {
+	for (const c of visibleComments.value) {
 		if (c.parent_id !== null) {
 			const list = m.get(c.parent_id) ?? [];
 			list.push(c);
@@ -909,7 +933,7 @@ const childrenByParent = computed(() => {
 // Top-level = no parent, or the parent isn't present on this page (it would
 // otherwise nest under a comment we can't render above it).
 const topLevelComments = computed(() =>
-	comments.value.filter((c) => c.parent_id === null || !byId.value.has(c.parent_id ?? -1)),
+	visibleComments.value.filter((c) => c.parent_id === null || !byId.value.has(c.parent_id ?? -1)),
 );
 
 function descendantsOf(commentId: number): Comment[] {
