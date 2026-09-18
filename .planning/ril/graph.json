@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 378,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-17T15:54:28+00:00",
+  "updated_at": "2026-09-18T03:26:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27861,10 +27861,10 @@
     "TASK-436": {
       "id": "TASK-436",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-17T15:53:52+00:00",
-      "updated_at": "2026-09-17T15:53:52+00:00",
+      "updated_at": "2026-09-18T03:26:37+00:00",
       "touched_round": 378,
       "category": "core-feature",
       "title": "Weekly digest admin console: overview + dry-run preview + trigger send on /admin/newsletter",
@@ -27874,13 +27874,91 @@
     "ISS-514": {
       "id": "ISS-514",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-17T15:54:17+00:00",
-      "updated_at": "2026-09-17T15:54:17+00:00",
+      "updated_at": "2026-09-18T03:26:37+00:00",
       "touched_round": 378,
       "title": "Weekly digest has no operator overview/preview/send UI",
       "description": "The weekly email digest runs with complete backend machinery but zero admin surface: an operator cannot see reader+guest digest subscriber counts, when the last digest was sent, what the next window would contain, or trigger a send from the UI. Digest is a user-facing recurring email; running it blind is an operational gap."
+    },
+    "CHG-675": {
+      "id": "CHG-675",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:25:49+00:00",
+      "updated_at": "2026-09-18T03:25:49+00:00",
+      "touched_round": 378,
+      "commit": "62f65770",
+      "detail": "backend: GET /api/admin/newsletter/digest/overview (counts + last-sent + window posts) + 7 contract tests"
+    },
+    "CHG-676": {
+      "id": "CHG-676",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:25:49+00:00",
+      "updated_at": "2026-09-18T03:25:49+00:00",
+      "touched_round": 378,
+      "commit": "6feb6341",
+      "detail": "frontend: digest panel on /admin/newsletter (stats + dry-run preview + confirmed send) + 5 vitest"
+    },
+    "CHG-677": {
+      "id": "CHG-677",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:25:49+00:00",
+      "updated_at": "2026-09-18T03:25:49+00:00",
+      "touched_round": 378,
+      "commit": "5deee527",
+      "detail": "e2e: admin weekly-digest overview + preview journey (SMTP-sink double opt-in)"
+    },
+    "CHG-678": {
+      "id": "CHG-678",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:25:49+00:00",
+      "updated_at": "2026-09-18T03:25:49+00:00",
+      "touched_round": 378,
+      "commit": "7121a14c",
+      "detail": "fix(test/e2e): scope newsletter confirm cadence assertion to <main> (ambiguous checkbox locator)"
+    },
+    "CHG-679": {
+      "id": "CHG-679",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:25:49+00:00",
+      "updated_at": "2026-09-18T03:25:49+00:00",
+      "touched_round": 378,
+      "commit": "a79ae3c0",
+      "detail": "docs: README + CHANGELOG (en/zh) round-378 digest console entry"
+    },
+    "EV-283": {
+      "id": "EV-283",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:26:12+00:00",
+      "updated_at": "2026-09-18T03:26:12+00:00",
+      "touched_round": 378,
+      "source": "round 378 full VERIFY: pytest -n auto --cov-fail-under=80 (1781 passed, 10 skipped @93.75%); pnpm test (2309); nuxt typecheck 0; pyright 0; e2e admin-digest + newsletter journeys 3/3",
+      "detail": "e2e run first exposed the digest dry-run semantics (summary subscribers = recipients with eligible posts in per-recipient window, others in skipped) and an ambiguous input[type=checkbox] locator on the newsletter confirm page (footer vs card) - both fixed. Digest/newsletter contract tests also pass on PostgreSQL 18.4 (10.112.9.49:13310, 54 tests).",
+      "confidence": 1.0
+    },
+    "DEC-424": {
+      "id": "DEC-424",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:26:13+00:00",
+      "updated_at": "2026-09-18T03:26:13+00:00",
+      "touched_round": 378,
+      "rationale": "TASK-436 delivered end-to-end: backend overview endpoint + frontend digest panel on /admin/newsletter + 7 backend/5 vitest/1 e2e + docs. All VERIFY gates green: 1781 backend @93.75% (+7), 2309 vitest, nuxt typecheck + pyright 0 errors, e2e admin-digest + newsletter 3/3, plus PostgreSQL 18.4 dialect pass (54 tests). Two incidental fixes landed under the regression guardrail: corrected the admin-digest e2e assertion (dry-run subscriber line counts eligible-window recipients, not the opt-in base) and scoped the newsletter confirm checkbox assertion to <main> (footer form ambiguity).",
+      "alternatives_rejected": "None - closed as planned; no scope change."
     }
   },
   "edges": [
@@ -41477,6 +41555,42 @@
       "to": "ISS-514",
       "type": "addresses",
       "created_at": "2026-09-17T15:54:28+00:00"
+    },
+    {
+      "from": "CHG-675",
+      "to": "TASK-436",
+      "type": "implements",
+      "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "CHG-676",
+      "to": "TASK-436",
+      "type": "implements",
+      "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "CHG-677",
+      "to": "TASK-436",
+      "type": "implements",
+      "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "CHG-678",
+      "to": "TASK-436",
+      "type": "implements",
+      "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "CHG-679",
+      "to": "TASK-436",
+      "type": "implements",
+      "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "DEC-424",
+      "to": "DEC-423",
+      "type": "supersedes",
+      "created_at": "2026-09-18T03:26:36+00:00"
     }
   ]
 }
