@@ -12,12 +12,19 @@ import { mockFetchResult, mountWithSuspense, stubNuxtGlobals } from "../admin/he
 
 const listMock = vi.fn();
 const deleteMock = vi.fn();
+const overviewMock = vi.fn();
+const triggerMock = vi.fn();
 
 vi.mock("../../api/admin/newsletter", () => ({
 	// useAdminNewsletterSubscribers returns an AsyncData-like object the page
 	// destructures as { data, pending, error, refresh }.
 	useAdminNewsletterSubscribers: (...args: unknown[]) => listMock(...args),
 	deleteNewsletterSubscriber: deleteMock,
+	// useAdminDigestOverview likewise (DEC-423, TASK-436). The digest panel
+	// calls it unconditionally in setup; each describe's beforeEach seeds a
+	// default return and individual tests override via overviewMock.
+	useAdminDigestOverview: () => overviewMock(),
+	triggerWeeklyDigest: triggerMock,
 }));
 
 stubNuxtGlobals();
@@ -56,12 +63,17 @@ describe("Admin Newsletter page", () => {
 		// happy-dom has no window.confirm; the page calls it for the delete
 		// confirmation.
 		vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+		// The digest panel calls the overview in setup — seed a benign default
+		// (empty data) so subscriber-list tests are unaffected.
+		overviewMock.mockReturnValue(mockFetchResult(null));
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
 		deleteMock.mockReset();
+		overviewMock.mockReset();
+		triggerMock.mockReset();
 	});
 
 	it("renders the subscriber list with status chips and dates", async () => {
@@ -245,5 +257,117 @@ describe("Admin Newsletter page", () => {
 
 		expect(state.refresh).toHaveBeenCalled();
 		expect(wrapper.text()).not.toContain("移除失败");
+	});
+});
+
+describe("Admin Newsletter digest panel (DEC-423, TASK-436)", () => {
+	beforeEach(() => {
+		vi.stubGlobal("definePageMeta", vi.fn());
+		stubNuxtGlobals();
+		overviewMock.mockReset();
+		overviewMock.mockReturnValue(fakeOverview());
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.clearAllMocks();
+		overviewMock.mockReset();
+		triggerMock.mockReset();
+	});
+
+	function fakeOverview(overrides: Partial<Record<string, unknown>> = {}) {
+		return mockFetchResult({
+			reader_digest_subscribers: 3,
+			guest_digest_subscribers: 2,
+			last_sent_at: "2026-09-10T00:00:00",
+			window_posts: 4,
+			...overrides,
+		});
+	}
+
+	it("renders the digest subscriber counts, last-sent and window posts", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		overviewMock.mockReturnValue(fakeOverview());
+		const wrapper = await mountPage();
+
+		// Reader + guest subscriber counts on the weekly cadence.
+		expect(wrapper.text()).toContain("3");
+		expect(wrapper.text()).toContain("2");
+		// Window post count.
+		expect(wrapper.text()).toContain("4");
+		// Last-sent date renders (not blank).
+		expect(wrapper.text()).toContain("2026");
+	});
+
+	it("renders an unset last-sent state when no digest has ever gone out", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		overviewMock.mockReturnValue(fakeOverview({ last_sent_at: null }));
+		const wrapper = await mountPage();
+
+		// The never-sent copy replaces a date (not a literal dash).
+		expect(wrapper.text()).toContain("尚未发送"); // zh never-sent copy
+	});
+
+	it("runs a dry-run preview on the preview button and shows the summary", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		overviewMock.mockReturnValue(fakeOverview());
+		triggerMock.mockResolvedValue({
+			locked: false,
+			dry_run: true,
+			readers: 3,
+			subscribers: 2,
+			emails_sent: 0,
+			posts: 4,
+			skipped: 1,
+		});
+		const wrapper = await mountPage();
+
+		const preview = wrapper.findAll("button").find((b) => b.text().includes("预览"));
+		if (!preview) throw new Error("preview button not rendered");
+		await preview.trigger("click");
+		await flushPromises();
+
+		expect(triggerMock).toHaveBeenCalledWith(true);
+		// The summary surfaces (preview: 3 readers, 2 guests, 4 posts).
+		expect(wrapper.text()).toContain("3");
+		expect(wrapper.text()).toContain("2");
+	});
+
+	it("surfaces a locked / no-recipient preview reason", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		overviewMock.mockReturnValue(fakeOverview({ window_posts: 0 }));
+		triggerMock.mockResolvedValue({
+			locked: false,
+			dry_run: true,
+			readers: 0,
+			subscribers: 0,
+			emails_sent: 0,
+			posts: 0,
+			skipped: 0,
+			reason: "no_recipients",
+		});
+		const wrapper = await mountPage();
+
+		const preview = wrapper.findAll("button").find((b) => b.text().includes("预览"));
+		if (!preview) throw new Error("preview button not rendered");
+		await preview.trigger("click");
+		await flushPromises();
+
+		expect(triggerMock).toHaveBeenCalledWith(true);
+		expect(wrapper.text()).toContain("可发送的收件人"); // mapped no_recipients copy
+	});
+
+	it("surfaces an error when the trigger call fails", async () => {
+		listMock.mockReturnValue(fakeListing([]));
+		overviewMock.mockReturnValue(fakeOverview());
+		triggerMock.mockRejectedValue(new Error("mail down"));
+		const wrapper = await mountPage();
+
+		const preview = wrapper.findAll("button").find((b) => b.text().includes("预览"));
+		if (!preview) throw new Error("preview button not rendered");
+		await preview.trigger("click");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("mail down");
 	});
 });

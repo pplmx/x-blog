@@ -108,7 +108,25 @@
 			"deleteAria": "将 {email} 从邮件订阅中移除",
 			"confirmDelete": "要把 {email} 从邮件订阅中移除吗？移除后不再收到新文章邮件。",
 			"deleteFailed": "移除失败，请重试。",
-			"digestWeekly": "每周摘要"
+			"digestWeekly": "每周摘要",
+			"digestPanel": {
+				"title": "每周摘要（周报）",
+				"description": "每周汇总邮件：读者与游客订阅者规模、上次发送时间、下一期窗口内的文章数。",
+				"readerSubs": "读者订阅",
+				"guestSubs": "游客订阅",
+				"lastSent": "上次发送",
+				"neverSent": "尚未发送",
+				"windowPosts": "本期窗口文章",
+				"preview": "预览",
+				"send": "立即发送",
+				"sendConfirm": "确认立即向所有订阅了每周摘要的读者与游客发送周报邮件吗？",
+				"previewResultTitle": "预览完成（未发送）",
+				"sendResultTitle": "发送完成",
+				"skippedLabel": "跳过",
+				"emailsSent": "已发送 {count} 封邮件",
+				"locked": "另一个摘要任务正在运行，本次未发送。",
+				"noRecipients": "当前窗口内没有可发送的收件人。"
+			}
 		}
 	}
 }

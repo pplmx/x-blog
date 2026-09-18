@@ -108,7 +108,25 @@
 			"deleteAria": "Remove {email} from the newsletter",
 			"confirmDelete": "Remove {email} from the newsletter? They will stop receiving new-post emails.",
 			"deleteFailed": "Couldn't remove the subscriber — please try again.",
-			"digestWeekly": "Weekly digest"
+			"digestWeekly": "Weekly digest",
+			"digestPanel": {
+				"title": "Weekly digest",
+				"description": "The weekly summary email: reader + guest subscriber counts, last send time, and how many posts the next digest window holds.",
+				"readerSubs": "Reader subscribers",
+				"guestSubs": "Guest subscribers",
+				"lastSent": "Last sent",
+				"neverSent": "Never sent",
+				"windowPosts": "Posts in window",
+				"preview": "Preview",
+				"send": "Send now",
+				"sendConfirm": "Send the weekly digest now to every reader and guest subscribed to it?",
+				"previewResultTitle": "Preview (nothing sent)",
+				"sendResultTitle": "Send complete",
+				"skippedLabel": "Skipped",
+				"emailsSent": "{count} emails sent",
+				"locked": "Another digest job is running — this run sent nothing.",
+				"noRecipients": "No eligible recipients in the current window."
+			}
 		}
 	}
 }

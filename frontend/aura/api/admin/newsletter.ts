@@ -65,3 +65,55 @@ export function deleteNewsletterSubscriber(id: number): Promise<void> {
 		headers: adminAuthHeaders(),
 	});
 }
+
+/** Weekly-digest operator reading surface (DEC-423, TASK-436). */
+export interface AdminDigestOverview {
+	// Active readers who opted into email_weekly_digest.
+	reader_digest_subscribers: number;
+	// Confirmed newsletter addresses on the digest_weekly cadence.
+	guest_digest_subscribers: number;
+	// Max digest_sent_at across reader prefs and newsletter rows; null when
+	// nothing has ever gone out.
+	last_sent_at: string | null;
+	// Public posts in the rolling digest window — what the next send carries.
+	window_posts: number;
+}
+
+/** Digest job summary returned by the send-weekly endpoint (send or preview). */
+export interface AdminDigestSendSummary {
+	locked: boolean;
+	dry_run?: boolean;
+	readers: number;
+	subscribers: number;
+	emails_sent: number;
+	posts: number;
+	skipped: number;
+	reason?: string;
+}
+
+/**
+ * GET /api/admin/newsletter/digest/overview — the digest's live state.
+ * Reactive via useFetch path-watching (adminAuthHeaders are static), so a
+ * recompute of `path` refetches.
+ */
+export function useAdminDigestOverview() {
+	return query<AdminDigestOverview>("/api/admin/newsletter/digest/overview", {
+		headers: adminAuthHeaders(),
+		server: false,
+	});
+}
+
+/**
+ * POST /api/admin/digests/send-weekly — trigger the digest job.
+ * With `dryRun` it builds + reports without sending or stamping anything
+ * (pure preview); otherwise it delivers (superuser broadcast).
+ */
+export function triggerWeeklyDigest(dryRun = false): Promise<AdminDigestSendSummary> {
+	return command<AdminDigestSendSummary>(
+		`/api/admin/digests/send-weekly${dryRun ? "?dry_run=true" : ""}`,
+		{
+			method: "POST",
+			headers: adminAuthHeaders(),
+		},
+	);
+}

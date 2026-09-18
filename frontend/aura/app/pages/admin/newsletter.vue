@@ -13,8 +13,11 @@
 import { computed, onUnmounted, ref } from "vue";
 
 import {
+	type AdminDigestSendSummary,
 	type AdminNewsletterStatus,
 	deleteNewsletterSubscriber,
+	triggerWeeklyDigest,
+	useAdminDigestOverview,
 	useAdminNewsletterSubscribers,
 } from "~~/api/admin/newsletter";
 import { parseApiDate } from "~~/composables/apiDate";
@@ -84,6 +87,51 @@ function formatDate(value: string | null): string {
 	});
 }
 
+// ---------------------------------------------------------------------------
+// Weekly digest overview + preview panel (DEC-423, TASK-436)
+// ---------------------------------------------------------------------------
+// The digest's backend machinery has no operator reading surface: an admin
+// cannot see who opted into the weekly cadence, when the last one went out,
+// or what the next window would carry. This panel loads the overview and lets
+// the operator dry-run preview (send-weekly?dry_run=true) and — with a
+// superuser confirm — trigger an actual send. Read-only overview is safe to
+// poll; the preview/trigger share one busy flag so they can't double-fire.
+const {
+	data: digestOverview,
+	error: overviewError,
+	pending: overviewPending,
+	refresh: refreshDigestOverview,
+} = useAdminDigestOverview();
+
+const digestBusy = ref(false);
+const digestResult = ref<AdminDigestSendSummary | null>(null);
+const digestError = ref<string | null>(null);
+
+async function runDigest(dryRun: boolean) {
+	if (digestBusy.value) return; // single-flight across preview + send
+	digestBusy.value = true;
+	digestResult.value = null;
+	digestError.value = null;
+	try {
+		digestResult.value = await triggerWeeklyDigest(dryRun);
+		// A real send stamps digest_sent_at, so the overview's last-sent and
+		// window counts go stale — refetch so the panel stays truthful without
+		// a manual reload (a dry-run preview stamps nothing, but refetching
+		// there too is harmless and keeps both paths symmetric).
+		await refreshDigestOverview();
+	} catch (e) {
+		digestError.value = e instanceof Error ? e.message : String(e);
+	} finally {
+		digestBusy.value = false;
+	}
+}
+
+async function sendDigest() {
+	// A real send is a broadcast: confirm before firing it.
+	if (!window.confirm(t("admin.newsletter.digestPanel.sendConfirm"))) return;
+	await runDigest(false);
+}
+
 async function removeSubscriber(id: number, email: string) {
 	if (busyIds.value.has(id)) return; // single-flight per row
 	if (!window.confirm(t("admin.newsletter.confirmDelete", { email }))) return;
@@ -118,6 +166,100 @@ async function removeSubscriber(id: number, email: string) {
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t("admin.newsletter.title") }}</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.description") }}</p>
     </header>
+
+    <!-- Weekly digest panel (DEC-423, TASK-436): the operator reading surface
+         for the digest job — who is on the weekly cadence, when the last one
+         went out, what the next window would carry, and live preview/send
+         controls wired to the existing send-weekly endpoint. -->
+    <section
+      class="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+      :aria-label="t('admin.newsletter.digestPanel.title')"
+    >
+      <header class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+          {{ t("admin.newsletter.digestPanel.title") }}
+        </h2>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            :disabled="digestBusy"
+            :aria-busy="digestBusy"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="runDigest(true)"
+          >
+            <Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            <Icon v-else icon="lucide:eye" class="w-4 h-4" />
+            {{ t("admin.newsletter.digestPanel.preview") }}
+          </button>
+          <button
+            type="button"
+            :disabled="digestBusy"
+            :aria-busy="digestBusy"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="sendDigest"
+          >
+            <Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+            <Icon v-else icon="lucide:send" class="w-4 h-4" />
+            {{ t("admin.newsletter.digestPanel.send") }}
+          </button>
+        </div>
+      </header>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.description") }}</p>
+
+      <div v-if="overviewPending && !digestOverview" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin inline" />
+        {{ t("common.state.loading") }}
+      </div>
+      <p v-else-if="overviewError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+        {{ t("admin.newsletter.loadFailed") }}
+      </p>
+      <dl v-else-if="digestOverview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.readerSubs") }}</dt>
+          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.reader_digest_subscribers }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.guestSubs") }}</dt>
+          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.guest_digest_subscribers }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.lastSent") }}</dt>
+          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
+            {{ digestOverview.last_sent_at ? formatDate(digestOverview.last_sent_at) : t("admin.newsletter.digestPanel.neverSent") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.windowPosts") }}</dt>
+          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.window_posts }}</dd>
+        </div>
+      </dl>
+
+      <!-- Preview / send result summary -->
+      <div v-if="digestResult" class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-sm">
+        <p class="font-medium text-gray-900 dark:text-white">
+          {{ digestResult.dry_run ? t("admin.newsletter.digestPanel.previewResultTitle") : t("admin.newsletter.digestPanel.sendResultTitle") }}
+        </p>
+        <!-- The summary numbers: readers, guest subscribers, posts, skipped. -->
+        <ul class="mt-1 list-disc list-inside text-gray-600 dark:text-gray-300">
+          <li>{{ t("admin.newsletter.digestPanel.readerSubs") }}: {{ digestResult.readers }}</li>
+          <li>{{ t("admin.newsletter.digestPanel.guestSubs") }}: {{ digestResult.subscribers }}</li>
+          <li>{{ t("admin.newsletter.digestPanel.windowPosts") }}: {{ digestResult.posts }}</li>
+          <li>{{ t("admin.newsletter.digestPanel.skippedLabel") }}: {{ digestResult.skipped }}</li>
+        </ul>
+        <p v-if="digestResult.emails_sent > 0" class="mt-1 text-green-700 dark:text-green-400">
+          {{ t("admin.newsletter.digestPanel.emailsSent", { count: digestResult.emails_sent }) }}
+        </p>
+        <p v-else-if="digestResult.locked" class="mt-1 text-amber-700 dark:text-amber-400">
+          {{ t("admin.newsletter.digestPanel.locked") }}
+        </p>
+        <p v-else-if="digestResult.reason === 'no_recipients'" class="mt-1 text-amber-700 dark:text-amber-400">
+          {{ t("admin.newsletter.digestPanel.noRecipients") }}
+        </p>
+      </div>
+      <p v-if="digestError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+        {{ digestError }}
+      </p>
+    </section>
 
     <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
       <input
