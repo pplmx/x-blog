@@ -18,9 +18,11 @@
 			"totalComments": "Comments"
 		},
 		"posts": {
-			"views": "reads"
+			"views": "reads",
+			"readsThisWeek": "{count} reads this week"
 		},
 		"sections": {
+			"trending": "Trending this week",
 			"recent": "Continue reading",
 			"popular": "Popular Articles",
 			"latest": "Latest Articles",

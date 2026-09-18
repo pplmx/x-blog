@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PostList } from "~~/api/contracts/shared";
-import { usePopularPosts, usePosts } from "~~/api/public/posts";
+import { usePopularPosts, usePosts, useTrendingPosts } from "~~/api/public/posts";
 import { useBlogStats } from "~~/api/public/stats";
 import { useCategories, useTags } from "~~/api/public/taxonomy";
 import type { FollowedSeriesItem } from "~~/api/reader/follows";
@@ -84,6 +84,12 @@ const pageAnnouncement = computed(() =>
 );
 
 const { data: popularPosts } = await usePopularPosts();
+
+// Time-windowed fresh-content discovery (round 387, DEC-438): "what's being
+// read this week", distinct from the all-time Popular row below. Server-renders
+// on the same SSR pass; hides entirely when the window is empty (a fresh
+// install tracks post_views_daily forward only, so there is nothing to rank).
+const { data: trendingPosts } = await useTrendingPosts();
 
 // Personalized "Recommended for you" (DEC-128, TASK-176): shown only to
 // signed-in readers, sourced from their history/bookmark category+tag affinity.
@@ -500,6 +506,39 @@ const stats = computed(() => {
     <div class="flex flex-col lg:flex-row gap-8">
       <!-- Main posts -->
       <div class="flex-1 min-w-0">
+        <!-- Trending this week (round 387, DEC-438): time-windowed fresh-content
+             ranking — distinct from the all-time Popular row below. The section
+             vanishes when the window is empty (fresh installs, DEC-086 tracks
+             post_views_daily forward only). -->
+        <div v-if="trendingPosts?.length" class="mb-10">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <Icon icon="lucide:flame" class="w-5 h-5 text-rose-500" />
+            {{ t("home.sections.trending") }}
+          </h2>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <NuxtLink
+              v-for="(post, idx) in trendingPosts.slice(0, 4)"
+              :key="post.id"
+              :to="`/posts/${post.slug}`"
+              class="group relative p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-rose-200 dark:hover:border-rose-800 hover:shadow-md transition-all duration-200"
+            >
+              <div class="flex items-start gap-3">
+                <span class="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-rose-100 dark:from-rose-900/50 to-red-100 dark:to-red-900/50 text-rose-600 dark:text-rose-400 text-xs font-bold shrink-0">
+                  {{ idx + 1 }}
+                </span>
+                <div class="min-w-0">
+                  <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-2">
+                    {{ post.title }}
+                  </h3>
+                  <p class="text-xs text-gray-400 mt-1">
+                    {{ t("home.posts.readsThisWeek", { count: post.views_window }) }}
+                  </p>
+                </div>
+              </div>
+            </NuxtLink>
+          </div>
+        </div>
+
         <!-- Popular posts highlight -->
         <div v-if="popularPosts?.length" class="mb-10">
           <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">

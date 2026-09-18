@@ -32,6 +32,12 @@ const { mockState } = vi.hoisted(() => ({
 			slug: string;
 			views: number;
 		}>,
+		trendingPosts: [] as Array<{
+			id: number;
+			title: string;
+			slug: string;
+			views_window: number;
+		}>,
 		categories: [] as Array<{ id: number; name: string }>,
 		tags: [] as Array<{ id: number; name: string }>,
 		statsData: null as null | {
@@ -105,6 +111,9 @@ vi.mock("../../api/public/posts", async () => {
 		...actual,
 		usePopularPosts: () => ({
 			data: ref(mockState.popularPosts),
+		}),
+		useTrendingPosts: () => ({
+			data: ref(mockState.trendingPosts),
 		}),
 	};
 });
@@ -290,11 +299,19 @@ const mockPopularPosts = [
 	{ id: 3, title: "Popular Post Three", slug: "popular-three", views: 300 },
 ];
 
+// Round 387 (DEC-438): in-window top posts carry views_window for the
+// "N reads this week" caption, distinct from the all-time views counter.
+const mockTrendingPosts = [
+	{ id: 1, title: "Trending Post One", slug: "trending-one", views_window: 42 },
+	{ id: 2, title: "Trending Post Two", slug: "trending-two", views_window: 12 },
+];
+
 function resetMockState() {
 	mockState.posts = null;
 	mockState.pending = false;
 	mockState.error = null;
 	mockState.popularPosts = [];
+	mockState.trendingPosts = [];
 	mockState.categories = [];
 	mockState.tags = [];
 	mockState.statsData = null;
@@ -462,6 +479,26 @@ describe("Index Page", () => {
 			mockState.popularPosts = [];
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).not.toContain("热门文章");
+		});
+	});
+
+	describe("Trending this week (round 387, DEC-438)", () => {
+		it("renders the trending section with the in-window read count", async () => {
+			mockState.posts = mockPostsData;
+			mockState.trendingPosts = mockTrendingPosts;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("本周热门");
+			expect(wrapper.text()).toContain("Trending Post One");
+			expect(wrapper.text()).toContain("本周 42 次阅读");
+			expect(wrapper.text()).toContain("Trending Post Two");
+		});
+
+		it("hides the trending section when the window is empty", async () => {
+			mockState.posts = mockPostsData;
+			mockState.trendingPosts = [];
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).not.toContain("本周热门");
+			expect(wrapper.text()).not.toContain("本周 42 次阅读");
 		});
 	});
 

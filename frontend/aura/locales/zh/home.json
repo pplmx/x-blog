@@ -18,9 +18,11 @@
 			"totalComments": "评论"
 		},
 		"posts": {
-			"views": "阅读"
+			"views": "阅读",
+			"readsThisWeek": "本周 {count} 次阅读"
 		},
 		"sections": {
+			"trending": "本周热门",
 			"recent": "继续阅读",
 			"popular": "热门文章",
 			"latest": "最新文章",

@@ -124,6 +124,21 @@ export function usePopularPosts(limit = 5) {
 	return query<PostList[]>("/api/posts/popular/list", { query: { limit } });
 }
 
+/** A public top-post by in-window views (round 387, DEC-438): PostList plus
+ *  the sum of views within the trending window (default: last 7 days) from the
+ *  backend's post_views_daily table, so the home page can say "N reads this
+ *  week" instead of the all-time counter. */
+export interface TrendingPost extends PostList {
+	views_window: number;
+}
+
+/** GET /api/posts/trending/list — time-windowed top posts (fresh-content
+ *  discovery). Returns [] when the window is empty (fresh installs track the
+ *  daily table forward only); the home section hides rather than errors. */
+export function useTrendingPosts(days = 7, limit = 5) {
+	return query<TrendingPost[]>("/api/posts/trending/list", { query: { days, limit } });
+}
+
 export function useRelatedPosts(postId: number | Getter<number | null | undefined>, limit = 5) {
 	const path =
 		typeof postId === "function"
