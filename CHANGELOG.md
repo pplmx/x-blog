@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skipped. Never needs an account. 1814 backend tests @93.72% (+15,
   Postgres-verified), 2332 frontend tests (+14), and a guest-thread-follow e2e
   journey all green (DEC-427, TASK-438).
+- 📧 **Weekly summary for followed discussions (round 381)**: round-380 guest
+  thread-follow emails once per approved comment — a follower of several active
+  threads is spammed daily with no cadence choice, the same gap the newsletter
+  closed in DEC-355. A confirmed follower can now pick "one weekly summary"
+  (subscribe-time flag, the confirm-page checkbox, or the token-gated
+  `/guest/digest` flip): weekly rows are excluded from the per-comment fan-out
+  (one channel per subscriber) and the weekly digest job (same CLI / admin
+  trigger as the newsletter + reader digests) sends one summary per followed
+  thread aggregating that week's approved comments — deep-linked to each, same
+  one-click unsubscribe. 1823 backend tests @93.67% (+9, Postgres-verified),
+  2335 frontend tests (+3), and the guest-thread-follow e2e journeys (two tests)
+  all green (DEC-429, TASK-439).
 - 📧 **Weekly-digest operator console (round 378)**: the weekly digest (for both
   readers and guests) ran on complete backend machinery with no admin reading
   surface —

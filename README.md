@@ -97,6 +97,14 @@ A modern full-stack blog application built with FastAPI + Nuxt
   row), then one email lands per APPROVED comment — deep-linked to the comment and
   carrying a per-subscription one-click unsubscribe that stops all thread mail from
   the inbox. No account ever needed (DEC-427, TASK-438)
+- 📧 **Weekly summary for followed discussions** - following a thread by email
+  used to mean a mail per approved comment, which gets noisy across several
+  threads. On the confirm page a guest picks "weekly summary instead": the
+  per-comment fan-out goes silent and the weekly digest job (same CLI / admin
+  trigger as the newsletter digest) sends one summary per followed thread with
+  that week's approved comments, deep-linked and carrying the same one-click
+  unsubscribe — the cadence choice the newsletter already had, now for
+  discussions (DEC-429, TASK-439)
 - 📧 **Digest operator console on `/admin/newsletter`** - the weekly digest
   (reader + guest) had complete backend machinery but zero admin surface: an
   operator could trigger it by CLI or the superuser endpoint but could not see
