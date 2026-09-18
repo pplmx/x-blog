@@ -64,6 +64,7 @@ def _notify_thread_subscribers(
     new_comment_id: int,
     exclude_reader_ids: set[int],
     db: Session,
+    commenter_id: int | None = None,
 ) -> None:
     """Push 'a new comment was approved on a thread you follow' to followers.
 
@@ -72,12 +73,18 @@ def _notify_thread_subscribers(
     every reader following the post's thread minus ``exclude_reader_ids`` —
     the comment's own author (no self-notification) and, for a reply, the
     replied-to reader (they already get the targeted reply notification,
-    DEC-064; doubling it would push twice). Best effort: VAPID unconfigured
-    or no subscribers is a silent no-op — moderation must never fail because
-    of notifications. Dead (404/410) subscriptions are retired by the shared
-    dispatch helper. (DEC-078, TASK-150)
+    DEC-064; doubling it would push twice). A subscriber who blocked the
+    commenter is also dropped (DEC-425): blocking is a receiver-side opt-out,
+    so a blocked commenter is invisible to them even mid-thread. Best effort:
+    VAPID unconfigured or no subscribers is a silent no-op — moderation must
+    never fail because of notifications. Dead (404/410) subscriptions are
+    retired by the shared dispatch helper. (DEC-078, TASK-150)
     """
     target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
+    if commenter_id is not None:
+        blocked = crud.readers_who_block(db, commenter_id, target_ids)
+        if blocked:
+            target_ids = [rid for rid in target_ids if rid not in blocked]
     # Deactivation silences every channel (DEC-194, RIL ISS-278): a deactivated
     # reader keeps their thread subscription row, but must not get the inbox
     # push below (their email is already filtered in dispatch_notification_emails).
@@ -149,17 +156,25 @@ def _notify_replied_to(
     post: models.Post,
     parent_comment_id: int,
     db: Session,
+    commenter_id: int | None = None,
 ) -> None:
     """Push 'someone replied to your comment' to the replied-to reader.
 
     Fired when a *reply is approved* (this blog moderates every comment, DEC-064:
     a reader should only hear about a reply they can actually see — notifying at
     create-time would leak pending/spam replies). Target: the parent comment's
-    author if they are a reader with a push subscription. Best effort: VAPID
+    author if they are a reader with a push subscription. A replied-to reader
+    who blocked the replier hears nothing (DEC-425) — blocking is a receiver-side
+    opt-out, and the reply is exactly the channel a block is meant to silence.
+    Best effort: VAPID
     unconfigured or missing subscriptions is a silent no-op — moderation must
     never fail because of notifications. Dead (404/410) subscriptions are retired
     via the shared dispatch helper. (DEC-064, TASK-137; DEC-072, TASK-145)
     """
+    # Reader-block opt-out (DEC-425, TASK-437): a parent-author who blocked the
+    # replier receives nothing — the reply is the channel the block silences.
+    if commenter_id is not None and crud.get_reader_block(db, parent_reader.id, commenter_id):
+        return
     # Per-kind opt-out (DEC-171, TASK-202): a replied-to reader who turned
     # 'reply' off gets neither the inbox row nor the push.
     target_prefs = crud.reader_notification_prefs_for(db, [parent_reader.id])
@@ -269,7 +284,7 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
         parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
         if post is not None and parent_reader is not None and parent_reader.is_active:
-            _notify_replied_to(parent_reader, post, parent.id, db)
+            _notify_replied_to(parent_reader, post, parent.id, db, commenter_id=comment.reader_id)
 
     # Guest reply-email (DEC-332, TASK-392): an approved REPLY to an anonymous
     # comment that consented emails the guest, independent of the reader
@@ -286,7 +301,7 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
             excluded.add(comment.reader_id)
         if parent is not None and parent.reader_id is not None:
             excluded.add(parent.reader_id)
-        _notify_thread_subscribers(post, comment.id, excluded, db)
+        _notify_thread_subscribers(post, comment.id, excluded, db, commenter_id=comment.reader_id)
 
     # @-mention fan-out (DEC-322, TASK-389): an approved comment naming a
     # reader's display name (e.g. "@Riki") notifies them with a deep link to the
@@ -334,6 +349,14 @@ def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Ses
         # NOTIFICATION_KINDS member with its own ReaderNotificationPref column
         # (round 365), so an opted-out follower is dropped here — and a missing
         # pref row reads enabled.
+        # Reader-block opt-out (DEC-425, TASK-437): a follower who blocked the
+        # commenter drops out — blocking is a receiver-side opt-out, so a
+        # blocked commenter's activity is invisible to them even if they still
+        # follow. Suppressed before the active/prefs filters to keep one pass.
+        if comment.reader_id is not None:
+            blocked = crud.readers_who_block(db, comment.reader_id, target_ids)
+            if blocked:
+                target_ids = [rid for rid in target_ids if rid not in blocked]
         active_ids = {
             rid
             for (rid,) in db.query(auth.ReaderAccount.id)
@@ -398,6 +421,14 @@ def _notify_mentions(
         .all()
     }
     target_ids = [rid for rid in mentioned_ids if rid in active_ids]
+    # Reader-block opt-out (DEC-425, TASK-437): a mentioned reader who blocked
+    # the commenter hears nothing — an @-mention by an abusive reader is the
+    # exact channel a block exists to silence. Dropped before the prefs split
+    # so neither the inbox nor the email copy is written.
+    if comment.reader_id is not None:
+        blocked = crud.readers_who_block(db, comment.reader_id, target_ids)
+        if blocked:
+            target_ids = [rid for rid in target_ids if rid not in blocked]
     target_prefs = crud.reader_notification_prefs_for(db, target_ids)
     # The two channels are gated by DIFFERENT prefs (DEC-326): a reader may
     # silence the in-app 'mention' kind yet still want the email copy, or vice

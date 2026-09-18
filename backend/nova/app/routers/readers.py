@@ -61,6 +61,12 @@ class ReaderPublicProfile(BaseModel):
     # so the profile header can render a Follow/Following button.
     follower_count: int = 0
     is_following: bool = False
+    # Reader-block stance (round 379, DEC-425): whether the SIGNED-IN caller
+    # has blocked this reader (false for guests / a caller who hasn't). Only
+    # the caller's own block status — never the target's, never an inbox
+    # graph — so the profile header can render a Block/Unblock toggle with the
+    # same seeded-by-payload pattern as is_following.
+    is_blocked: bool = False
     created_at: datetime | None = None
 
     @field_validator("created_at", mode="before")
@@ -157,6 +163,9 @@ def reader_profile(
     profile_data["is_following"] = current_reader is not None and crud.is_following_reader(
         db, current_reader.id, reader_id
     )
+    profile_data["is_blocked"] = current_reader is not None and crud.get_reader_block(
+        db, current_reader.id, reader_id
+    ) is not None
     return ReaderProfilePage(
         profile=ReaderPublicProfile(**profile_data),
         items=items,

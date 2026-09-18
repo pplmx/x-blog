@@ -756,6 +756,30 @@ class ReaderFollow(Base):
     )
 
 
+class ReaderBlock(Base):
+    """A reader blocking another READER's personal fan-out (round 379, DEC-425).
+
+    The harassment-control axis opposite ReaderFollow (round 365): a reader who
+    blocks a commenter opts out of that commenter's @-mention / reply /
+    thread-comment / follow-activity notifications at every dispatch point.
+    One row per blocker↔blocked pair; the block is one-way and invisible (the
+    blocked reader is never told and can keep posting — it is a receiver-side
+    opt-out, not a content filter). ``blocked_id`` is a plain integer without a
+    DB-level FK (SQLite alembic can't add FK-carrying columns, DEC-009);
+    integrity is enforced at the API layer like the other reader extension
+    tables.
+    """
+
+    __tablename__ = "reader_blocks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    blocker_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    blocked_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+    __table_args__ = (UniqueConstraint("blocker_id", "blocked_id", name="uq_reader_blocks_blocker_blocked"),)
+
+
 class PushSubscription(Base):
     """A reader's browser Web Push (RFC 8030) subscription.
 

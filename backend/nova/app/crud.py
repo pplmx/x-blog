@@ -3328,6 +3328,77 @@ def list_reader_follows(db: Session, reader_id: int) -> list[models.ReaderFollow
     )
 
 
+def get_reader_block(db: Session, blocker_id: int, blocked_id: int) -> models.ReaderBlock | None:
+    """A single blocker→blocked row, or None (reader-block, round 379, DEC-425)."""
+    return (
+        db.query(models.ReaderBlock)
+        .filter(
+            models.ReaderBlock.blocker_id == blocker_id,
+            models.ReaderBlock.blocked_id == blocked_id,
+        )
+        .first()
+    )
+
+
+def add_reader_block(db: Session, blocker_id: int, blocked_id: int) -> tuple[models.ReaderBlock, bool]:
+    """Block another reader; returns (block, created). Idempotent (201/200)."""
+    existing = get_reader_block(db, blocker_id, blocked_id)
+    if existing:
+        return existing, False
+    block = models.ReaderBlock(blocker_id=blocker_id, blocked_id=blocked_id)
+    db.add(block)
+    if _commit_reader_upsert(db):
+        db.refresh(block)
+        return block, True
+    existing = get_reader_block(db, blocker_id, blocked_id)
+    if existing:
+        return existing, False
+    raise RuntimeError("reader block insert lost the unique-key race but no row was found")
+
+
+def remove_reader_block(db: Session, blocker_id: int, blocked_id: int) -> bool:
+    """Unblock a reader; returns True if a block was removed. Idempotent 204."""
+    block = get_reader_block(db, blocker_id, blocked_id)
+    if not block:
+        return False
+    db.delete(block)
+    db.commit()
+    return True
+
+
+def list_reader_blocks(db: Session, blocker_id: int) -> list[models.ReaderBlock]:
+    """The reader's reader-block rows, newest first (DEC-425)."""
+    return (
+        db.query(models.ReaderBlock)
+        .filter(models.ReaderBlock.blocker_id == blocker_id)
+        .order_by(models.ReaderBlock.created_at.desc(), models.ReaderBlock.id.desc())
+        .all()
+    )
+
+
+def readers_who_block(db: Session, commenter_id: int, target_ids: list[int]) -> set[int]:
+    """Reader ids in ``target_ids`` who have blocked ``commenter_id``.
+
+    Suppression helper for the personal fan-outs (DEC-425, TASK-437): a target
+    reader who blocked the commenter must not receive that commenter's mention
+    / reply / thread-comment / follow-activity events — blocking is a
+    receiver-side opt-out, so each dispatch point drops the blocker-of-the-
+    commenter before writing any rows. A guest commenter (no reader id) has no
+    blocking relation at all.
+    """
+    if not commenter_id or not target_ids:
+        return set()
+    rows = (
+        db.query(models.ReaderBlock.blocker_id)
+        .filter(
+            models.ReaderBlock.blocker_id.in_(target_ids),
+            models.ReaderBlock.blocked_id == commenter_id,
+        )
+        .all()
+    )
+    return {rid for (rid,) in rows}
+
+
 def list_reader_follower_ids(db: Session, followed_id: int) -> list[int]:
     """Reader ids following this reader (for the comment-approval fan-out)."""
     return [

@@ -450,6 +450,24 @@ class ReaderFollowResponse(BaseModel):
     notify: bool
 
 
+class BlockedReaderItem(BaseModel):
+    """A reader this reader has blocked (round 379, DEC-425).
+
+    Public identity only, like the follow item: display name + avatar, never
+    the email, plus when the block was placed (for the management list). The
+    blocked reader is never told — this surface is only the blocker's own."""
+
+    reader_id: int
+    display_name: str | None = None
+    avatar_url: str | None = None
+    blocked_at: datetime | None = None
+
+
+class BlockedReaderListResponse(BaseModel):
+    items: list[BlockedReaderItem]
+    total: int
+
+
 class AddBookmarkResponse(BaseModel):
     post_id: int
     # True when the bookmark was newly created, False when it already existed
@@ -2366,6 +2384,83 @@ def unfollow_reader(
 ):
     """Unfollow a reader. Idempotent 204."""
     crud.remove_reader_follow(db, current_reader.id, reader_id)
+    return None
+
+
+# Reader blocks (DEC-425, TASK-437)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/blocks", response_model=BlockedReaderListResponse)
+def list_reader_blocks(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """The readers this reader has blocked, newest first, for management.
+
+    Public identity only (display name + avatar, no email), like the follow
+    list — enough to recognize who was blocked. A deactivated account has no
+    usable public identity, so it is dropped rather than showing a dead row
+    (same rule as list_reader_follows).
+    """
+    rows = crud.list_reader_blocks(db, current_reader.id)
+    items = []
+    for b in rows:
+        blocked = db.get(auth.ReaderAccount, b.blocked_id)
+        if blocked is None or blocked.is_active is False:
+            continue
+        items.append(
+            BlockedReaderItem(
+                reader_id=b.blocked_id,
+                display_name=blocked.display_name,
+                avatar_url=blocked.avatar_url,
+                blocked_at=b.created_at,
+            )
+        )
+    return BlockedReaderListResponse(items=items, total=len(items))
+
+
+@router.put("/me/blocks/{reader_id}", response_model=BlockedReaderItem)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def block_reader(
+    request: Request,  # noqa: ARG001
+    reader_id: IdInt,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Block another reader's personal fan-out. Idempotent: 201/200.
+
+    Self-block is rejected (a reader cannot block themself) and an
+    unknown/deactivated target is a uniform 404 — no blockability oracle.
+    The blocked reader is never notified; the block silently suppresses their
+    mentions / replies / thread-comments / follow-activity to this reader.
+    """
+    if reader_id == current_reader.id:
+        raise HTTPException(status_code=400, detail="You cannot block yourself")
+    target = _get_followable_reader(db, reader_id)
+    if target is None or target.is_active is False:
+        raise HTTPException(status_code=404, detail="Reader not found")
+    block, created = crud.add_reader_block(db, current_reader.id, reader_id)
+    response.status_code = 201 if created else 200
+    return BlockedReaderItem(
+        reader_id=reader_id,
+        display_name=target.display_name,
+        avatar_url=target.avatar_url,
+        blocked_at=block.created_at,
+    )
+
+
+@router.delete("/me/blocks/{reader_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+def unblock_reader(
+    request: Request,  # noqa: ARG001
+    reader_id: IdInt,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: Session = Depends(get_db),
+):
+    """Unblock a reader. Idempotent 204; restores their notifications."""
+    crud.remove_reader_block(db, current_reader.id, reader_id)
     return None
 
 
