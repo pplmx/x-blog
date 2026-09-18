@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 381,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T08:03:59+00:00",
+  "updated_at": "2026-09-18T08:05:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28258,6 +28258,18 @@
       "touched_round": 381,
       "rationale": "TASK-439 delivered end-to-end and verified: guest thread-follow weekly summary (DEC-355 parity) - digest_weekly opt-in + digest_sent_at idempotency, subscribe/confirm/digest endpoints (token-gated, no oracle), per-comment fan-out gate (one channel per subscriber), weekly digest slice in the shared send_weekly_digest job (one summary per (address, thread) of that week's APPROVED comments, deep-linked, same token unsubscribe), confirm-page toggle + subscribe-time cadence. VERIFY all gates green: 1823 backend @93.67% (+9) incl. 24 guest-thread tests on SQLite + dev PG 18.4, migration round-trip, 2335 vitest (+3), typecheck + pyright + ruff + biome 0, e2e 2/2. Scoped out (kept as backlog): follows-feed hiding of blocked authors, /search/comments refinement, notification-inbox kind filters.",
       "alternatives_rejected": "Follows-feed author content-hiding, comment-search refinement, notification-inbox filters - deferred again from DEC-427/DEC-428 as thin; per-post comments RSS rejected as duplicating guest thread email + /rss/comments.xml; a cross-thread per-address aggregation (one digest for all followed threads) deferred as a follow-up to the per-(address, thread) vertical that already caps the flood."
+    },
+    "DEC-431": {
+      "id": "DEC-431",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:05:33+00:00",
+      "updated_at": "2026-09-18T08:05:33+00:00",
+      "touched_round": 381,
+      "title": "converged-idle: feature-evolution backlog exhausted after round 381 (no new core-feature task cleared the value gate)",
+      "rationale": "TASK-439 (guest thread-follow weekly summary) was the last active core-feature task and is now resolved+verified; graph has zero active tasks at or above the 3.0 priority threshold and zero active high-severity issues (ISS-516 resolved). Rounds 379-381 mined the discussion/email vein to completion: reader blocks, guest thread-follow, and its digest cadence. The only remaining candidates (follows-feed author content-hiding, /search/comments refinement, notification-inbox kind filters) have each been deferred three times as thin/polish and none clears the §11.2 value gate (a real user-perceivable net-increment vertical slice) - pushing any would be fabricating work. Last VERIFY is fully green (1823 backend @93.67%, 2335 vitest, typecheck/pyright/ruff/biome 0, e2e 2/2, PG 18.4 verified) and the RIL graph passes check (2352 nodes). Entry into the converged-idle state is this decision; re-activation requires a new operator direction (supersedes decision), a new high-value issue, or substantive repo change - and the first round after re-activation re-runs a full VERIFY baseline before claiming recovery.",
+      "alternatives_rejected": "Follows-feed author hiding, comment-search refinement, notification-inbox filters (thin, deferred thrice); per-post comments RSS (duplicates existing channels); comment drafts and guest comment edit (larger slices with weaker demonstrated need); PWA/offline (rejected historically as large with unclear value)."
     }
   },
   "edges": [
