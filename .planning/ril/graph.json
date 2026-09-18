@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 378,
+  "round": 379,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T03:26:37+00:00",
+  "updated_at": "2026-09-18T03:43:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -27959,6 +27959,41 @@
       "touched_round": 378,
       "rationale": "TASK-436 delivered end-to-end: backend overview endpoint + frontend digest panel on /admin/newsletter + 7 backend/5 vitest/1 e2e + docs. All VERIFY gates green: 1781 backend @93.75% (+7), 2309 vitest, nuxt typecheck + pyright 0 errors, e2e admin-digest + newsletter 3/3, plus PostgreSQL 18.4 dialect pass (54 tests). Two incidental fixes landed under the regression guardrail: corrected the admin-digest e2e assertion (dry-run subscriber line counts eligible-window recipients, not the opt-in base) and scoped the newsletter confirm checkbox assertion to <main> (footer form ambiguity).",
       "alternatives_rejected": "None - closed as planned; no scope change."
+    },
+    "DEC-425": {
+      "id": "DEC-425",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:42:58+00:00",
+      "updated_at": "2026-09-18T03:42:58+00:00",
+      "touched_round": 379,
+      "rationale": "Round 379 feature selection after round-378 digest console closed. Gap analysis (a28e2c2de) mapped the full surface: comment likes, comment edit/delete, @-mentions, public view counts + popular widget, email preference center, guest comments, tag RSS all exist. Ranked true gaps; selected the highest-value one: a reader cannot block/hide ANOTHER READER. The app has reader-to-reader follows (round 365), public profiles, and @-mention fan-out, so a harassing commenter can keep mentioning a reader, replying at them, and appearing in their inbox with no opt-out. Block is a real, perceivable trust/safety need for every signed-in reader and a clean net-increment vertical slice: reader_blocks relation (mirrors ReaderFollow, DEC-009 no-FK pattern) + GET/PUT/DELETE /me/blocks/{id} + suppression hooks dropping blocked commenters from the mention / reply / thread-comment / follow-activity fan-outs + Block button on readers/[id].vue + a blocked-readers management section on /account + tests + docs.",
+      "alternatives_rejected": "Deferred (viable later rounds, not rejected outright): (1) hide a blocked authors posts from /me/follows-feed (content-hiding axis, smaller incremental value than notification suppression - excluded here to keep the slice tight); (2) guest email thread-follow without an account (strong candidate, auth-gated subscriptions lose visitors - next round); (3) /search/comments refinement with post/date/reader filters (nice-to-have research aid); (4) notification inbox filters (frontend polish). Each is below this rounds focus or overlaps, kept as backlog."
+    },
+    "TASK-437": {
+      "id": "TASK-437",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:42:58+00:00",
+      "updated_at": "2026-09-18T03:42:58+00:00",
+      "touched_round": 379,
+      "category": "core-feature",
+      "severity": "high",
+      "title": "Reader blocks: block/unblock a reader + suppress their notifications",
+      "description": "Backend: reader_blocks model (blocker_id, blocked_id, unique pair, created_at; DEC-009 no-FK like ReaderFollow); GET /me/blocks (blocked readers with public identity), PUT /me/blocks/{reader_id} (idempotent 201/200, reject self 400, unseen target 404), DELETE /me/blocks/{reader_id} (204); crud helpers incl. readers_who_block(db, commenter_id, target_ids). Suppression: in comments.py drop blockers of the commenter from @-mention targets (_notify_mentions), thread-comment targets, reader-follow-activity targets, and skip _notify_replied_to when the parent author blocked the replier. Frontend: Block/Unblock button on readers/[id].vue (signed-in non-self) + blocked-readers management section on /account (unblock there) mirroring the follows UI; i18n en/zh. Tests: backend contract + suppression tests, Vitest for button/section, e2e block journey (blocked reader mention/reply no longer notifies), Postgres-verified."
+    },
+    "ISS-515": {
+      "id": "ISS-515",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T03:42:58+00:00",
+      "updated_at": "2026-09-18T03:42:58+00:00",
+      "touched_round": 379,
+      "title": "Reader cannot block/hide another reader (mentions/replies keep landing)",
+      "description": "Reader-to-reader follows + @-mention fan-out exist but there is no block/ignore control: a harassing commenter can keep @-mentioning a reader, replying at them, and generating inbox/email entries with no opt-out. Repeatedly muting per-kind prefs is not the same as stopping one abusive person."
     }
   },
   "edges": [
@@ -41591,6 +41626,18 @@
       "to": "DEC-423",
       "type": "supersedes",
       "created_at": "2026-09-18T03:26:36+00:00"
+    },
+    {
+      "from": "DEC-425",
+      "to": "TASK-437",
+      "type": "governs",
+      "created_at": "2026-09-18T03:43:19+00:00"
+    },
+    {
+      "from": "TASK-437",
+      "to": "ISS-515",
+      "type": "addresses",
+      "created_at": "2026-09-18T03:43:19+00:00"
     }
   ]
 }
