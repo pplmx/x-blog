@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 379,
+  "round": 380,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T04:56:41+00:00",
+  "updated_at": "2026-09-18T05:07:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28061,6 +28061,41 @@
       "touched_round": 379,
       "rationale": "TASK-437 delivered end-to-end: reader_blocks relation + GET/PUT/DELETE /me/blocks + dispatch-point suppression of a blocked commenter (mention/reply/thread/follow-activity) + Block button + /account management + 18 backend/9 vitest/2 e2e + docs. All VERIFY gates green: 1799 backend @93.77% (+18), 2318 vitest (+9), nuxt typecheck + pyright 0 errors, e2e 5/5, PostgreSQL 18.4 pass + migration round-trip. Scoped out (kept as backlog): hiding a blocked author posts from /me/follows-feed (content-hiding axis), guest email thread-follow, /search/comments refinement, notification inbox filters.",
       "alternatives_rejected": "Follows-feed content hiding, guest thread-follow, comment-search refinement, notification filters - deliberately deferred to keep this slice tight; each still viable as its own round."
+    },
+    "DEC-427": {
+      "id": "DEC-427",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T05:06:28+00:00",
+      "updated_at": "2026-09-18T05:06:28+00:00",
+      "touched_round": 380,
+      "rationale": "Round 380 continues feature-exploration mode (DEC-422) after round-379 reader blocks closed. Gap analysis candidate #2: comment-thread follow is reader-gated (PUT /posts/{id}/subscription uses get_current_reader; the post-page control redirects guests to /login), so an anonymous visitor reading a discussion has no way to be emailed when it moves — the blog already emails anonymous guests for newsletter + reply (DEC-351/DEC-332), so the email+token machinery exists to mirror. Real user-visible gap (comment-driven blogs lose the >most visitors at the login gate) and a clean net-increment vertical slice: guest_comment_subscriptions table (email+post pair, double opt-in token like NewsletterSubscriber), subscribe/confirm/unsubscribe endpoints, a thread fan-out that emails confirmed guests per approved comment (mirrors send_guest_reply_email + newsletter per-post mail), a guest \"follow discussion by email\" control on the post page, confirm + unsubscribe landing pages. One-line acceptance: an anonymous visitor subscribes to a posts discussion by email (double opt-in), receives an email per new approved comment with a one-click unsubscribe, and can unsubscribe without ever registering.",
+      "alternatives_rejected": "Deferred (still viable): follows-feed hiding of blocked authors (content axis, thin); /search/comments refinement (research aid); notification inbox filters (polish). Also rejected outright here: per-tag RSS route duplication (exists via ?tag_id), digest analytics expansion (overlaps round-378 console)."
+    },
+    "TASK-438": {
+      "id": "TASK-438",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T05:06:29+00:00",
+      "updated_at": "2026-09-18T05:06:29+00:00",
+      "touched_round": 380,
+      "category": "core-feature",
+      "severity": "high",
+      "title": "Guest email thread-follow: subscribe to a post discussion by email without an account",
+      "description": "Backend: guest_comment_subscriptions model (email+post_id unique pair, opaque token, is_confirmed, DEC-009 no-FK like NewsletterSubscriber); POST /api/posts/{id}/comment-subscription/guest {email} -> 202 + double-opt-in email (mail ONLY on new row create, no-oracle); POST .../confirm {token} -> 200 idempotent flips confirmed; POST .../unsubscribe {token} -> 200 idempotent flips off. Fan-out: on comment approval, email confirmed guest subscribers of the post (skip when the email is the commenters own guest address; best effort, SMTP-gated; per-comment email with deep link + one-click unsubscribe). Frontend: guest email-follow control on the post page comment section (hide when a reader is signed in, whose reader thread-follow already covers it), /comment-subscribe/confirm page + /comment-subscribe/unsubscribe page (mirror newsletter/confirm + comment-reply-unsubscribe). Tests: backend contract + fan-out tests, Vitest for the guest control + confirm page, e2e journey with SMTP sink, Postgres-verified."
+    },
+    "ISS-516": {
+      "id": "ISS-516",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T05:06:29+00:00",
+      "updated_at": "2026-09-18T05:06:29+00:00",
+      "touched_round": 380,
+      "title": "Anonymous visitors cannot follow a post discussion by email (thread-follow is reader-gated)",
+      "description": "Comment-thread follow requires a reader account and redirects guests to /login, yet the blog already emails anonymous guests for the newsletter and for replies. A visitor who cares about one discussion either registers or misses every later comment."
     }
   },
   "edges": [
@@ -41735,6 +41770,18 @@
       "to": "DEC-425",
       "type": "supersedes",
       "created_at": "2026-09-18T04:55:26+00:00"
+    },
+    {
+      "from": "DEC-427",
+      "to": "TASK-438",
+      "type": "governs",
+      "created_at": "2026-09-18T05:07:04+00:00"
+    },
+    {
+      "from": "TASK-438",
+      "to": "ISS-516",
+      "type": "addresses",
+      "created_at": "2026-09-18T05:07:04+00:00"
     }
   ]
 }
