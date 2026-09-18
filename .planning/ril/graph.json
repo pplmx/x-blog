@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 380,
+  "round": 381,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T06:50:21+00:00",
+  "updated_at": "2026-09-18T08:03:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28171,7 +28171,7 @@
       "version": 1,
       "created_at": "2026-09-18T06:49:38+00:00",
       "updated_at": "2026-09-18T06:49:38+00:00",
-      "touched_round": 380,
+      "touched_round": 381,
       "title": "round 381 scope: guest thread-follow digest cadence (weekly summary instead of per-comment email)",
       "rationale": "Feature-evolution continues after round 380 (DEC-427 delivered guest thread-follow: one email per approved comment per followed thread). The newsletter learned this lesson in DEC-355: a guest following several active threads now gets multiple comment emails a day with NO cadence choice — the guest surface has no digest at all yet, unlike accounts (weekly digest DEC-201/326). Mirror DEC-355 1:1 on GuestCommentSubscription: opt-in digest_weekly bool (default false = per-comment stays the default, one channel per subscriber), digest_sent_at window stamp, token-gated cadence flip endpoint, fan-out skips weekly rows, and a weekly comment-digest slice inside the existing send_weekly_digest job (aggregates APPROVED comments in the window on the followed post and emails ONE summary per (address, thread) with the same token unsubscribe footer). Reuses newsletter_digest_window_start posture, the SMTP batch + per-recipient accepting flags + per-delivery digest_sent_at stamping, the CONFIRM page cadence-toggle pattern (round 354 newsletter confirm), and site-language guest copy. One-line acceptance: a guest who confirms a thread-follow picks 'weekly summary'; they stop getting per-comment emails and instead get one digest email per week listing that week's new approved comments on that thread, still with one-click unsubscribe.",
       "alternatives_rejected": "Rejected for this round: follows-feed author-hiding (content axis, thin, deferred again from DEC-427/DEC-428); comment-search refinement (research aid, thin); notification-inbox kind filters (mostly present; polish); per-post comments RSS (thin duplication of guest thread email + existing /rss/comments.xml); reader thread-comment digest (larger, targets accounts that already have inbox+push+per-event email; the guest surface has no digest of any kind and reuses DEC-355's guest machinery 1:1). Aggregating one digest across ALL of a guest's followed threads was also considered and deferred (needs cross-row windowing + per-address grouping); per-(address, thread) is the single-round vertical that already caps the flood."
@@ -28179,11 +28179,11 @@
     "TASK-439": {
       "id": "TASK-439",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-09-18T06:50:01+00:00",
-      "updated_at": "2026-09-18T06:50:01+00:00",
-      "touched_round": 380,
+      "updated_at": "2026-09-18T08:03:59+00:00",
+      "touched_round": 381,
       "category": "core-feature",
       "severity": "high",
       "title": "Guest thread-follow digest cadence: weekly summary instead of one email per approved comment",
@@ -28191,6 +28191,73 @@
       "effort": 3,
       "unlock_factor": 1,
       "confidence": 1
+    },
+    "CHG-688": {
+      "id": "CHG-688",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:02:49+00:00",
+      "updated_at": "2026-09-18T08:02:49+00:00",
+      "touched_round": 381,
+      "commit": "c1d989e4",
+      "detail": "backend: digest_weekly + digest_sent_at on GuestCommentSubscription + migration; subscribe body carries cadence, confirm returns it; token-gated POST /comment-subscription/guest/digest; per-comment fan-out excludes weekly rows; send_weekly_digest thread slice (one summary per (address, thread) aggregating approved comments in window, stamp per accepted message) + 9 tests"
+    },
+    "CHG-689": {
+      "id": "CHG-689",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:02:49+00:00",
+      "updated_at": "2026-09-18T08:02:49+00:00",
+      "touched_round": 381,
+      "commit": "5f304dc5",
+      "detail": "frontend: weekly-summary toggle on /comment-subscribe/confirm (seeded from confirm response, token-gated flip via /guest/digest, snap-back on error) + api cadence param + 3 vitest"
+    },
+    "CHG-690": {
+      "id": "CHG-690",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:02:49+00:00",
+      "updated_at": "2026-09-18T08:02:49+00:00",
+      "touched_round": 381,
+      "commit": "a222ddcb",
+      "detail": "e2e: weekly opt-in journey - confirm in-browser, flip checkbox, approved comment fans out NO per-comment mail (sink holds only the confirm)"
+    },
+    "CHG-691": {
+      "id": "CHG-691",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:02:49+00:00",
+      "updated_at": "2026-09-18T08:02:49+00:00",
+      "touched_round": 381,
+      "commit": "d5d8d87f",
+      "detail": "docs: README + CHANGELOG (en/zh) round-381 digest-cadence entry"
+    },
+    "EV-286": {
+      "id": "EV-286",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:02:49+00:00",
+      "updated_at": "2026-09-18T08:02:49+00:00",
+      "touched_round": 381,
+      "source": "round 381 full VERIFY: pytest -n auto --cov=app (1823 passed, 10 skipped @93.67%); guest-thread suite 24/24 on SQLite + dev PostgreSQL 18.4 (single-worker: the job's DB-wide advisory lock serializes parallel workers, which is its production job); migration upgrade/downgrade round-trip on SQLite + full chain on PG scratch (columns verified, scratch dropped); pnpm test 2335; nuxt typecheck 0; pyright 0; ruff 0; biome clean; e2e guest-thread-follow 2/2 (full journey + weekly suppression)",
+      "detail": "Feature delivered end-to-end with the DEC-355 precedent mirrored: opt-in default per-comment, one channel per subscriber, weekly slice in the shared job. Confirmed dial-strait: a weekly substitute never re-mails the same comments (idempotency stamp), pending/unsubscribed rows silent, commenter's-own skip preserved from round 380, SMTP-down never breaks the job. PG advisory lock arbitration causes intentional serialization only when parallel workers share a PG DB - single cron in production.",
+      "confidence": 1.0
+    },
+    "DEC-430": {
+      "id": "DEC-430",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T08:03:25+00:00",
+      "updated_at": "2026-09-18T08:03:25+00:00",
+      "touched_round": 381,
+      "rationale": "TASK-439 delivered end-to-end and verified: guest thread-follow weekly summary (DEC-355 parity) - digest_weekly opt-in + digest_sent_at idempotency, subscribe/confirm/digest endpoints (token-gated, no oracle), per-comment fan-out gate (one channel per subscriber), weekly digest slice in the shared send_weekly_digest job (one summary per (address, thread) of that week's APPROVED comments, deep-linked, same token unsubscribe), confirm-page toggle + subscribe-time cadence. VERIFY all gates green: 1823 backend @93.67% (+9) incl. 24 guest-thread tests on SQLite + dev PG 18.4, migration round-trip, 2335 vitest (+3), typecheck + pyright + ruff + biome 0, e2e 2/2. Scoped out (kept as backlog): follows-feed hiding of blocked authors, /search/comments refinement, notification-inbox kind filters.",
+      "alternatives_rejected": "Follows-feed author content-hiding, comment-search refinement, notification-inbox filters - deferred again from DEC-427/DEC-428 as thin; per-post comments RSS rejected as duplicating guest thread email + /rss/comments.xml; a cross-thread per-address aggregation (one digest for all followed threads) deferred as a follow-up to the per-(address, thread) vertical that already caps the flood."
     }
   },
   "edges": [
@@ -41919,6 +41986,36 @@
       "to": "ISS-516",
       "type": "addresses",
       "created_at": "2026-09-18T06:50:21+00:00"
+    },
+    {
+      "from": "CHG-688",
+      "to": "TASK-439",
+      "type": "implements",
+      "created_at": "2026-09-18T08:03:59+00:00"
+    },
+    {
+      "from": "CHG-689",
+      "to": "TASK-439",
+      "type": "implements",
+      "created_at": "2026-09-18T08:03:59+00:00"
+    },
+    {
+      "from": "CHG-690",
+      "to": "TASK-439",
+      "type": "implements",
+      "created_at": "2026-09-18T08:03:59+00:00"
+    },
+    {
+      "from": "CHG-691",
+      "to": "TASK-439",
+      "type": "implements",
+      "created_at": "2026-09-18T08:03:59+00:00"
+    },
+    {
+      "from": "DEC-430",
+      "to": "DEC-429",
+      "type": "supersedes",
+      "created_at": "2026-09-18T08:03:59+00:00"
     }
   ]
 }
