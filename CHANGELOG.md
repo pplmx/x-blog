@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **Compact top nav with a "My" avatar menu (round 382)**: the signed-in
+  header had grown to 14 flat links plus search, push, language and theme — it
+  needed 1400px+ in English (hidden-scrollbar overflow at xl) and its width
+  jumped when a reader signed in. Every reader-personal link (bookmarks,
+  history, my comments, liked, follows, notifications, account) now lives in a
+  single "我的" avatar dropdown: a mini profile header (→ /account), a public
+  profile link (→ /readers/{id}), the unread badge on the avatar itself, and
+  sign-out — with the same keyboard/outside-click contract as the language
+  switcher. Signing in now just swaps the Sign-in button for the avatar, so the
+  bar width is constant across auth states; the mobile panel shows the same
+  links in an always-expanded "我的" section. The old "authOnly links must be
+  appended last (SSR node reuse)" constraint collapses to a single trailing
+  avatar node, and the redundant flat /search link is gone — HeaderSearch is
+  ever-present. 2347 frontend unit tests, typecheck and lint all green; the
+  my-comments e2e now drives the avatar menu (history, a guest journey,
+  navigates directly).
 - 🚫 **Reader blocks (round 379)**: the blog had reader-to-reader follows,
   public profiles and @-mention fan-out, but no way for a reader to stop a
   barking commenter's mentions, replies and activity landing in their inbox.
