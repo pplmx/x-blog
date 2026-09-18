@@ -83,25 +83,50 @@ export function unsubscribeGuestReplyNotify(token: string): Promise<{
  * (POST /api/posts/{postId}/comment-subscription/guest, DEC-427/TASK-438).
  * Auth-free, 202, generic no-oracle response; a double opt-in email is sent
  * and nothing else until the confirmation link is clicked. Guests only — a
- * signed-in reader has the push thread-follow instead.
+ * signed-in reader has the push thread-follow instead. `digestWeekly` (round
+ * 381, DEC-429) records a weekly-summary cadence at subscribe time; default
+ * stays per-comment.
  */
 export function subscribeGuestThread(
 	postId: number,
 	email: string,
+	digestWeekly = false,
 ): Promise<{ subscribed: boolean }> {
 	return command<{ subscribed: boolean }>(`/api/posts/${postId}/comment-subscription/guest`, {
 		method: "POST",
-		body: { email },
+		body: { email, digest_weekly: digestWeekly },
 	});
 }
 
 /** Confirm a guest thread-follow via its emailed token (idempotent 200;
- *  404 = unknown token). POST /api/posts/comment-subscription/guest/confirm. */
-export function confirmGuestThreadSubscription(token: string): Promise<{ confirmed: boolean }> {
-	return command<{ confirmed: boolean }>("/api/posts/comment-subscription/guest/confirm", {
-		method: "POST",
-		body: { token },
-	});
+ *  404 = unknown token). POST /api/posts/comment-subscription/guest/confirm.
+ *  The stored cadence rides back so the confirm page can seed its toggle. */
+export function confirmGuestThreadSubscription(
+	token: string,
+): Promise<{ confirmed: boolean; digest_weekly: boolean }> {
+	return command<{ confirmed: boolean; digest_weekly: boolean }>(
+		"/api/posts/comment-subscription/guest/confirm",
+		{
+			method: "POST",
+			body: { token },
+		},
+	);
+}
+
+/** Flip a guest thread-follow's cadence via its emailed token (round 381,
+ *  DEC-429): weekly summary vs a mail per approved comment. Idempotent 200;
+ *  404 = unknown token. POST /api/posts/comment-subscription/guest/digest. */
+export function setGuestThreadDigest(
+	token: string,
+	digestWeekly: boolean,
+): Promise<{ digest_weekly: boolean; updated: boolean }> {
+	return command<{ digest_weekly: boolean; updated: boolean }>(
+		"/api/posts/comment-subscription/guest/digest",
+		{
+			method: "POST",
+			body: { token, digest_weekly: digestWeekly },
+		},
+	);
 }
 
 /** Flip a guest thread-follow's consent off via its emailed token (idempotent

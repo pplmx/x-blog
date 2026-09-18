@@ -30,6 +30,33 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "error">("pending");
+// Weekly-digest cadence toggle (round 381, DEC-429): once confirmed, the
+// holder can switch to (or back from) a weekly summary instead of a mail per
+// approved comment, using the same token the confirm link carried — terminal
+// per-comment reminders stay the default (newsletter confirm parity).
+const digestOn = ref(false);
+const digestToggling = ref(false);
+const digestToggleError = ref(false);
+// Bumped whenever a toggle finishes (success or failure) so the checkbox is
+// re-created with the server-truth :checked — on an error digestOn does not
+// change value, and without a key bump Vue would leave the DOM checkbox stuck
+// where the user clicked it instead of snapping it back.
+const digestRenderKey = ref(0);
+async function setDigest(enabled: boolean) {
+	if (!token.value || digestToggling.value) return;
+	digestToggling.value = true;
+	digestToggleError.value = false;
+	try {
+		const { setGuestThreadDigest } = await import("~~/api/public/comments");
+		await setGuestThreadDigest(token.value, enabled);
+		digestOn.value = enabled;
+	} catch {
+		digestToggleError.value = true;
+	} finally {
+		digestToggling.value = false;
+		digestRenderKey.value += 1;
+	}
+}
 
 // Fire once when the page mounts with a token. Guarded by an in-flight flag so
 // a duplicate onMounted/route change can't POST twice.
@@ -43,7 +70,10 @@ async function run() {
 	fired = true;
 	try {
 		const { confirmGuestThreadSubscription } = await import("~~/api/public/comments");
-		await confirmGuestThreadSubscription(token.value);
+		const { digest_weekly } = await confirmGuestThreadSubscription(token.value);
+		// Seed the cadence checkbox from the server's answer — a weekly opt-in
+		// made at subscribe time must show checked, not the per-comment default.
+		digestOn.value = digest_weekly;
 		state.value = "done";
 	} catch (e) {
 		// A 404 = unknown/spent token (the only business-level answer the
@@ -72,9 +102,33 @@ onMounted(() => void run());
 					{{ t("reader.commentSubscribe.confirmProcessing") }}
 				</p>
 			</div>
-			<p v-else-if="state === 'done'" role="status" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
-				{{ t("reader.commentSubscribe.confirmSuccess") }}
-			</p>
+			<div v-else-if="state === 'done'" class="mt-3">
+				<!-- The success line alone is the live region; the operable
+					 cadence checkbox sits OUTSIDE it, so AT never re-announces
+					 the control (newsletter confirm parity). -->
+				<p role="status" class="text-sm text-emerald-700 dark:text-emerald-400">
+					{{ t("reader.commentSubscribe.confirmSuccess") }}
+				</p>
+				<label
+					class="mt-4 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
+				>
+					<input
+						type="checkbox"
+						class="accent-blue-600"
+						:key="digestRenderKey"
+						:checked="digestOn"
+						:disabled="digestToggling"
+						@change="(e: Event) => setDigest((e.target as HTMLInputElement).checked)"
+					/>
+					{{ t("reader.commentSubscribe.confirmDigestWeekly") }}
+				</label>
+				<p v-if="digestToggling" role="status" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+					{{ t("reader.commentSubscribe.confirmDigestSaving") }}
+				</p>
+				<p v-if="digestToggleError" role="alert" class="text-xs text-red-600 dark:text-red-400 mt-1">
+					{{ t("reader.commentSubscribe.confirmDigestError") }}
+				</p>
+			</div>
 			<p v-else-if="state === 'invalid'" role="status" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
 				{{ t("reader.commentSubscribe.confirmInvalid") }}
 			</p>

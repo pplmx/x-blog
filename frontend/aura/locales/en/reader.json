@@ -116,7 +116,10 @@
 			"unsubSuccess": "You'll no longer receive emails when this discussion gets new comments.",
 			"unsubInvalid": "This unsubscribe link is not valid or has already been used.",
 			"unsubProcessing": "Unsubscribing…",
-			"networkError": "A network error occurred. Please try again."
+			"networkError": "A network error occurred. Please try again.",
+			"confirmDigestWeekly": "Instead, email me one weekly summary, not one per comment",
+			"confirmDigestSaving": "Saving…",
+			"confirmDigestError": "Couldn't switch — please try again."
 		}
 	}
 }

@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The page dynamic-imports the API helper; mock it to observe the token call.
 const confirmGuestThreadSubscription = vi.fn();
-vi.mock("~~/api/public/comments", () => ({ confirmGuestThreadSubscription }));
+const setGuestThreadDigest = vi.fn();
+vi.mock("~~/api/public/comments", () => ({
+	confirmGuestThreadSubscription,
+	setGuestThreadDigest,
+}));
 
 vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 
@@ -26,6 +30,8 @@ function mountPage(query: Record<string, unknown> = {}) {
 describe("comment-subscribe confirm page", () => {
 	beforeEach(() => {
 		confirmGuestThreadSubscription.mockReset();
+		setGuestThreadDigest.mockReset();
+		setGuestThreadDigest.mockResolvedValue({ digest_weekly: true, updated: true });
 	});
 
 	it("shows the invalid-link message when no token is present", async () => {
@@ -36,13 +42,53 @@ describe("comment-subscribe confirm page", () => {
 	});
 
 	it("posts the token once and shows success", async () => {
-		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true });
+		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true, digest_weekly: false });
 		const wrapper = mountPage({ token: "tok-123" });
 		await flushPromises();
 
 		expect(confirmGuestThreadSubscription).toHaveBeenCalledTimes(1);
 		expect(confirmGuestThreadSubscription).toHaveBeenCalledWith("tok-123");
 		expect(wrapper.text()).toContain("这篇讨论每当有新评论通过审核时，你都会收到一封邮件。");
+	});
+
+	it("seeds the weekly-summary checkbox from the confirm response", async () => {
+		// A subscribe-time weekly opt-in must show checked, not the per-comment
+		// default (DEC-429).
+		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true, digest_weekly: true });
+		const wrapper = mountPage({ token: "tok-123" });
+		await flushPromises();
+
+		expect((wrapper.find('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(true);
+	});
+
+	it("flips the cadence with the same token via the digest toggle", async () => {
+		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true, digest_weekly: false });
+		const wrapper = mountPage({ token: "tok-123" });
+		await flushPromises();
+
+		const checkbox = wrapper.find('input[type="checkbox"]');
+		await checkbox.setValue(true);
+		await flushPromises();
+
+		expect(setGuestThreadDigest).toHaveBeenCalledTimes(1);
+		expect(setGuestThreadDigest).toHaveBeenCalledWith("tok-123", true);
+		expect(wrapper.text()).not.toContain("切换失败，请重试。");
+	});
+
+	it("shows a failure and snaps the checkbox back when the toggle errors", async () => {
+		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true, digest_weekly: false });
+		setGuestThreadDigest.mockRejectedValue(new Error("boom"));
+		const wrapper = mountPage({ token: "tok-123" });
+		await flushPromises();
+
+		await wrapper.find('input[type="checkbox"]').setValue(true);
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("切换失败，请重试。");
+		// The box snaps back to the server-known state (per-comment, unchecked).
+		expect((wrapper.find('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(
+			false,
+		);
 	});
 
 	it("shows the invalid state when the token is unknown/used (404)", async () => {

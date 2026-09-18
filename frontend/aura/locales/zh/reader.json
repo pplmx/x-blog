@@ -116,7 +116,10 @@
 			"unsubSuccess": "这篇讨论以后有新评论时，你将不再收到邮件。",
 			"unsubInvalid": "这个退订链接无效，或已经被使用过。",
 			"unsubProcessing": "正在取消订阅…",
-			"networkError": "网络错误，请稍后重试。"
+			"networkError": "网络错误，请稍后重试。",
+			"confirmDigestWeekly": "改为每周收到一次汇总邮件，而不是每条评论都发",
+			"confirmDigestSaving": "保存中…",
+			"confirmDigestError": "切换失败，请重试。"
 		}
 	}
 }
