@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 384,
+  "round": 385,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T12:22:10+00:00",
+  "updated_at": "2026-09-18T13:51:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28444,6 +28444,63 @@
       "touched_round": 384,
       "title": "docs(changelog): record rounds 383-384 (bounded history stats, naive-UTC hardening, offline reading) en/zh",
       "commit": "f0d5852c"
+    },
+    "DEC-435": {
+      "id": "DEC-435",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T12:34:46+00:00",
+      "updated_at": "2026-09-18T12:34:46+00:00",
+      "touched_round": 384,
+      "title": "Round 385: guest comment management via emailed token (feature evolution)",
+      "rationale": "Feature-evolution gap-analysis: every reader-facing capability around comments (create/like/flag for guests; edit/delete ONLY for signed-in readers) — an anonymous commenter who typos a comment has no way to fix or remove it, and a moderated blog makes it permanent the moment it is approved. But DEC-332 already mints a per-comment secret (reply_notify_token) for every anonymous comment with an email and delivers it over SMTP — the identity proof exists, only ever used to flip reply consent off. Vertical slice: email a 'manage your comment' link to the guest at approval time carrying that token; add token-gated GET/PATCH/DELETE endpoints on the public comments router (edit content only, re-rendered markdown, edited_at stamped; delete idempotent; wrong/missing token = 404, ids not enumerable). Mirrors the signed-in reader ownership semantics (DEC-096) without any account. BEST-EFFORT email (never fails the approve). Frontend: a standalone manage page reached from the emailed deep link + CommentList shows the manage affordance only when a token is held. Tests: unit crud + router tests RATE_LIMIT_WRITE, vitest for the page, Playwright e2e (guest registers no account, comments, receives link, edits + deletes via it). VERIFY gates all green.,",
+      "alternatives_rejected": "Cookie/device-local 'is my comment' markers — no cross-device proof, trivially spoofable, breaks under cache/incognito; password/2FA-style reclaim — kills the anonymous-comment model and adds a whole identity surface for a moderation edge; having the token emailed on write (not approval) — leaks a management credential for comments that may get rejected, and guests editing pre-approval content defeats moderation; re-running the three thrice-deferred candidates (follows-feed author hiding, comment-search refinement, notification-inbox kind filters) — each < value gate."
+    },
+    "TASK-444": {
+      "id": "TASK-444",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-18T12:34:46+00:00",
+      "updated_at": "2026-09-18T13:51:07+00:00",
+      "touched_round": 384,
+      "category": "core-feature",
+      "title": "Guest comment management: email-token edit/delete for anonymous comments",
+      "description": "Token-gated GET/PATCH/DELETE /api/comments/manage on the public comments router keyed by reply_notify_token (ownership-equivalent to reader PASS in DEC-096); approval-time best-effort email carrying a manage deep-link when the approved comment is anonymous with email+token; frontend manage page + conditional manage affordance; unit + router + vitest + Playwright coverage; en/zh i18n."
+    },
+    "CHG-698": {
+      "id": "CHG-698",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T13:51:06+00:00",
+      "updated_at": "2026-09-18T13:51:06+00:00",
+      "touched_round": 384,
+      "title": "feat(backend): token-gated guest comment manage API + approval manage email (TASK-444, DEC-435)",
+      "commit": "ba67db73"
+    },
+    "CHG-699": {
+      "id": "CHG-699",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T13:51:06+00:00",
+      "updated_at": "2026-09-18T13:51:06+00:00",
+      "touched_round": 384,
+      "title": "fix(backend): point guest manage email at flat /comment-manage route (TASK-444)",
+      "commit": "e49fecda"
+    },
+    "CHG-700": {
+      "id": "CHG-700",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T13:51:06+00:00",
+      "updated_at": "2026-09-18T13:51:06+00:00",
+      "touched_round": 384,
+      "title": "feat(frontend): guest comment manage page at /comment-manage (TASK-444, DEC-435)",
+      "commit": "5795fa0d"
     }
   },
   "edges": [
@@ -42298,6 +42355,36 @@
       "to": "DEC-431",
       "type": "supersedes",
       "created_at": "2026-09-18T12:22:10+00:00"
+    },
+    {
+      "from": "DEC-435",
+      "to": "TASK-444",
+      "type": "governs",
+      "created_at": "2026-09-18T12:34:58+00:00"
+    },
+    {
+      "from": "DEC-435",
+      "to": "DEC-434",
+      "type": "supersedes",
+      "created_at": "2026-09-18T12:34:58+00:00"
+    },
+    {
+      "from": "CHG-698",
+      "to": "TASK-444",
+      "type": "implements",
+      "created_at": "2026-09-18T13:51:06+00:00"
+    },
+    {
+      "from": "CHG-699",
+      "to": "TASK-444",
+      "type": "implements",
+      "created_at": "2026-09-18T13:51:07+00:00"
+    },
+    {
+      "from": "CHG-700",
+      "to": "TASK-444",
+      "type": "implements",
+      "created_at": "2026-09-18T13:51:07+00:00"
     }
   ]
 }
