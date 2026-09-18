@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 381,
+  "round": 384,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T08:05:33+00:00",
+  "updated_at": "2026-09-18T12:22:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -12259,7 +12259,7 @@
       "version": 2,
       "created_at": "2026-08-28T13:38:32+00:00",
       "updated_at": "2026-08-28T15:52:17+00:00",
-      "touched_round": 184,
+      "touched_round": 382,
       "severity": "high",
       "title": "Desktop nav clips the left-most links at xl viewport widths once a reader is signed in (English)",
       "description": "The desktop nav lives at xl+ (1280px). In English with the reader signed in (11 links + search + subscribe + sign-out + lang + theme), the row overflows at 1280-~1500px. The header used justify-end + overflow-x-auto, which clips the left-most items: flex-end alignment pushes overflow to the main-start side, scrollLeft() cannot go negative, and scrollWidth stays equal to clientWidth, so the browser reports no scrollable overflow and the first links are unreachable — directly contradicting the 'no nav item is ever unreachable' invariant. CSS probe in real Chromium confirmed FIRST (left-most link) never becomes visible under justify-end. Fix switched to margin-left:auto on the first link (collapses when over capacity → row scrolls from start)."
@@ -21140,11 +21140,11 @@
     "ISS-451": {
       "id": "ISS-451",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-09T17:09:04+00:00",
-      "updated_at": "2026-09-09T17:09:04+00:00",
-      "touched_round": 289,
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
       "severity": "low",
       "title": "/me/history/stats is O(all-time) with a full-content read per row",
       "description": "crud.py reader_history_stats scans the reader's ENTIRE history with no SQL-side filter/limit, materializing every post.content for reading_minutes per visible row; cost grows unbounded with lifetime reads (multi-MB per pageview at scale)."
@@ -21152,11 +21152,11 @@
     "ISS-452": {
       "id": "ISS-452",
       "type": "issue",
-      "status": "active",
-      "version": 2,
+      "status": "resolved",
+      "version": 3,
       "created_at": "2026-09-09T17:09:04+00:00",
-      "updated_at": "2026-09-10T03:46:33+00:00",
-      "touched_round": 290,
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
       "severity": "low",
       "title": "Aware datetimes written into naive-UTC reader-history/comment rows (latent)",
       "description": "crud.py viewed_at/reviewed_at/edited_at + model default write datetime.now(UTC) (aware) into DEC-213 naive-UTC columns; read-back strips tz so no crash today, but a one-char-from-correct latent trap if any row is ever cached/serialized before refresh."
@@ -22829,7 +22829,7 @@
       "version": 2,
       "created_at": "2026-09-12T13:30:29+00:00",
       "updated_at": "2026-09-12T13:31:22+00:00",
-      "touched_round": 308,
+      "touched_round": 382,
       "title": "Header nav href goes stale for signed-in readers: /follows rendered as <a href='/comments'>",
       "content": "Round-306 regression (caught post-commit by the my-comments e2e). Reader auth lives in localStorage, so SSR renders the GUEST nav (no authOnly links); on a hard page load of any SSR'd route (e.g. a post page) the client appends the signed-in links during hydration. /follows was an authOnly entry spliced MID-LIST (between /history and /comments), so hydration reused the SSR /comments node at that index for the /follows vnode: the label and the NuxtLink 'to' were applied but the anchor's href attr was left as /comments — users saw an <a href='/comments'> '我的关注' that actually navigated to /follows, and e2e clicking a header /comments link landed on the follows page. /notifications+'/account' never broke because they append at the END (fresh nodes). Fix committed in CHG: all authOnly nav links now stay in a trailing block so hydration only appends. Keep it that way — never splice an auth-gated nav item into the middle of navLinks."
     },
@@ -24608,11 +24608,11 @@
     "ISS-506": {
       "id": "ISS-506",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-14T13:11:50+00:00",
-      "updated_at": "2026-09-14T13:11:50+00:00",
-      "touched_round": 337,
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
       "title": "pyright gate red (17 errors): dict(Row) locale maps typed as bytes in notification fan-outs (R331-335 regression)"
     },
     "DEC-347": {
@@ -26553,11 +26553,11 @@
     "ISS-513": {
       "id": "ISS-513",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-16T04:45:40+00:00",
-      "updated_at": "2026-09-16T04:45:40+00:00",
-      "touched_round": 361,
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
       "title": "e2e gate break: newsletter footer on-ramp (DEC-351/355) made bare input[type=email]/form/button[type=submit] selectors ambiguous on public pages, strict-mode breaking ~15 login-flow specs (found while verifying round 359 reader-likes)"
     },
     "DEC-392": {
@@ -28266,10 +28266,184 @@
       "version": 1,
       "created_at": "2026-09-18T08:05:33+00:00",
       "updated_at": "2026-09-18T08:05:33+00:00",
-      "touched_round": 381,
+      "touched_round": 384,
       "title": "converged-idle: feature-evolution backlog exhausted after round 381 (no new core-feature task cleared the value gate)",
       "rationale": "TASK-439 (guest thread-follow weekly summary) was the last active core-feature task and is now resolved+verified; graph has zero active tasks at or above the 3.0 priority threshold and zero active high-severity issues (ISS-516 resolved). Rounds 379-381 mined the discussion/email vein to completion: reader blocks, guest thread-follow, and its digest cadence. The only remaining candidates (follows-feed author content-hiding, /search/comments refinement, notification-inbox kind filters) have each been deferred three times as thin/polish and none clears the §11.2 value gate (a real user-perceivable net-increment vertical slice) - pushing any would be fabricating work. Last VERIFY is fully green (1823 backend @93.67%, 2335 vitest, typecheck/pyright/ruff/biome 0, e2e 2/2, PG 18.4 verified) and the RIL graph passes check (2352 nodes). Entry into the converged-idle state is this decision; re-activation requires a new operator direction (supersedes decision), a new high-value issue, or substantive repo change - and the first round after re-activation re-runs a full VERIFY baseline before claiming recovery.",
       "alternatives_rejected": "Follows-feed author hiding, comment-search refinement, notification-inbox filters (thin, deferred thrice); per-post comments RSS (duplicates existing channels); comment drafts and guest comment edit (larger slices with weaker demonstrated need); PWA/offline (rejected historically as large with unclear value)."
+    },
+    "DEC-432": {
+      "id": "DEC-432",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T09:53:18+00:00",
+      "updated_at": "2026-09-18T09:53:18+00:00",
+      "touched_round": 382,
+      "title": "Round 382: top-nav 'My' avatar menu (operator direction)",
+      "rationale": "Signed-in top bar had 14 flat links + search + push + lang + theme (needed 1400px+, hidden-scrollbar overflow at xl, width jumped on sign-in). New operator direction: consolidate reader-personal links into a single 'My' avatar dropdown (GitHub/Medium pattern). Signing in now swaps the Sign-in button for the avatar, keeping bar width constant; the old authOnly-link SSR appended-block hazard collapses to one trailing avatar node; the redundant flat /search link was dropped (HeaderSearch ever-present).",
+      "alternatives_rejected": "(A) flat tiered nav w/ overflow ellipsis — mechanical, doesn't fix growing scale; (C) move only /account into avatar — leaves 6 personal links flat, treats symptom; (B, deferred) also fold content links into an 'Explore' dropdown — over-design, content browse is the blog's core discovery nav."
+    },
+    "TASK-440": {
+      "id": "TASK-440",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-18T09:53:18+00:00",
+      "updated_at": "2026-09-18T09:53:18+00:00",
+      "touched_round": 382,
+      "category": "core-feature",
+      "title": "Consolidate reader-personal nav into a 'My' avatar menu",
+      "description": "ReaderMenu.vue '我的' dropdown (avatar + unread badge, mini profile → /account, public profile → /readers/{id}, personal links, sign-out) replacing 4 flat authOnly links; mobile panel shows the same links in an always-expanded '我的' section."
+    },
+    "CHG-692": {
+      "id": "CHG-692",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T09:53:19+00:00",
+      "updated_at": "2026-09-18T09:53:19+00:00",
+      "touched_round": 382,
+      "title": "feat(frontend): consolidate reader nav into a 'My' avatar menu (round 382)",
+      "commit": "2a01c904"
+    },
+    "CHG-693": {
+      "id": "CHG-693",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T09:53:46+00:00",
+      "updated_at": "2026-09-18T09:53:46+00:00",
+      "touched_round": 382,
+      "title": "docs(nav): record top-nav 'My' menu redesign (design doc)",
+      "commit": "f54375b4"
+    },
+    "TASK-441": {
+      "id": "TASK-441",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-18T11:13:38+00:00",
+      "updated_at": "2026-09-18T11:13:38+00:00",
+      "touched_round": 383,
+      "category": "performance",
+      "title": "Bound /me/history/stats to SQL (denormalized reading_minutes, ISS-451)",
+      "description": "reader_history_stats materialized every visible history row's content in Python (multi-MB/pageview). Denormalize reading_minutes onto reading_history at write time, backfill existing rows, aggregate in SQL; semantics = minutes as last READ (post edits after a read no longer mutate totals)."
+    },
+    "TASK-442": {
+      "id": "TASK-442",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-18T11:13:38+00:00",
+      "updated_at": "2026-09-18T11:13:38+00:00",
+      "touched_round": 383,
+      "category": "correctness",
+      "title": "Write naive-UTC timestamps into naive-UTC columns (ISS-452)",
+      "description": "comments.reviewed_at/edited_at + reading_history.viewed_at writes (crud + admin bulk stamp + ORM default) normalized to utc_now_naive(); regression pins create/update/model-default."
+    },
+    "CHG-694": {
+      "id": "CHG-694",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T11:13:39+00:00",
+      "updated_at": "2026-09-18T11:13:39+00:00",
+      "touched_round": 383,
+      "title": "fix(backend): make /me/history/stats a bounded SQL aggregate (ISS-451)",
+      "commit": "94b71dd9"
+    },
+    "CHG-695": {
+      "id": "CHG-695",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T11:13:39+00:00",
+      "updated_at": "2026-09-18T11:13:39+00:00",
+      "touched_round": 383,
+      "title": "fix(backend): write naive-UTC timestamps into naive-UTC columns (ISS-452)",
+      "commit": "832e271f"
+    },
+    "EV-287": {
+      "id": "EV-287",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T11:14:22+00:00",
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
+      "title": "pyright gate green on HEAD",
+      "source": "uv run pyright -> 0 errors (round 383); R331-335 regression fixed in a later round without closing ISS-506",
+      "confidence": 1.0
+    },
+    "EV-288": {
+      "id": "EV-288",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T11:14:22+00:00",
+      "updated_at": "2026-09-18T11:14:22+00:00",
+      "touched_round": 383,
+      "title": "reader e2e selectors scoped; gate green",
+      "source": "reader login/password selectors scoped to main (account.spec); bare button[type=submit] only in admin layout (no footer newsletter); history + my-comments e2e pass (round 382/383)",
+      "confidence": 1.0
+    },
+    "DEC-433": {
+      "id": "DEC-433",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T11:19:24+00:00",
+      "updated_at": "2026-09-18T11:19:24+00:00",
+      "touched_round": 383,
+      "title": "Multi-worker cache/rate-limit/XFF architecture: document in-process semantics (ISS-242/243/244)",
+      "rationale": "Production Dockerfile runs uvicorn --workers 2; caches (cachetools, iss-sensitive categories/tags/posts_list) and slowapi rate-limit buckets are intentionally in-process, so (a) a cache write on worker A is invisible to B until TTL, (b) per-IP limits are effectively multiplied by the worker count and reset on restart, and (c) per-client rate identity needs the XFF peer-trust wiring (already hardened in limiter.client_rate_key) to be configured with the real proxy IP — compose defaults TRUSTED_PROXIES to empty (shared bucket behind a proxy). All three are real but moderate-severity at this blog's scale; each documented here with the known trade-off and fix path, rather than shipping a half-integrated shared store.",
+      "alternatives_rejected": "(rejected this round) Redis-backed shared cache + rate-limit storage — a multi-round infra project needing a new dependency, deploy topology and re-verification, too big to land safely as one vertical slice; (rejected) forcing single-worker deploy — changes prod behavior operators chose (--workers 2) and should be an operator decision, not an engine one; (rejected) per-worker cache partition hints — no cross-worker invalidation, does not fix staleness."
+    },
+    "DEC-434": {
+      "id": "DEC-434",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T12:21:43+00:00",
+      "updated_at": "2026-09-18T12:21:43+00:00",
+      "touched_round": 384,
+      "title": "Round 384: offline reading via app-wide service-worker runtime cache (feature evolution)",
+      "rationale": "Goal re-activated feature evolution after round 382. Visitor story: someone visits a post over a good connection, then loses connectivity (train/plane) and reloads — previously blank/error. Round 381 had explicitly deferred PWA/offline as large with unclear value; this redesign re-frames it as a thin, dependency-free vertical: register the existing classic /sw.js (already present for web-push) on every production boot via a client plugin, and add a network-first bounded runtime cache so every successful same-origin GET (HTML docs, /_nuxt chunks, images) is available offline later. No offline-first schemas, no app-shell rewrite — cache only ever serves as an OFFLINE fallback, so nothing served while online is stale. API/admin/feed/cross-origin requests are never cached, cap of 60 entries with oldest-first eviction keeps storage bounded. Pure helpers in sw.js are unit-tested via a fake-self harness; Playwright e2e registers the SW, fully loads a post, drops the network, reloads, and asserts the article still renders. VERIFY: 2351 vitest + offline e2e green; backend unaffected.",
+      "alternatives_rejected": "Offline-first PWA w/ precache of all posts (large, staleness complexity, no demonstrated need — why round 381 said deferred); full app-shell + routes manifest (over-engineering for a content blog); registering the SW only via usePushSubscription (status quo — only opt-in push readers got offline; visitors with no SW got nothing)."
+    },
+    "TASK-443": {
+      "id": "TASK-443",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-18T12:21:55+00:00",
+      "updated_at": "2026-09-18T12:22:10+00:00",
+      "touched_round": 384,
+      "category": "core-feature",
+      "title": "Offline reading via network-first service-worker runtime cache",
+      "description": "Client plugin (offline-cache.client.ts, PROD-build only) registers /sw.js on every app boot; sw.js gains a network-first fetch handler + bounded runtime cache (xblog-offline-v1, cap 60, oldest-first eviction) of successful same-origin GETs outside /api, /admin, /rss, feeds, cross-origin; pure helpers unit-tested (tests/sw.spec.ts, fake-self harness); e2e offline-reading.spec.ts: register → load post → setOffline → reload → article still renders."
+    },
+    "CHG-696": {
+      "id": "CHG-696",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T12:21:55+00:00",
+      "updated_at": "2026-09-18T12:21:55+00:00",
+      "touched_round": 384,
+      "title": "feat(frontend): offline reading via service-worker runtime cache (round 384)",
+      "commit": "48dbfabe"
+    },
+    "CHG-697": {
+      "id": "CHG-697",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T12:21:55+00:00",
+      "updated_at": "2026-09-18T12:21:55+00:00",
+      "touched_round": 384,
+      "title": "docs(changelog): record rounds 383-384 (bounded history stats, naive-UTC hardening, offline reading) en/zh",
+      "commit": "f0d5852c"
     }
   },
   "edges": [
@@ -42028,6 +42202,102 @@
       "to": "DEC-429",
       "type": "supersedes",
       "created_at": "2026-09-18T08:03:59+00:00"
+    },
+    {
+      "from": "DEC-432",
+      "to": "TASK-440",
+      "type": "governs",
+      "created_at": "2026-09-18T09:53:46+00:00"
+    },
+    {
+      "from": "CHG-692",
+      "to": "TASK-440",
+      "type": "implements",
+      "created_at": "2026-09-18T09:53:46+00:00"
+    },
+    {
+      "from": "CHG-692",
+      "to": "ISS-125",
+      "type": "resolves",
+      "created_at": "2026-09-18T09:53:47+00:00"
+    },
+    {
+      "from": "CHG-692",
+      "to": "ISS-498",
+      "type": "resolves",
+      "created_at": "2026-09-18T09:53:47+00:00"
+    },
+    {
+      "from": "DEC-432",
+      "to": "DEC-431",
+      "type": "supersedes",
+      "created_at": "2026-09-18T09:53:47+00:00"
+    },
+    {
+      "from": "CHG-693",
+      "to": "TASK-440",
+      "type": "implements",
+      "created_at": "2026-09-18T09:54:14+00:00"
+    },
+    {
+      "from": "CHG-694",
+      "to": "TASK-441",
+      "type": "implements",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "CHG-695",
+      "to": "TASK-442",
+      "type": "implements",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "CHG-694",
+      "to": "ISS-451",
+      "type": "resolves",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "CHG-695",
+      "to": "ISS-452",
+      "type": "resolves",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "TASK-441",
+      "to": "ISS-451",
+      "type": "addresses",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "TASK-442",
+      "to": "ISS-452",
+      "type": "addresses",
+      "created_at": "2026-09-18T11:14:23+00:00"
+    },
+    {
+      "from": "DEC-434",
+      "to": "TASK-443",
+      "type": "governs",
+      "created_at": "2026-09-18T12:22:10+00:00"
+    },
+    {
+      "from": "CHG-696",
+      "to": "TASK-443",
+      "type": "implements",
+      "created_at": "2026-09-18T12:22:10+00:00"
+    },
+    {
+      "from": "CHG-697",
+      "to": "TASK-443",
+      "type": "implements",
+      "created_at": "2026-09-18T12:22:10+00:00"
+    },
+    {
+      "from": "DEC-434",
+      "to": "DEC-431",
+      "type": "supersedes",
+      "created_at": "2026-09-18T12:22:10+00:00"
     }
   ]
 }
