@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 385,
+  "round": 386,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T13:51:33+00:00",
+  "updated_at": "2026-09-18T17:26:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28452,7 +28452,7 @@
       "version": 1,
       "created_at": "2026-09-18T12:34:46+00:00",
       "updated_at": "2026-09-18T12:34:46+00:00",
-      "touched_round": 384,
+      "touched_round": 385,
       "title": "Round 385: guest comment management via emailed token (feature evolution)",
       "rationale": "Feature-evolution gap-analysis: every reader-facing capability around comments (create/like/flag for guests; edit/delete ONLY for signed-in readers) — an anonymous commenter who typos a comment has no way to fix or remove it, and a moderated blog makes it permanent the moment it is approved. But DEC-332 already mints a per-comment secret (reply_notify_token) for every anonymous comment with an email and delivers it over SMTP — the identity proof exists, only ever used to flip reply consent off. Vertical slice: email a 'manage your comment' link to the guest at approval time carrying that token; add token-gated GET/PATCH/DELETE endpoints on the public comments router (edit content only, re-rendered markdown, edited_at stamped; delete idempotent; wrong/missing token = 404, ids not enumerable). Mirrors the signed-in reader ownership semantics (DEC-096) without any account. BEST-EFFORT email (never fails the approve). Frontend: a standalone manage page reached from the emailed deep link + CommentList shows the manage affordance only when a token is held. Tests: unit crud + router tests RATE_LIMIT_WRITE, vitest for the page, Playwright e2e (guest registers no account, comments, receives link, edits + deletes via it). VERIFY gates all green.,",
       "alternatives_rejected": "Cookie/device-local 'is my comment' markers — no cross-device proof, trivially spoofable, breaks under cache/incognito; password/2FA-style reclaim — kills the anonymous-comment model and adds a whole identity surface for a moderation edge; having the token emailed on write (not approval) — leaks a management credential for comments that may get rejected, and guests editing pre-approval content defeats moderation; re-running the three thrice-deferred candidates (follows-feed author hiding, comment-search refinement, notification-inbox kind filters) — each < value gate."
@@ -28501,6 +28501,99 @@
       "touched_round": 384,
       "title": "feat(frontend): guest comment manage page at /comment-manage (TASK-444, DEC-435)",
       "commit": "5795fa0d"
+    },
+    "DEC-436": {
+      "id": "DEC-436",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T14:14:53+00:00",
+      "updated_at": "2026-09-18T14:14:53+00:00",
+      "touched_round": 385,
+      "title": "Round 386: hide blocked readers' comments from the blocker's view (feature evolution)",
+      "rationale": "DEC-425 (reader blocking) suppresses the personal notification fan-outs (mention/reply/thread/follow), and its rationale explicitly promises 'a blocked commenter is invisible to them even mid-thread'. That promise is only kept on the notification path: get_comments_paginated (POST thread), list_public_comment_feed (discussion feed) and search_comments (comment search) never see the viewer's blocked set, so after a reader blocks someone, the blocked person's comments keep rendering in every thread, the feed, and search results. Vertical slice: make the three comment READ surfaces viewer-aware — when the signed-in viewer has a non-empty blocked set, filter out comments whose reader_id is in it (anonymous visitors and blocked-set-free readers keep today's exact fast path); frontend attaches readerAuthHeaders() to those GETs. Replies by unblocked third parties survive and the existing parent-missing promote logic keeps the tree coherent (blocked author's own content disappears, third-party content is not censored). This is a straight completion of the shipped block feature's stated intent, not the thrice-deferred thin candidates (follows-feed author hiding / comment-search refinement / notification-inbox filters).,",
+      "alternatives_rejected": "Full subtree collapse (hide replies by unblocked readers too) — censors third-party content the blocker never opted out of and needs cross-page ancestor bookkeeping; client-side filter — the thread is public and paginated, an unscoped filter must live with the query; touching the deferred three (follows-feed author hiding, comment-search refinement, notification-inbox kind filters) — each still < value gate."
+    },
+    "TASK-445": {
+      "id": "TASK-445",
+      "type": "task",
+      "status": "resolved",
+      "version": 5,
+      "created_at": "2026-09-18T14:14:53+00:00",
+      "updated_at": "2026-09-18T17:26:39+00:00",
+      "touched_round": 386,
+      "category": "core-feature",
+      "title": "Hide blocked readers' comments from thread, discussion feed and comment search for the blocker",
+      "description": "Viewer-side (client) comment suppression per DEC-437 (no backend change): a signed-in viewer's /me/blocks list is fetched once per consumer (useBlockedReaderIds composable, loaded-once guard), and CommentList / the discussion feed / comment search drop rows whose reader.id is in the blocked set. Anonymous visitors and empty-block-list readers keep the byte-identical fast path; unblocked third-party replies survive via the parent-missing promote; pagination totals stay the server's real count. Empty-state gates key on the filtered list. Shipped as CHG-701/702/703 (db9f7d3e, 6f77245f, 8ef5c765); full VERIFY green (unit 2369, typecheck, biome, e2e journey over thread/feed/search)."
+    },
+    "EV-289": {
+      "id": "EV-289",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T14:21:57+00:00",
+      "updated_at": "2026-09-18T14:21:57+00:00",
+      "touched_round": 385,
+      "source": "frontend/aura: thread/feed fetch are SSR-first useFetch; reader_token is localStorage-only (no cookie)",
+      "confidence": 1.0,
+      "note": "A server-side viewer filter on GET /comments/* would be invisible during SSR: the SSR fetch has no reader identity (localStorage-only token, no cookie), so the same HTML (and any HTTP cache) serves unfiltered, and the client payload is reused — blocked comments would still render until a manual refetch. DEC-425 itself frames blocking as a receiver-side opt-out, so the consumer-side client is the correct suppression layer."
+    },
+    "DEC-437": {
+      "id": "DEC-437",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T14:21:57+00:00",
+      "updated_at": "2026-09-18T14:21:57+00:00",
+      "touched_round": 385,
+      "title": "Mechanism refinement: viewer-side (client) comment suppression, not server filter (round 386)",
+      "rationale": "The three comment read surfaces are SSR-first useFetch and the reader identity is localStorage-only (no cookie), so a server-side blocked-set filter cannot see the viewer during SSR and would serve unfiltered HTML — including to the browser that then reuses the payload, leaving blocked comments visible until a manual refetch. Since DEC-425 explicitly defines blocking as a receiver-side opt-out, suppress on the receiver's client: the signed-in viewer's own /me/blocks list already exists (BlockedReaderItem.reader_id), so CommentList / the discussion feed / comment search drop rows whose reader id is in that set. Pagination totals stay globally stable (not viewer-dependent), unblocked third-party replies survive via the existing parent-missing promote, and anonymous readers/servers never see a difference. No backend change; the block list fetch is auth-gated and cheap.",
+      "alternatives_rejected": "Server-side viewer filter on the three GETs — invisible to SSR (no cookie), viewer-dependent pagination/caching, larger blast radius; making the thread fetch client-only (server:false) to enable server filtering — degrades SSR/SEO for every post; hiding entire subtrees (blocked author + their replies) — censors third-party content the blocker never opted out of."
+    },
+    "CHG-701": {
+      "id": "CHG-701",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T17:26:03+00:00",
+      "updated_at": "2026-09-18T17:26:03+00:00",
+      "touched_round": 386,
+      "title": "feat(frontend): hide blocked readers' comments in thread, feed and search (TASK-445, DEC-436/DEC-437)",
+      "commit": "db9f7d3e"
+    },
+    "CHG-702": {
+      "id": "CHG-702",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T17:26:03+00:00",
+      "updated_at": "2026-09-18T17:26:03+00:00",
+      "touched_round": 386,
+      "title": "test(frontend): blocked-comment suppression unit coverage (TASK-445, DEC-437)",
+      "commit": "6f77245f"
+    },
+    "CHG-703": {
+      "id": "CHG-703",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T17:26:03+00:00",
+      "updated_at": "2026-09-18T17:26:03+00:00",
+      "touched_round": 386,
+      "title": "test(e2e): blocked-comment journey hides thread, feed and search hits (TASK-445, DEC-437)",
+      "commit": "8ef5c765"
+    },
+    "EV-290": {
+      "id": "EV-290",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T17:26:03+00:00",
+      "updated_at": "2026-09-18T17:26:03+00:00",
+      "touched_round": 386,
+      "source": "frontend unit + e2e: vitest 2369/2369 (145 files); e2e reader-block-hides-comments 1 passed",
+      "note": "Full VERIFY for round 386: the 4 touched suites plus the whole 2369-test unit suite, nuxt typecheck, biome lint+format (exit 0), and the Playwright journey against the live backend (thread -> discussion feed -> comment search all hide the blocked target while keeping the unblocked control). code-reviewer APPROVE (no CRITICAL/HIGH; two LOW empty-state gate fixes shipped with the suite).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -42385,6 +42478,42 @@
       "to": "TASK-444",
       "type": "implements",
       "created_at": "2026-09-18T13:51:07+00:00"
+    },
+    {
+      "from": "DEC-436",
+      "to": "TASK-445",
+      "type": "governs",
+      "created_at": "2026-09-18T14:14:53+00:00"
+    },
+    {
+      "from": "DEC-436",
+      "to": "DEC-435",
+      "type": "supersedes",
+      "created_at": "2026-09-18T14:14:54+00:00"
+    },
+    {
+      "from": "DEC-437",
+      "to": "DEC-436",
+      "type": "supersedes",
+      "created_at": "2026-09-18T14:21:57+00:00"
+    },
+    {
+      "from": "CHG-701",
+      "to": "TASK-445",
+      "type": "implements",
+      "created_at": "2026-09-18T17:26:39+00:00"
+    },
+    {
+      "from": "CHG-702",
+      "to": "TASK-445",
+      "type": "implements",
+      "created_at": "2026-09-18T17:26:39+00:00"
+    },
+    {
+      "from": "CHG-703",
+      "to": "TASK-445",
+      "type": "implements",
+      "created_at": "2026-09-18T17:26:39+00:00"
     }
   ]
 }
