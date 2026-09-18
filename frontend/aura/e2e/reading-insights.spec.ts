@@ -62,14 +62,15 @@ test.describe("Reading insights (DEC-417)", () => {
 		await expect(page.locator("text=常读分类")).toBeVisible({ timeout: 10000 });
 		// The 30-day count is a live number (the sibling paragraph under the
 		// card title) — at least the two seeded views from today.
-		const count = page
-			.locator("text=最近 30 天读过")
-			.locator("xpath=following-sibling::p[1]");
+		const count = page.locator("text=最近 30 天读过").locator("xpath=following-sibling::p[1]");
 		await expect(count).toHaveText(/\d+/);
 		// The category chips carry the viewed posts' categories — the seed data
 		// covers them, so at least one chip (a rounded-full span) is present.
 		await expect(
-			page.locator("div.rounded-2xl.border", { hasText: "常读分类" }).locator("span.rounded-full").first(),
+			page
+				.locator("div.rounded-2xl.border", { hasText: "常读分类" })
+				.locator("span.rounded-full")
+				.first(),
 		).toBeVisible({ timeout: 10000 });
 	});
 });
