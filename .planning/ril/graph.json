@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 386,
+  "round": 387,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-18T17:26:39+00:00",
+  "updated_at": "2026-09-18T18:56:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28545,7 +28545,7 @@
       "version": 1,
       "created_at": "2026-09-18T14:21:57+00:00",
       "updated_at": "2026-09-18T14:21:57+00:00",
-      "touched_round": 385,
+      "touched_round": 387,
       "title": "Mechanism refinement: viewer-side (client) comment suppression, not server filter (round 386)",
       "rationale": "The three comment read surfaces are SSR-first useFetch and the reader identity is localStorage-only (no cookie), so a server-side blocked-set filter cannot see the viewer during SSR and would serve unfiltered HTML — including to the browser that then reuses the payload, leaving blocked comments visible until a manual refetch. Since DEC-425 explicitly defines blocking as a receiver-side opt-out, suppress on the receiver's client: the signed-in viewer's own /me/blocks list already exists (BlockedReaderItem.reader_id), so CommentList / the discussion feed / comment search drop rows whose reader id is in that set. Pagination totals stay globally stable (not viewer-dependent), unblocked third-party replies survive via the existing parent-missing promote, and anonymous readers/servers never see a difference. No backend change; the block list fetch is auth-gated and cheap.",
       "alternatives_rejected": "Server-side viewer filter on the three GETs — invisible to SSR (no cookie), viewer-dependent pagination/caching, larger blast radius; making the thread fetch client-only (server:false) to enable server filtering — degrades SSR/SEO for every post; hiding entire subtrees (blocked author + their replies) — censors third-party content the blocker never opted out of."
@@ -28593,6 +28593,75 @@
       "touched_round": 386,
       "source": "frontend unit + e2e: vitest 2369/2369 (145 files); e2e reader-block-hides-comments 1 passed",
       "note": "Full VERIFY for round 386: the 4 touched suites plus the whole 2369-test unit suite, nuxt typecheck, biome lint+format (exit 0), and the Playwright journey against the live backend (thread -> discussion feed -> comment search all hide the blocked target while keeping the unblocked control). code-reviewer APPROVE (no CRITICAL/HIGH; two LOW empty-state gate fixes shipped with the suite).",
+      "confidence": 1.0
+    },
+    "DEC-438": {
+      "id": "DEC-438",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T17:52:09+00:00",
+      "updated_at": "2026-09-18T17:52:09+00:00",
+      "touched_round": 387,
+      "title": "Round 387: public 'Trending this week' top-posts on the home page (feature evolution)",
+      "rationale": "Gap analysis after round 386 closed found the product at high feature maturity: admin analytics (dashboard charts + per-post sparkline), recently-viewed/resume, notification single-read, follows management, bookmark folders, symmetric en/zh i18n and a fully loaded post page are ALL shipped. The one genuinely NEW reader-facing capability missing is a public time-windowed top-posts ranking: the home 'Popular' row is all-time (crud.get_popular_posts orders by cumulative Post.views) and the only time-windowed aggregate (crud.get_daily_views_stats) is admin-only. Readers who want 'what is being read now' have nothing. The data plane already exists — post_views_daily is upserted atomically on every pageview (DEC-086) — so this is thin reuse, a clean net-increment vertical slice: crud.get_trending_posts (published + effective-live only, in-window views sum attached as a transient views_window), schemas.TrendingPost (PostList + views_window), GET /posts/trending/list (days/limit, conditional_json) + unit/router tests; frontend useTrendingPosts contract, a home 'Trending this week' row showing the in-window count (N reads this week) that hides gracefully when the window is empty (the table tracks forward only, so fresh installs show nothing); i18n en/zh; index.spec + a Playwright journey (fresh post, bump /posts/{id}/view 10x, home shows it in the row).",
+      "alternatives_rejected": "Unread-only notifications filter — backend param already exists but the frontend never exposes it; however it is exactly the 'missing an option/button' class the round-386 value gate rejects, and notifications.vue already carries per-row read state. Persisted comment sort — thin (newest is the right default for most), touches a component-local ref for marginal gain. Generalize admin settings.vue — only ONE whitelisted key exists today, so the honest scope is invented configuration (hospital-cheese). Bookmark-folder reorder — no ordering concept server-side, marginal payoff for the typical 2-3 folders."
+    },
+    "TASK-446": {
+      "id": "TASK-446",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-18T17:52:34+00:00",
+      "updated_at": "2026-09-18T18:56:58+00:00",
+      "touched_round": 387,
+      "category": "core-feature",
+      "title": "Public 'Trending this week' top-posts on the home page",
+      "description": "Backend: crud.get_trending_posts reusing post_views_daily (published + effective-live only, since -7d sum as transient views_window, days/limit), schemas.TrendingPost = PostList + views_window (required), GET /posts/trending/list with conditional_json; unit + router tests (window filter, publish visibility, ordering, empty window -> []). Frontend: useTrendingPosts contract, home section above Popular showing the in-window count with graceful hide when empty, i18n en/zh, index.spec coverage. E2E: fresh post, bump /posts/{id}/view 30x (cleans up prior runs' trending-burst-* posts first), home shows it in the Trending row."
+    },
+    "CHG-704": {
+      "id": "CHG-704",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T18:56:57+00:00",
+      "updated_at": "2026-09-18T18:56:57+00:00",
+      "touched_round": 387,
+      "title": "feat(backend): public trending top-posts endpoint (TASK-446, DEC-438)",
+      "commit": "67c7fe1c"
+    },
+    "CHG-705": {
+      "id": "CHG-705",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T18:56:58+00:00",
+      "updated_at": "2026-09-18T18:56:58+00:00",
+      "touched_round": 387,
+      "title": "feat(frontend): home 'Trending this week' section (TASK-446, DEC-438)",
+      "commit": "1b918f64"
+    },
+    "CHG-706": {
+      "id": "CHG-706",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T18:56:58+00:00",
+      "updated_at": "2026-09-18T18:56:58+00:00",
+      "touched_round": 387,
+      "title": "test(e2e): trending this week home journey (TASK-446, DEC-438)",
+      "commit": "2bd4ffe7"
+    },
+    "EV-291": {
+      "id": "EV-291",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-18T18:56:58+00:00",
+      "updated_at": "2026-09-18T18:56:58+00:00",
+      "touched_round": 387,
+      "source": "backend pytest + frontend vitest + e2e: test_posts.py trending 4 passed (full file 1843); vitest 2371/2371; e2e trending-home 1 passed + reader-block 1 passed",
+      "note": "Full VERIFY for round 387 (DEC-438): backend trending tests + full posts suite + ruff clean; frontend 2371 unit tests + typecheck + biome lint/format; both e2e journeys green against the live backend (trending-home with deterministic 30-view burst + prior-run cleanup, reader-block-hides-comments as regression). code-reviewer APPROVE: no CRITICAL/HIGH; three MEDIUM fixes folded in (e2e prior-run cleanup + top-4 wording, index.spec resetMockState trendingPosts isolation, vacuous-excludes-test made non-vacuous with a live control) + LOW views_window made required.",
       "confidence": 1.0
     }
   },
@@ -42514,6 +42583,36 @@
       "to": "TASK-445",
       "type": "implements",
       "created_at": "2026-09-18T17:26:39+00:00"
+    },
+    {
+      "from": "DEC-438",
+      "to": "TASK-446",
+      "type": "governs",
+      "created_at": "2026-09-18T17:52:34+00:00"
+    },
+    {
+      "from": "DEC-438",
+      "to": "DEC-437",
+      "type": "supersedes",
+      "created_at": "2026-09-18T17:52:34+00:00"
+    },
+    {
+      "from": "CHG-704",
+      "to": "TASK-446",
+      "type": "implements",
+      "created_at": "2026-09-18T18:56:58+00:00"
+    },
+    {
+      "from": "CHG-705",
+      "to": "TASK-446",
+      "type": "implements",
+      "created_at": "2026-09-18T18:56:58+00:00"
+    },
+    {
+      "from": "CHG-706",
+      "to": "TASK-446",
+      "type": "implements",
+      "created_at": "2026-09-18T18:56:58+00:00"
     }
   ]
 }
