@@ -150,7 +150,13 @@ test.describe("Guest newsletter (DEC-351)", () => {
 		expect(confirmToken).not.toBeNull();
 		await page.goto(`/newsletter/confirm?token=${String(confirmToken?.[1] ?? "")}`);
 		await expect(page.locator("body")).toContainText("订阅成功", { timeout: 10000 });
-		await expect(page.locator("input[type=checkbox]")).toBeChecked({ timeout: 5000 });
+		// Scope to <main> (the confirm card): the site footer's newsletter form
+		// also renders an `input[type=checkbox]` (the weekly-cadence opt-in), so
+		// a bare `input[type=checkbox]` locator is ambiguous across the page and
+		// strict-mode fails even when the card's box is correctly checked.
+		await expect(page.locator("main").getByRole("checkbox")).toBeChecked({
+			timeout: 5000,
+		});
 
 		// A publish emails the per-post subscriber but never this weekly one.
 		const post = await request.post("/api/posts", {
