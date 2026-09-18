@@ -80,6 +80,32 @@
 				"network": "A network error occurred. Please try again."
 			}
 		},
+		"commentManage": {
+			"seoTitle": "Manage your comment",
+			"seoDesc": "Edit or delete a comment you left as a guest.",
+			"title": "Your comment",
+			"onPost": "On:",
+			"viewThread": "View the post",
+			"statusApproved": "Approved",
+			"statusPending": "Awaiting moderation",
+			"statusRejected": "Not approved",
+			"statusUnknown": "Status unknown",
+			"editLabel": "Comment text",
+			"save": "Save changes",
+			"saved": "Saved",
+			"saving": "Saving…",
+			"delete": "Delete comment",
+			"deleteConfirm": "Delete this comment? This cannot be undone.",
+			"deleting": "Deleting…",
+			"deleted": "Comment deleted",
+			"backToThread": "Back to the post",
+			"invalid": "This link is not valid or has already been used.",
+			"loading": "Loading…",
+			"errors": {
+				"network": "A network error occurred. Please try again.",
+				"delete": "Could not delete the comment. Please try again."
+			}
+		},
 		"replyUnsubscribe": {
 			"seoTitle": "Unsubscribe from reply emails",
 			"seoDesc": "Stop receiving reply-notification emails for a guest comment.",

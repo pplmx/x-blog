@@ -80,6 +80,32 @@
 				"network": "网络错误，请重试。"
 			}
 		},
+		"commentManage": {
+			"seoTitle": "管理你的评论",
+			"seoDesc": "编辑或删除你以访客身份发表的评论。",
+			"title": "你的评论",
+			"onPost": "评论于：",
+			"viewThread": "查看文章",
+			"statusApproved": "已发布",
+			"statusPending": "待审核",
+			"statusRejected": "未通过",
+			"statusUnknown": "状态未知",
+			"editLabel": "评论内容",
+			"save": "保存修改",
+			"saved": "已保存",
+			"saving": "保存中…",
+			"delete": "删除评论",
+			"deleteConfirm": "删除这条评论？此操作无法撤销。",
+			"deleting": "删除中…",
+			"deleted": "评论已删除",
+			"backToThread": "返回文章",
+			"invalid": "这个链接无效，或已经被使用过。",
+			"loading": "加载中…",
+			"errors": {
+				"network": "网络错误，请稍后重试。",
+				"delete": "删除评论失败，请稍后重试。"
+			}
+		},
 		"replyUnsubscribe": {
 			"seoTitle": "取消订阅回复邮件",
 			"seoDesc": "停止接收访客评论的回复通知邮件。",

@@ -171,6 +171,49 @@ export function useDiscussionFeed(page: MaybeRefOrGetter<number> = 1, limit = 20
 	);
 }
 
+/** Manage-page payload for a guest's own comment (round 385, DEC-435/TASK-444).
+ *  ``comment`` is CommentPublic output; ``post`` carries the thread context so
+ *  the page can deep-link back to it. */
+export interface GuestCommentManageResponse {
+	comment: Comment;
+	post: { id: number; title: string; slug: string } | null;
+}
+
+/**
+ * Load a guest's own comment for the management page (GET
+ * /api/comments/manage?token=…, round 385/DEC-435). The token is the
+ * per-comment secret delivered by the approval email — possession proves the
+ * address holder owns the comment. 404 = unknown token (not enumerable).
+ */
+export function getGuestCommentManage(token: string): Promise<GuestCommentManageResponse> {
+	return command<GuestCommentManageResponse>("/api/comments/manage", { query: { token } });
+}
+
+/**
+ * Edit a guest's own comment via its management token (PATCH
+ * /api/comments/manage, round 385/DEC-435). Only ``content`` may change; the
+ * edit resets approval (the replaced text re-enters moderation). 404 = unknown
+ * token. Mirrors the signed-in reader edit (DEC-096) without an account.
+ */
+export function editGuestCommentManage(token: string, content: string): Promise<Comment> {
+	return command<Comment>("/api/comments/manage", {
+		method: "PATCH",
+		body: { token, content },
+	});
+}
+
+/**
+ * Delete a guest's own comment via its management token (DELETE
+ * /api/comments/manage?token=…, round 385/DEC-435). Replies are reparented so
+ * the thread stays coherent. 204 on success, 404 on unknown token.
+ */
+export function deleteGuestCommentManage(token: string): Promise<void> {
+	return command<void>("/api/comments/manage", {
+		method: "DELETE",
+		query: { token },
+	});
+}
+
 /**
  * Create a comment for a post (POST /api/comments/post/{post_id}).
  * A signed-in reader comments under their account: the reader JWT is sent so
