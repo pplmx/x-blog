@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 388,
+  "round": 390,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T07:20:43+00:00",
+  "updated_at": "2026-09-19T11:43:19+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28879,6 +28879,99 @@
       "source": "frontend/aura/e2e/comment-thread-search.spec.ts (Playwright, round 389)",
       "title": "E2E journey passes: thread narrows on q, restores on clear",
       "confidence": 1.0
+    },
+    "TASK-453": {
+      "id": "TASK-453",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T11:33:44+00:00",
+      "updated_at": "2026-09-19T11:42:35+00:00",
+      "touched_round": 389,
+      "category": "core-feature",
+      "title": "Zero-hit search recovery: /api/search/suggest + search-page did-you-mean chips",
+      "description": "Delivered by CHG-713/714/715; verified by EV-298/299/300 (backend 1873, frontend 2386, e2e green in real chromium; typecheck/pyright/lint/rumdl clean). Scope: GET /api/search/suggest scoring a bounded vocabulary with pure code-point edit distance (dialect-parity-free), surfaced as did-you-mean chips on zero-hit posts search — no schema change, no hot-path cost."
+    },
+    "DEC-443": {
+      "id": "DEC-443",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:35:21+00:00",
+      "updated_at": "2026-09-19T11:35:21+00:00",
+      "touched_round": 389,
+      "title": "Round 390: \"did you mean\" search suggestions on the search page (feature evolution)",
+      "rationale": "Feature-evolution round 390. DEC-442 deferred typo-tolerant search as the next search arc (\"do after 1-2\"); round-390 gap analysis re-verified every other candidate is shipped (TOC, code-copy, lightbox, reading time, reader-profile comments tab, i18n symmetry, all endpoints wired, RSS autodiscovery on scoped pages) and confirmed the ONLY real reader-facing hole is search recovery: the post search is exact substring + tsvector (crud.search_posts), so a misspelled or half-remembered term — including a one-character CJK typo under the substring engine — dead-ends on a zero-hit page with no suggestion surface. Scope chosen to be a NET-INCREMENT vertical slice WITHOUT the \"costliest\" dialect-parity tax the DEC-442 note feared: a dedicated GET /api/search/suggest scores a small in-memory vocabulary (tag/category names with public-post counts + bounded recent public post titles) with plain Python code-point edit distance (0.5 ratio floor, absolute distance<=1 for short terms so the canonical 2-char CJK typo 前段→前端 passes), fully cross-compatible PG/SQLite and CJK/ASCII with no extension. The client fires it ONLY when a posts search lands on total==0 (shares the search rate-limit bucket, so never on the hot path), renders the chips in the empty state, and re-runs the search on click. Verified end-to-end in a real browser (Playwright): publish → typo search → suggestion chip → corrected results; backend 1873 + frontend 2386 unit tests, typecheck/pyright/lint/rumdl clean.",
+      "alternatives_rejected": "Postgres trigram/Levenshtein extension for true fuzzy RANKING of results (not just suggestions) — the most general fix but the exact cost the DEC-442 note flagged (strict PG/SQLite + CJK/ASCII parity; extension + ranking + result merging is a multi-round effort), so it stays deferred behind this suggestion slice; copy-link-to-heading and pinned comments — re-confirmed as convenience affordances ALREADY rejected by the round-388 value gate; Native Web Share + QR, PWA manifest, base-RSS-autodiscovery — real small gaps found by the round-390 sweep but each is a smaller self-contained slice better than stealing this round from the top-ranked search-recovery candidate; admin reader-engagement analytics — genuinely absent but admin-pure, out of this round\\x27s reader-facing focus."
+    },
+    "CHG-713": {
+      "id": "CHG-713",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:40:27+00:00",
+      "updated_at": "2026-09-19T11:40:27+00:00",
+      "touched_round": 389,
+      "commit": "293f0bf1",
+      "title": "feat(backend): /api/search/suggest + pure edit-distance scorer (app/suggest.py)"
+    },
+    "CHG-714": {
+      "id": "CHG-714",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:40:27+00:00",
+      "updated_at": "2026-09-19T11:40:27+00:00",
+      "touched_round": 389,
+      "commit": "fe4a10db",
+      "title": "feat(frontend): did-you-mean chips + imperative zero-hit fetch + e2e journey"
+    },
+    "CHG-715": {
+      "id": "CHG-715",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:40:28+00:00",
+      "updated_at": "2026-09-19T11:40:28+00:00",
+      "touched_round": 389,
+      "commit": "bbeabe94",
+      "title": "docs(changelog): round 390 entry (en/zh)"
+    },
+    "EV-298": {
+      "id": "EV-298",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:41:06+00:00",
+      "updated_at": "2026-09-19T11:41:06+00:00",
+      "touched_round": 389,
+      "source": "backend/nova/tests/test_search_suggest.py (pytest, round 390)",
+      "title": "Backend suggest tests pass; full backend suite 1873 passed, coverage 93.70% >= 80 gate; ruff+pyright clean",
+      "confidence": 1.0
+    },
+    "EV-299": {
+      "id": "EV-299",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:41:06+00:00",
+      "updated_at": "2026-09-19T11:41:06+00:00",
+      "touched_round": 389,
+      "source": "frontend/aura/tests (+ api/public/search.spec.ts); nuxt typecheck + biome lint, round 390",
+      "title": "Frontend 2386 unit tests pass; typecheck and lint clean (suggestion chips, gating, click->navigate covered)",
+      "confidence": 1.0
+    },
+    "EV-300": {
+      "id": "EV-300",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T11:41:06+00:00",
+      "updated_at": "2026-09-19T11:41:06+00:00",
+      "touched_round": 389,
+      "source": "frontend/aura/e2e/search-suggest.spec.ts (Playwright, real chromium, round 390)",
+      "title": "E2E journey green in real browser: publish -> typo'd CJK search -> did-you-mean chip -> corrected results",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -42877,6 +42970,30 @@
       "to": "TASK-452",
       "type": "implements",
       "created_at": "2026-09-19T07:20:07+00:00"
+    },
+    {
+      "from": "DEC-443",
+      "to": "TASK-453",
+      "type": "governs",
+      "created_at": "2026-09-19T11:36:04+00:00"
+    },
+    {
+      "from": "CHG-713",
+      "to": "TASK-453",
+      "type": "implements",
+      "created_at": "2026-09-19T11:42:35+00:00"
+    },
+    {
+      "from": "CHG-714",
+      "to": "TASK-453",
+      "type": "implements",
+      "created_at": "2026-09-19T11:42:35+00:00"
+    },
+    {
+      "from": "CHG-715",
+      "to": "TASK-453",
+      "type": "implements",
+      "created_at": "2026-09-19T11:42:35+00:00"
     }
   ]
 }
