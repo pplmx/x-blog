@@ -24,12 +24,12 @@ test("publish a footnoted post and see the citation render, not leak", async ({
 	const title = `Footnotes e2e ${Date.now()}`;
 	const slug = `footnotes-e2e-${Date.now()}`;
 	const body = [
-		'# Footnotes',
-		'',
-		'Citations make an article traceable[^1] and re-usable[^2].',
-		'',
-		'[^1]: The first **source** link.',
-		'[^2]: A second source.',
+		"# Footnotes",
+		"",
+		"Citations make an article traceable[^1] and re-usable[^2].",
+		"",
+		"[^1]: The first **source** link.",
+		"[^2]: A second source.",
 	].join("\n");
 
 	const created = await request.post("/api/posts", {

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📝 **Inline Markdown footnotes (round 388)**: an author citing a source had no
+  way to render a footnote — the GFM `[^1]` / `[^1]: ...` marker printed as
+  literal raw text mid-article. The frontend marked integration (markdown
+  renderer shared by the post body, print/PDF route, and the admin editor
+  preview) now ships a zero-dependency footnote extension: the in-text marker
+  becomes a backlinked `<sup>`, the definition lines become a compact citation
+  list with an id per item and a "↩" backref, and inline markdown (bold, links,
+  code) keeps working inside a footnote. The same fix lands in the backend's
+  full-content RSS/Atom feeds (the python-markdown `footnotes` extension plus
+  the `id`/`class` allowlist the backlink anchors need). One renderer change
+  heals every consuming surface. Backend 1844 + frontend 2378 unit tests + a
+  Playwright journey (publish → citation renders → raw marker absent) all green
+  (round 388, DEC-441).
 - 🔥 **Trending this week (round 387)**: the home page's Popular row ranked by
   all-time views, so a brand-new post being read right now had no way to
   surface. The home page now also shows a "Trending this week" row ranked by
