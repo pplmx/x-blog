@@ -276,7 +276,8 @@ async function handleDelete(id: number) {
           <div class="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              :disabled="isProcessing"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               @click="togglePublished(p)"
             >
               {{ p.published ? t("admin.pages.unpublish") : t("admin.pages.publish") }}
@@ -290,7 +291,8 @@ async function handleDelete(id: number) {
             </button>
             <button
               type="button"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              :disabled="isProcessing"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               @click="handleDelete(p.id)"
             >
               {{ t("admin.pages.delete") }}

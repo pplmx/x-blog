@@ -236,5 +236,36 @@ describe("Admin Pages Page", () => {
 			await flushPromises();
 			expect(mockDeleteAdminPage).not.toHaveBeenCalled();
 		});
+
+		it("disables the row publish toggle and delete button while an action is in flight", async () => {
+			// A delete that never settles keeps isProcessing=true so we can observe
+			// the :disabled binding; resolved at the end to avoid a leaked task.
+			let resolveDelete!: () => void;
+			mockDeleteAdminPage.mockReturnValue(
+				new Promise<void>((r) => {
+					resolveDelete = r;
+				}),
+			);
+			window.confirm = vi.fn(() => true);
+			const Page = await loadPage();
+			const wrapper = await mountWithSuspense(Page);
+
+			const deleteButton = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+			const unpublishButton = wrapper.findAll("button").find((b) => b.text().includes("下架"));
+			expect(deleteButton?.attributes("disabled")).toBeUndefined();
+			expect(unpublishButton?.attributes("disabled")).toBeUndefined();
+
+			await deleteButton?.trigger("click");
+			await flushPromises();
+
+			// In-flight: both network row actions are disabled, so a second tap
+			// can't issue a concurrent delete/toggle (deep-dive F3(b) round 395).
+			expect(deleteButton?.attributes("disabled")).toBeDefined();
+			const unpublishWhileBusy = wrapper.findAll("button").find((b) => b.text().includes("下架"));
+			expect(unpublishWhileBusy?.attributes("disabled")).toBeDefined();
+
+			resolveDelete();
+			await flushPromises();
+		});
 	});
 });
