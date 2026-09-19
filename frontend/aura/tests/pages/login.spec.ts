@@ -66,8 +66,12 @@ describe("login page", () => {
 		expect(buttons[1].attributes("aria-pressed")).toBe("true");
 		// Register mode: a new-password field for the sign-up form.
 		expect(wrapper.find('input[type="password"]').attributes("autocomplete")).toBe("new-password");
-		// The register-only display-name field is present with a name autocomplete.
-		expect(wrapper.find('input[autocomplete="name"]').exists()).toBe(true);
+		// The register-only display-name field is present with a name autocomplete
+		// and the backend's 50-char cap as a client-side maxlength so an
+		// over-length name fails fast instead of a 422 after submit (deep-dive).
+		const nameInput = wrapper.find('input[autocomplete="name"]');
+		expect(nameInput.exists()).toBe(true);
+		expect(nameInput.attributes("maxlength")).toBe("50");
 	});
 
 	it("submits login with email + password", async () => {
@@ -142,6 +146,29 @@ describe("login redirect (deep-dive fix)", () => {
 		await wrapper.find("form").trigger("submit.prevent");
 		await flushPromises();
 		// See the ?redirect= test above: wait for the (post-merge) navigation.
+		await vi.waitFor(() => expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true }));
+		vi.unstubAllGlobals();
+	});
+
+	it("rejects a WHATWG backslash redirect (/\\evil.com must not become an origin)", async () => {
+		// "/\evil.com" passes startsWith("/") and survives the "//" check, but
+		// WHATWG URL normalization turns it into "//evil.com" → an external
+		// origin once navigateTo resolves it (reader-auth deep-dive).
+		loginMock.mockResolvedValue({
+			access_token: "token",
+			token_type: "bearer",
+			reader: { id: 1, email: "r@example.com", display_name: null, created_at: null },
+		});
+		vi.stubGlobal("useRoute", () => ({ query: { redirect: "/\\evil.com" } }));
+		vi.stubGlobal("useBookmarkSync", () => ({ mergeLocalToCloud: vi.fn(() => Promise.resolve()) }));
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
 		await vi.waitFor(() => expect(navMock).toHaveBeenCalledWith("/bookmarks", { replace: true }));
 		vi.unstubAllGlobals();
 	});

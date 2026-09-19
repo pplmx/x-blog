@@ -6,6 +6,7 @@ const readerLoginMock = vi.fn();
 const readerLogin2FAMock = vi.fn();
 const readerRegisterMock = vi.fn();
 const completeEmailChangeMock = vi.fn();
+const confirmPasswordResetMock = vi.fn();
 
 vi.mock("~~/api/reader/auth", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../../api/reader/auth")>();
@@ -15,6 +16,7 @@ vi.mock("~~/api/reader/auth", async (importOriginal) => {
 		readerLogin2FA: readerLogin2FAMock,
 		readerRegister: readerRegisterMock,
 		completeEmailChange: completeEmailChangeMock,
+		confirmPasswordReset: confirmPasswordResetMock,
 	};
 });
 
@@ -35,6 +37,7 @@ beforeEach(() => {
 	readerLogin2FAMock.mockReset();
 	readerRegisterMock.mockReset();
 	completeEmailChangeMock.mockReset();
+	confirmPasswordResetMock.mockReset();
 });
 
 afterEach(() => {
@@ -49,6 +52,20 @@ function err(msg: string) {
 	return {
 		data: vi.fn(() => ({ value: null }))(),
 		error: vi.fn(() => ({ value: { message: msg } }))(),
+	};
+}
+
+/** A query() transport failure: `.data` carries the backend's parsed
+ *  {"error":{"message":...}} envelope; `.message` is ofetch's technical string. */
+function backendErr(technical: string, human: string, statusCode?: number) {
+	const value: Record<string, unknown> = {
+		message: technical,
+		data: { error: { message: human } },
+	};
+	if (statusCode !== undefined) value.statusCode = statusCode;
+	return {
+		data: vi.fn(() => ({ value: null }))(),
+		error: vi.fn(() => ({ value }))(),
 	};
 }
 
@@ -199,6 +216,98 @@ describe("useReaderAuth", () => {
 			email: "new@example.com",
 		});
 		expect(localStorage.getItem("reader_token")).toBeNull();
+	});
+
+	it("a throwing localStorage write does not break login (in-memory session survives)", async () => {
+		// Private-browsing quota / Safari third-party-storage block: setItem throws
+		// even though hasLocalStorage() is true. The auth call already succeeded
+		// server-side, so it must not fail — the session lives in-memory for the
+		// tab (reader-auth deep-dive finding).
+		readerLoginMock.mockResolvedValue(ok(session));
+		const origSetItem = Storage.prototype.setItem;
+		Storage.prototype.setItem = vi.fn(() => {
+			throw new Error("QuotaExceededError");
+		});
+		try {
+			const { isAuthenticated, reader, login } = useReaderAuth();
+			await login("r@example.com", "secret123");
+			expect(isAuthenticated.value).toBe(true);
+			expect(reader.value?.email).toBe("r@example.com");
+		} finally {
+			Storage.prototype.setItem = origSetItem;
+		}
+	});
+
+	describe("backend error envelope (deep-dive fix)", () => {
+		// The backend wraps every rejection in {"error":{"message":...}}; query()
+		// exposes it on the FetchError's `.data`, while `.message` is only the
+		// technical "[POST] "...": 401 Unauthorized" string. The forms must show
+		// the human text, not the ofetch noise.
+		it("login surfaces the envelope's human message over the technical string", async () => {
+			readerLoginMock.mockResolvedValue(
+				backendErr(
+					'[POST] "http://x/api/reader/login": 401 Unauthorized',
+					"Incorrect email or password",
+				),
+			);
+			const { isAuthenticated, login } = useReaderAuth();
+			await expect(login("r@example.com", "wrong")).rejects.toThrow("Incorrect email or password");
+			expect(isAuthenticated.value).toBe(false);
+		});
+
+		it("register surfaces the envelope's human message", async () => {
+			readerRegisterMock.mockResolvedValue(
+				backendErr('[POST] "http://x/api/reader/register": 422', "Email already registered"),
+			);
+			const { isAuthenticated, register } = useReaderAuth();
+			await expect(register("r@example.com", "secret123", "Riki")).rejects.toThrow(
+				"Email already registered",
+			);
+			expect(isAuthenticated.value).toBe(false);
+		});
+
+		it("login2FA surfaces the envelope's human message", async () => {
+			readerLogin2FAMock.mockResolvedValue(
+				backendErr('[POST] "http://x/api/reader/login/2fa": 401', "Invalid authentication code"),
+			);
+			const { login2FA } = useReaderAuth();
+			await expect(login2FA("mfa-x", "000000")).rejects.toThrow("Invalid authentication code");
+		});
+
+		it("falls back to the technical message when no envelope body is present", async () => {
+			readerLoginMock.mockResolvedValue(err("network layer error"));
+			const { login } = useReaderAuth();
+			await expect(login("r@example.com", "pw")).rejects.toThrow("network layer error");
+		});
+	});
+
+	describe("resetPassword (DEC-286, TASK-371)", () => {
+		it("redeems the token and adopts the rotated session via updateToken", async () => {
+			confirmPasswordResetMock.mockResolvedValue(ok(session)).mockClear();
+			const { isAuthenticated, reader, resetPassword } = useReaderAuth();
+			await resetPassword("abc.def.ghi", "brandnew456");
+			expect(confirmPasswordResetMock).toHaveBeenCalledWith({
+				token: "abc.def.ghi",
+				new_password: "brandnew456",
+			});
+			expect(isAuthenticated.value).toBe(true);
+			expect(reader.value?.email).toBe("r@example.com");
+			expect(localStorage.getItem("reader_token")).toBe("reader.jwt.token");
+		});
+
+		it("carries the human envelope message AND the business 400 status", async () => {
+			confirmPasswordResetMock.mockResolvedValue(
+				backendErr(
+					'[POST] "http://x/api/reader/password-reset/confirm": 400',
+					"Invalid or expired reset link",
+					400,
+				),
+			);
+			const { resetPassword } = useReaderAuth();
+			const err = await resetPassword("spent", "brandnew456").catch((e: unknown) => e);
+			expect((err as Error).message).toBe("Invalid or expired reset link");
+			expect((err as { statusCode?: number }).statusCode).toBe(400);
+		});
 	});
 
 	describe("confirmEmailChange (DEC-357, TASK-404)", () => {

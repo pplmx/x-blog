@@ -22,6 +22,21 @@ function hasLocalStorage(): boolean {
 	);
 }
 
+/** Best-effort persistence: a storage write that throws (private-mode quota,
+ *  Safari's third-party-storage block) must NOT fail the auth call that has
+ *  already succeeded server-side. The in-memory singleton carries the session
+ *  for the tab, and the next useReaderAuth() call re-reads what got stored
+ *  (reader-auth deep-dive finding). */
+function writeStorage(key: string, value: string | null): void {
+	if (!hasLocalStorage()) return;
+	try {
+		if (value === null) localStorage.removeItem(key);
+		else localStorage.setItem(key, value);
+	} catch {
+		/* no-op: in-memory state still holds the session for this tab */
+	}
+}
+
 function loadProfile(): ReaderProfile | null {
 	if (!hasLocalStorage()) return null;
 	try {
@@ -33,9 +48,23 @@ function loadProfile(): ReaderProfile | null {
 }
 
 function saveProfile(profile: ReaderProfile | null): void {
-	if (!hasLocalStorage()) return;
-	if (profile) localStorage.setItem("reader_profile", JSON.stringify(profile));
-	else localStorage.removeItem("reader_profile");
+	writeStorage("reader_profile", profile ? JSON.stringify(profile) : null);
+}
+
+/**
+ * Pull the human-readable failure text off a transport error. The backend wraps
+ * every HTTP error in {"error":{"code","message","details"}}, and query()/
+ * command() surface that parsed body on the FetchError's `.data`. The error's
+ * `.message` is only ofetch's technical string ("[...]: 401 Unauthorized") —
+ * useless in a form. Falls back to the technical string, then the caller's own
+ * default (reader-auth deep-dive finding).
+ */
+function apiErrorMessage(error: unknown, fallback: string): string {
+	const envelope = (error as { data?: { error?: { message?: string } } } | undefined)?.data?.error
+		?.message;
+	if (typeof envelope === "string" && envelope.length > 0) return envelope;
+	const technical = (error as { message?: string } | undefined)?.message;
+	return typeof technical === "string" && technical.length > 0 ? technical : fallback;
 }
 
 // Shared singleton state (mirrors useBookmarks/useAdminAuth): every caller
@@ -79,9 +108,7 @@ export function useReaderAuth() {
 		// challenge response (round 364) never reaches here — login() short-
 		// circuits on two_factor_required before it is passed.
 		if (!session.access_token || !session.reader) return;
-		if (hasLocalStorage()) {
-			localStorage.setItem(READER_TOKEN_KEY, session.access_token);
-		}
+		writeStorage(READER_TOKEN_KEY, session.access_token);
 		reader.value = session.reader;
 		saveProfile(session.reader);
 		isAuthenticated.value = true;
@@ -91,7 +118,7 @@ export function useReaderAuth() {
 		const { readerLogin } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin({ email, password });
 		if (error.value) {
-			throw new Error(error.value?.message || "Login failed");
+			throw new Error(apiErrorMessage(error.value, "Login failed"));
 		}
 		// 2FA readers (round 364, DEC-401): the first step only proves the
 		// password, so no session is stored here — the caller sees
@@ -113,7 +140,7 @@ export function useReaderAuth() {
 		const { readerLogin2FA } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin2FA({ mfa_token: mfaToken, code });
 		if (error.value || !data.value?.access_token) {
-			throw new Error(error.value?.message || "Login failed");
+			throw new Error(apiErrorMessage(error.value, "Login failed"));
 		}
 		setSession(data.value);
 		return data.value;
@@ -127,16 +154,14 @@ export function useReaderAuth() {
 		const { readerRegister } = await import("~~/api/reader/auth");
 		const { data, error } = await readerRegister({ email, password, display_name: displayName });
 		if (error.value || !data.value?.access_token) {
-			throw new Error(error.value?.message || "Registration failed");
+			throw new Error(apiErrorMessage(error.value, "Registration failed"));
 		}
 		setSession(data.value);
 		return data.value;
 	};
 
 	const logout = (): void => {
-		if (hasLocalStorage()) {
-			localStorage.removeItem(READER_TOKEN_KEY);
-		}
+		writeStorage(READER_TOKEN_KEY, null);
 		reader.value = null;
 		saveProfile(null);
 		isAuthenticated.value = false;
@@ -161,7 +186,7 @@ export function useReaderAuth() {
 			const status =
 				(error.value as { statusCode?: number } | undefined)?.statusCode ??
 				(error.value as { status?: number } | undefined)?.status;
-			const err = new Error(error.value?.message || "Password reset failed") as Error & {
+			const err = new Error(apiErrorMessage(error.value, "Password reset failed")) as Error & {
 				statusCode?: number;
 			};
 			if (status !== undefined) err.statusCode = status;
@@ -197,9 +222,7 @@ export function useReaderAuth() {
 		// Same completeness guard as setSession — a fresh rotated token is the
 		// only path here (password change / email confirm), which always has one.
 		if (!session.access_token || !session.reader) return;
-		if (hasLocalStorage()) {
-			localStorage.setItem(READER_TOKEN_KEY, session.access_token);
-		}
+		writeStorage(READER_TOKEN_KEY, session.access_token);
 		reader.value = session.reader;
 		saveProfile(session.reader);
 		isAuthenticated.value = true;

@@ -18,7 +18,11 @@ import ReserPassword from "../../app/pages/reset-password.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },
-	NuxtLink: { template: '<a class="nuxt-link-stub"><slot /></a>' },
+	NuxtLink: {
+		name: "NuxtLinkStub",
+		props: ["to"],
+		template: '<a class="nuxt-link-stub" :href="to"><slot /></a>',
+	},
 };
 
 const navigateTo = vi.fn().mockResolvedValue(undefined);
@@ -73,5 +77,19 @@ describe("reset-password page", () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain("重置链接无效或已过期");
+	});
+
+	// Deep-dive finding: the footer link is labeled "Back to login" but used to
+	// point at /forgot-password when a token was present. A token-bearing landing
+	// is still a login-page visit (or a spent-link 400) — /login for both states.
+	it("links 'Back to login' toward /login when a token is present", () => {
+		const wrapper = mountPage({ token: "abc.def.ghi" });
+		expect(wrapper.text()).toContain("返回登录");
+		expect(wrapper.find("a.nuxt-link-stub").attributes("href")).toBe("/login");
+	});
+
+	it("links 'Back to login' toward /login in the no-token state too", () => {
+		const wrapper = mountPage({});
+		expect(wrapper.find("a.nuxt-link-stub").attributes("href")).toBe("/login");
 	});
 });

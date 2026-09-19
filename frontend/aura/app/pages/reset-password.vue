@@ -141,8 +141,13 @@ async function handleSubmit() {
       </div>
 
       <div class="mt-6 pt-6 border-t text-center">
+        <!-- The link is labeled "Back to login", so it must go to /login in every
+             state — a token-bearing landing (form shown or spent-link 400) is still
+             a login-page visit, not a re-request (reader-auth deep-dive finding).
+             Readers who need a fresh reset link re-trigger it from /login's
+             "Forgot password?" link. -->
         <NuxtLink
-          :to="token ? '/forgot-password' : '/login'"
+          to="/login"
           class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
         >
           ← {{ t("reader.forgotPassword.backToLogin") }}

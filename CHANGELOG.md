@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Reader-auth polish round (round 392)**: a deep-dive across the sign-in
+  surface found the auth forms were showing ofetch's **technical error strings**
+  (`"[POST] ...: 401 Unauthorized"`) instead of the backend's human message — a
+  wrong password, a bad 2FA code or a rejected registration now surface the real
+  reason ("Incorrect email or password", "Email already registered", …), read
+  from the `{"error":{"message":…}}` envelope with fallbacks (login, 2FA,
+  register, password-reset). The session store is also **hardened against a
+  throwing localStorage write**: private-mode quota or Safari's storage block no
+  longer fails an auth call that already succeeded server-side — the in-memory
+  session carries the tab. **Sign-in redirect can no longer be abused**:
+  `?redirect=/\evil.com` passes the old same-origin check but WHATWG URL
+  normalization folds the backslash into `//`, turning it into an external-origin
+  navigation — backslash-bearing values now fall back to /bookmarks. The
+  **register display-name field** carries the backend's 50-char cap as a
+  client-side `maxlength`, so an over-long name fails fast instead of a
+  post-submit 422. And the **password-reset "← Back to login" link now actually
+  goes to /login** — with a token present it was mislabeled navigation to
+  /forgot-password. Frontend 2399 unit tests (+10), typecheck/lint green (round
+  392, DEC-446/447).
 - 🛠️ **Bug-fix & polish round (round 391)**: five verified defects fixed across
   the stack. **Account deletion now truly total**: `delete_reader_account` left
   post-likes, author-follows and both directions of reader follows/blocks

@@ -61,7 +61,10 @@ const route = useRoute();
 const redirectTarget = computed(() => {
 	const r = route.query.redirect;
 	if (typeof r !== "string" || !r) return "/bookmarks";
-	if (r.startsWith("/") && !r.startsWith("//")) return r;
+	// Only same-origin relative paths: reject protocol-relative "//x" AND the
+	// WHATWG backslash trick ("/\evil.com" is normalized to "//evil.com" →
+	// http://evil.com when navigateTo resolves it — reader-auth deep-dive).
+	if (r.startsWith("/") && !r.startsWith("//") && !r.includes("\\")) return r;
 	return "/bookmarks";
 });
 
@@ -200,6 +203,7 @@ function cancel2fa() {
             v-model="displayName"
             type="text"
             autocomplete="name"
+            maxlength="50"
             :placeholder="t('reader.login.displayNamePlaceholder')"
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
           >
