@@ -28,13 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first and refuses with a "save first" message if the save didn't land — an
   unsaved slug edit used to push a 404 deep-link to every subscriber), the post
   editor's **Cancel now confirms** before discarding unsaved changes (it sat
-  silently beside Save), the two raw-fetch admin flows (image upload,
-  change-password) now **route expired sessions to login** instead of stranding
-  the operator with a generic error, and the dashboard's **pending-comment
-  counters stay in sync** after approve/reject (the big stat card used to
-  contradict the quick card, and the quick card went empty despite server
-  backlog). Backend 1873 + 10 skipped, frontend 2389 unit tests, typecheck/lint
-  all green (round 391, DEC-444/445).
+  silently beside Save), the three raw-fetch admin flows (image upload,
+  change-password, the moderation-alert push toggle) now **route expired
+  sessions to login** instead of stranding the operator with a generic error,
+  and the dashboard's **pending-comment counters stay in sync** after
+  approve/reject (the big stat card used to contradict the quick card, and the
+  quick card went empty despite server backlog). Backend 1873 + 10 skipped,
+  frontend 2389 unit tests, typecheck/lint all green (round 391, DEC-444/445).
 - 💡 **"Did you mean" search suggestions (round 390)**: the post search is
   exact substring + tsvector with no fuzzy layer, so a misspelled or
   half-remembered query ("recatvie", a CJK typo like 异步编程实贱) dead-ends on
