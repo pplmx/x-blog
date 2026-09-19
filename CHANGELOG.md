@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 💡 **"Did you mean" search suggestions (round 390)**: the post search is
+  exact substring + tsvector with no fuzzy layer, so a misspelled or
+  half-remembered query ("recatvie", a CJK typo like 异步编程实贱) dead-ends on
+  an empty page. A zero-hit POST search now calls a new `GET
+  /api/search/suggest?q=` that scores a bounded vocabulary — tag/category
+  names + recent public post titles — with plain Python edit distance, so a
+  one-character CJK typo scores exactly like an ASCII one with no Postgres
+  extension involved. The suggestion chips ("你是不是想找：") appear in the
+  empty state, and tapping one re-runs the search with the corrected term
+  (preserving any active category/tag/date filters). The backend never offers
+  a zero-hit topic, bounds the vocabulary, and shares the search rate-limit
+  bucket — the client only fires it after a search genuinely returned zero
+  hits. Backend 1873 + frontend 2386 unit tests + a Playwright journey
+  (publish → typo search → suggestion chip → corrected results) all green
+  (round 390, DEC-443).
 - 🔎 **Search inside a comment thread (round 389)**: a long discussion (sorted
   newest/oldest/helpful, arbitrarily paginated) had no way to find "that answer
   that mentioned X" — the global comment search cannot scope to a post. The
