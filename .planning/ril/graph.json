@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 393,
+  "round": 395,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T21:46:56+00:00",
+  "updated_at": "2026-09-19T22:28:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 393,
+      "touched_round": 395,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -29618,7 +29618,7 @@
       "version": 1,
       "created_at": "2026-09-19T21:46:56+00:00",
       "updated_at": "2026-09-19T21:46:56+00:00",
-      "touched_round": 393,
+      "touched_round": 395,
       "rationale": "Round 393 closed: frontend usability sweep (ISS-531..533 -> CHG-724) fixed comment-submit technical error strings, the /liked false-removal contradiction, and the lagging pagination highlight; backend detail pass (ISS-534..537 -> CHG-725) made comment approval fan-out once-only (Comment.notified_at), stopped the guest weekly digest echoing a follower's own comments, gated newsletter re-activation behind a fresh double opt-in (unsubscribed_at), and moved email-change persistence before the send; ISS-538 -> CHG-726 hardened isStaleSession to read the error envelope so a wrong current password on /account no longer signs the reader out. VERIFY: backend 1879 passed @ 93.69% (ruff clean), frontend 2405 (typecheck EXIT=0, biome clean), migration k9d2e4f6a8b1 applied on live Postgres with columns verified, changed-file tests green on PG. PG digest-send flakiness observed is pre-existing/environmental (baseline red at main too).",
       "alternatives_rejected": "The round-392 reviewer's control-character redirect residual (C0 chars like TAB/LF) was NOT added to the guard: Nuxt encodeRoutePath percent-encodes them before router resolution on the current stack, so the backslash rejection already neutralizes the live vector; hardening against raw-WHATWG parsing is a dependency-on-encoder-detail belt-and-suspenders that can wait for a future encoder change (recorded in DEC-449).",
       "title": "close round 393: comment & consent polish"
@@ -29634,6 +29634,54 @@
       "rationale": "The reader-auth open-redirect guard now rejects any backslash in ?redirect= (round 392). The reviewer's residual: WHATWG omits TAB/LF/CR in the path, so '\\t/evil.com' style redirects could normalize external under a RAW WHATWG parse. On the current Nuxt 4.5.2 stack, client navigateTo -> encodeRoutePath -> encodeURI percent-encodes those control characters before vue-router parses, so the vector is neutralized ahead of the guard; accepted as belt-and-suspenders. If Nuxt/ufo ever changes that encoding, add a C0 rejection (/[\\x00-\\x20\\\\]/) or a local-path whitelist.",
       "alternatives_rejected": "Adding the C0-control rejection now expands the redirect contract with no live exploit on this stack.",
       "title": "accepted residual: C0 control-char redirect hardening deferred to encoder semantics"
+    },
+    "ISS-539": {
+      "id": "ISS-539",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T22:27:17+00:00",
+      "updated_at": "2026-09-19T22:28:17+00:00",
+      "touched_round": 395,
+      "title": "Admin pages leak raw ofetch technical strings instead of the backend error envelope",
+      "severity": "medium",
+      "summary": "Six admin pages and useReaderAuth each implemented a private getErrorMessage that fell through to error.message (ofetch's technical string like [POST] \"...\": 429 Too Many Requests) when no readable envelope was present, defeating the backend {error:{message}} contract (round 393 precedent). Duplicated logic drifted subtly per page."
+    },
+    "TASK-468": {
+      "id": "TASK-468",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T22:27:27+00:00",
+      "updated_at": "2026-09-19T22:28:18+00:00",
+      "touched_round": 395,
+      "category": "maintainability",
+      "severity": "medium",
+      "priority_score": 2.2,
+      "summary": "Consolidate admin/reader error surfacing into shared api/errors.ts apiErrorMessage(error, fallback): backend envelope > non-HTTP local Error > localized fallback, never ofetch's technical string; dedupe all six admin pages + useReaderAuth; unit-test the contract"
+    },
+    "CHG-727": {
+      "id": "CHG-727",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T22:27:41+00:00",
+      "updated_at": "2026-09-19T22:27:41+00:00",
+      "touched_round": 395,
+      "commit": "49445908",
+      "summary": "fix(admin): shared apiErrorMessage envelope surfacing — api/errors.ts + 6 admin pages + useReaderAuth deduped, tests/api/errors.spec.ts (5 cases)"
+    },
+    "DEC-450": {
+      "id": "DEC-450",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T22:28:33+00:00",
+      "updated_at": "2026-09-19T22:28:33+00:00",
+      "touched_round": 395,
+      "title": "close round 394: unify admin & reader error surfacing",
+      "rationale": "CHG-727 (commit 49445908) closed ISS-539 -> TASK-468: the duplicated per-page getErrorMessage helpers (6 admin pages + useReaderAuth) fell through to ofetch's technical string whenever the backend envelope was missing, defeating the {error:{message}} contract from round 393. Consolidated into shared api/errors.ts apiErrorMessage(error, fallback) with a 5-case unit test; VERIFY: frontend 2410 passed, pnpm typecheck EXIT=0, biome clean, backend untouched. Deep-dive value: TASK-468 priority 0.75 (< 3.0) — second consecutive sub-threshold deep-dive round (393: 0.25/2.5/2.5; 394: 0.75); the F3(b) row-button busy/disabled state and the per-button single-flight were deferred as a scoped task.",
+      "alternatives_rejected": "Not bundling F3(b) (row action :disabled while a delete/batch op is in flight) into this round: it touches every admin list page's template and deserves its own focused round rather than widening a tight consolidation round. C0 control-char redirect hardening remains deferred per DEC-449 (Nuxt encodeRoutePath neutralizes it on the current stack)."
     }
   },
   "edges": [
@@ -44082,6 +44130,36 @@
       "to": "DEC-446",
       "type": "supersedes",
       "created_at": "2026-09-19T21:46:56+00:00"
+    },
+    {
+      "from": "TASK-468",
+      "to": "ISS-539",
+      "type": "addresses",
+      "created_at": "2026-09-19T22:27:54+00:00"
+    },
+    {
+      "from": "CHG-727",
+      "to": "TASK-468",
+      "type": "implements",
+      "created_at": "2026-09-19T22:27:54+00:00"
+    },
+    {
+      "from": "CHG-727",
+      "to": "ISS-539",
+      "type": "resolves",
+      "created_at": "2026-09-19T22:27:54+00:00"
+    },
+    {
+      "from": "ISS-539",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T22:28:17+00:00"
+    },
+    {
+      "from": "DEC-450",
+      "to": "DEC-448",
+      "type": "supersedes",
+      "created_at": "2026-09-19T22:28:42+00:00"
     }
   ]
 }
