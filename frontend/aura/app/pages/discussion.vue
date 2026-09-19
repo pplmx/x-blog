@@ -190,17 +190,17 @@ const paginationTokens = computed(() =>
 				<button
 					v-for="(pg, i) in paginationTokens"
 					:key="pg === '…' ? `ellipsis-${i}` : pg"
-					:disabled="pg === '…' || pg === feed.pagination.page"
-					:aria-current="pg !== '…' && pg === feed.pagination.page ? 'page' : undefined"
+					:disabled="pg === '…' || pg === page"
+					:aria-current="pg !== '…' && pg === page ? 'page' : undefined"
 					:class="[
 						'px-3 py-1 rounded',
 						pg === '…'
 							? 'cursor-default text-gray-400'
-							: pg === feed.pagination.page
+							: pg === page
 								? 'bg-blue-600 text-white cursor-default'
 								: 'border hover:bg-gray-50',
 					]"
-					@click="pg !== '…' && pg !== feed.pagination.page && goToPage(pg)"
+					@click="pg !== '…' && pg !== page && goToPage(pg)"
 				>
 					{{ pg }}
 				</button>

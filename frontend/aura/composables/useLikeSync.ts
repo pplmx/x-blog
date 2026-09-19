@@ -116,17 +116,26 @@ export function useLikeSync() {
 	}
 
 	/** Mirror a single unlike to the cloud (chained per post). Offline-safe:
-	 *  errors swallowed; the next merge re-conciliates. */
-	async function mirrorRemove(postId: number): Promise<void> {
-		if (!hasReaderToken()) return;
+	 *  a failed mirror is NOT a hard failure (the next merge re-conciliates),
+	 *  but unlike() needs to know whether the removal actually landed — the
+	 *  /liked page is the SERVER's liked set, so an unpersisted removal must
+	 *  not drop the card (usability deep-dive). Returns false when the mirror
+	 *  failed or the reader is signed out (nothing to mirror; a guest's removal
+	 *  is trivially "the cloud state").
+	 *
+	 *  Returns true when the cloud DELETE landed (or there is no cloud row). */
+	async function mirrorRemove(postId: number): Promise<boolean> {
+		if (!hasReaderToken()) return true;
 		try {
 			await chainPostWrite(postId, async () => {
 				const { unlikeReaderPost } = await import("~~/api/reader/likes");
 				await unlikeReaderPost(postId);
 				clearLikeSyncIssue();
 			});
+			return true;
 		} catch (err) {
 			noteFailure(err);
+			return false;
 		}
 	}
 
@@ -197,12 +206,21 @@ export function useLikeSync() {
 		await mirrorAdd(postId);
 	}
 
-	/** Unlike locally, mirroring to the cloud when signed in. Same semantics as
-	 *  like(): resolves once the mirror lands. */
-	async function unlike(postId: number): Promise<void> {
+	/** Unlike locally, mirroring to the cloud when signed in. Resolves once the
+	 *  mirror lands (or is skipped for a guest); returns whether the cloud
+	 *  removal persisted. On an unpersisted mirror the local marker is rolled
+	 *  back to "liked" so it stays consistent with the server truth instead of
+	 *  silently diverging — the next merge re-conciliates when connectivity
+	 *  returns (usability deep-dive; /liked is a server-truth page). */
+	async function unlike(postId: number): Promise<boolean> {
 		undoLike(postId);
 		persist();
-		await mirrorRemove(postId);
+		const persisted = await mirrorRemove(postId);
+		if (!persisted) {
+			recordLike(postId);
+			persist();
+		}
+		return persisted;
 	}
 
 	return {

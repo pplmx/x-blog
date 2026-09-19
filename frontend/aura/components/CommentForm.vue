@@ -562,8 +562,27 @@ async function handleSubmit() {
 		previewing.value = false;
 		emit("update:dirty", false);
 		emit("submitted", created);
-	} catch (e: any) {
-		error.value = e?.message || t("components.commentForm.submitFailed");
+	} catch (e: unknown) {
+		// command() rethrows the raw FetchError whose `.message` is the technical
+		// "[POST] \"...\": 429 Too Many Requests" string — never show that to a
+		// commenter (usability deep-dive). Predictable conditions get a localized
+		// line; anything else falls back to the backend's human envelope message
+		// ({"error":{"message":...}}) or the generic submitFailed.
+		const status =
+			(e as { statusCode?: number } | undefined)?.statusCode ??
+			(e as { status?: number } | undefined)?.status;
+		if (status === 429) {
+			error.value = t("components.commentForm.errorRateLimit");
+		} else if (status === 403) {
+			error.value = t("components.commentForm.closedComments");
+		} else {
+			const envelope = (e as { data?: { error?: { message?: string } } } | undefined)?.data?.error
+				?.message;
+			error.value =
+				typeof envelope === "string" && envelope.length > 0
+					? envelope
+					: t("components.commentForm.submitFailed");
+		}
 	} finally {
 		submitting.value = false;
 	}

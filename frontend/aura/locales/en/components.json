@@ -24,6 +24,8 @@
 			"submitting": "Submitting...",
 			"submit": "Post comment",
 			"submitFailed": "Failed to submit comment. Please try again.",
+			"errorRateLimit": "You're commenting too quickly. Please wait a moment and try again.",
+			"closedComments": "Comments are closed on this post.",
 			"submitSuccess": "Comment submitted successfully, awaiting review!",
 			"cancelReply": "Cancel reply",
 			"replyingTo": "Replying to {name}",

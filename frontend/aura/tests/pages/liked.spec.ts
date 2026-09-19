@@ -36,8 +36,12 @@ vi.mock("~~/composables/useLang", () => ({
 }));
 
 let mockUnlikeReject: unknown = null;
+// unlike() now reports whether the cloud DELETE landed; the page only drops a
+// card on a persisted removal, so the happy-path mock resolves true.
+let mockUnlikeResult: unknown = true;
 const mockUnlike = vi.fn(async () => {
 	if (mockUnlikeReject) throw mockUnlikeReject;
+	return mockUnlikeResult;
 });
 vi.mock("../../composables/useLikeSync", () => ({
 	useLikeSync: () => ({
@@ -96,12 +100,14 @@ beforeEach(() => {
 	};
 	likesReject = null;
 	mockUnlikeReject = null;
+	mockUnlikeResult = true;
 	fetchLikes.mockClear();
 	// Reset implementation too: an earlier test's manual-resolve mockImplementation
 	// must not leak into later unlike tests (vi.fn clears calls, not impls).
 	mockUnlike.mockReset();
 	mockUnlike.mockImplementation(async () => {
 		if (mockUnlikeReject) throw mockUnlikeReject;
+		return mockUnlikeResult;
 	});
 	mockReplace.mockClear();
 	vi.stubGlobal("useRoute", () => ({ path: "/liked", query: mockRouteQuery }));
@@ -368,6 +374,25 @@ describe("Liked page unlike (DEC-415, TASK-433)", () => {
 
 		expect(wrapper.text()).toContain("liked.unlikeFailed");
 		// The card stays: a failed unlike must not claim success.
+		expect(wrapper.text()).toContain("A liked post");
+		wrapper.unmount();
+	});
+
+	it("keeps the card when unlike() reports an unpersisted mirror removal", async () => {
+		// Offline / 5xx: unlike() (the real one) rolls the local marker back and
+		// resolves FALSE — the cloud row still counts this like, so this
+		// server-truth page must NOT drop the card (usability deep-dive).
+		mockUnlikeResult = false;
+		likesPayload = {
+			items: [samplePost],
+			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
+		};
+		const wrapper = await mountLiked();
+
+		await wrapper.find('button[aria-label="liked.unlike"]').trigger("click");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("liked.unlikeFailed");
 		expect(wrapper.text()).toContain("A liked post");
 		wrapper.unmount();
 	});

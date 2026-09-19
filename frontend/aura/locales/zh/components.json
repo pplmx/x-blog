@@ -24,6 +24,8 @@
 			"submitting": "提交中...",
 			"submit": "提交评论",
 			"submitFailed": "评论提交失败，请重试。",
+			"errorRateLimit": "评论过于频繁，请稍后再试。",
+			"closedComments": "这篇文章的评论区已关闭。",
 			"submitSuccess": "评论提交成功，等待审核中！",
 			"cancelReply": "取消回复",
 			"replyingTo": "正在回复 {name}",

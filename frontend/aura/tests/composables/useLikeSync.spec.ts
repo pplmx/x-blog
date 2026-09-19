@@ -83,6 +83,44 @@ describe("useLikeSync", () => {
 		await vi.waitFor(() => expect(unlikeReaderPostMock).toHaveBeenCalledWith(5));
 	});
 
+	it("unlike() resolves true when the cloud DELETE lands", async () => {
+		signedIn();
+		unlikeReaderPostMock.mockResolvedValue(undefined);
+
+		const sync = useLikeSync();
+		sync.like(5);
+		await vi.waitFor(() => expect(likeReaderPostMock).toHaveBeenCalledWith(5));
+
+		await expect(sync.unlike(5)).resolves.toBe(true);
+		expect(sync.isLiked(5)).toBe(false);
+	});
+
+	it("unlike() rolls the marker back when the cloud DELETE fails (no false removal)", async () => {
+		// Offline / 5xx: the mirror is swallowed (not a hard failure — the next
+		// merge re-conciliates), but unlike() must report the unpersisted removal
+		// so a server-truth page (/liked) does not drop a card whose cloud row
+		// still counts it (usability deep-dive).
+		signedIn();
+		unlikeReaderPostMock.mockRejectedValue(new Error("network down"));
+
+		const sync = useLikeSync();
+		sync.like(5);
+		await vi.waitFor(() => expect(likeReaderPostMock).toHaveBeenCalledWith(5));
+
+		await expect(sync.unlike(5)).resolves.toBe(false);
+		await vi.waitFor(() => expect(unlikeReaderPostMock).toHaveBeenCalledWith(5));
+		// Local marker rolled back to the server truth (still liked).
+		expect(sync.isLiked(5)).toBe(true);
+	});
+
+	it("unlike() for a guest is trivially persisted (no cloud row exists)", async () => {
+		signedIn(false);
+		const sync = useLikeSync();
+		sync.like(5);
+		await expect(sync.unlike(5)).resolves.toBe(true);
+		expect(sync.isLiked(5)).toBe(false);
+	});
+
 	it("mergeLocalToCloud pushes local markers up and pulls the server set down", async () => {
 		signedIn();
 		// Local marker 1 gets pushed up; server already has 2 and 3.

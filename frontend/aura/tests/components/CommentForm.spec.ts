@@ -318,14 +318,19 @@ describe("CommentForm", () => {
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 
-			// Error message should appear, success should not
-			expect(wrapper.text()).toContain("Network error");
+			// Localized failure should appear, success should not
+			expect(wrapper.text()).toContain("评论提交失败，请重试。");
 			expect(wrapper.text()).not.toContain("评论提交成功");
 		});
 	});
 
-	describe("Submission error", () => {
-		it("shows error message when submission fails", async () => {
+	describe("Submission error (usability deep-dive fix)", () => {
+		// command() rethrows the raw FetchError whose .message is the technical
+		// "[POST] \"...\": 429 Too Many Requests" string. The form must NEVER show
+		// that to a commenter: predictable conditions get localized text and any
+		// other failure falls back to the backend's human envelope message.
+		it("shows the localized fallback for a message-less failure (no raw technical string)", async () => {
+			// A plain Error() has no status and no envelope body → submitFailed.
 			const wrapper = await mountCommentForm({ submitResult: "error" });
 			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
@@ -333,20 +338,64 @@ describe("CommentForm", () => {
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 
-			// Component shows the error message: e?.message || '评论提交失败，请重试。'
-			expect(wrapper.text()).toContain("Network error");
+			expect(wrapper.text()).toContain("评论提交失败，请重试。");
+			expect(wrapper.text()).not.toContain("Network error");
 		});
 
-		it("shows error message with the error text", async () => {
-			const wrapper = await mountCommentForm({ submitResult: "error" });
+		it("surfaces the backend's human envelope message, not the technical string", async () => {
+			// FetchError shape from command(): the raw .message is the technical
+			// string; the human text rides .data.error.message. Set the shaped
+			// rejection AFTER mount — the mount helper (re)arms the mock.
+			// (400 keeps the envelope branch live — 403/429 short-circuit to their
+			// localized lines.)
+			const wrapper = await mountCommentForm();
+			mockCreateComment.mockRejectedValue({
+				message: '[POST] "http://x/api/comments/post/1": 400 Bad Request',
+				statusCode: 400,
+				data: { error: { message: "This comment contains disallowed content" } },
+			});
 			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
 			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
 			await (wrapper.find("textarea") as any).setValue("Great post!");
 			await wrapper.find("form").trigger("submit.prevent");
 			await flushPromises();
 
-			// The component displays e?.message when the error has a message
-			expect(wrapper.text()).toContain("Network error");
+			expect(wrapper.text()).toContain("This comment contains disallowed content");
+			// The raw technical string must not leak.
+			expect(wrapper.text()).not.toContain('"http://x/api/comments/post/1"');
+		});
+
+		it("maps a 429 rate-limit rejection to localized text", async () => {
+			const wrapper = await mountCommentForm();
+			mockCreateComment.mockRejectedValue({
+				message: '[POST] "http://x/api/comments/post/1": 429 Too Many Requests',
+				statusCode: 429,
+				data: { error: { message: "Too many requests. Please try again later." } },
+			});
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("评论过于频繁，请稍后再试。");
+			expect(wrapper.text()).not.toContain("Too Many Requests");
+		});
+
+		it("maps a 403 closed-comments rejection to localized text", async () => {
+			const wrapper = await mountCommentForm();
+			mockCreateComment.mockRejectedValue({
+				message: '[POST] "http://x/api/comments/post/1": 403 Forbidden',
+				statusCode: 403,
+				data: { error: { message: "Comments are closed on this post" } },
+			});
+			await (wrapper.find('input[autocomplete="nickname"]') as any).setValue("Alice");
+			await (wrapper.find('input[type="email"]') as any).setValue("alice@test.com");
+			await (wrapper.find("textarea") as any).setValue("Great post!");
+			await wrapper.find("form").trigger("submit.prevent");
+			await flushPromises();
+
+			expect(wrapper.text()).toContain("这篇文章的评论区已关闭。");
 		});
 	});
 

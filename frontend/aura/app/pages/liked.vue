@@ -173,14 +173,25 @@ async function handleUnlike(post: PostList) {
 	unlikingIds.value.add(post.id);
 	unlikeFailed.value = false;
 	const prev = pagination.value;
+	let persisted: boolean;
 	try {
-		await unlike(post.id);
+		persisted = await unlike(post.id);
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
 			void router.replace("/login");
 			return;
 		}
+		unlikeFailed.value = true;
+		unlikingIds.value.delete(post.id);
+		return;
+	}
+	// unlike() rolls the local marker back when the cloud DELETE didn't land
+	// (offline / 5xx), so an unpersisted removal must NOT drop the card from
+	// this server-truth page — it would reappear on the next visit (usability
+	// deep-dive). Keep the card, surface a retry notice, and let the next merge
+	// re-conciliate.
+	if (!persisted) {
 		unlikeFailed.value = true;
 		unlikingIds.value.delete(post.id);
 		return;

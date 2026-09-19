@@ -729,7 +729,10 @@ describe("Index Page", () => {
 				...mockPostsData,
 				pagination: { total: 20, page: 2, limit: 10, total_pages: 3 },
 			};
-			const wrapper = await mountIndexPage();
+			// The highlight tracks the route-derived page (the URL is the fetch
+			// contract) — mount on ?page=2 so ref and served payload agree, as
+			// they always do in production (usability deep-dive round 393).
+			const wrapper = await mountIndexPage({ query: { page: "2" } });
 			const activeBtn = wrapper
 				.findAll("button")
 				.find((b) => b.text() === "2" && b.attributes("aria-current") === "page");

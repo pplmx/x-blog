@@ -625,13 +625,13 @@ const stats = computed(() => {
             <button
               v-for="(pg, i) in paginationTokens"
               :key="pg === '…' ? `ellipsis-${i}` : pg"
-              :disabled="pg === '…' || pg === posts.pagination.page"
-              :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
+              :disabled="pg === '…' || pg === page"
+              :aria-current="pg !== '…' && pg === page ? 'page' : undefined"
               :class="[
                 'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
                 pg === '…'
                   ? 'cursor-default text-gray-400 dark:text-gray-500'
-                  : pg === posts.pagination.page
+                  : pg === page
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 cursor-default'
                     : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
               ]"
