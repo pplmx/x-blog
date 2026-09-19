@@ -127,7 +127,13 @@ _ALLOWED_TAGS = {
     "span",
     "div",
 }
-_ALLOWED_ATTRS = {"href", "src", "alt", "title", "target", "rel"}
+# ``id``/``class`` are needed by the footnotes extension (DEC-441) — the
+# python-markdown footnotes renderer emits <sup id="fnref:1"> / <li id="fn:1">
+# anchors plus ``class="footnote-ref|footnote-backref"`` styling hooks, and
+# stripping them would break the in-article backlinks a feed reader opens.
+# Both are inert (no URL, no event handler); the frontend DOMPurify pipeline
+# already permits them, so this mirrors the browser render path.
+_ALLOWED_ATTRS = {"href", "src", "alt", "title", "target", "rel", "id", "class"}
 
 # URL-bearing attributes that would let an author ship a scriptable link into
 # an untrusted reader (web-based RSS/Atom consumers may render these). The Nuxt
@@ -213,7 +219,10 @@ class _FeedSanitizer(HTMLParser):
 
 def _feed_content_html(content: str) -> str:
     """Render a post's Markdown to sanitized HTML for full-content feeds."""
-    html = md.markdown(content, extensions=["fenced_code", "tables", "nl2br"])
+    # "footnotes" (DEC-441): an author's [^1]/[^1]: citation markers render as
+    # a backlinked reference list instead of leaking literal [^1] text into the
+    # feed (mirrors the frontend marked footnote extension in useMarkdown.ts).
+    html = md.markdown(content, extensions=["fenced_code", "tables", "nl2br", "footnotes"])
     sanitizer = _FeedSanitizer()
     sanitizer.feed(html)
     sanitizer.close()

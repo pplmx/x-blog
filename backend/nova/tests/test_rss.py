@@ -80,6 +80,36 @@ def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
     assert "onclick" not in content
 
 
+def test_rss_full_feed_renders_footnotes(client, auth_headers):
+    """Full-content feeds must render GFM footnote markers to a backlinked
+    reference list, not emit the raw [^1] marker text (DEC-441, TASK-451)."""
+    client.post(
+        "/api/posts",
+        json={
+            "title": "Footnotes Post",
+            "slug": "footnotes-post",
+            "content": "Citations matter[^1].\n\n[^1]: The **source** material.",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    response = client.get("/rss/feed.xml?full=true")
+    assert response.status_code == 200
+    content = response.text
+    # Reference: a sup that jumps down to the definition list.
+    assert '<sup' in content
+    assert 'href="#fn:1"' in content or 'href="%23fn:1"' in content
+    # Definition: the list item carries the matching id and a backref.
+    assert 'id="fn:1"' in content
+    assert 'footnote-backref' in content or '&#8617;' in content
+    # The source body renders, and bold inside the footnote is markdown, not literal.
+    assert "source" in content
+    assert "<strong>source</strong>" in content
+    # Raw GFM marker must never leak into the feed.
+    assert "[^1]" not in content
+    assert "Citations matter[^1]" not in content
+
+
 def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_headers):
     """Full-content feed must not drop closing tags around void elements.
 
