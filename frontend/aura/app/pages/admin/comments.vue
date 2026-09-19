@@ -9,6 +9,7 @@ import {
 	getAdminComments,
 	replyAdminComment,
 } from "~~/api/admin/comments";
+import { apiErrorMessage } from "~~/api/errors";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 
@@ -159,12 +160,9 @@ function clearFilters() {
 }
 
 function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	if (e && typeof e === "object" && "message" in e) {
-		const m = (e as { message?: unknown }).message;
-		if (typeof m === "string" && m) return m;
-	}
-	return t("admin.comments.operationFailed");
+	// Shared admin error surfacing (round 394): backend envelope human message,
+	// else a local non-HTTP error's message, else the localized fallback.
+	return apiErrorMessage(e, t("admin.comments.operationFailed"));
 }
 
 const totalPages = computed(() => comments.value?.pagination?.total_pages ?? 1);

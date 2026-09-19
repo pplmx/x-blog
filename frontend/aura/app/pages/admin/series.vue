@@ -15,6 +15,7 @@ import {
 	updateAdminSeries,
 	useAdminSeries,
 } from "~~/api/admin/series";
+import { apiErrorMessage } from "~~/api/errors";
 
 definePageMeta({ layout: "admin" });
 
@@ -114,8 +115,9 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 }
 
 function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	return t("admin.series.operationFailed");
+	// Shared admin error surfacing (round 394): backend envelope human message,
+	// else a local non-HTTP error's message, else the localized fallback.
+	return apiErrorMessage(e, t("admin.series.operationFailed"));
 }
 
 function generateSlug(title: string): string {

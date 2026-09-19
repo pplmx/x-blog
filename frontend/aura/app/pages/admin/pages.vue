@@ -13,6 +13,7 @@ import {
 	updateAdminPage,
 	useAdminPages,
 } from "~~/api/admin/pages";
+import { apiErrorMessage } from "~~/api/errors";
 
 definePageMeta({ layout: "admin" });
 
@@ -30,8 +31,10 @@ const newForm = ref({ title: "", slug: "", content: "", published: false });
 const editingForm = ref({ title: "", slug: "", content: "", published: false });
 
 function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	return t("admin.pages.operationFailed");
+	// Shared admin error surfacing (round 394): the backend envelope's human
+	// message first, then a local non-HTTP error's own message, else the
+	// localized fallback — never ofetch's technical "[POST] ...: xxx" string.
+	return apiErrorMessage(e, t("admin.pages.operationFailed"));
 }
 
 // Same CJK-safe slug fallback as the series manager and post editor: a

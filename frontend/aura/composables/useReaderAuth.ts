@@ -10,6 +10,7 @@
  *   const { isAuthenticated, reader, login, register, resetPassword, logout } = useReaderAuth();
  */
 
+import { apiErrorMessage } from "~~/api/errors";
 import type { ReaderLoginResponse, ReaderProfile } from "~~/api/reader/auth";
 
 const READER_TOKEN_KEY = "reader_token";
@@ -49,22 +50,6 @@ function loadProfile(): ReaderProfile | null {
 
 function saveProfile(profile: ReaderProfile | null): void {
 	writeStorage("reader_profile", profile ? JSON.stringify(profile) : null);
-}
-
-/**
- * Pull the human-readable failure text off a transport error. The backend wraps
- * every HTTP error in {"error":{"code","message","details"}}, and query()/
- * command() surface that parsed body on the FetchError's `.data`. The error's
- * `.message` is only ofetch's technical string ("[...]: 401 Unauthorized") —
- * useless in a form. Falls back to the technical string, then the caller's own
- * default (reader-auth deep-dive finding).
- */
-function apiErrorMessage(error: unknown, fallback: string): string {
-	const envelope = (error as { data?: { error?: { message?: string } } } | undefined)?.data?.error
-		?.message;
-	if (typeof envelope === "string" && envelope.length > 0) return envelope;
-	const technical = (error as { message?: string } | undefined)?.message;
-	return typeof technical === "string" && technical.length > 0 ? technical : fallback;
 }
 
 // Shared singleton state (mirrors useBookmarks/useAdminAuth): every caller

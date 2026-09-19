@@ -11,6 +11,7 @@ import {
 	uploadAdminUserAvatar,
 	useAdminUsers,
 } from "~~/api/admin/users";
+import { apiErrorMessage } from "~~/api/errors";
 
 definePageMeta({ layout: "admin" });
 
@@ -59,8 +60,9 @@ const actionError = ref<string | null>(null);
 const actionSuccess = ref<string | null>(null);
 
 function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	return t("admin.users.operationFailed");
+	// Shared admin error surfacing (round 394): backend envelope human message,
+	// else a local non-HTTP error's message, else the localized fallback.
+	return apiErrorMessage(e, t("admin.users.operationFailed"));
 }
 
 // Public pen name (DEC-359/TASK-405): the byline shown on published posts.

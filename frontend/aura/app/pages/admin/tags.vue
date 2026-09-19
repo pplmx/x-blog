@@ -11,6 +11,7 @@ import {
 	updateAdminTag,
 	useAdminTags,
 } from "~~/api/admin/taxonomy";
+import { apiErrorMessage } from "~~/api/errors";
 
 definePageMeta({ layout: "admin" });
 
@@ -35,8 +36,9 @@ const visibleTags = computed(() => {
 });
 
 function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	return t("admin.tags.operationFailed");
+	// Shared admin error surfacing (round 394): backend envelope human message,
+	// else a local non-HTTP error's message, else the localized fallback.
+	return apiErrorMessage(e, t("admin.tags.operationFailed"));
 }
 
 async function handleCreate() {
