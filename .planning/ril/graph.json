@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 391,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T16:28:49+00:00",
+  "updated_at": "2026-09-19T17:11:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29339,6 +29339,17 @@
       "title": "Round 391 admin-frontend pass: 4 verified admin UX/correctness defects fixed (notify flush-first, cancel confirm, 401 upload/password, dashboard counters)",
       "rationale": "After the reader-facing deep-dive (TASK-454..458) closed, an admin-frontend deep-dive agent swept app/pages/admin/* + layouts/admin.vue + useUpload/transport and surfaced 4 verified defects: (1) notify broadcast the live possibly-unsaved form (high: unsaved slug deep-links 404); (2) Cancel discarded dirty edits with no confirm, inconsistent with restore/route-leave guards; (3) two raw-fetch admin paths skipped the 401 session-expiry redirect; (4) dashboard pending counters diverged (stat card from stale pending_count vs quick card from live slice, page-1-of-5 only). All fixed with tests (2389 frontend, editor 97), typecheck + biome clean.",
       "alternatives_rejected": "Feature-evolution candidates (not the directive); refactoring the editor beyond the four concrete defects verified by reading the actual code paths."
+    },
+    "CHG-722": {
+      "id": "CHG-722",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-19T17:10:07+00:00",
+      "updated_at": "2026-09-19T17:10:56+00:00",
+      "touched_round": 391,
+      "commit": "8bceaf67",
+      "title": "fix(admin): admin push composable routes 401 to /admin/login (TASK-462 class completion)"
     }
   },
   "edges": [
@@ -43511,6 +43522,12 @@
       "to": "DEC-445",
       "type": "supersedes",
       "created_at": "2026-09-19T16:28:49+00:00"
+    },
+    {
+      "from": "CHG-722",
+      "to": "TASK-462",
+      "type": "implements",
+      "created_at": "2026-09-19T17:11:42+00:00"
     }
   ]
 }
