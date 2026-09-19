@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 391,
+  "round": 392,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T17:11:42+00:00",
+  "updated_at": "2026-09-19T18:41:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 324,
+      "touched_round": 392,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -29335,7 +29335,7 @@
       "version": 1,
       "created_at": "2026-09-19T16:28:16+00:00",
       "updated_at": "2026-09-19T16:28:16+00:00",
-      "touched_round": 391,
+      "touched_round": 392,
       "title": "Round 391 admin-frontend pass: 4 verified admin UX/correctness defects fixed (notify flush-first, cancel confirm, 401 upload/password, dashboard counters)",
       "rationale": "After the reader-facing deep-dive (TASK-454..458) closed, an admin-frontend deep-dive agent swept app/pages/admin/* + layouts/admin.vue + useUpload/transport and surfaced 4 verified defects: (1) notify broadcast the live possibly-unsaved form (high: unsaved slug deep-links 404); (2) Cancel discarded dirty edits with no confirm, inconsistent with restore/route-leave guards; (3) two raw-fetch admin paths skipped the 401 session-expiry redirect; (4) dashboard pending counters diverged (stat card from stale pending_count vs quick card from live slice, page-1-of-5 only). All fixed with tests (2389 frontend, editor 97), typecheck + biome clean.",
       "alternatives_rejected": "Feature-evolution candidates (not the directive); refactoring the editor beyond the four concrete defects verified by reading the actual code paths."
@@ -29350,6 +29350,109 @@
       "touched_round": 391,
       "commit": "8bceaf67",
       "title": "fix(admin): admin push composable routes 401 to /admin/login (TASK-462 class completion)"
+    },
+    "ISS-526": {
+      "id": "ISS-526",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:25+00:00",
+      "updated_at": "2026-09-19T18:40:34+00:00",
+      "touched_round": 392,
+      "title": "Reader auth forms leak ofetch's technical error string instead of the backend human message",
+      "description": "login/login2FA/register/resetPassword throw error.value?.message, which is only '[POST] ...: 401 Unauthorized' - the human text lives in error.value?.data?.error?.message (backend envelope verified live). Reader sees raw HTTP noise on wrong password / 2FA code / register 422."
+    },
+    "ISS-527": {
+      "id": "ISS-527",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:25+00:00",
+      "updated_at": "2026-09-19T18:40:34+00:00",
+      "touched_round": 392,
+      "title": "login ?redirect= honors backslash-breaking values -> WHATWG open redirect",
+      "description": "redirectTarget passes '/\\evil.com' (startsWith '/' and not '//'), but WHATWG URL normalization folds '\\' into '//' so navigateTo resolves to http://evil.com. Guard must also reject backslashes."
+    },
+    "ISS-528": {
+      "id": "ISS-528",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:26+00:00",
+      "updated_at": "2026-09-19T18:40:34+00:00",
+      "touched_round": 392,
+      "title": "reset-password 'Back to login' footer link routes to /forgot-password in the token state",
+      "description": "reset-password.vue footer link labeled 'Back to login'/'返回登录' was routed to /forgot-password when a token was present - a token-bearing landing (form or spent-link 400) navigated to the wrong page despite the label."
+    },
+    "ISS-529": {
+      "id": "ISS-529",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:26+00:00",
+      "updated_at": "2026-09-19T18:40:35+00:00",
+      "touched_round": 392,
+      "title": "register display-name input lacks the backend's 50-char cap",
+      "description": "ReaderRegister caps display_name at 50 chars; login.vue register form has no maxlength, so an over-length name is a post-submit 422 instead of failing fast client-side."
+    },
+    "ISS-530": {
+      "id": "ISS-530",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:26+00:00",
+      "updated_at": "2026-09-19T18:40:35+00:00",
+      "touched_round": 392,
+      "title": "useReaderAuth localStorage writes are unguarded against throwing setItem",
+      "description": "setSession/updateToken/saveProfile/logout call setItem/removeItem directly; private-mode quota or Safari third-party-storage block makes them throw, failing an auth call that already succeeded server-side and leaving confusing state."
+    },
+    "TASK-464": {
+      "id": "TASK-464",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T18:36:43+00:00",
+      "updated_at": "2026-09-19T18:40:35+00:00",
+      "touched_round": 392,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Reader-auth deep-dive batch (round 392): backend-envelope error messages, storage-write hardening, backslash open-redirect guard, display-name cap, reset-link target",
+      "description": "Five confirmed reader-auth findings from the deep-dive: (1) apiErrorMessage extraction in useReaderAuth (login/2FA/register/resetPassword) reading error.value?.data?.error?.message with fallbacks; (2) login.vue redirectTarget rejects backslash; (3) reset-password footer link always /login; (4) register display-name maxlength=50; (5) writeStorage try/catch hardening. Each backed by vitest regression coverage."
+    },
+    "CHG-723": {
+      "id": "CHG-723",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T18:40:34+00:00",
+      "updated_at": "2026-09-19T18:40:34+00:00",
+      "touched_round": 392,
+      "commit": "845b7483",
+      "title": "fix(reader): auth error surfacing, redirect guard, reset link (TASK-464, round 392)"
+    },
+    "DEC-446": {
+      "id": "DEC-446",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T18:40:57+00:00",
+      "updated_at": "2026-09-19T18:40:57+00:00",
+      "touched_round": 392,
+      "rationale": "Round 392 reader-auth deep-dive delivered: 5 confirmed defects fixed by CHG-723 (TASK-464) - backend-envelope error messages on login/2FA/register/reset, storage-write hardening, backslash open-redirect guard, display-name maxlength cap, reset-link target. VERIFY green: frontend 2399 (+10), typecheck EXIT=0, biome clean on changed files. Backend untouched this round so backend suite/PG parity carry over from round 391.",
+      "alternatives_rejected": "Search remained in round 390/391 scope; the 2FA-refresh and guest-moderation items were assessed as accepted UX, not defects (see DEC-447).",
+      "title": "close round 392: reader-auth deep-dive batch"
+    },
+    "DEC-447": {
+      "id": "DEC-447",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T18:40:57+00:00",
+      "updated_at": "2026-09-19T18:40:57+00:00",
+      "touched_round": 392,
+      "rationale": "Three deep-dive items were reviewed and consciously NOT fixed: (a) cross-account bookmark/like merge on login is a documented trade-off of TASK-134 guest continuity (local lists push to the cloud on every login; e2e-covered), not a defect; (b) the 2FA code-step state is in-memory by design - persisting a short-lived mfa_token would widen the theft surface and the challenge re-issues on re-login, so refresh dropping back to the password form is acceptable; (c) forgot-password already distinguishes the 503 email-service-down case from generic network failure, so no change.",
+      "alternatives_rejected": "Persisting the 2FA challenge token to sessionStorage: rejected for token-theft surface + the challenge is self-scoped to minutes.",
+      "title": "accepted UX / documented trade-offs from the reader-auth deep-dive (bookmark-merge, 2FA refresh, forgot-password 503)"
     }
   },
   "edges": [
@@ -43528,6 +43631,108 @@
       "to": "TASK-462",
       "type": "implements",
       "created_at": "2026-09-19T17:11:42+00:00"
+    },
+    {
+      "from": "TASK-464",
+      "to": "ISS-526",
+      "type": "addresses",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "ISS-526",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "TASK-464",
+      "to": "ISS-527",
+      "type": "addresses",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "ISS-527",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "TASK-464",
+      "to": "ISS-528",
+      "type": "addresses",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "ISS-528",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T18:36:57+00:00"
+    },
+    {
+      "from": "TASK-464",
+      "to": "ISS-529",
+      "type": "addresses",
+      "created_at": "2026-09-19T18:36:58+00:00"
+    },
+    {
+      "from": "ISS-529",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T18:36:58+00:00"
+    },
+    {
+      "from": "TASK-464",
+      "to": "ISS-530",
+      "type": "addresses",
+      "created_at": "2026-09-19T18:36:58+00:00"
+    },
+    {
+      "from": "ISS-530",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T18:36:58+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "TASK-464",
+      "type": "implements",
+      "created_at": "2026-09-19T18:40:34+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "ISS-526",
+      "type": "resolves",
+      "created_at": "2026-09-19T18:40:34+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "ISS-527",
+      "type": "resolves",
+      "created_at": "2026-09-19T18:40:34+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "ISS-528",
+      "type": "resolves",
+      "created_at": "2026-09-19T18:40:34+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "ISS-529",
+      "type": "resolves",
+      "created_at": "2026-09-19T18:40:34+00:00"
+    },
+    {
+      "from": "CHG-723",
+      "to": "ISS-530",
+      "type": "resolves",
+      "created_at": "2026-09-19T18:40:35+00:00"
+    },
+    {
+      "from": "DEC-446",
+      "to": "DEC-445",
+      "type": "supersedes",
+      "created_at": "2026-09-19T18:41:15+00:00"
     }
   ]
 }
