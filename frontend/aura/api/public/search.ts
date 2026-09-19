@@ -34,6 +34,24 @@ export interface CommentSearchParams {
 	limit?: number;
 }
 
+/**
+ * One "did you mean" suggestion (round 390, DEC-443): a canonical topic — a
+ * tag, a category, or a recent public post title — that an edit-distance pass
+ * judged close enough to a zero-hit query to offer as a recovery path.
+ * `hits` is the count of PUBLIC posts the suggestion actually matches, so a
+ * suggested tag/category is never a dead end.
+ */
+export interface SearchSuggestion {
+	text: string;
+	kind: "tag" | "category" | "post";
+	hits: number;
+}
+
+export interface SearchSuggestResponse {
+	query: string;
+	suggestions: SearchSuggestion[];
+}
+
 function queryPath(path: string, params: MaybeGetter<QueryParams>): string | Getter<string> {
 	if (typeof params === "function") return () => withQuery(path, params());
 	return () => withQuery(path, unref(params));

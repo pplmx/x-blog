@@ -35,6 +35,10 @@
 		"posts": {
 			"views": "reads"
 		},
+		"suggest": {
+			"label": "Did you mean:",
+			"postsCount": "{count} posts"
+		},
 		"filters": {
 			"category": "Category",
 			"tag": "Tag",

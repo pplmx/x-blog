@@ -35,6 +35,10 @@
 		"posts": {
 			"views": "次阅读"
 		},
+		"suggest": {
+			"label": "你是不是想找：",
+			"postsCount": "{count} 篇文章"
+		},
 		"filters": {
 			"category": "分类",
 			"tag": "标签",

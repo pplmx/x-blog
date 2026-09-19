@@ -2,7 +2,12 @@
 import { computed, onMounted, ref, watch } from "vue";
 import type { PostList } from "~~/api/contracts/shared";
 import { usePostSearch } from "~~/api/public/posts";
-import { type CommentSearchItem, useCommentSearch } from "~~/api/public/search";
+import {
+	type CommentSearchItem,
+	type SearchSuggestion,
+	type SearchSuggestResponse,
+	useCommentSearch,
+} from "~~/api/public/search";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
@@ -183,6 +188,72 @@ const activePending = computed(() =>
 	mode.value === "comments" ? commentsPending.value : pending.value,
 );
 const activeError = computed(() => (mode.value === "comments" ? commentsError.value : error.value));
+
+// "Did you mean" suggestions (round 390, DEC-443): the post search is exact
+// substring + tsvector, so a zero-hit page is a dead end with no recovery path.
+// The suggest endpoint scores a bounded vocabulary (tag/category names +
+// recent public post titles) with client-agnostic edit distance; it shares the
+// search rate-limit bucket, so it must NEVER fire unless a POST search already
+// returned zero hits — `shouldSuggest` is that exact gate (posts mode, a real
+// term, the posts query has landed, and its total is 0).
+//
+// The fetch is deliberately an IMPERATIVE $fetch driven by the watch, not a
+// `useSearchSuggest` composable: Nuxt refuses to re-fire useFetch when its
+// `enabled` flips false→true (it only ABORTS on the false edge), and this
+// zero-hit trigger is exactly that detection — we want a fresh request the
+// moment the result set degenerates to 0. Same $fetch idiom as loadTaxonomy.
+const SUGGEST_LIMIT = 4;
+const shouldSuggest = computed(
+	() =>
+		mode.value === "posts" &&
+		!!query.value.trim() &&
+		// `!error` not `=== null`: Nuxt's useFetch `error` ref is `undefined`
+		// until a failure happens (round-390 debug: the SSR-rendered empty
+		// state had total=0 but error=undefined, so a strict null check made
+		// shouldSuggest stay false and the suggestion request never fired).
+		!activeError.value &&
+		// No data yet → treat as non-zero (a zero-hit page is the ONLY trigger:
+		// suggestions share the search rate-limit bucket, so they must never
+		// fire for a search that actually returned hits).
+		(searchResult.value?.pagination.total ?? 1) === 0,
+);
+const suggestions = ref<SearchSuggestion[]>([]);
+let suggestSeq = 0;
+watch(
+	shouldSuggest,
+	async (now) => {
+		const seq = ++suggestSeq;
+		if (!now) {
+			// Leaving the zero-hit state (new term landed with results, or the
+			// reader cleared the query) clears the chips.
+			suggestions.value = [];
+			return;
+		}
+		try {
+			const resp = await $fetch<SearchSuggestResponse>(
+				`/api/search/suggest?q=${encodeURIComponent(query.value)}&limit=${SUGGEST_LIMIT}`,
+			);
+			if (seq !== suggestSeq) return; // a newer watch fired; drop the stale reply
+			// `?? []` guards a malformed/empty payload — the render reads
+			// `suggestions.length`, so an undefined here would crash it.
+			suggestions.value = resp?.suggestions ?? [];
+		} catch {
+			if (seq === suggestSeq) suggestions.value = [];
+		}
+	},
+	// immediate is REQUIRED, not an optimization: landing on /search?q=tyop is
+	// the primary flow, and there the posts query resolves to zero hits BEFORE
+	// the watch exists — shouldSuggest is already true, so a transition-only
+	// watch would never fire and the suggestion request would never go out.
+	{ immediate: true },
+);
+
+// Tap a suggestion to retry the search with the corrected term. Goes through
+// pageQuery so any active category/tag/sort/date narrowing and the search mode
+// survive — a suggestion is a term fix, not a reset.
+function applySuggestion(term: string) {
+	navigateTo({ query: pageQuery({ q: term, page: "1" }) });
+}
 
 // Typed per-mode result lists so the template loops (posts vs comments) always
 // see the item shape their branch renders — the union on activeResult cannot
@@ -603,6 +674,38 @@ function goToPage(pg: number | string) {
           <Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
           {{ t("search.filters.clearAll") }}
         </button>
+
+        <!-- "Did you mean" recovery (round 390, DEC-443): the exact-substring
+             post search has no fuzzy layer, so a typo'd or half-remembered
+             term dead-ends here. Offer edit-distance neighbors from the
+             backend; tapping one re-runs the search with the corrected term. -->
+        <div
+          v-if="suggestions.length"
+          role="region"
+          :aria-label="t('search.suggest.label')"
+          class="mt-6 w-full max-w-md"
+        >
+          <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+            {{ t("search.suggest.label") }}
+          </p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button
+              v-for="s in suggestions"
+              :key="`${s.kind}:${s.text}`"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              @click="applySuggestion(s.text)"
+            >
+              {{ s.text }}
+              <span
+                v-if="s.hits > 1"
+                class="text-xs text-blue-500 dark:text-blue-400"
+              >
+                {{ t("search.suggest.postsCount", { count: s.hits }) }}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Results list -->

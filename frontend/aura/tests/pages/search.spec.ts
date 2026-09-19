@@ -13,6 +13,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computed, reactive, ref } from "vue";
+import type { SearchSuggestion } from "~~/api/public/search";
 
 // Blocked-reader suppression (round 386, DEC-437): stub the composable so the
 // comment-search test can inject a blocked reader id and observe the hit vanish.
@@ -100,6 +101,7 @@ async function mountSearchPage({
 	commentResult = mockCommentResult,
 	commentPending = false,
 	commentError = null,
+	suggestResult = { query: "", suggestions: [] as SearchSuggestion[] },
 	taxonomy = undefined,
 	routeQuery = { q: "test query" },
 }: {
@@ -110,6 +112,8 @@ async function mountSearchPage({
 	commentResult?: typeof mockCommentResult | null;
 	commentPending?: boolean;
 	commentError?: { message: string } | null;
+	/** "Did you mean" payload (round 390, DEC-443) — only rendered on zero hits. */
+	suggestResult?: { query: string; suggestions: SearchSuggestion[] };
 	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
 	taxonomy?: { categories?: { id: number; name: string }[]; tags?: { id: number; name: string }[] };
 	routeQuery?: Record<string, string>;
@@ -151,6 +155,14 @@ async function mountSearchPage({
 					refresh: vi.fn(),
 				};
 			}
+			if (String(u).includes("/api/search/suggest")) {
+				return {
+					data: ref(suggestResult),
+					pending: ref(false),
+					error: ref(null),
+					refresh: vi.fn(),
+				};
+			}
 			return {
 				data: (searchResultRef ?? ref(searchResult)) as unknown,
 				pending: ref(pending),
@@ -168,6 +180,7 @@ async function mountSearchPage({
 			const u = String(url);
 			if (u.includes("/api/categories")) return taxonomy?.categories ?? [];
 			if (u.includes("/api/tags")) return taxonomy?.tags ?? [];
+			if (u.includes("/api/search/suggest")) return suggestResult;
 			throw new Error(`Unexpected $fetch in search test: ${u}`);
 		}),
 	);
@@ -495,6 +508,69 @@ describe("Search Page", () => {
 			// The one-click reset is offered right in the empty state, not just
 			// in the filter bar.
 			expect(wrapper.findAll("button").some((b) => b.text() === "清除筛选")).toBe(true);
+		});
+	});
+
+	describe("Did you mean suggestions (round 390, DEC-443)", () => {
+		const mockSuggestResult = {
+			query: "javascrit",
+			suggestions: [
+				{ text: "Javascript", kind: "tag", hits: 3 },
+				{ text: "响应式设计入门", kind: "post", hits: 1 },
+			],
+		};
+
+		it("renders suggestion chips on a zero-hit search", async () => {
+			const wrapper = await mountSearchPage({
+				searchResult: mockEmptyResult,
+				suggestResult: mockSuggestResult,
+			});
+			// The chips arrive via the $fetch-driven watch — one more tick for
+			// that async chain after mount's own flushPromises.
+			await flushPromises();
+			expect(wrapper.text()).toContain("你是不是想找：");
+			expect(wrapper.text()).toContain("Javascript");
+			expect(wrapper.text()).toContain("响应式设计入门");
+		});
+
+		it("hides the suggestion region when the search has results", async () => {
+			const wrapper = await mountSearchPage({
+				searchResult: mockSearchResult, // total 2 — not a dead end
+				suggestResult: mockSuggestResult,
+			});
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("你是不是想找：");
+			expect(wrapper.text()).not.toContain("Javascript");
+		});
+
+		it("hides suggestions when the backend offers none", async () => {
+			const wrapper = await mountSearchPage({
+				searchResult: mockEmptyResult,
+				suggestResult: { query: "zzzzzzzz", suggestions: [] },
+			});
+			await flushPromises();
+			expect(wrapper.text()).not.toContain("你是不是想找：");
+		});
+
+		it("tapping a suggestion re-runs the search with the corrected term", async () => {
+			// mountSearchPage stubs navigateTo with its own mock; re-stub with a
+			// fresh one AFTER mounting (same pattern as the input-handler tests)
+			// and assert on that instance.
+			const wrapper = await mountSearchPage({
+				searchResult: mockEmptyResult,
+				suggestResult: mockSuggestResult,
+			});
+			await flushPromises();
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const chip = wrapper.findAll("button").find((b) => b.text().includes("Javascript"));
+			expect(chip).toBeTruthy();
+			if (!chip) throw new Error("suggestion chip not rendered");
+			await chip.trigger("click");
+			await flushPromises();
+			expect(navMock).toHaveBeenCalledWith({
+				query: { q: "Javascript", page: "1" },
+			});
 		});
 	});
 

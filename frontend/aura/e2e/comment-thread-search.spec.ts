@@ -11,10 +11,7 @@
 
 import { expect, test } from "@playwright/test";
 
-test("searches inside a comment thread and restores it on clear", async ({
-	page,
-	request,
-}) => {
+test("searches inside a comment thread and restores it on clear", async ({ page, request }) => {
 	// Seed a unique post with three approved comments, two matching a marker.
 	const marker = `threadsearch-${Date.now()}`;
 	const title = `Thread search ${Date.now()}`;
