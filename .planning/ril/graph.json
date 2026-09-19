@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 395,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T22:35:25+00:00",
+  "updated_at": "2026-09-19T22:37:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29730,6 +29730,18 @@
       "title": "close round 395: pages.vue in-flight row actions",
       "rationale": "CHG-728 (commit cf26a4be) closed ISS-540 -> TASK-469: the static-pages CMS board was the last admin row lacking :disabled=isProcessing on its publish/unpublish + delete buttons, so a double-click could race two concurrent deletes or publish flips. Guard added (declining to disable the pure client-side edit/cancel toggle, matching the sibling pages' idiom) with a never-settles regression test. VERIFY: frontend 2411 passed (typecheck EXIT=0, biome clean); backend untouched since round-393 green (full baseline re-run follows before QUIESCE).",
       "alternatives_rejected": "Disabling edit/cancel during in-flight ops was rejected: it is a pure client-side transition (startEdit/cancelEdit) with no network call, and the five sibling admin pages keep it enabled — only network row actions are guarded. A per-row busy id like users.vue penBusy is overkill here since isProcessing already serializes every page action."
+    },
+    "DEC-452": {
+      "id": "DEC-452",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T22:37:46+00:00",
+      "updated_at": "2026-09-19T22:37:46+00:00",
+      "touched_round": 395,
+      "title": "converged-idle: quality-convergence reached (round 396)",
+      "rationale": "All five stop conditions hold. (1) No active task >= 3.0: ril.py tasks is empty - TASK-464..469 all resolved. (2) No unresolved high-severity issue: ISS-531..540 resolved; the single intentional deferral (C0 control-char redirect hardening, DEC-449) is recorded with rationale (Nuxt encodeRoutePath neutralizes it on the current stack). (3) Most-recent VERIFY green: backend 1879 passed @ 93.69% (ruff clean), frontend 2411 (typecheck EXIT=0, biome clean), graph check clean at 2478 nodes / 2411 edges. (4) Three consecutive sub-threshold deep-dive rounds: 393 (TASK-465/466/467 = 0.25/2.5/2.5), 394 (TASK-468 = 0.75), 395 (TASK-469 = 1.2) - all below the 3.0 threshold. (5) ril.py check reports graph consistent. Rounds 393-395 delivered real user-visible polish: envelope error surfacing, once-only comment fan-out, honest /liked unlike, pages.vue in-flight row-action guards. Continuing to mine sub-threshold items would repeat the round-100+ empty-spin failure mode the skill cites; converged state is the mode functioning correctly, not a defect.",
+      "alternatives_rejected": "Rejected: mining further sub-threshold polish (F3(b) already closed; per-button busy ids like users.vue penBusy on the other five pages - formalizes an already-guarded interaction); resuming deep-dive on the backend - its round-392 CRITICAL finding was proven a Python-3.14 false positive and the remaining LOWs are consciously deferred (DEC-449); opening a feature-evolution round - no operator \"功能演进已启用\" decision exists, so mode stays in quality convergence. Reactivation happens only on a fresh operator direction or a real external signal (new issue, substantive repo change); first re-activated round must re-run VERIFY to confirm the baseline is genuinely green."
     }
   },
   "edges": [
@@ -44238,6 +44250,12 @@
       "to": "DEC-450",
       "type": "supersedes",
       "created_at": "2026-09-19T22:35:25+00:00"
+    },
+    {
+      "from": "DEC-452",
+      "to": "DEC-451",
+      "type": "supersedes",
+      "created_at": "2026-09-19T22:37:46+00:00"
     }
   ]
 }
