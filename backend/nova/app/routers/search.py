@@ -14,6 +14,7 @@ from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
 from ..schemas import CommentPostBrief, CommentPublic, NonNulStr, PageInt, PostList
+from ..suggest import SUGGEST_LIMIT, suggest_terms
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
@@ -280,3 +281,28 @@ def search_comments(
             "total_pages": (total + limit - 1) // limit if limit else 0,
         },
     }
+
+
+@router.get("/suggest")
+@limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
+def search_suggest(
+    request: Request,  # noqa: ARG001
+    q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
+    limit: int = Query(SUGGEST_LIMIT, ge=1, le=6),
+    db: Session = Depends(get_db),
+):
+    """Search-term suggestions for a zero-hit query ("did you mean", round 390).
+
+    The post search is exact substring + tsvector with no fuzzy layer, so a
+    misspelled or half-remembered term ("recatvie", "响应试") dead-ends on an
+    empty page. This endpoint scores a bounded vocabulary of canonical topics
+    (tag/category names + recent public post titles) with plain Python edit
+    distance — dialect-parity-free: a CJK one-character typo scores exactly
+    like an ASCII one, and no Postgres extension is involved. The frontend
+    calls it only after the post search returned zero hits, keeping it off the
+    hot search path. Same non-blank guard, length cap, and rate-limit bucket
+    as /api/search.
+    """
+    if not q.strip():
+        raise HTTPException(status_code=422, detail="q must be a non-blank search term")
+    return {"query": q, "suggestions": suggest_terms(db, query=q, limit=limit)}
