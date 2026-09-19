@@ -363,6 +363,66 @@ def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session
         assert seen == order, f"{sort}: expected deterministic order {order}, got {seen}"
 
 
+def test_list_comments_keyword_filters_within_thread(client, post, auth_headers):
+    """A q param on the thread list narrows to matching approved comments —
+    the "search inside this thread" gap (DEC-442, TASK-452)."""
+    contents = ["Docker is the key", "An unrelated topic", "Docker compose too"]
+    ids = []
+    for content in contents:
+        created = client.post(
+            f"/api/comments/post/{post['id']}",
+            json={"nickname": "User", "email": f"u{len(ids)}@example.com", "content": content},
+        )
+        cid = created.json()["id"]
+        ids.append(cid)
+        client.patch(
+            f"/api/comments/{cid}/approve",
+            json={"approved": True},
+            headers=auth_headers,
+        )
+
+    # Unscoped list returns all three.
+    full = client.get(f"/api/comments/post/{post['id']}")
+    assert len(full.json()["items"]) == 3
+
+    # Scoped to "Docker": only the two matching rows, total reflects the filter.
+    filtered = client.get(f"/api/comments/post/{post['id']}", params={"q": "Docker"})
+    assert filtered.status_code == 200
+    items = filtered.json()["items"]
+    assert len(items) == 2
+    assert filtered.json()["total"] == 2
+    assert {c["content"] for c in items} == {"Docker is the key", "Docker compose too"}
+
+    # Case-insensitive substring: "docker" matches the same two.
+    lower = client.get(f"/api/comments/post/{post['id']}", params={"q": "docker"})
+    assert len(lower.json()["items"]) == 2
+
+    # No match is an empty result that still paginates sanely.
+    empty = client.get(f"/api/comments/post/{post['id']}", params={"q": "zzz-no-such-term"})
+    assert empty.json()["items"] == []
+    assert empty.json()["total"] == 0
+
+
+def test_list_comments_keyword_escapes_like_metacharacters(client, post, auth_headers):
+    """A q of '%' or '_' must be treated literally, not as SQL wildcards —
+    else one % returns every comment (DEC-442 follow-on, search_posts parity)."""
+    for content in ["literal percent", "literal underscore"]:
+        created = client.post(
+            f"/api/comments/post/{post['id']}",
+            json={"nickname": "User", "email": "m@example.com", "content": content},
+        )
+        client.patch(
+            f"/api/comments/{created.json()['id']}/approve",
+            json={"approved": True},
+            headers=auth_headers,
+        )
+
+    # '%' as a literal search term matches nothing (not everything).
+    response = client.get(f"/api/comments/post/{post['id']}", params={"q": "%"})
+    assert response.json()["items"] == []
+    assert response.json()["total"] == 0
+
+
 def test_delete_comment(client, post, auth_headers):
     create_response = client.post(
         f"/api/comments/post/{post['id']}",

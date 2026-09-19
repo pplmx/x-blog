@@ -948,6 +948,7 @@ def get_comments_paginated(
     page: int = 1,
     limit: int = 20,
     sort: str = "newest",
+    q: str = "",
 ) -> tuple[list[models.Comment], int]:
     """Get paginated approved comments for a post.
 
@@ -956,6 +957,12 @@ def get_comments_paginated(
     The caller is responsible for whitelisting the value before this runs;
     anything else falls back to the default newest order (DEC-094, TASK-159).
 
+    ``q`` narrows the thread to approved comments whose content contains every
+    whitespace-separated term (case-insensitive substring, DEC-442/TASK-452) —
+    the "search inside this thread" surface. LIKE metacharacters are escaped so
+    a ``%`` query matches literally (search_comments/search_posts parity); an
+    empty/whitespace q is a no-op (full thread). The caller owns length limits.
+
     Returns:
         Tuple of (comments list, total count)
     """
@@ -963,6 +970,14 @@ def get_comments_paginated(
         models.Comment.post_id == post_id,
         models.Comment.is_approved == True,  # noqa: E712
     )
+
+    q_terms = [t for t in q.strip().split() if t]
+    if q_terms:
+        # Substring AND across terms, mirroring search_comments / the CJK-safe
+        # search_posts path (DEC-084) so Chinese terms match partial runs too.
+        query = query.filter(
+            *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in q_terms]
+        )
 
     total = query.count()
     # Every sort appends id as a deterministic tiebreak: offset paging would

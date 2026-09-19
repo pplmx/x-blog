@@ -37,6 +37,10 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
+# Longest allowed search/keyword term (shared with the /search router; the
+# thread-scoped q on list_comments uses the same boundary, DEC-442).
+MAX_QUERY_LENGTH = 200
+
 # Reply-ish notification copy now lives in crud (notification_copy, DEC-340/
 # TASK-396) so the durable inbox rows + emails localize per reader; the env-
 # overridable zh constants are IMPORTED from there. The constants below remain
@@ -664,6 +668,7 @@ def list_comments(
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     sort: str = Query("newest", description="newest | oldest | likes"),
+    q: Annotated[NonNulStr | None, Query(max_length=MAX_QUERY_LENGTH)] = None,
     db: Session = Depends(get_db),
 ):
     """Get paginated approved comments for a post.
@@ -674,13 +679,21 @@ def list_comments(
     drafts/scheduled posts are 404 (same gate as create/like), so a now-draft
     post's previously approved comments are not served and the endpoint is not
     a draft-existence oracle (ISS-144).
+
+    ``q`` (optional) narrows the thread to approved comments whose content
+    contains every term — "search inside this thread" (DEC-442, TASK-452), the
+    post-scoped answer to the global comment search. Length-bounded like every
+    query surface; a whitespace-only q is rejected so it cannot degrade into a
+    match-everything ILIKE.
     """
+    if q is not None and not q.strip():
+        raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     if sort not in VALID_COMMENT_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_COMMENT_SORTS)}")
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort)
+    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort, q=q or "")
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 
     return CommentListResponse(
