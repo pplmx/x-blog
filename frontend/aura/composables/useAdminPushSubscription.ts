@@ -81,7 +81,16 @@ async function fetchAdminSubscriptions(): Promise<string[]> {
 		const res = await fetch(`${apiBase()}/api/admin/push/subscriptions`, {
 			headers: adminHeaders(),
 		});
-		if (!res.ok) return [];
+		if (!res.ok) {
+			// Session-expired/revoked admin token: route 401 → /admin/login?next=
+			// like every other admin command (transport.ts flagAdminUnauthorized)
+			// so the toggle doesn't misreport an expired session as "not
+			// subscribed" (deep-dive finding, TASK-462 class).
+			if (res.status === 401) {
+				useAdminAuth().handleAdminUnauthorized(window.location.pathname);
+			}
+			return [];
+		}
 		const data = await res.json().catch(() => null);
 		const items: Array<{ endpoint: string }> = Array.isArray(data?.items) ? data.items : [];
 		return items.map((item) => item.endpoint);
@@ -99,7 +108,14 @@ async function syncBackend(
 		headers: adminHeaders(),
 		body: JSON.stringify(subscriptionToBody(sub)),
 	});
-	if (!res.ok) throw new Error(`admin push ${path} failed (${res.status})`);
+	if (!res.ok) {
+		// Same session-expiry 401 → re-auth as fetchAdminSubscriptions: a dead
+		// admin session must not surface as a generic push toggle failure.
+		if (res.status === 401) {
+			useAdminAuth().handleAdminUnauthorized(window.location.pathname);
+		}
+		throw new Error(`admin push ${path} failed (${res.status})`);
+	}
 }
 
 /**
