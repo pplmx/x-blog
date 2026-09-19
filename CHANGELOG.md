@@ -35,8 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   requires a fresh subscribe with a fresh double-opt-in email
   (`unsubscribed_at`), and **email-change now persists before sending**, so a
   transient DB failure can't mail a verification link that can't be redeemed.
-  Backend 1879 + 10 skipped @ 93.7%, frontend 2405 unit tests, typecheck/lint/
-  migration-on-Postgres green (round 393, DEC-448).
+  And the account page's **wrong-current-password 401 is no longer mistaken for
+  a dead session** — the session-staleness detector now reads the backend's
+  `{"error":{"message"}}` envelope, so entering a wrong current password during
+  a password change/delete shows the form error instead of quietly signing you
+  out. Backend 1879 + 10 skipped @ 93.7%, frontend 2405 unit tests,
+  typecheck/lint/migration-on-Postgres green (round 393, DEC-448).
 - 🛠️ **Reader-auth polish round (round 392)**: a deep-dive across the sign-in
   surface found the auth forms were showing ofetch's **technical error strings**
   (`"[POST] ...: 401 Unauthorized"`) instead of the backend's human message — a

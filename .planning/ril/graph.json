@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 392,
+  "round": 393,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T18:41:15+00:00",
+  "updated_at": "2026-09-19T21:46:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 392,
+      "touched_round": 393,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -29437,7 +29437,7 @@
       "version": 1,
       "created_at": "2026-09-19T18:40:57+00:00",
       "updated_at": "2026-09-19T18:40:57+00:00",
-      "touched_round": 392,
+      "touched_round": 393,
       "rationale": "Round 392 reader-auth deep-dive delivered: 5 confirmed defects fixed by CHG-723 (TASK-464) - backend-envelope error messages on login/2FA/register/reset, storage-write hardening, backslash open-redirect guard, display-name maxlength cap, reset-link target. VERIFY green: frontend 2399 (+10), typecheck EXIT=0, biome clean on changed files. Backend untouched this round so backend suite/PG parity carry over from round 391.",
       "alternatives_rejected": "Search remained in round 390/391 scope; the 2FA-refresh and guest-moderation items were assessed as accepted UX, not defects (see DEC-447).",
       "title": "close round 392: reader-auth deep-dive batch"
@@ -29453,6 +29453,187 @@
       "rationale": "Three deep-dive items were reviewed and consciously NOT fixed: (a) cross-account bookmark/like merge on login is a documented trade-off of TASK-134 guest continuity (local lists push to the cloud on every login; e2e-covered), not a defect; (b) the 2FA code-step state is in-memory by design - persisting a short-lived mfa_token would widen the theft surface and the challenge re-issues on re-login, so refresh dropping back to the password form is acceptable; (c) forgot-password already distinguishes the 503 email-service-down case from generic network failure, so no change.",
       "alternatives_rejected": "Persisting the 2FA challenge token to sessionStorage: rejected for token-theft surface + the challenge is self-scoped to minutes.",
       "title": "accepted UX / documented trade-offs from the reader-auth deep-dive (bookmark-merge, 2FA refresh, forgot-password 503)"
+    },
+    "ISS-531": {
+      "id": "ISS-531",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:42:22+00:00",
+      "updated_at": "2026-09-19T21:46:05+00:00",
+      "touched_round": 393,
+      "title": "Comment submit alert leaks ofetch's technical error string (raw URL/status)",
+      "description": "createComment uses command(); the raw FetchError .message ('[POST] ...: 429 Too Many Requests' with the full internal URL) lands in the form's red alert; the localized submitFailed fallback is dead code. Fix: localized 429/403 lines + backend envelope fallback."
+    },
+    "ISS-532": {
+      "id": "ISS-532",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:42:22+00:00",
+      "updated_at": "2026-09-19T21:46:05+00:00",
+      "touched_round": 393,
+      "title": "/liked unlike optimistically drops the card when the cloud DELETE failed",
+      "description": "unlike() swallows mirror failures (offline-safe), so /liked - the SERVER's liked set - removes a card whose cloud row persists; it silently reappears next visit. Fix: unlike() reports persistence, /liked keeps the card and shows a retry notice."
+    },
+    "ISS-533": {
+      "id": "ISS-533",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:42:22+00:00",
+      "updated_at": "2026-09-19T21:46:05+00:00",
+      "touched_round": 393,
+      "title": "Pagination current-page highlight reads the lagging in-flight server value",
+      "description": "home/archive/categories/discussion mark the current page from posts.pagination.page, which lags during a refetch - clicking page 3 leaves button 1 highlighted while the URL says 3 until data lands. Fix: highlight the route-derived page."
+    },
+    "ISS-534": {
+      "id": "ISS-534",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:42:22+00:00",
+      "updated_at": "2026-09-19T21:46:05+00:00",
+      "touched_round": 393,
+      "title": "Re-approving a rejected comment re-fires the whole multi-channel fan-out",
+      "description": "approve->reject->approve: the single-approve 'before' guard only knows the immediately-prior state, so re-approving re-sends duplicate pushes/inbox rows/emails to the replied-to reader, mentions, followers and every guest subscriber. Fix: Comment.notified_at once-only stamp mirroring Post.new_post_notified_at."
+    },
+    "ISS-535": {
+      "id": "ISS-535",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:03+00:00",
+      "updated_at": "2026-09-19T21:46:06+00:00",
+      "touched_round": 393,
+      "title": "Guest weekly thread-digest echoes the subscriber's own comments",
+      "description": "collect_guest_thread_digest_deliveries includes the follower's own approved comments in the weekly summary - the per-comment channel skips self. Fix: exclude comments authored by the subscriber (by guest email or reader account email)."
+    },
+    "ISS-536": {
+      "id": "ISS-536",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:03+00:00",
+      "updated_at": "2026-09-19T21:46:06+00:00",
+      "touched_round": 393,
+      "title": "Newsletter confirm link replay after unsubscribe silently re-activates the address",
+      "description": "unsubscribe sets is_confirmed=False but keeps the token; swapping a pending/confirmed row, replaying the OLD confirm link flips it back with no fresh opt-in email. Fix: unsubscribed_at + confirm gate + re-subscribe restarts double opt-in with a fresh token."
+    },
+    "ISS-537": {
+      "id": "ISS-537",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:03+00:00",
+      "updated_at": "2026-09-19T21:46:06+00:00",
+      "touched_round": 393,
+      "title": "Email-change sends the verification email before committing",
+      "description": "request_email_change mails the token then db.commit(); a commit failure leaves the reader holding a verification link that can never be redeemed (confirm finds no reader by that token). Fix: commit before send; clear pending on send failure."
+    },
+    "ISS-538": {
+      "id": "ISS-538",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:03+00:00",
+      "updated_at": "2026-09-19T21:46:06+00:00",
+      "touched_round": 393,
+      "title": "isStaleSession reads a legacy top-level detail the envelope never has",
+      "description": "wrong-current-password 401s on /me/password and /me/account carry NO top-level detail (backends uses the error envelope), so isStaleSession returns true for them and /account signs the reader out instead of showing the form error. Fix: read the envelope error.message."
+    },
+    "TASK-465": {
+      "id": "TASK-465",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:46+00:00",
+      "updated_at": "2026-09-19T21:45:22+00:00",
+      "touched_round": 393,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Round 393 frontend UX batch: comment error surfacing, honest /liked unlike, live pagination highlight"
+    },
+    "TASK-466": {
+      "id": "TASK-466",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:46+00:00",
+      "updated_at": "2026-09-19T21:45:22+00:00",
+      "touched_round": 393,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Round 393 backend edge-case batch: once-only comment fan-out stamp, digest self-echo, newsletter re-opt-in, email-change ordering"
+    },
+    "TASK-467": {
+      "id": "TASK-467",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T21:43:46+00:00",
+      "updated_at": "2026-09-19T21:45:23+00:00",
+      "touched_round": 393,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Round 393 reader-auth 401 disambiguation: isStaleSession reads the error envelope"
+    },
+    "CHG-724": {
+      "id": "CHG-724",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T21:45:21+00:00",
+      "updated_at": "2026-09-19T21:45:21+00:00",
+      "touched_round": 393,
+      "commit": "4b180195",
+      "title": "fix(frontend): comment error surfacing, honest /liked unlike, live page highlight (TASK-465, round 393)"
+    },
+    "CHG-725": {
+      "id": "CHG-725",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T21:45:21+00:00",
+      "updated_at": "2026-09-19T21:45:21+00:00",
+      "touched_round": 393,
+      "commit": "d66f797f",
+      "title": "fix(backend): once-only comment fan-out, digest self-echo, newsletter re-opt-in, email-change ordering (TASK-466, round 393)"
+    },
+    "CHG-726": {
+      "id": "CHG-726",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T21:45:21+00:00",
+      "updated_at": "2026-09-19T21:45:21+00:00",
+      "touched_round": 393,
+      "commit": "a141bc45",
+      "title": "fix(reader): wrong-current-password 401 is not a dead session (TASK-467, round 393)"
+    },
+    "DEC-448": {
+      "id": "DEC-448",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T21:46:56+00:00",
+      "updated_at": "2026-09-19T21:46:56+00:00",
+      "touched_round": 393,
+      "rationale": "Round 393 closed: frontend usability sweep (ISS-531..533 -> CHG-724) fixed comment-submit technical error strings, the /liked false-removal contradiction, and the lagging pagination highlight; backend detail pass (ISS-534..537 -> CHG-725) made comment approval fan-out once-only (Comment.notified_at), stopped the guest weekly digest echoing a follower's own comments, gated newsletter re-activation behind a fresh double opt-in (unsubscribed_at), and moved email-change persistence before the send; ISS-538 -> CHG-726 hardened isStaleSession to read the error envelope so a wrong current password on /account no longer signs the reader out. VERIFY: backend 1879 passed @ 93.69% (ruff clean), frontend 2405 (typecheck EXIT=0, biome clean), migration k9d2e4f6a8b1 applied on live Postgres with columns verified, changed-file tests green on PG. PG digest-send flakiness observed is pre-existing/environmental (baseline red at main too).",
+      "alternatives_rejected": "The round-392 reviewer's control-character redirect residual (C0 chars like TAB/LF) was NOT added to the guard: Nuxt encodeRoutePath percent-encodes them before router resolution on the current stack, so the backslash rejection already neutralizes the live vector; hardening against raw-WHATWG parsing is a dependency-on-encoder-detail belt-and-suspenders that can wait for a future encoder change (recorded in DEC-449).",
+      "title": "close round 393: comment & consent polish"
+    },
+    "DEC-449": {
+      "id": "DEC-449",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T21:46:56+00:00",
+      "updated_at": "2026-09-19T21:46:56+00:00",
+      "touched_round": 393,
+      "rationale": "The reader-auth open-redirect guard now rejects any backslash in ?redirect= (round 392). The reviewer's residual: WHATWG omits TAB/LF/CR in the path, so '\\t/evil.com' style redirects could normalize external under a RAW WHATWG parse. On the current Nuxt 4.5.2 stack, client navigateTo -> encodeRoutePath -> encodeURI percent-encodes those control characters before vue-router parses, so the vector is neutralized ahead of the guard; accepted as belt-and-suspenders. If Nuxt/ufo ever changes that encoding, add a C0 rejection (/[\\x00-\\x20\\\\]/) or a local-path whitelist.",
+      "alternatives_rejected": "Adding the C0-control rejection now expands the redirect contract with no live exploit on this stack.",
+      "title": "accepted residual: C0 control-char redirect hardening deferred to encoder semantics"
     }
   },
   "edges": [
@@ -43733,6 +43914,174 @@
       "to": "DEC-445",
       "type": "supersedes",
       "created_at": "2026-09-19T18:41:15+00:00"
+    },
+    {
+      "from": "TASK-465",
+      "to": "ISS-531",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-465",
+      "to": "ISS-532",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-465",
+      "to": "ISS-533",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-466",
+      "to": "ISS-534",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-466",
+      "to": "ISS-535",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-466",
+      "to": "ISS-536",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:27+00:00"
+    },
+    {
+      "from": "TASK-466",
+      "to": "ISS-537",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "TASK-467",
+      "to": "ISS-538",
+      "type": "addresses",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-531",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-532",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-533",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-534",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-535",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-536",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-537",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:28+00:00"
+    },
+    {
+      "from": "ISS-538",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T21:44:29+00:00"
+    },
+    {
+      "from": "CHG-724",
+      "to": "TASK-465",
+      "type": "implements",
+      "created_at": "2026-09-19T21:45:21+00:00"
+    },
+    {
+      "from": "CHG-725",
+      "to": "TASK-466",
+      "type": "implements",
+      "created_at": "2026-09-19T21:45:21+00:00"
+    },
+    {
+      "from": "CHG-726",
+      "to": "TASK-467",
+      "type": "implements",
+      "created_at": "2026-09-19T21:45:22+00:00"
+    },
+    {
+      "from": "CHG-724",
+      "to": "ISS-531",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:04+00:00"
+    },
+    {
+      "from": "CHG-724",
+      "to": "ISS-532",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:04+00:00"
+    },
+    {
+      "from": "CHG-724",
+      "to": "ISS-533",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:04+00:00"
+    },
+    {
+      "from": "CHG-725",
+      "to": "ISS-534",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:05+00:00"
+    },
+    {
+      "from": "CHG-725",
+      "to": "ISS-535",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:05+00:00"
+    },
+    {
+      "from": "CHG-725",
+      "to": "ISS-536",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:05+00:00"
+    },
+    {
+      "from": "CHG-725",
+      "to": "ISS-537",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:05+00:00"
+    },
+    {
+      "from": "CHG-726",
+      "to": "ISS-538",
+      "type": "resolves",
+      "created_at": "2026-09-19T21:46:05+00:00"
+    },
+    {
+      "from": "DEC-448",
+      "to": "DEC-446",
+      "type": "supersedes",
+      "created_at": "2026-09-19T21:46:56+00:00"
     }
   ]
 }
