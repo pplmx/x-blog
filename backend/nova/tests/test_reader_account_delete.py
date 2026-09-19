@@ -17,15 +17,19 @@ import pytest
 
 from app.auth import ReaderAccount
 from app.models import (
+    AuthorFollow,
     BookmarkFolder,
     CategoryFollow,
     Comment,
     CommentSubscription,
     Post,
     PushSubscription,
+    ReaderBlock,
     ReaderBookmark,
+    ReaderFollow,
     ReaderNotification,
     ReaderNotificationPref,
+    ReaderPostLike,
     ReadingHistory,
     SeriesFollow,
     TagFollow,
@@ -61,10 +65,19 @@ def _seed_side_data(db, reader_id: int, post_id: int):
     db.add(CategoryFollow(reader_id=reader_id, category_id=1))
     db.add(TagFollow(reader_id=reader_id, tag_id=1))
     db.add(SeriesFollow(reader_id=reader_id, series_id=1))
+    db.add(AuthorFollow(reader_id=reader_id, author_id=1))
     folder = BookmarkFolder(reader_id=reader_id, name="Saved")
     db.add(folder)
     db.flush()
     db.add(ReaderBookmark(reader_id=reader_id, post_id=post_id, folder_id=folder.id))
+    db.add(ReaderPostLike(reader_id=reader_id, post_id=post_id))
+    db.add(ReaderFollow(reader_id=reader_id, followed_id=99))
+    # A row where ANOTHER reader follows the deleted one (the followed_id
+    # direction): must also be reaped, else a recycled id (SQLite no
+    # AUTOINCREMENT) would graft a stranger onto another reader's follow list.
+    db.add(ReaderFollow(reader_id=99, followed_id=reader_id))
+    db.add(ReaderBlock(blocker_id=reader_id, blocked_id=99))
+    db.add(ReaderBlock(blocker_id=99, blocked_id=reader_id))
     db.add(ReadingHistory(reader_id=reader_id, post_id=post_id))
     db.add(CommentSubscription(reader_id=reader_id, post_id=post_id))
     db.add(
@@ -150,13 +163,20 @@ def test_delete_totally_removes_the_reader_and_anonymizes_comments(client, db_se
     me = client.get("/api/reader/me", headers=headers)
     assert me.status_code == 401
 
-    # Every reader-scoped row is removed.
+    # Every reader-scoped row is removed — including the tables the original
+    # deletion deep-dive missed (post likes, author follows, reader follows and
+    # blocks in both directions), so a recycled id can't leak data or graft a
+    # relationship onto a future account (SQLite, no AUTOINCREMENT).
     for model in (
         CategoryFollow,
         TagFollow,
         SeriesFollow,
+        AuthorFollow,
         BookmarkFolder,
         ReaderBookmark,
+        ReaderPostLike,
+        ReaderFollow,
+        ReaderBlock,
         ReadingHistory,
         CommentSubscription,
         ReaderNotification,

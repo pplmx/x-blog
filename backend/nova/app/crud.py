@@ -4503,10 +4503,15 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
         synchronize_session=False
     )
     # Account-private rows the old deletion missed (backend deep-dive): category/
-    # tag/series follows, bookmark folders, reading history, and notification
-    # prefs. Left behind, they kept pointing at the deleted reader_id — and on
-    # SQLite (no AUTOINCREMENT) a future account could inherit the recycled id
-    # with another reader's history/follows/folders (data leak between accounts).
+    # tag/series follows, bookmark folders, reading history, notification prefs,
+    # post likes, author follows, and both directions of reader-to-reader
+    # follow/block. Left behind, they kept pointing at the deleted reader_id —
+    # and on SQLite (no AUTOINCREMENT) a future account could inherit the
+    # recycled id with another reader's history/follows/likes (data leak between
+    # accounts). ReaderFollow/ReaderBlock are cleaned in BOTH directions: the
+    # deleted reader's own rows go, and other readers' rows that referenced them
+    # (followed_id/blocked_id) go too, so a recycled id can't silently graft
+    # someone else's relationship onto a new account.
     for model in (
         models.CategoryFollow,
         models.TagFollow,
@@ -4514,8 +4519,17 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
         models.BookmarkFolder,
         models.ReadingHistory,
         models.ReaderNotificationPref,
+        models.ReaderPostLike,
+        models.AuthorFollow,
     ):
         db.query(model).filter(model.reader_id == reader_id).delete(synchronize_session=False)
+    for model, col in (
+        (models.ReaderFollow, models.ReaderFollow.reader_id),
+        (models.ReaderFollow, models.ReaderFollow.followed_id),
+        (models.ReaderBlock, models.ReaderBlock.blocker_id),
+        (models.ReaderBlock, models.ReaderBlock.blocked_id),
+    ):
+        db.query(model).filter(col == reader_id).delete(synchronize_session=False)
     db.delete(reader)
     try:
         db.commit()
