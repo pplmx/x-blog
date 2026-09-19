@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Bug-fix & polish round (round 391)**: five verified defects fixed across
+  the stack. **Account deletion now truly total**: `delete_reader_account` left
+  post-likes, author-follows and both directions of reader follows/blocks
+  behind, so on SQLite (no AUTOINCREMENT) a future account could inherit a
+  recycled id with another reader's data or a grafted relationship — these rows
+  are now reaped too. **Reply-notification deep-links land on the new reply**
+  instead of your own parent comment (the promised "tap and get taken to the
+  reply" of DEC-072 was pointing at the wrong anchor). **Upload storage
+  directory** is keyed on the same naive-UTC clock the media library uses, so a
+  non-UTC server can no longer write files a month ahead of their listed
+  timestamp. On **search**, a zero-hit comments-mode query no longer says
+  "adjust your filters" with a dead "clear all" button (the search mode was
+  miscounted as a filter), and **"did you mean" chips refresh when you correct
+  one typo into another** instead of lingering on the old term. Backend 1873 + 10
+  skipped, frontend 2387 unit tests, typecheck/lint all green (round 391,
+  DEC-444).
 - 💡 **"Did you mean" search suggestions (round 390)**: the post search is
   exact substring + tsvector with no fuzzy layer, so a misspelled or
   half-remembered query ("recatvie", a CJK typo like 异步编程实贱) dead-ends on
