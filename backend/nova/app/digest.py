@@ -240,7 +240,31 @@ def collect_guest_thread_digest_deliveries(
         )
         if not comments:
             continue
-        out.append((sub, window_start, comments))
+        # A confirmed follower who also commented this week must not have their
+        # own comments replayed back at them: the digest summarizes "what
+        # happened on this thread", and their own words are already on their
+        # screen. Same self-exclusion the per-comment channel makes —
+        # _notify_guest_thread_subscribers skips the commenter's email (round
+        # 393; a subscriber-with-own-comment used to get them echoed weekly).
+        sub_email = sub.email.strip().casefold()
+        reader_ids = {c.reader_id for c in comments if c.reader_id is not None}
+        account_emails: dict[int, str | None] = {}
+        if reader_ids:
+            account_emails = {
+                acc.id: acc.email.strip().casefold() if acc.email else None
+                for acc in db.query(ReaderAccount).filter(ReaderAccount.id.in_(reader_ids)).all()
+            }
+        own_ids = set()
+        for c in comments:
+            if (c.email and c.email.strip().casefold() == sub_email) or (
+                c.reader_id is not None and account_emails.get(c.reader_id) == sub_email
+            ):
+                own_ids.add(c.id)
+
+        visible = [c for c in comments if c.id not in own_ids]
+        if not visible:
+            continue
+        out.append((sub, window_start, visible))
     return out
 
 

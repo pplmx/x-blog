@@ -298,6 +298,13 @@ class Comment(Base):
     # distinguishes "still pending" from "reviewed and rejected" for the
     # author's comment-history status (DEC-066, TASK-139).
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # When the comment's multi-channel approval fan-out first ran (round 393).
+    # Mirrors Post.new_post_notified_at: a comment that was EVER public already
+    # notified its subscribers, so a moderator rejecting and re-approving it
+    # (approve → reject → approve) must not re-fire duplicate pushes/inbox rows/
+    # emails — `reviewed_at` only tracks the immediately-prior state, this stamp
+    # tracks "already public once". Additive per DEC-009.
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # When the reader-author last edited their own comment (DEC-096, TASK-160).
     # Null = never edited; set by PATCH /api/reader/me/comments/{id}. Additive.
     edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -1072,6 +1079,12 @@ class NewsletterSubscriber(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # When the address was last cancelled via an unsubscribe link (round 393).
+    # After an unsubscribe the same token must NOT silently re-activate the
+    # address — a replay of the old confirm link is a consent restart, gated by
+    # a real re-subscribe (fresh token + fresh double-opt-in email). Null =
+    # never unsubscribed. Additive per DEC-009.
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Weekly-digest cadence (DEC-355, TASK-403): opt-in — a subscriber who
     # prefers one weekly summary to per-post mail flips ``digest_weekly`` (the
     # default stays per-post, mirroring ``ReaderNotificationPref``).

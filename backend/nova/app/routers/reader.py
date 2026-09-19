@@ -1214,11 +1214,27 @@ def request_email_change(
     current_reader.email_change_token = token
     current_reader.email_change_pending = new_email
     current_reader.email_change_requested_at = crud.utc_now_naive()
+    # Persist BEFORE sending (round 393): an email sent in front of an
+    # uncommitted token leaves the reader holding a dead link if the commit
+    # then fails (transient DB error) — the confirm step would find no row by
+    # that token. On a send failure the just-persisted pending row is cleared
+    # again (best-effort), so the "nothing staged on failure" guarantee holds
+    # as before; a stale row that slips through self-expires via the
+    # EMAIL_CHANGE_TTL_MINUTES and is overwritten on the next re-request.
+    db.commit()
+
+    def _clear_pending() -> None:
+        current_reader.email_change_token = None
+        current_reader.email_change_pending = None
+        current_reader.email_change_requested_at = None
+        db.commit()
+
     try:
         accepted = emailer.send_email_change_email(new_email, token)
         if not accepted:
-            # RFC-level refusal (e.g. the address provably bounces): the change
-            # cannot complete without the mail, so nothing is persisted.
+            # RFC-level refusal (e.g. the address provably bounces): nothing
+            # staged, exactly as before the reorder.
+            _clear_pending()
             raise HTTPException(
                 status_code=503,
                 detail="Could not send the verification email, please try again later",
@@ -1227,11 +1243,14 @@ def request_email_change(
         raise
     except Exception:
         logger.exception("email-change verification send raised")
+        try:
+            _clear_pending()
+        except Exception:  # noqa: BLE001 — never mask the primary 503
+            db.rollback()
         raise HTTPException(
             status_code=503,
             detail="Could not send the verification email, please try again later",
         ) from None
-    db.commit()
     return {"message": "A verification link is on its way to the new address"}
 
 

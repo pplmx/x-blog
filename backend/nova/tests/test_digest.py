@@ -388,6 +388,118 @@ class TestNewsletterDigest:
         assert not any(m["To"] == "pending@example.com" for m in smtp_sink.sent)
 
 
+class TestGuestThreadDigestExcludesOwn:
+    """The guest-thread weekly digest (DEC-429) must not echo a follower's OWN
+    comments back at them — the same self-exclusion the per-comment channel
+    makes (round 393; a subscriber who comments this week used to be mailed a
+    digest listing their own words)."""
+
+    def _guest_digest_sub(self, db, email, post_id) -> int:
+        from secrets import token_urlsafe
+
+        row = models.GuestCommentSubscription(
+            email=email,
+            post_id=post_id,
+            token=token_urlsafe(32),
+            is_confirmed=True,
+            digest_weekly=True,
+            confirmed_at=datetime.now(),
+        )
+        db.add(row)
+        db.flush()
+        return row.id
+
+    def test_own_guest_comment_is_excluded_from_the_digest(self, db_session):
+        post = _make_post(db_session, "Thread", "thread")
+        sub_id = self._guest_digest_sub(db_session, "guest@example.com", post.id)
+        # The subscriber's own approved comment lands inside the window.
+        db_session.add(
+            models.Comment(
+                post_id=post.id,
+                nickname="Me",
+                email="guest@example.com",
+                content="my own comment",
+                is_approved=True,
+            )
+        )
+        # Another reader's comment IS digest-worthy.
+        db_session.add(
+            models.Comment(
+                post_id=post.id,
+                nickname="Other",
+                email="other@example.com",
+                content="someone else's comment",
+                is_approved=True,
+            )
+        )
+        db_session.commit()
+
+        from app.digest import collect_guest_thread_digest_deliveries
+
+        rows = collect_guest_thread_digest_deliveries(db_session, datetime.now())
+        assert [sub for sub, _, _ in rows] == [db_session.get(models.GuestCommentSubscription, sub_id)]
+        _, _, comments = rows[0]
+        # Only the other reader's comment is summarized; the follower's own is
+        # never echoed back at them.
+        assert [c.content for c in comments] == ["someone else's comment"]
+
+    def test_own_reader_comment_is_excluded_via_the_account_email(self, db_session):
+        # A signed-in reader who comments under their account (Comment.email is
+        # None for reader comments) and also subscribes as a guest with the same
+        # address must not have their own comment echoed either.
+        post = _make_post(db_session, "Thread", "thread")
+        self._guest_digest_sub(db_session, "reader@example.com", post.id)
+        reader = ReaderAccount(
+            email="reader@example.com",
+            password="x",
+            display_name="Reader",
+        )
+        db_session.add(reader)
+        db_session.flush()
+        db_session.add(
+            models.Comment(
+                post_id=post.id,
+                nickname="Reader",
+                email=None,
+                reader_id=reader.id,
+                content="reader's own comment",
+                is_approved=True,
+            )
+        )
+        db_session.commit()
+
+        from app.digest import collect_guest_thread_digest_deliveries
+
+        rows = collect_guest_thread_digest_deliveries(db_session, datetime.now())
+        # No other comments exist — the follower's own is the only one, so no
+        # digest row at all (nothing to summarize).
+        assert rows == []
+
+    def test_digest_delivery_excludes_own_comment_end_to_end(self, db_session, smtp_sink):
+        # The full weekly job: the follower's own comment alone yields NO digest
+        # email; an added third-party comment makes one arrive without echoing
+        # the follower's own words.
+        post = _make_post(db_session, "Thread", "thread")
+        self._guest_digest_sub(db_session, "guest@example.com", post.id)
+        db_session.add(
+            models.Comment(
+                post_id=post.id,
+                nickname="Me",
+                email="guest@example.com",
+                content="my own words",
+                is_approved=True,
+            )
+        )
+        db_session.commit()
+
+        from app.digest import send_weekly_digest
+
+        # The subscriber IS a digest candidate (confirmed + weekly + in window
+        # by date) but its only comment is its own → no message is mailed.
+        send_weekly_digest(db_session)
+        assert not any(m["To"] == "guest@example.com" for m in smtp_sink.sent)
+
+
 class TestBuilder:
     def _msg(self, **kw) -> EmailMessage:
         now = datetime(2026, 8, 28, 12, 0, 0)

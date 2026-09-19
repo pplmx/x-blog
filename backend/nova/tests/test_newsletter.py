@@ -352,6 +352,57 @@ def test_unsubscribe_stops_new_post_emails(client, db_session, smtp_sink):
     assert len(smtp_sink.sent) == before
 
 
+def test_confirm_replay_after_unsubscribe_does_not_reactivate(client, db_session, smtp_sink):
+    """Round-393 consent gate: replaying the OLD confirmation link after an
+    unsubscribe must NOT silently re-activate the address with no fresh opt-in
+    — the holder explicitly cancelled it, so reactivation restarts via a fresh
+    subscribe + fresh double-opt-in email."""
+    client.post("/api/newsletter/subscribe", json={"email": "replay@example.com"})
+    token = _confirm_token(smtp_sink, "replay@example.com")
+    assert client.post("/api/newsletter/confirm", json={"token": token}).status_code == 200
+    assert client.post("/api/newsletter/unsubscribe", json={"token": token}).status_code == 200
+
+    # The SAME confirmation link, replayed after the cancellation.
+    r = client.post("/api/newsletter/confirm", json={"token": token})
+    assert r.status_code == 400
+    sub = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "replay@example.com")
+        .first()
+    )
+    assert sub.is_confirmed is False
+    assert sub.unsubscribed_at is not None
+
+
+def test_resubscribe_after_unsubscribe_restarts_double_opt_in(client, db_session, smtp_sink):
+    """A cancelled address that subscribes again starts over properly: the token
+    rotates, a FRESH confirmation email is sent, and the address stays
+    inactive until the NEW token is confirmed — the old link can no longer
+    activate anything."""
+    client.post("/api/newsletter/subscribe", json={"email": "freshstart@example.com"})
+    old = _confirm_token(smtp_sink, "freshstart@example.com")
+    assert client.post("/api/newsletter/confirm", json={"token": old}).status_code == 200
+    assert client.post("/api/newsletter/unsubscribe", json={"token": old}).status_code == 200
+
+    # Resubscribe the same address: a second confirmation email is sent.
+    before = len(_all_messages_to(smtp_sink, "freshstart@example.com"))
+    client.post("/api/newsletter/subscribe", json={"email": "freshstart@example.com"})
+    assert len(_all_messages_to(smtp_sink, "freshstart@example.com")) == before + 1
+
+    sub = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "freshstart@example.com")
+        .first()
+    )
+    assert sub.token != old
+    assert sub.is_confirmed is False
+    assert sub.unsubscribed_at is None
+
+    # The rotated-away OLD token is dead; the fresh token activates the address.
+    assert client.post("/api/newsletter/confirm", json={"token": old}).status_code == 404
+    assert client.post("/api/newsletter/confirm", json={"token": sub.token}).status_code == 200
+
+
 def test_newline_in_title_does_not_break_publish(client, db_session, smtp_sink):
     """A post title containing a line break must not make the newsletter
     fan-out raise (the email library rejects CR/LF in headers). The publish —

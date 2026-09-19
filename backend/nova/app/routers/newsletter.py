@@ -88,11 +88,14 @@ def newsletter_subscribe(
     rows can ever be created.
 
     Anti-abuse (security review): the confirmation email fires ONLY when a NEW
-    row is created. A resubscribed address (pending or confirmed) is never
-    re-emailed, so a single attacker cannot turn each of N subscribe calls into
-    N outbound mails to a victim address — the unauthenticated entry is also on
-    a dedicated tight per-IP bucket (``RATE_LIMIT_NEWSLETTER``), not the looser
-    write bucket.
+    row is created or an explicitly UNSUBSCRIBED one re-subscribes. A pending or
+    confirmed address is never re-emailed, so a single attacker cannot turn
+    each of N subscribe calls into N outbound mails to a victim address — the
+    unauthenticated entry is also on a dedicated tight per-IP bucket
+    (``RATE_LIMIT_NEWSLETTER``), not the looser write bucket. The unsubscribed
+    re-subscribe branch is required consent semantics (round 393): reactivation
+    needs a FRESH double-opt-in, never a replay of the cancelled address's old
+    confirmation link.
     """
     email = body.email.strip().lower()
 
@@ -127,6 +130,23 @@ def newsletter_subscribe(
                 send_newsletter_confirm_email(email, row.token)
             except Exception:  # noqa: BLE001
                 logger.exception("newsletter confirmation email failed for %s", email)
+    elif row.unsubscribed_at is not None:
+        # A deliberately cancelled address re-subscribes the RIGHT way: a fresh
+        # token + a fresh double-opt-in email, so replaying the old confirmation
+        # link can never silently flip it back to subscribed (round 393). The
+        # anti-abuse guarantee is unchanged for pending/confirmed rows (which
+        # still take the no-op path) and the tight per-IP bucket still applies.
+        row.is_confirmed = False
+        row.confirmed_at = None
+        row.unsubscribed_at = None
+        row.digest_weekly = body.digest_weekly
+        row.token = token_urlsafe(32)
+        db.commit()
+        db.refresh(row)
+        try:
+            send_newsletter_confirm_email(email, row.token)
+        except Exception:  # noqa: BLE001
+            logger.exception("newsletter confirmation email failed for %s", email)
     return {"subscribed": True, "message": "If this email is new, a confirmation link is on its way"}
 
 
@@ -146,6 +166,17 @@ def newsletter_confirm(
     if row is None:
         raise HTTPException(status_code=404, detail="Invalid token")
     if not row.is_confirmed:
+        # Consent restart gate (round 393): an address that was explicitly
+        # unsubscribed must NOT be re-activated by replaying its OLD
+        # confirmation link with no fresh opt-in email — the holder cancelled
+        # it, and re-activation starts over via subscribe (fresh token + fresh
+        # confirmation mail). Only a pending (never-confirmed) address confirms
+        # straight out of its original email.
+        if row.unsubscribed_at is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="This address was unsubscribed. Please subscribe again to reactivate",
+            )
         row.is_confirmed = True
         row.confirmed_at = utc_now_naive()
         db.commit()
@@ -175,6 +206,10 @@ def newsletter_unsubscribe(
     if row.is_confirmed:
         row.is_confirmed = False
         row.confirmed_at = None
+        # Round 393: record the cancellation so replaying the OLD confirmation
+        # link cannot silently re-activate the address (re-activation requires a
+        # fresh subscribe + fresh double-opt-in email).
+        row.unsubscribed_at = utc_now_naive()
         db.commit()
     return {"unsubscribed": True}
 

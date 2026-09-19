@@ -215,6 +215,35 @@ class TestThreadFanout:
             _approve(client, created.json()["id"], auth_headers=auth_headers)
             assert not mock_send.called
 
+    def test_reapprove_after_reject_does_not_refire_fanout(self, client, db_session, auth_headers):
+        """approve → reject → approve must fire the multi-channel fan-out exactly
+        ONCE. The comment was already public, so re-approving it (content
+        unchanged) must not re-send a push the subscriber already got — the
+        routers' `before` guard only knows the immediately-prior state, so this
+        regression is what Comment.notified_at pins down (round 393)."""
+        from app import models
+
+        post = self._post(client, db_session)
+        token_a = _token(client, email=f"fan-a{self._COUNTER}@example.com", display_name="A")
+        _subscribe(client, endpoint=f"https://fcm.example.com/a{self._COUNTER}", headers=_auth(token_a))
+        _follow(client, post.id, token_a)
+        created = _comment(client, post.id)
+        comment_id = created.json()["id"]
+
+        with patch("app.webpush.send_push") as mock_send:
+            assert _approve(client, comment_id, auth_headers=auth_headers).status_code == 200
+            assert len(mock_send.call_args_list) == 1
+            # Reject, then approve again — subscriber A saw the first push, the
+            # fan-out must not re-fire for the unchanged content.
+            assert _approve(client, comment_id, approved=False, auth_headers=auth_headers).status_code == 200
+            assert _approve(client, comment_id, auth_headers=auth_headers).status_code == 200
+            assert len(mock_send.call_args_list) == 1
+
+        # The once-only stamp is persisted: the comment knows it was already
+        # public, so any later re-approve (or the admin batch path) no-ops.
+        stamp = db_session.get(models.Comment, comment_id)
+        assert stamp is not None and stamp.notified_at is not None
+
     def test_reply_dispatches_single_push_per_parent_reader(self, client, db_session, auth_headers):
         """A replied-to reader who ALSO follows the thread gets exactly one push
         (the targeted reply notification), not a second thread-follow push."""

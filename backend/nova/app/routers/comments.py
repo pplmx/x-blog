@@ -13,6 +13,7 @@ from app.crud import (
     THREAD_NOTIF_BODY,
     THREAD_NOTIF_TITLE,
     notification_copy,
+    utc_now_naive,
 )
 from app.database import get_db
 from app.emailer import (
@@ -325,7 +326,23 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     path (DEC-098, TASK-161): a reply notifies the replied-to reader, then the
     thread's followers. Best-effort — never fails the approve, mirroring the
     existing approve_comment guarantees (DEC-064/072/078).
+
+    Once-only (round 393): the fan-out runs at most once per comment, stamped in
+    ``Comment.notified_at`` (mirroring Post.new_post_notified_at). ``reviewed_at``
+    (the routers' ``before`` guard) only knows the immediately-prior state, so a
+    moderator rejecting and re-approving a comment — approve → reject → approve —
+    would otherwise fire the whole multi-channel fan-out AGAIN: duplicate pushes,
+    duplicate durable inbox rows and duplicate emails to the replied-to reader,
+    @-mentions, followers and every guest thread subscriber, for content that
+    hasn't changed. Claim the stamp (and commit it) before any channel work, so a
+    concurrent re-approve sees it. All call sites are post-commit for their own
+    write, so the mid-function commit is safe.
     """
+    if comment.notified_at is not None:
+        return
+    comment.notified_at = utc_now_naive()
+    db.commit()
+    db.refresh(comment)
     post = db.get(models.Post, comment.post_id)
     parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
 
