@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 391,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T15:05:09+00:00",
+  "updated_at": "2026-09-19T15:39:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29184,6 +29184,30 @@
       "title": "Round 391: quality-convergence deep-dive — 5 verified defects fixed (account-deletion leak, reply deep-link, upload TZ, search empty-state, stale suggesions)",
       "rationale": "Operator directive: detail optimization / bug-fix / polish / usability mode. Two parallel read-only deep-dive agents (backend + frontend) plus manual verification surfaced 5 concrete defects: (1) TASK-454 ISS-517 delete_reader_account leaked ReaderPostLike/AuthorFollow/ReaderFollow/ReaderBlock rows -> id-recycle data leak on SQLite (the agent's claimed #1 'backend won't compile' was a FALSE POSITIVE — bare-comma except tuples are valid Python 3.14 syntax, verified against the 3.14.5 venv, matching memory note python314-except-comma-syntax); (2) TASK-455 ISS-518 reply notifications deep-linked to the parent comment, contradicting DEC-072 acceptance 'scrolled to the reply it mentions'; (3) TASK-456 ISS-519 upload dir used server-local time vs naive-UTC media mtime; (4) TASK-457 ISS-520 comments-mode zero-hit search showed 'adjust your filters' + a dead Clear-all (mode counted as a filter); (5) TASK-458 ISS-521 stale did-you-mean chips across consecutive zero-hit terms (transition-only watcher). All fixed + tests: backend 1873 @93.70%, frontend 2387, typecheck + ruff + biome clean.",
       "alternatives_rejected": "Re-litigating DEC-004 per-process cache staleness (ISS-242, accepted trade-off); typo-tolerant ranking search (deferred behind the did-you-mean arc per DEC-443); any UI/UX refactors beyond the two verified search.vue defects."
+    },
+    "TASK-459": {
+      "id": "TASK-459",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:38:41+00:00",
+      "updated_at": "2026-09-19T15:39:09+00:00",
+      "touched_round": 391,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "search-filters e2e asserts raw created_at for newest/oldest but search sorts by effective publish time",
+      "summary": "e2e/search-filters.spec.ts 'sort orders are applied deterministically' asserted monotonic raw created_at for sort=newest/oldest, but search_posts orders by effective publish time (publish_at else created_at, DEC-238). A seeded scheduled post that passes its publish date ranks by its newer effective time over its older draft created_at, breaking the naive assertion. Fresh CI seeds kept the post in the future and hid the flaw. Fixed the spec to assert the documented key and to verify the oldest order too."
+    },
+    "CHG-720": {
+      "id": "CHG-720",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:38:41+00:00",
+      "updated_at": "2026-09-19T15:38:41+00:00",
+      "touched_round": 391,
+      "commit": "4748b0f4",
+      "title": "test(e2e): search-filters sort assertion uses effective publish time key"
     }
   },
   "edges": [
@@ -43272,6 +43296,12 @@
       "to": "COMP-001",
       "type": "located_in",
       "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "CHG-720",
+      "to": "TASK-459",
+      "type": "implements",
+      "created_at": "2026-09-19T15:39:09+00:00"
     }
   ]
 }
