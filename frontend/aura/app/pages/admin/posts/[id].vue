@@ -683,6 +683,13 @@ async function handleSubmit(e: Event) {
 // set), so a mis-clicked save never silently persists accidental changes.
 const discardRequested = ref(false);
 function handleCancel() {
+	// Cancel now confirms before discarding unsaved edits, matching the
+	// restore-revision and route-leave guards on the same destructive class
+	// (deep-dive finding): the Cancel button sits directly beside Save, so a
+	// dirty form with autosave failing silently lost every keystroke on click.
+	if (isDirty.value && typeof window.confirm === "function") {
+		if (!window.confirm(t("admin.postEdit.confirmDiscard"))) return;
+	}
 	discardRequested.value = true;
 	// Mark the leave BEFORE navigating — same flag the autosave bridge checks.
 	// Without it, an in-flight autosave (create) that completes after Cancel's
@@ -701,7 +708,15 @@ const isScheduledFuture = computed(() => {
 	return !Number.isNaN(d.getTime()) && d.getTime() > Date.now();
 });
 
-/** Broadcast a Web Push notification about this published post (DEC-055). */
+/**
+ * Broadcast a Web Push notification about this published post (DEC-055).
+ *
+ * The push must carry the PERSISTED post, not the live form: an unsaved
+ * title/body edit would be broadcast to every subscriber, and an unsaved slug
+ * would deep-link to /posts/{new-slug} that 404s server-side because the slug
+ * was never saved. When the form is dirty, flush it through the autosave
+ * pipeline first and only broadcast if the save actually landed (deep-dive).
+ */
 async function handleNotify() {
 	if (!formData.value.published) return;
 	notifyMessage.value = null;
@@ -711,6 +726,22 @@ async function handleNotify() {
 		notifyFailed.value = true;
 		notifyMessage.value = t("admin.postEdit.notifyRequiresSlug");
 		return;
+	}
+	// Flush unsaved edits BEFORE broadcasting: a notify is a broadcast to every
+	// subscriber, so it must never send the in-memory draft (unsaved title/body
+	// or a slug that has not been persisted — the push would deep-link to a 404).
+	if (isDirty.value) {
+		if ((autosaveInFlight || autosaveQueued) && (postId ?? autosavedId) === null) {
+			await waitForAutosaveIdle();
+		}
+		await runAutosave();
+		if (isDirty.value) {
+			// The flush didn't land (network blip / 422) — notifying now would
+			// broadcast unsaved content. Refuse and surface the failure instead.
+			notifyFailed.value = true;
+			notifyMessage.value = t("admin.postEdit.notifyRequiresSave");
+			return;
+		}
 	}
 	isNotifying.value = true;
 	try {

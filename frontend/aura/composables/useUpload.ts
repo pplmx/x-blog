@@ -39,6 +39,14 @@ export function useUpload() {
 			});
 
 			if (!res.ok) {
+				// Session-expired/revoked admin token: every other admin command
+				// route 401 → /admin/login?next= through transport.ts's
+				// flagAdminUnauthorized. A RAW fetch here skipped that, stranding
+				// the operator on the editor with a generic "Upload failed (401)"
+				// and no path back to re-auth (deep-dive finding).
+				if (res.status === 401) {
+					useAdminAuth().handleAdminUnauthorized(window.location.pathname);
+				}
 				const detail = await res.json().catch(() => ({}));
 				throw new Error(detail?.detail || `Upload failed (${res.status})`);
 			}

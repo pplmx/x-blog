@@ -10,7 +10,7 @@
 import { useAdminAuth } from "~~/composables/useAdminAuth";
 import { useTheme } from "~~/composables/useTheme";
 
-const { isAuthenticated, logout } = useAdminAuth();
+const { isAuthenticated, logout, handleAdminUnauthorized } = useAdminAuth();
 const { t } = useLang();
 const route = useRoute();
 // Theme is a shared singleton (useTheme) so the admin UI applies the reader's
@@ -208,6 +208,13 @@ async function handleChangePassword() {
 			}),
 		});
 		if (!res.ok) {
+			// Session-expired/revoked token: route 401 → /admin/login?next= like
+			// every other admin command (transport.ts flagAdminUnauthorized), so
+			// the operator isn't stranded on the layout with a dead password form
+			// (deep-dive finding).
+			if (res.status === 401) {
+				handleAdminUnauthorized(window.location.pathname);
+			}
 			const data = await res.json();
 			throw new Error(data?.detail || "Failed to change password");
 		}

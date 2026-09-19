@@ -76,6 +76,7 @@
 		"taxonomyLoadFailed": "分类/标签/系列加载失败，选择器可能不完整。",
 		"scheduledBadge": "定时发布",
 		"notifyRequiresSlug": "请先保存文章以生成 slug，再通知订阅者。",
+		"notifyRequiresSave": "有未保存的修改且保存未成功，请先保存文章再通知订阅者。",
 		"saveSuccess": "已保存",
 		"readingTrend": {
 			"title": "阅读趋势（30 天）",

@@ -1386,12 +1386,14 @@ describe("Admin Post Editor Page", () => {
 			expect(decided).toBe(true);
 		});
 
-		it("skips the leave guard after Cancel explicitly requested a discard", async () => {
-			// Cancel abandons in-memory edits by design: once discardRequested is
-			// set the route-leave guard must NOT flush or prompt, even when the
-			// form is dirty — a mis-clicked save must never silently persist.
+		it("Cancel on a dirty form confirms before discarding (declining aborts)", async () => {
+			// Cancel on a dirty form now prompts (same confirm as the restore-
+			// revision and route-leave guards): the button sits directly beside
+			// Save, so a dirty form with failing autosave silently lost every
+			// keystroke on click before. Declining aborts the discard.
 			const wrapper = await freshGuard();
-			vi.stubGlobal("navigateTo", vi.fn());
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
 			vi.stubGlobal(
 				"confirm",
 				vi.fn(() => false),
@@ -1403,9 +1405,25 @@ describe("Admin Post Editor Page", () => {
 			await cancelBtn?.trigger("click");
 			await flushPromises();
 
-			const decided = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
+			expect(globalThis.confirm as ReturnType<typeof vi.fn>).toHaveBeenCalled();
+			// Declined → no navigation, no discard: the editor stays put.
+			expect(mockNavigateTo).not.toHaveBeenCalled();
+		});
+
+		it("Cancel on a clean form discards without prompting", async () => {
+			const wrapper = await freshGuard();
+			const mockNavigateTo = vi.fn();
+			vi.stubGlobal("navigateTo", mockNavigateTo);
+			vi.stubGlobal(
+				"confirm",
+				vi.fn(() => false),
+			);
+			// No edits: the form is clean, so Cancel must not ask.
+			const cancelBtn = wrapper.findAll("button").find((b) => b.text().includes("取消"));
+			await cancelBtn?.trigger("click");
+			await flushPromises();
 			expect(globalThis.confirm as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
-			expect(decided).toBe(true);
+			expect(mockNavigateTo).toHaveBeenCalled();
 		});
 	});
 
@@ -1787,11 +1805,17 @@ describe("Admin Post Editor Page", () => {
 			expect(wrapper.text()).toContain("请先保存文章以生成 slug");
 		});
 
-		it("uses generic title/body when notifying a published post without them", async () => {
+		it("refuses to notify while the form is dirty and unsaved (no persisted content)", async () => {
+			// A notify is a broadcast to every subscriber, so it must not send the
+			// in-memory draft: a new, titleless post that can't be autosaved yet
+			// (no title to derive a slug from) must refuse to notify with a
+			// "save first" message instead of pushing formData straight out
+			// (deep-dive finding).
 			setupRoute("new");
 			setupMocks();
 			mockNotifyPushSubscribers.mockClear();
 			mockNotifyPushSubscribers.mockResolvedValue({ total: 1, sent: 1, failed: 0, removed: 0 });
+			mockCreateAdminPost.mockResolvedValue({ id: 1 });
 			const PostEditor = await loadPage();
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
@@ -1804,10 +1828,31 @@ describe("Admin Post Editor Page", () => {
 			await notifyBtn?.trigger("click");
 			await flushPromises();
 
+			// The post is dirty and unsaved → the push must not fire with the
+			// in-memory draft; the user is told to save first.
+			expect(mockNotifyPushSubscribers).not.toHaveBeenCalled();
+			expect(wrapper.text()).toContain("有未保存的修改且保存未成功");
+		});
+
+		it("notifies a saved published post that is not dirty (persisted form state)", async () => {
+			// A clean (already-saved) published post notifies immediately with the
+			// persisted slug — the dirty-flush guard must not block a clean form.
+			setupRoute("1");
+			setupMocks();
+			mockNotifyPushSubscribers.mockClear();
+			mockNotifyPushSubscribers.mockResolvedValue({ total: 1, sent: 1, failed: 0, removed: 0 });
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+			await flushPromises();
+
+			const notifyBtn = wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			await notifyBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockNotifyPushSubscribers).toHaveBeenCalledTimes(1);
 			const [payload] = mockNotifyPushSubscribers.mock.calls[0] as any[];
-			expect(payload.title).toBe("新文章已发布");
-			expect(payload.body).toBe("");
-			expect(payload.url).toBe("/posts/abc");
+			expect(payload.title).toBe("Existing Post");
+			expect(payload.url).toBe("/posts/existing-post");
 		});
 
 		it("shows an unparseable revision timestamp as-is", async () => {

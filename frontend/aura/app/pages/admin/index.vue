@@ -513,6 +513,29 @@ async function handleApprove(commentId: number, approved: boolean) {
 	try {
 		await approveAdminComment(commentId, approved);
 		if (comment) comment.is_approved = approved;
+		// Keep the stat card's pending count in sync with the toggle: the
+		// authoritative count was loaded once from the comment-activity stats,
+		// so approving/rejecting must adjust it in place (approve removes a
+		// pending comment, reject re-adds one) or the big stat card and the
+		// quick card contradict each other until a full reload (deep-dive).
+		if (commentActivity.value) {
+			commentActivity.value.pending_count = Math.max(
+				0,
+				commentActivity.value.pending_count + (approved ? -1 : 1),
+			);
+		}
+		// The quick card only ever fetched the newest-5 pending slice at load;
+		// once every row in that slice is decided but pending comments remain
+		// server-side, refetch to surface the next rows — otherwise the card
+		// shows "empty" while the server still holds moderation backlog.
+		if (
+			approved &&
+			comment &&
+			recentPendingComments.value.length === 0 &&
+			commentActivity.value?.pending_count
+		) {
+			await loadPendingComments();
+		}
 	} catch (e) {
 		// Roll the row back to its prior state so a failed toggle doesn't leave
 		// the UI claiming a moderation change the server rejected.
@@ -522,6 +545,21 @@ async function handleApprove(commentId: number, approved: boolean) {
 		const next = new Set(approvingIds.value);
 		next.delete(commentId);
 		approvingIds.value = next;
+	}
+}
+
+/** Refresh the pending-comments quick-card slice (newest-5, same as the load). */
+async function loadPendingComments() {
+	try {
+		const apiBase = useRuntimeConfig().public.apiUrl;
+		const res = await $fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
+			query: { page: 1, limit: 5, is_approved: false },
+			headers: authHeaders(),
+		});
+		allComments.value = res.items;
+	} catch {
+		// Best-effort: a failed refetch leaves the already-decided slice in place;
+		// a full reload will eventually reconcile the card.
 	}
 }
 

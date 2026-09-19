@@ -76,6 +76,7 @@
 		"taxonomyLoadFailed": "Couldn't load categories/tags/series. The pickers may be incomplete.",
 		"scheduledBadge": "Scheduled",
 		"notifyRequiresSlug": "Save the post first to generate a slug, then notify subscribers.",
+		"notifyRequiresSave": "There are unsaved changes and the save didn't land. Save the post, then try notifying again.",
 		"saveSuccess": "Saved",
 		"readingTrend": {
 			"title": "Reading trend (30 days)",
