@@ -91,7 +91,7 @@ async function mountDiscussionPage({
 
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn((url: unknown) => {
+		vi.fn((_url: unknown) => {
 			return {
 				data: (feedRef ?? ref(feed)) as unknown,
 				pending: ref(pending),

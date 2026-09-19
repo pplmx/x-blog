@@ -97,11 +97,11 @@ def test_rss_full_feed_renders_footnotes(client, auth_headers):
     assert response.status_code == 200
     content = response.text
     # Reference: a sup that jumps down to the definition list.
-    assert '<sup' in content
+    assert "<sup" in content
     assert 'href="#fn:1"' in content or 'href="%23fn:1"' in content
     # Definition: the list item carries the matching id and a backref.
     assert 'id="fn:1"' in content
-    assert 'footnote-backref' in content or '&#8617;' in content
+    assert "footnote-backref" in content or "&#8617;" in content
     # The source body renders, and bold inside the footnote is markdown, not literal.
     assert "source" in content
     assert "<strong>source</strong>" in content

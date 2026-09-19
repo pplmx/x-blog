@@ -145,7 +145,7 @@ test.describe("Reader block (DEC-425)", () => {
 		await page.goto("/account");
 		const blocksSection = page.locator("section", { hasText: "已屏蔽的读者" });
 		await expect(blocksSection).toBeVisible({ timeout: 10000 });
-		await expect(blocksSection.locator("text=" + TARGET_NAME).first()).toBeVisible();
+		await expect(blocksSection.locator(`text=${TARGET_NAME}`).first()).toBeVisible();
 		await blocksSection.getByRole("button", { name: "取消屏蔽" }).click();
 		await expect(blocksSection).toContainText("还没有屏蔽任何人");
 

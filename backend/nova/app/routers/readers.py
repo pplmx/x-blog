@@ -163,9 +163,9 @@ def reader_profile(
     profile_data["is_following"] = current_reader is not None and crud.is_following_reader(
         db, current_reader.id, reader_id
     )
-    profile_data["is_blocked"] = current_reader is not None and crud.get_reader_block(
-        db, current_reader.id, reader_id
-    ) is not None
+    profile_data["is_blocked"] = (
+        current_reader is not None and crud.get_reader_block(db, current_reader.id, reader_id) is not None
+    )
     return ReaderProfilePage(
         profile=ReaderPublicProfile(**profile_data),
         items=items,

@@ -516,9 +516,7 @@ class ReadingHistory(Base):
     # Naive-UTC (DEC-213 contract, ISS-452): this column is declared DateTime
     # without tz and every consumer compares against naive UTC — the default
     # must not smuggle an aware offset in.
-    viewed_at: Mapped[datetime | None] = mapped_column(
-        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
-    )
+    viewed_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     # Denormalized reading-time estimate (ISS-451): `reading_minutes(content)`
     # as of the reader's last view of the post, maintained by the history
     # write paths. Without it, /me/history/stats materialized every read row's

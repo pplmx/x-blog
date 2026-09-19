@@ -37,9 +37,7 @@ def upgrade() -> None:
                 server_default=sa.true(),
             ),
             sa.Column("created_at", sa.DateTime(), nullable=True),
-            sa.UniqueConstraint(
-                "reader_id", "author_id", name="uq_author_follows_reader_author"
-            ),
+            sa.UniqueConstraint("reader_id", "author_id", name="uq_author_follows_reader_author"),
         )
         op.create_index("ix_author_follows_id", "author_follows", ["id"])
         op.create_index("ix_author_follows_reader_id", "author_follows", ["reader_id"])
