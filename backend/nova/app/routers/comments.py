@@ -206,7 +206,7 @@ def _notify_guest_thread_subscribers(
 def _notify_replied_to(
     parent_reader: auth.ReaderAccount,
     post: models.Post,
-    parent_comment_id: int,
+    reply_comment_id: int,
     db: Session,
     commenter_id: int | None = None,
 ) -> None:
@@ -244,7 +244,7 @@ def _notify_replied_to(
         kind="reply",
         title=reply_title,
         body=reply_body,
-        url=f"/posts/{post.slug}#comment-{parent_comment_id}",
+        url=f"/posts/{post.slug}#comment-{reply_comment_id}",
     )
     # Email channel (DEC-197, TASK-217): best-effort off-site copy for the
     # replied-to reader if they opted into email for replies.
@@ -257,7 +257,7 @@ def _notify_replied_to(
                     "reply",
                     reply_title,
                     reply_body,
-                    f"/posts/{post.slug}#comment-{parent_comment_id}",
+                    f"/posts/{post.slug}#comment-{reply_comment_id}",
                 )
             ],
             logger,
@@ -271,7 +271,7 @@ def _notify_replied_to(
         "body": REPLY_NOTIF_BODY.replace("{post_title}", post.title or ""),
         # Deep-link to the replied-to comment so tapping the notification lands
         # on the reply, not the top of a long post (DEC-072, TASK-145).
-        "url": f"/posts/{post.slug}#comment-{parent_comment_id}",
+        "url": f"/posts/{post.slug}#comment-{reply_comment_id}",
     }
     subs = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == parent_reader.id).all()
     if subs:
@@ -336,7 +336,7 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
         parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
         if post is not None and parent_reader is not None and parent_reader.is_active:
-            _notify_replied_to(parent_reader, post, parent.id, db, commenter_id=comment.reader_id)
+            _notify_replied_to(parent_reader, post, comment.id, db, commenter_id=comment.reader_id)
 
     # Guest reply-email (DEC-332, TASK-392): an approved REPLY to an anonymous
     # comment that consented emails the guest, independent of the reader

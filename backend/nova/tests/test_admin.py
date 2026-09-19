@@ -1098,6 +1098,8 @@ class TestAdminCommentReply:
 
         resp = self._reply(client, auth_headers, comment.id, content="Thanks for the note!")
         assert resp.status_code == 201, resp.text
+        reply_id = resp.json()["id"]
+        assert reply_id != comment.id
         n = (
             db_session.query(_models.ReaderNotification)
             .filter(_models.ReaderNotification.reader_id == reader_id, _models.ReaderNotification.kind == "reply")
@@ -1106,9 +1108,11 @@ class TestAdminCommentReply:
         )
         assert n is not None, "reply notification must land in the replied-to reader's inbox"
         # title is the fixed reply notice; the post title rides in the body and
-        # the deep-link targets the replied-to comment (DEC-072).
+        # the deep-link targets the new reply (DEC-072's acceptance: tapping a
+        # reply notification opens the post scrolled to the reply it mentions —
+        # not the reader's own parent comment and not the top of the post).
         assert post.title in (n.body or "")
-        assert f"#comment-{comment.id}" in (n.url or "")
+        assert f"#comment-{reply_id}" in (n.url or "")
 
 
 class TestAdminUserManagement:

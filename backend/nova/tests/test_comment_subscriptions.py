@@ -241,14 +241,13 @@ class TestThreadFanout:
             _approve(client, reply.json()["id"], auth_headers=auth_headers)
             assert mock_send.called
             by_endpoint = {call.kwargs["endpoint"] for call in mock_send.call_args_list}
-            # A: exactly one push (the reply notification, deep-linked to their
-            # comment) — no duplicate thread push. C: one thread push.
+            # A: exactly one push (the reply notification, deep-linked to the
+            # new reply per DEC-072's acceptance "tapped the notification opens
+            # scrolled to the reply it mentions") — no duplicate thread push.
+            # C: one thread push, also deep-linked to the new reply.
             assert by_endpoint == {a_endpoint, c_endpoint}
             for call in mock_send.call_args_list:
-                if call.kwargs["endpoint"] == a_endpoint:
-                    assert call.kwargs["payload"]["url"] == f"/posts/{post.slug}#comment-{parent.json()['id']}"
-                else:
-                    assert call.kwargs["payload"]["url"] == f"/posts/{post.slug}#comment-{reply.json()['id']}"
+                assert call.kwargs["payload"]["url"] == f"/posts/{post.slug}#comment-{reply.json()['id']}"
 
     def test_unconfigured_vapid_is_silent_noop(self, client, db_session, auth_headers):
         post = self._post(client, db_session)
