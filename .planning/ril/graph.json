@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 391,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T15:39:09+00:00",
+  "updated_at": "2026-09-19T16:28:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29208,6 +29208,137 @@
       "touched_round": 391,
       "commit": "4748b0f4",
       "title": "test(e2e): search-filters sort assertion uses effective publish time key"
+    },
+    "TASK-460": {
+      "id": "TASK-460",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:24:36+00:00",
+      "updated_at": "2026-09-19T16:25:47+00:00",
+      "touched_round": 391,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Post editor Cancel silently discards unsaved edits with no confirmation",
+      "summary": "[id].vue handleCancel set discardRequested and navigated without prompting when dirty, while restore-revision and route-leave confirm on the same destructive class. Fixed: confirm when dirty; declining aborts. Clean forms unaffected."
+    },
+    "TASK-461": {
+      "id": "TASK-461",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:24:36+00:00",
+      "updated_at": "2026-09-19T16:25:47+00:00",
+      "touched_round": 391,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Notify subscribers broadcasts the live unsaved form state (unsaved slug deep-links to 404)",
+      "summary": "[id].vue handleNotify read formData directly with no save-first/isDirty guard, so a title/slug edit not yet saved went to every subscriber (unsaved slug -> /posts/{new-slug} 404). Fixed: flush autosave first, refuse if save didn't land."
+    },
+    "TASK-462": {
+      "id": "TASK-462",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:24:36+00:00",
+      "updated_at": "2026-09-19T16:25:47+00:00",
+      "touched_round": 391,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Admin raw fetch paths (upload, change-password) skip the 401 session-expiry redirect",
+      "summary": "useUpload.ts and admin.vue change-password used raw fetch and only threw generic errors on 401, stranding the operator with no path back to re-auth. Fixed: both route 401 through useAdminAuth.handleAdminUnauthorized like transport.ts flagAdminUnauthorized does for every command()/query()."
+    },
+    "TASK-463": {
+      "id": "TASK-463",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:24:36+00:00",
+      "updated_at": "2026-09-19T16:25:47+00:00",
+      "touched_round": 391,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Dashboard pending-comment counters go stale and contradict each other",
+      "summary": "admin/index.vue pendingCommentsCount read commentActivity.pending_count (never refreshed after approve/reject) while the quick card used the live list; quick card only held the page-1 slice of 5 pending so could show empty despite backlog. Fixed: adjust pending_count in place on toggle, refetch quick slice when it empties."
+    },
+    "CHG-721": {
+      "id": "CHG-721",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T16:25:12+00:00",
+      "updated_at": "2026-09-19T16:25:12+00:00",
+      "touched_round": 391,
+      "commit": "a603c447",
+      "title": "fix(admin): notify flush-first + cancel confirm + 401 handling + dashboard counter sync (TASK-460/461/462/463)"
+    },
+    "ISS-522": {
+      "id": "ISS-522",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:26:31+00:00",
+      "updated_at": "2026-09-19T16:27:38+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Post editor Cancel discards unsaved edits without confirmation"
+    },
+    "ISS-523": {
+      "id": "ISS-523",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:26:31+00:00",
+      "updated_at": "2026-09-19T16:27:39+00:00",
+      "touched_round": 391,
+      "severity": "high",
+      "title": "Notify subscribers broadcasts live unsaved form state (404 slug deep-link)"
+    },
+    "ISS-524": {
+      "id": "ISS-524",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:26:31+00:00",
+      "updated_at": "2026-09-19T16:27:39+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Admin raw-fetch paths skip the 401 session-expiry redirect (upload, password)"
+    },
+    "ISS-525": {
+      "id": "ISS-525",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T16:26:31+00:00",
+      "updated_at": "2026-09-19T16:27:39+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Dashboard pending-comment counters stale and divergent after approve/reject"
+    },
+    "EV-304": {
+      "id": "EV-304",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T16:27:39+00:00",
+      "updated_at": "2026-09-19T16:27:39+00:00",
+      "touched_round": 391,
+      "source": "2389 passed (full frontend suite), typecheck+biome clean after the 4 admin fixes",
+      "title": "Admin fixes verified: notify refuses dirty unsaved, cancel confirms, 401 redirects, counters sync",
+      "confidence": 1.0
+    },
+    "DEC-445": {
+      "id": "DEC-445",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T16:28:16+00:00",
+      "updated_at": "2026-09-19T16:28:16+00:00",
+      "touched_round": 391,
+      "title": "Round 391 admin-frontend pass: 4 verified admin UX/correctness defects fixed (notify flush-first, cancel confirm, 401 upload/password, dashboard counters)",
+      "rationale": "After the reader-facing deep-dive (TASK-454..458) closed, an admin-frontend deep-dive agent swept app/pages/admin/* + layouts/admin.vue + useUpload/transport and surfaced 4 verified defects: (1) notify broadcast the live possibly-unsaved form (high: unsaved slug deep-links 404); (2) Cancel discarded dirty edits with no confirm, inconsistent with restore/route-leave guards; (3) two raw-fetch admin paths skipped the 401 session-expiry redirect; (4) dashboard pending counters diverged (stat card from stale pending_count vs quick card from live slice, page-1-of-5 only). All fixed with tests (2389 frontend, editor 97), typecheck + biome clean.",
+      "alternatives_rejected": "Feature-evolution candidates (not the directive); refactoring the editor beyond the four concrete defects verified by reading the actual code paths."
     }
   },
   "edges": [
@@ -43302,6 +43433,84 @@
       "to": "TASK-459",
       "type": "implements",
       "created_at": "2026-09-19T15:39:09+00:00"
+    },
+    {
+      "from": "CHG-721",
+      "to": "TASK-460",
+      "type": "implements",
+      "created_at": "2026-09-19T16:25:46+00:00"
+    },
+    {
+      "from": "CHG-721",
+      "to": "TASK-461",
+      "type": "implements",
+      "created_at": "2026-09-19T16:25:46+00:00"
+    },
+    {
+      "from": "CHG-721",
+      "to": "TASK-462",
+      "type": "implements",
+      "created_at": "2026-09-19T16:25:46+00:00"
+    },
+    {
+      "from": "CHG-721",
+      "to": "TASK-463",
+      "type": "implements",
+      "created_at": "2026-09-19T16:25:47+00:00"
+    },
+    {
+      "from": "TASK-460",
+      "to": "ISS-522",
+      "type": "addresses",
+      "created_at": "2026-09-19T16:27:03+00:00"
+    },
+    {
+      "from": "TASK-461",
+      "to": "ISS-523",
+      "type": "addresses",
+      "created_at": "2026-09-19T16:27:03+00:00"
+    },
+    {
+      "from": "TASK-462",
+      "to": "ISS-524",
+      "type": "addresses",
+      "created_at": "2026-09-19T16:27:03+00:00"
+    },
+    {
+      "from": "TASK-463",
+      "to": "ISS-525",
+      "type": "addresses",
+      "created_at": "2026-09-19T16:27:03+00:00"
+    },
+    {
+      "from": "ISS-522",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-19T16:27:03+00:00"
+    },
+    {
+      "from": "ISS-523",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-19T16:27:04+00:00"
+    },
+    {
+      "from": "ISS-524",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-19T16:27:04+00:00"
+    },
+    {
+      "from": "ISS-525",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-19T16:27:04+00:00"
+    },
+    {
+      "from": "DEC-444",
+      "to": "DEC-445",
+      "type": "supersedes",
+      "created_at": "2026-09-19T16:28:49+00:00"
     }
   ]
 }
