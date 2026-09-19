@@ -40,6 +40,33 @@
         <option value="oldest">{{ t('components.commentList.sortOldest') }}</option>
         <option value="likes">{{ t('components.commentList.sortLikes') }}</option>
       </select>
+      <!-- Search inside the thread (DEC-442/TASK-452): debounced keyword box
+           that narrows the list to matching approved comments. -->
+      <div class="relative">
+        <input
+          id="comment-search"
+          v-model="queryInput"
+          type="search"
+          class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 pl-7 pr-7 py-1 text-sm w-44"
+          :placeholder="t('components.commentList.searchPlaceholder')"
+          :aria-label="t('components.commentList.searchLabel')"
+          @input="onQueryInput"
+        />
+        <Icon
+          icon="lucide:search"
+          class="w-3.5 h-3.5 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none"
+          aria-hidden="true"
+        />
+        <button
+          v-if="queryInput"
+          type="button"
+          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          :aria-label="t('components.commentList.clearSearch')"
+          @click="clearQuery"
+        >
+          <Icon icon="lucide:x" class="w-3.5 h-3.5" aria-hidden="true" />
+        </button>
+      </div>
       <!-- In-flight feedback for sort/pagination refetches (pending only covers
            the initial mount; ISS-130). -->
       <Icon
@@ -614,6 +641,37 @@ const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
+// --- Search inside the thread (DEC-442, TASK-452) ---
+// A thread can be arbitrarily long, so a reader who remembers a phrase ("that
+// answer about Docker") can scope the list to matching approved comments
+// instead of paging through everything. Mirrors the global comment search's
+// substring-AND semantics server-side; here we keep the box lightweight: typing
+// debounces, the committed term resets to page 1 and re-fetches, and clearing
+// restores the full thread.
+const queryInput = ref("");
+const currentQuery = ref("");
+let queryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function applyQuery(): void {
+	const term = queryInput.value.trim();
+	if (term === currentQuery.value) return;
+	currentQuery.value = term;
+	currentPage.value = 1;
+	void refreshList();
+}
+
+function onQueryInput(): void {
+	if (queryTimer) clearTimeout(queryTimer);
+	queryTimer = setTimeout(applyQuery, 350);
+}
+
+function clearQuery(): void {
+	if (queryTimer) clearTimeout(queryTimer);
+	queryInput.value = "";
+	applyQuery();
+}
+const searching = computed(() => currentQuery.value !== "");
+
 // Blocked-reader suppression (round 386, DEC-437): rows authored by readers
 // the signed-in viewer has blocked are dropped from the rendered thread (a
 // receiver-side opt-out, per DEC-425). The block list loads asynchronously, so
@@ -658,7 +716,13 @@ async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
 	const perPage = 20;
 	const totalPagesKnown = commentData.value?.total_pages || 1;
 	for (let page = 2; page <= totalPagesKnown; page++) {
-		const pageRes = await getComments(props.postId, page, perPage, currentSort.value);
+		const pageRes = await getComments(
+			props.postId,
+			page,
+			perPage,
+			currentSort.value,
+			currentQuery.value,
+		);
 		if (!pageRes?.items) break;
 		if (pageRes.items.some((c) => c.id === targetNum)) {
 			// Load the found page into the rendered list (mirrors loadPage),
@@ -990,7 +1054,13 @@ const refreshError = ref<string | null>(null);
 let refreshSeq = 0;
 
 async function fetchPage(seq: number): Promise<void> {
-	const data = await getComments(props.postId, currentPage.value, 20, currentSort.value);
+	const data = await getComments(
+		props.postId,
+		currentPage.value,
+		20,
+		currentSort.value,
+		currentQuery.value,
+	);
 	// The sequence is authoritative for the DATA too, not just the error banner:
 	// a slow page-3 response landing after the reader already clicked to page 4
 	// must not overwrite page 4 with page 3 (deep-dive finding — the old guard

@@ -712,7 +712,71 @@ describe("CommentList", () => {
 			const select = wrapper.find("select#comment-sort");
 			await select.setValue("likes");
 			await flushPromises();
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes", "");
+		});
+	});
+
+	describe("Search inside the thread (DEC-442, TASK-452)", () => {
+		it("debounced keyword input re-fetches with q and resets to page 1", async () => {
+			vi.useFakeTimers();
+			try {
+				// The re-fetch resolves with a filtered payload so we can assert
+				// the committed request carries the term.
+				mockGetComments.mockResolvedValue({
+					items: [],
+					total: 0,
+					total_pages: 1,
+					page: 1,
+					limit: 20,
+				});
+				const { wrapper } = await mountCommentList();
+
+				const input = wrapper.find("input#comment-search");
+				await input.setValue("Docker");
+				vi.advanceTimersByTime(350);
+				await flushPromises();
+
+				// q rides the imperative re-fetch after the debounce.
+				expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "Docker");
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it("clearing the box restores the unfiltered thread", async () => {
+			vi.useFakeTimers();
+			try {
+				mockGetComments.mockResolvedValue({
+					items: [],
+					total: 0,
+					total_pages: 1,
+					page: 1,
+					limit: 20,
+				});
+				const { wrapper } = await mountCommentList();
+				const input = wrapper.find("input#comment-search");
+
+				await input.setValue("Docker");
+				vi.advanceTimersByTime(350);
+				await flushPromises();
+				expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "Docker");
+
+				// Clear button empties the box and re-fetches without q (the test
+				// environment renders zh locale, so the label is the Chinese copy).
+				const clear = wrapper.find("button[aria-label='清除搜索']");
+				expect(clear.exists()).toBe(true);
+				await clear.trigger("click");
+				await flushPromises();
+				expect(input.element as HTMLInputElement).toHaveProperty("value", "");
+				expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "");
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it("hides the search controls when there are no comments", async () => {
+			const { wrapper } = await mountCommentList({ comments: mockEmptyComments });
+			expect(wrapper.find("input#comment-search").exists()).toBe(false);
 		});
 	});
 
@@ -838,7 +902,7 @@ describe("CommentList", () => {
 			expect(retry).toBeDefined();
 			await retry?.trigger("click");
 			await flushPromises();
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes", "");
 			expect(wrapper.text()).not.toContain("评论刷新失败，请重试。");
 		});
 
@@ -908,7 +972,7 @@ describe("CommentList", () => {
 			await wrapper.find(".comment-delete").trigger("click");
 			await flushPromises();
 
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "");
 			expect(wrapper.text()).toContain("first page comment");
 			expect(wrapper.text()).not.toContain("还没有评论，来发第一个评论吧！");
 			vi.unstubAllGlobals();
@@ -949,7 +1013,7 @@ describe("CommentList", () => {
 			await flushPromises();
 
 			expect(mockGetComments).toHaveBeenCalledTimes(1);
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest", "");
 		});
 
 		it("offers first/last + ellipsis far-page affordance (ISS-370)", async () => {
@@ -967,7 +1031,7 @@ describe("CommentList", () => {
 			if (!lastBtn) throw new Error("last-page button not rendered");
 			await lastBtn.trigger("click");
 			await flushPromises();
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 10, 20, "newest");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 10, 20, "newest", "");
 		});
 
 		it("shows an in-flight spinner while a pagination refetch runs (ISS-130)", async () => {
@@ -1383,7 +1447,7 @@ describe("CommentList", () => {
 			await flushPromises();
 
 			expect(confirmSpy).toHaveBeenCalled();
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes", "");
 		});
 
 		it("sort/pagination do not prompt when nothing is typed", async () => {
@@ -1393,7 +1457,7 @@ describe("CommentList", () => {
 			await wrapper.find("select#comment-sort").setValue("likes");
 			await flushPromises();
 			expect(confirmSpy).not.toHaveBeenCalled();
-			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes");
+			expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "likes", "");
 		});
 
 		it("an author edit box with unsaved changes is guarded on Esc and Cancel", async () => {
@@ -1878,7 +1942,7 @@ describe("CommentList", () => {
 				limit: 20,
 			});
 			await vm.refreshList();
-			expect(mockGetComments).toHaveBeenCalledWith(1, 1, 20, "newest");
+			expect(mockGetComments).toHaveBeenCalledWith(1, 1, 20, "newest", "");
 			expect(wrapper.text()).toContain("Freshly submitted comment");
 		});
 	});

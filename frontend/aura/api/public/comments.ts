@@ -25,11 +25,18 @@ export interface CommentFlagResult {
  * Reactive comment thread for setup usage.
  * Uses the backend's GET /api/comments/post/{post_id} endpoint. `sort` lets
  * readers reorder the thread — newest (default), oldest, or most helpful
- * (likes desc) — per DEC-094/TASK-159.
+ * (likes desc) — per DEC-094/TASK-159. `q` (optional) narrows the thread to
+ * comments whose content matches — "search inside this thread" (DEC-442).
  */
-export function useComments(postId: number, page = 1, limit = 20, sort: CommentSort = "newest") {
+export function useComments(
+	postId: number,
+	page = 1,
+	limit = 20,
+	sort: CommentSort = "newest",
+	q = "",
+) {
 	return query<CommentListResponse>(`/api/comments/post/${postId}`, {
-		query: { page, limit, sort },
+		query: { page, limit, sort, q: q || undefined },
 	});
 }
 
@@ -42,9 +49,10 @@ export function getComments(
 	page = 1,
 	limit = 20,
 	sort: CommentSort = "newest",
+	q = "",
 ): Promise<CommentListResponse> {
 	return command<CommentListResponse>(`/api/comments/post/${postId}`, {
-		query: { page, limit, sort },
+		query: { page, limit, sort, q: q || undefined },
 	});
 }
 
