@@ -483,6 +483,34 @@ function lineNumbers(code: string): number[] {
   @apply text-blue-500;
 }
 
+/* Inline footnotes (DEC-441/TASK-451): the reference sup stays small and
+   unobtrusive in the prose, and the definition list renders as a compact
+   citation block separated from the body by the leading rule. The backref
+   ("↩") is subtle and keeps the default link color for discoverability. */
+.markdown-content :deep(.footnote-ref) {
+  @apply font-medium no-underline scroll-mt-24;
+}
+
+.markdown-content :deep(.footnotes) {
+  @apply mt-4 text-sm text-gray-600 dark:text-gray-400;
+}
+
+.markdown-content :deep(.footnotes hr) {
+  @apply my-4 border-gray-200 dark:border-gray-800 w-24 border-t-2;
+}
+
+.markdown-content :deep(.footnotes ol) {
+  @apply my-0 pl-6 space-y-1.5 list-decimal;
+}
+
+.markdown-content :deep(.footnotes li) {
+  @apply leading-relaxed;
+}
+
+.markdown-content :deep(.footnotes .footnote-backref) {
+  @apply no-underline ml-1;
+}
+
 .markdown-content :deep(pre) {
   @apply text-sm leading-6 font-mono text-gray-200 bg-gray-900 dark:bg-gray-950 rounded-xl overflow-x-auto;
 }

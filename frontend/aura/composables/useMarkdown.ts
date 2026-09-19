@@ -18,6 +18,7 @@
  *   const { segments } = useMarkdown(postContent);
  */
 
+import type { TokenizerAndRendererExtension, Tokens } from "marked";
 import { marked } from "marked";
 
 import { beginHeadingIds, uniqueHeadingId } from "./useToc";
@@ -364,7 +365,106 @@ headingRenderer.heading = function (token: { tokens: unknown[]; depth: number })
 	const text = html.replace(/<[^>]+>/g, "").trim();
 	return `<h${token.depth} id="${uniqueHeadingId(text)}">${html}</h${token.depth}>`;
 };
-marked.use({ renderer: headingRenderer });
+
+// --- GFM inline footnotes (DEC-441, TASK-451) ---
+//
+// marked v16 has no footnote support, so an author's `[^1]`/`[^1]: ...`
+// citation markers rendered as LITERAL text in the post body, print route,
+// admin preview and (backend) RSS feeds. Two extensions fix every surface at
+// once: an inline tokenizer emits a `<sup>` reference that jumps down to the
+// definition list; a block tokenizer collects the `[^label]: source` lines and
+// renders them as a backlinked ordered list. Registered before any reference
+// syntax is resolved so `[^1]: ` is consumed as a footnote definition rather
+// than a markdown link-reference (the GFM footnote == link-ref ambiguity).
+//
+// The definition body is passed back through marked (parseInline) so common
+// inline markdown (bold, links) keeps working inside a footnote. Labels can be
+// any non-whitespace `\S+` string like GFM (numeric 1/2/3 or word labels).
+const FOOTNOTE_CONTAINER_CLASS = "footnotes";
+
+interface FootnoteDefinition {
+	label: string;
+	text: string;
+}
+
+const inlineFootnoteExtension: TokenizerAndRendererExtension = {
+	name: "xblogFootnoteRef",
+	level: "inline",
+	// NOTE: no `start` hint here. marked's inline loop tries every extension
+	// tokenizer at each position BEFORE the text rule, so the anchored
+	// /^\[\^/ tokenizer below is reached exactly when the marker appears. A
+	// `start` that scans with src.indexOf would be called on the WHOLE
+	// remaining source at every loop position — O(n²) on a 40KB run that
+	// contains no `[^` (the "scans unterminated ![" linearity test catches
+	// exactly this hang).
+	tokenizer(src: string): { type: string; raw: string; label: string } | undefined {
+		const match = /^\[\^([^\]]+)\]/.exec(src);
+		if (!match) return undefined;
+		// A fully-anchored regex with required groups: when exec succeeds the
+		// whole match (index 0) and the label group (index 1) cannot be
+		// undefined — the nullish fallbacks only satisfy the index-access types.
+		const [raw, label] = match;
+		return { type: "xblogFootnoteRef", raw: raw ?? "", label: label ?? "" };
+	},
+	renderer(token: Tokens.Generic): string {
+		const label = String(token.label);
+		return `<sup><a href="#fn:${label}" id="fnref:${label}" class="footnote-ref">${label}</a></sup>`;
+	},
+};
+
+const blockFootnoteExtension: TokenizerAndRendererExtension = {
+	name: "xblogFootnoteDefs",
+	level: "block",
+	start(src: string): number {
+		// Only engage at the start of a definition line (`[^label]:`).
+		return /^\[\^\S+\]:/.test(src) ? 0 : -1;
+	},
+	tokenizer(src: string): { type: string; raw: string; defs: FootnoteDefinition[] } | undefined {
+		// Collect one or more consecutive `[^label]: text` lines. Definitions
+		// share the paragraph block; a real markdown definition leaves the
+		// rest of the source untouched for subsequent block tokens.
+		const lines = src.split(/\n+/);
+		const defs: FootnoteDefinition[] = [];
+		let consumed = 0;
+		for (const line of lines) {
+			const match = /^\[\^(\S+)\]:\s*(.*)$/.exec(line);
+			if (!match) break;
+			// Same reasoning as the inline tokenizer: both capture groups are
+			// required by the fully-anchored pattern, so the nullish fallbacks
+			// are type-only (the regex can never match with an empty group).
+			const [, label, text] = match;
+			defs.push({ label: label ?? "", text: text ?? "" });
+			consumed += 1;
+		}
+		if (defs.length === 0) return undefined;
+		return {
+			type: "xblogFootnoteDefs",
+			raw: `${lines.slice(0, consumed).join("\n")}\n`,
+			defs,
+		};
+	},
+	renderer(token: Tokens.Generic): string {
+		// Re-parsing the definition body through marked.parseInline lets common
+		// inline markdown (bold, links, code) keep working inside a footnote.
+		// (this.parser.parseInline expects token arrays, not the raw text —
+		// the module-level parseInline takes a string and re-lexes.)
+		const items = ((token.defs as FootnoteDefinition[] | undefined) ?? [])
+			.map((def: FootnoteDefinition) => {
+				const body = String(marked.parseInline(def.text || ""));
+				return (
+					`<li id="fn:${def.label}"><p>${body}&nbsp;` +
+					`<a href="#fnref:${def.label}" class="footnote-backref">↩</a></p></li>`
+				);
+			})
+			.join("\n");
+		return `<div class="${FOOTNOTE_CONTAINER_CLASS}"><hr /><ol>\n${items}\n</ol></div>`;
+	},
+};
+
+marked.use({
+	renderer: headingRenderer,
+	extensions: [inlineFootnoteExtension, blockFootnoteExtension],
+});
 
 /**
  * Convert remaining Markdown (headings, lists, tables, bold, etc.) to HTML.

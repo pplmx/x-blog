@@ -538,6 +538,85 @@ describe("segment extraction edge cases", () => {
 	});
 });
 
+describe("inline Markdown footnotes (DEC-441, TASK-451)", () => {
+	it("renders a footnote reference as a backlinked <sup> and the definition as a footnotes list", () => {
+		// GFM footnote syntax: an author citing a source gets a clickable sup
+		// superscript that jumps to the definition list, instead of the raw
+		// `[^1]` text that used to leak into the article (DEC-441).
+		const md = "Citations are nice[^1].\n\n[^1]: The source material.";
+		const html = markdownToHtml(md);
+		// Reference: sup with an href/id pair so the in-text marker jumps down.
+		expect(html).toContain('<sup><a href="#fn:1" id="fnref:1"');
+		expect(html).toContain(">1</a></sup>");
+		// Definition: an ordered list carrying the matching id and a backref.
+		expect(html).toContain('id="fn:1"');
+		expect(html).toContain('class="footnote-backref"');
+		expect(html).toContain("The source material.");
+		// The raw marker must never leak into the rendered output.
+		expect(html).not.toContain("[^1]");
+	});
+
+	it("parses inline markdown inside a footnote definition", () => {
+		const html = markdownToHtml(
+			"[^a]\n\n[^a]: A **bold** claim with a [link](https://example.com).",
+		);
+		expect(html).toContain("<strong>bold</strong>");
+		expect(html).toContain('<a href="https://example.com">link</a>');
+	});
+
+	it("handles multiple definitions and repeated references", () => {
+		const md = "One[^s] and two[^s2] and one again[^s].\n\n[^s]: Source A.\n\n[^s2]: Source B.";
+		const html = markdownToHtml(md);
+		// Both labels render as refs; the repeated one appears twice.
+		const refCount = (html.match(/id="fnref:/g) ?? []).length;
+		expect(refCount).toBe(3);
+		expect(html).toContain("Source A.");
+		expect(html).toContain("Source B.");
+	});
+
+	it("leaves ordinary square-bracket content untouched (no false positives)", () => {
+		// Not every [^...] is a footnote: brackets used inside inline code or
+		// plain text like [H2O] notation must not be flagged. A lone
+		// definition with no reference still renders as a definition only when
+		// the author wrote the marker; purely textual `[^x]` with no block
+		// still renders the marker literally (no sup, no list).
+		const html = markdownToHtml("Inline code `arr[^0]` is not a footnote.");
+		expect(html).toContain("arr[^0]");
+		expect(html).not.toContain("footnote-ref");
+	});
+
+	it("comments stay block-level and are not pulled into the footnotes list", () => {
+		// Regression guard: the footnote block tokenizer must not consume an
+		// HTML comment line as a definition.
+		const md = "Text.\n\n<!-- a comment -->\n\n[^1]: Real source.";
+		const html = markdownToHtml(md);
+		expect(html).toContain("Real source.");
+		expect(html).toContain("<!-- a comment -->");
+	});
+
+	it("does not break the TOC (footnote HTML carries no headings)", () => {
+		// The footnotes list must not introduce phantom TOC entries: extractToc
+		// only scans <h1..6>, and the footnote block renders <li>/<p>/<a>.
+		const md = "## A section\n\nWith a note[^1].\n\n[^1]: Note.";
+		const toc = extractToc(markdownToHtml(md));
+		expect(toc.some((t) => t.id === "a-section")).toBe(true);
+		// No selectable marker outside the real heading.
+		expect(toc).toHaveLength(1);
+	});
+
+	it("footnote HTML survives sanitization (id/class/sup pass, scripts die)", () => {
+		// The rendered footnote list is piped through sanitizeHtml before
+		// hitting v-html; the anchor ids/classes that power the backlinks must
+		// survive, and nothing executable may ride in on a definition.
+		const md = "T[^s].\n\n[^s]: Safe body.\n\nAnd [^x]: <script>alert(1)</script>";
+		const html = sanitizeHtml(markdownToHtml(md));
+		expect(html).toContain('id="fn:s"');
+		expect(html).toContain('class="footnote-ref"');
+		expect(html).toContain('class="footnote-backref"');
+		expect(html).not.toContain("<script");
+	});
+});
+
 describe("commentMarkdownToHtml (DEC-088, TASK-156)", () => {
 	it("renders comment markdown with breaks and sanitizes it", () => {
 		const out = commentMarkdownToHtml("**hi**\nline two");

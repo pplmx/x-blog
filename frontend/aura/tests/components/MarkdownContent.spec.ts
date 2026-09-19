@@ -157,6 +157,21 @@ describe("MarkdownContent", () => {
 		});
 	});
 
+	describe("GFM inline footnotes", () => {
+		it("renders a footnote reference and its definition list (DEC-441)", async () => {
+			const wrapper = mountMarkdown("Citations matter[^1].\n\n[^1]: The source material.");
+			await flushPromises();
+			// In-text ref: an <sup> that jumps down to the definition.
+			expect(wrapper.find(".footnote-ref").text()).toBe("1");
+			// Definition list with a backref and the source body.
+			expect(wrapper.find(".footnotes").exists()).toBe(true);
+			expect(wrapper.find('li[id="fn:1"]').text()).toContain("The source material");
+			expect(wrapper.find(".footnote-backref").exists()).toBe(true);
+			// The raw marker never leaks into rendered text.
+			expect(wrapper.text()).not.toContain("[^1]");
+		});
+	});
+
 	describe("Code blocks", () => {
 		it("renders fenced code blocks with language label", async () => {
 			const wrapper = mountMarkdown("```ts\nconst x = 42;\n```");
