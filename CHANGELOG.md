@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Comment & consent polish round (round 393)**: a usability sweep crossed
+  the comment form, the likes page, pagination and a four-findings backend
+  pass. **Comment submit no longer leaks ofetch's technical error string**
+  (`"[POST] …: 429 Too Many Requests"` with the internal URL) into the form's
+  red alert — a **429 and a closed-post 403 get localized lines**, and any
+  other rejection shows the backend's human envelope message with a clean
+  fallback. **Unliking on /liked is now honest**: the page is the SERVER's
+  liked set, so when the cloud DELETE misses (offline/5xx) the card is kept and
+  a retry notice shown instead of a card that silently reappears on the next
+  visit — `unlike()` rolls the local marker back and reports whether the
+  removal persisted. **Pagination highlights the page you clicked**: home,
+  archive, category and discussion pages now derive the current-page marker
+  from the URL/click target instead of the lagging in-flight server payload,
+  so the highlighted button no longer reads 1 while the address bar says 3.
+  Backend side: **approving a comment is once-only** — a moderator who rejects
+  and re-approves a comment no longer re-fires the whole multi-channel fan-out
+  (duplicate pushes, duplicate inbox rows and duplicate emails to the
+  replied-to reader, @-mentions, followers and every guest subscriber);
+  `Comment.notified_at` stamps the first approval like `Post.new_post_notified_at`.
+  The **guest weekly thread-digest no longer echoes a follower's own comments**
+  back at them (the per-comment channel already skipped self). And **newsletter
+  cancellation is real**: replaying the old confirmation link after an
+  unsubscribe can no longer silently re-activate the address — re-activation
+  requires a fresh subscribe with a fresh double-opt-in email
+  (`unsubscribed_at`), and **email-change now persists before sending**, so a
+  transient DB failure can't mail a verification link that can't be redeemed.
+  Backend 1879 + 10 skipped @ 93.7%, frontend 2405 unit tests, typecheck/lint/
+  migration-on-Postgres green (round 393, DEC-448).
 - 🛠️ **Reader-auth polish round (round 392)**: a deep-dive across the sign-in
   surface found the auth forms were showing ofetch's **technical error strings**
   (`"[POST] ...: 401 Unauthorized"`) instead of the backend's human message — a
