@@ -572,6 +572,53 @@ describe("Search Page", () => {
 				query: { q: "Javascript", page: "1" },
 			});
 		});
+
+		it("re-requests suggestions when the term changes while staying zero-hit", async () => {
+			// Two consecutive zero-hit terms keep shouldSuggest true→true (Nuxt
+			// useFetch preserves the previous zero-hit payload during the refetch),
+			// so a shouldSuggest-only watcher never re-fires and the OLD term's
+			// chips would stick under the box — wrong for the new term and actively
+			// misleading to tap. The watcher must also re-fire on the term itself.
+			// Route query is passed reactive so mutating it triggers the page's
+			// route watchers (helper wraps it in reactive; a raw object mutation
+			// would bypass the proxy and never invalidate the computed).
+			const routeQuery = reactive({ q: "tyop" });
+			const wrapper = await mountSearchPage({
+				routeQuery,
+				searchResult: mockEmptyResult,
+				suggestResult: {
+					query: "tyop",
+					suggestions: [{ text: "fixed-tyop", kind: "post", hits: 1 }],
+				},
+			});
+			await flushPromises();
+			expect(wrapper.text()).toContain("fixed-tyop");
+
+			// From here on the suggest request must be per-term, so swap in a
+			// term-aware $fetch mock that records the queries it is called with.
+			const suggestCalls: string[] = [];
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn(async (url: string) => {
+					const u = String(url);
+					if (u.includes("/api/search/suggest")) {
+						const q = new URL(u, "http://localhost").searchParams.get("q") ?? "";
+						suggestCalls.push(q);
+						return { query: q, suggestions: [{ text: `fixed-${q}`, kind: "post", hits: 1 }] };
+					}
+					throw new Error(`Unexpected $fetch: ${u}`);
+				}),
+			);
+
+			// Commit a different typo while still zero-hit (what handleSearchInput
+			// does via navigateTo): the watcher must fire a suggest request for the
+			// NEW term and swap the chips.
+			routeQuery.q = "typp";
+			await flushPromises();
+			expect(suggestCalls).toContain("typp");
+			expect(wrapper.text()).toContain("fixed-typp");
+			expect(wrapper.text()).not.toContain("fixed-tyop");
+		});
 	});
 
 	describe("Results listing", () => {
@@ -1032,6 +1079,12 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		// no taxonomy/date dimensions).
 		expect(wrapper.text()).not.toContain("分类");
 		expect(wrapper.text()).not.toContain("排序");
+		// The search mode is NOT a narrowing filter: a zero-hit comments search
+		// must show the generic keyword hint (+ retry path), not the misleading
+		// "adjust your filters" message with a dead "clear filters" button whose
+		// navigation target equals the current URL (deep-dive finding).
+		expect(wrapper.text()).not.toContain("试试调整或清除筛选条件");
+		expect(wrapper.findAll("button").some((b) => b.text() === "清除筛选")).toBe(false);
 	});
 
 	it("switching to the comments tab navigates to the comments-mode URL", async () => {

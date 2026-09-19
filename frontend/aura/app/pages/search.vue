@@ -67,7 +67,14 @@ const activeFilters = computed(() => {
 	const out: Record<string, string> = {};
 	for (const [k, v] of Object.entries(route.query)) {
 		if (typeof v !== "string" || !v) continue;
+		// q/page are navigation, not filters.
 		if (k === "q" || k === "page") continue;
+		// The search mode is not a narrowing filter (see the hasActiveFilters
+		// comment below): in ?type=comments there are no taxonomy/date/sort
+		// dimensions at all, so it must not light up the "clear filters"
+		// affordance — and its navigation target is identical to the current
+		// URL, making the button a dead no-op.
+		if (k === "type") continue;
 		// A default `relevance` sort is not a narrowing filter: it is what the
 		// API does anyway (searchParams omits it too), so it must not light up
 		// the "clear filters" button or survive a clear. (search-filters e2e)
@@ -220,8 +227,14 @@ const shouldSuggest = computed(
 const suggestions = ref<SearchSuggestion[]>([]);
 let suggestSeq = 0;
 watch(
-	shouldSuggest,
-	async (now) => {
+	// Both sources: a zero-hit→zero-hit term change keeps shouldSuggest true
+	// (Nuxt useFetch PRESERVES the previous zero-hit payload during the refetch),
+	// so a shouldSuggest-only watcher never re-fires and the OLD term's chips
+	// stick under the box, wrong for the new term (deep-dive finding). Watching
+	// the term too re-requests suggestions on every committed query change while
+	// the state stays zero-hit.
+	[shouldSuggest, () => query.value],
+	async ([now]) => {
 		const seq = ++suggestSeq;
 		if (!now) {
 			// Leaving the zero-hit state (new term landed with results, or the
