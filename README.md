@@ -23,7 +23,7 @@ A modern full-stack blog application built with FastAPI + Nuxt
 - 🎨 **Beautiful UI** - Clean design with Tailwind CSS v4
 - 📱 **Responsive** - Mobile-friendly responsive layout
 - 🔒 **Admin Panel** - Built-in admin dashboard for content management
-- 🧪 **Well Tested** - 2500+ tests (1243 backend + 1317 Nuxt), 93.5% backend coverage
+- 🧪 **Well Tested** - 4200+ tests (1873 backend + 2389 Nuxt), 93.7% backend coverage
 - ✅ **Type Safe** - Full TypeScript support + Pydantic validation
 - 🔍 **Full-text Search** - Post search, plus comment search (the Comments mode on `/search`, round 366)
 - 💬 **Latest Discussion** - the public `/discussion` page streams the newest approved comments across the whole site — each card carries the commenter, the content, and the post brief, and clicks straight through to that comment on its post (round 367)
