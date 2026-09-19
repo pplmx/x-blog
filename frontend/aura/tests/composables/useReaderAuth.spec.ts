@@ -363,23 +363,44 @@ describe("useReaderAuth", () => {
 			expect(isStaleSession({ statusCode: 500 })).toBe(false);
 		});
 
-		it("is true for an expired/revoked token 401 (credentials detail)", () => {
+		it("is true for an expired/revoked token 401 (credentials envelope message)", () => {
+			// The REAL backend shape: the {"error":{"message":...}} envelope has
+			// NO top-level `detail` (round-393 fix — the old test's
+			// `_data: { detail }` shape never occurs).
 			expect(
 				isStaleSession({
 					statusCode: 401,
-					response: { status: 401, _data: { detail: "Could not validate credentials" } },
+					response: {
+						status: 401,
+						_data: { error: { message: "Could not validate credentials" } },
+					},
 				}),
 			).toBe(true);
-			// No detail at all → still a dead session (reader endpoints only
+			// Dead-session envelope on `error.data` (command() surfaces the body
+			// there too).
+			expect(
+				isStaleSession({
+					statusCode: 401,
+					data: { error: { message: "Could not validate credentials" } },
+				}),
+			).toBe(true);
+			// No message at all → still a dead session (reader endpoints only
 			// 401 for auth unless a business 401 is explicitly detailed).
 			expect(isStaleSession({ statusCode: 401 })).toBe(true);
 		});
 
-		it("is false for a wrong-current-password 401 (business detail)", () => {
+		it("is false for a wrong-current-password 401 (business envelope message)", () => {
 			expect(
 				isStaleSession({
 					statusCode: 401,
-					response: { status: 401, _data: { detail: "Incorrect current password" } },
+					response: { status: 401, _data: { error: { message: "Incorrect current password" } } },
+				}),
+			).toBe(false);
+			// Same on `error.data`.
+			expect(
+				isStaleSession({
+					statusCode: 401,
+					data: { error: { message: "Incorrect current password" } },
 				}),
 			).toBe(false);
 		});

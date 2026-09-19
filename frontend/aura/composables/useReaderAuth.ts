@@ -87,10 +87,21 @@ export function isStaleSession(cause: unknown): boolean {
 		(cause as { statusCode?: number } | undefined)?.statusCode ??
 		(cause as { response?: { status?: number } } | undefined)?.response?.status;
 	if (status !== 401) return false;
-	const detail = (cause as { response?: { _data?: { detail?: string } } } | undefined)?.response
-		?._data?.detail;
+	// The backend wraps every reader rejection in {"error":{"message":...}} with
+	// NO top-level `detail` (round-391 envelope work), surfaced by command() on
+	// `error.data` and on `error.response._data`. /me/password and /me/account
+	// raise 401 for BOTH a dead session ("Could not validate credentials") and a
+	// genuinely wrong current password ("Incorrect current password") — read the
+	// envelope message (keeping the legacy top-level detail shape too) so a
+	// wrong password is a form-level error, not a silent sign-out (round-393).
+	const data =
+		(cause as { response?: { _data?: unknown } } | undefined)?.response?._data ??
+		(cause as { data?: unknown } | undefined)?.data;
+	const message =
+		(data as { error?: { message?: string } } | undefined)?.error?.message ??
+		(data as { detail?: string } | undefined)?.detail;
 	// An explicit wrong-password 401 is a form-level error, not a dead session.
-	if (typeof detail === "string" && detail.toLowerCase().includes("password")) return false;
+	if (typeof message === "string" && message.toLowerCase().includes("password")) return false;
 	return true;
 }
 
