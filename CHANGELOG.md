@@ -22,9 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timestamp. On **search**, a zero-hit comments-mode query no longer says
   "adjust your filters" with a dead "clear all" button (the search mode was
   miscounted as a filter), and **"did you mean" chips refresh when you correct
-  one typo into another** instead of lingering on the old term. Backend 1873 + 10
-  skipped, frontend 2387 unit tests, typecheck/lint all green (round 391,
-  DEC-444).
+  one typo into another** instead of lingering on the old term. An
+  **admin-frontend pass** on the same round fixed four more: **"Notify
+  subscribers" no longer broadcasts the unsaved form** (it flushes the editor
+  first and refuses with a "save first" message if the save didn't land — an
+  unsaved slug edit used to push a 404 deep-link to every subscriber), the post
+  editor's **Cancel now confirms** before discarding unsaved changes (it sat
+  silently beside Save), the two raw-fetch admin flows (image upload,
+  change-password) now **route expired sessions to login** instead of stranding
+  the operator with a generic error, and the dashboard's **pending-comment
+  counters stay in sync** after approve/reject (the big stat card used to
+  contradict the quick card, and the quick card went empty despite server
+  backlog). Backend 1873 + 10 skipped, frontend 2389 unit tests, typecheck/lint
+  all green (round 391, DEC-444/445).
 - 💡 **"Did you mean" search suggestions (round 390)**: the post search is
   exact substring + tsvector with no fuzzy layer, so a misspelled or
   half-remembered query ("recatvie", a CJK typo like 异步编程实贱) dead-ends on
