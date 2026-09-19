@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 390,
+  "round": 391,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T11:43:19+00:00",
+  "updated_at": "2026-09-19T15:05:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 337,
+      "touched_round": 391,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -28972,6 +28972,218 @@
       "source": "frontend/aura/e2e/search-suggest.spec.ts (Playwright, real chromium, round 390)",
       "title": "E2E journey green in real browser: publish -> typo'd CJK search -> did-you-mean chip -> corrected results",
       "confidence": 1.0
+    },
+    "TASK-454": {
+      "id": "TASK-454",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T14:16:35+00:00",
+      "updated_at": "2026-09-19T15:02:43+00:00",
+      "touched_round": 391,
+      "category": "correctness",
+      "severity": "high",
+      "title": "delete_reader_account leaves ReaderPostLike/AuthorFollow/ReaderFollow/ReaderBlock rows behind -> id-recycle data leak between accounts",
+      "summary": "crud.delete_reader_account (app/crud.py:4490-4518) cleans CategoryFollow/TagFollow/SeriesFollow/BookmarkFolder/ReadingHistory/ReaderNotificationPref but NOT ReaderPostLike (reader_id), AuthorFollow (reader_id), ReaderFollow (reader_id AND followed_id), ReaderBlock (blocker_id AND blocked_id). The function's own comment documents the leak class: on SQLite (no AUTOINCREMENT) a future account inherits the recycled id with another reader's likes/follows/blocks. No DB-level FK (DEC-009), so nothing cascades. Fix: add the four models to the cleanup loop, covering both columns on follow/block."
+    },
+    "TASK-455": {
+      "id": "TASK-455",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T14:16:52+00:00",
+      "updated_at": "2026-09-19T15:02:44+00:00",
+      "touched_round": 391,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Reply-notification deep links land on the parent comment, not the new reply",
+      "summary": "app/routers/comments.py _notify_replied_to (lines 206-278) builds the push payload, inbox row, and email link with f'/posts/{slug}#comment-{parent_comment_id}' while its own docstring says tapping should 'land on the reply'. Caller passes parent.id at line 339 though comment.id (the reply) is in scope; every sibling fan-out deep-links to the new comment id. Fix: pass comment.id and target comment-{reply.id}."
+    },
+    "TASK-456": {
+      "id": "TASK-456",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T14:17:17+00:00",
+      "updated_at": "2026-09-19T15:02:44+00:00",
+      "touched_round": 391,
+      "category": "maintainability",
+      "severity": "low",
+      "title": "Upload directory uses server-local time; media listing shows naive-UTC mtime",
+      "summary": "app/routers/upload.py:91 datetime.now() selects static/uploads/{local_year}/{local_month} while listing derives uploaded_at from mtime normalized to naive UTC (lines 184/236). Near a month/year boundary a non-UTC server writes into a dir a month/year ahead of the reported timestamp. Fix: select dir from naive-UTC now (datetime.now(UTC).replace(tzinfo=None)) to match the wire contract."
+    },
+    "TASK-457": {
+      "id": "TASK-457",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T14:56:26+00:00",
+      "updated_at": "2026-09-19T15:02:44+00:00",
+      "touched_round": 391,
+      "category": "usability",
+      "severity": "medium",
+      "title": "Comments-mode zero-hit search shows 'adjust your filters' + dead 'Clear all' button",
+      "summary": "app/pages/search.vue activeFilters excludes q/page/sort=relevance but NOT type, so ?type=comments lights up hasActiveFilters with zero narrowing filters. The empty-results block then shows search.noResults.tryAdjustFilters (line 666) and a 'Clear all' button whose clearFilters() navigation target (modeParam + q) equals the current URL — a Vue-router same-route no-op. The code's own comment says the mode 'never lights this up'. Fix: exclude 'type' in activeFilters (then hasActiveFilters only counts true narrowing filters)."
+    },
+    "TASK-458": {
+      "id": "TASK-458",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T14:56:34+00:00",
+      "updated_at": "2026-09-19T15:02:44+00:00",
+      "touched_round": 391,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Stale 'did you mean' chips persist when switching between two consecutive zero-hit terms",
+      "summary": "app/pages/search.vue shouldSuggest (lines 206-219) drives a watch that only fires on boolean TRANSITIONS. A term change that keeps zero hits stays true->true (Nuxt useFetch preserves the previous zero-hit payload), so the watch never re-fires and  holds the OLD term's chips; an in-flight old suggest request also lands (suggestSeq only bumps inside a watch callback). Editing /search?q=tyop to typp leaves chips for tyop — tapping one navigates back toward the OLD term. Fix: watch [shouldSuggest, () => query.value] so every committed term change while zero-hit re-requests suggestions."
+    },
+    "CHG-716": {
+      "id": "CHG-716",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:00:08+00:00",
+      "updated_at": "2026-09-19T15:00:08+00:00",
+      "touched_round": 391,
+      "commit": "c4b5b3e0",
+      "title": "fix(backend): delete_reader_account reaps ReaderPostLike/AuthorFollow + both directions of ReaderFollow/ReaderBlock (TASK-454)"
+    },
+    "CHG-717": {
+      "id": "CHG-717",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:00:08+00:00",
+      "updated_at": "2026-09-19T15:00:08+00:00",
+      "touched_round": 391,
+      "commit": "8c88571f",
+      "title": "fix(backend): reply notification deep-links to the new reply not the parent comment (TASK-455)"
+    },
+    "CHG-718": {
+      "id": "CHG-718",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:00:09+00:00",
+      "updated_at": "2026-09-19T15:00:09+00:00",
+      "touched_round": 391,
+      "commit": "2dc9e85a",
+      "title": "fix(backend): upload storage dir keyed on naive-UTC now (TASK-456)"
+    },
+    "CHG-719": {
+      "id": "CHG-719",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:00:09+00:00",
+      "updated_at": "2026-09-19T15:00:09+00:00",
+      "touched_round": 391,
+      "commit": "24a74f85",
+      "title": "fix(frontend): search empty-state mode/filter confusion + stale did-you-mean chips (TASK-457/458)"
+    },
+    "ISS-517": {
+      "id": "ISS-517",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:01:36+00:00",
+      "updated_at": "2026-09-19T15:03:11+00:00",
+      "touched_round": 391,
+      "severity": "high",
+      "title": "delete_reader_account leaks ReaderPostLike/AuthorFollow/ReaderFollow/ReaderBlock rows (id-recycle data leak)"
+    },
+    "ISS-518": {
+      "id": "ISS-518",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:01:36+00:00",
+      "updated_at": "2026-09-19T15:03:11+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Reply-notification deep links target the parent comment, not the new reply"
+    },
+    "ISS-519": {
+      "id": "ISS-519",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:01:36+00:00",
+      "updated_at": "2026-09-19T15:03:11+00:00",
+      "touched_round": 391,
+      "severity": "low",
+      "title": "Upload storage dir uses server-local time; media listing shows naive-UTC mtime"
+    },
+    "ISS-520": {
+      "id": "ISS-520",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:01:36+00:00",
+      "updated_at": "2026-09-19T15:03:11+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Comments-mode zero-hit search shows 'adjust filters' + dead Clear-all button"
+    },
+    "ISS-521": {
+      "id": "ISS-521",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T15:01:36+00:00",
+      "updated_at": "2026-09-19T15:03:11+00:00",
+      "touched_round": 391,
+      "severity": "medium",
+      "title": "Stale did-you-mean chips persist across consecutive zero-hit term changes"
+    },
+    "EV-301": {
+      "id": "EV-301",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:04:08+00:00",
+      "updated_at": "2026-09-19T15:04:08+00:00",
+      "touched_round": 391,
+      "source": "1873 passed (full backend suite, test_reader_account_delete/tests edited)",
+      "title": "Account-deletion cleanup now reaps all 14 reader-scoped tables incl. both follow/block directions",
+      "confidence": 1.0
+    },
+    "EV-302": {
+      "id": "EV-302",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:04:08+00:00",
+      "updated_at": "2026-09-19T15:04:08+00:00",
+      "touched_round": 391,
+      "source": "104 passed (reply notifications + comment subscriptions + comments + notifications)",
+      "title": "Reply deep-link targets #comment-{reply_id} across push/inbox/email contracts",
+      "confidence": 1.0
+    },
+    "EV-303": {
+      "id": "EV-303",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:04:08+00:00",
+      "updated_at": "2026-09-19T15:04:08+00:00",
+      "touched_round": 391,
+      "source": "2387 passed (full frontend suite) incl. 61 search page tests (new term-change + comments empty-state tests)",
+      "title": "Search page: mode no longer counts as a filter; suggestions re-request on term change",
+      "confidence": 1.0
+    },
+    "DEC-444": {
+      "id": "DEC-444",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T15:05:09+00:00",
+      "updated_at": "2026-09-19T15:05:09+00:00",
+      "touched_round": 391,
+      "title": "Round 391: quality-convergence deep-dive — 5 verified defects fixed (account-deletion leak, reply deep-link, upload TZ, search empty-state, stale suggesions)",
+      "rationale": "Operator directive: detail optimization / bug-fix / polish / usability mode. Two parallel read-only deep-dive agents (backend + frontend) plus manual verification surfaced 5 concrete defects: (1) TASK-454 ISS-517 delete_reader_account leaked ReaderPostLike/AuthorFollow/ReaderFollow/ReaderBlock rows -> id-recycle data leak on SQLite (the agent's claimed #1 'backend won't compile' was a FALSE POSITIVE — bare-comma except tuples are valid Python 3.14 syntax, verified against the 3.14.5 venv, matching memory note python314-except-comma-syntax); (2) TASK-455 ISS-518 reply notifications deep-linked to the parent comment, contradicting DEC-072 acceptance 'scrolled to the reply it mentions'; (3) TASK-456 ISS-519 upload dir used server-local time vs naive-UTC media mtime; (4) TASK-457 ISS-520 comments-mode zero-hit search showed 'adjust your filters' + a dead Clear-all (mode counted as a filter); (5) TASK-458 ISS-521 stale did-you-mean chips across consecutive zero-hit terms (transition-only watcher). All fixed + tests: backend 1873 @93.70%, frontend 2387, typecheck + ruff + biome clean.",
+      "alternatives_rejected": "Re-litigating DEC-004 per-process cache staleness (ISS-242, accepted trade-off); typo-tolerant ranking search (deferred behind the did-you-mean arc per DEC-443); any UI/UX refactors beyond the two verified search.vue defects."
     }
   },
   "edges": [
@@ -42994,6 +43206,72 @@
       "to": "TASK-453",
       "type": "implements",
       "created_at": "2026-09-19T11:42:35+00:00"
+    },
+    {
+      "from": "CHG-716",
+      "to": "TASK-454",
+      "type": "implements",
+      "created_at": "2026-09-19T15:01:05+00:00"
+    },
+    {
+      "from": "CHG-717",
+      "to": "TASK-455",
+      "type": "implements",
+      "created_at": "2026-09-19T15:01:05+00:00"
+    },
+    {
+      "from": "CHG-718",
+      "to": "TASK-456",
+      "type": "implements",
+      "created_at": "2026-09-19T15:01:06+00:00"
+    },
+    {
+      "from": "CHG-719",
+      "to": "TASK-457",
+      "type": "implements",
+      "created_at": "2026-09-19T15:01:06+00:00"
+    },
+    {
+      "from": "CHG-719",
+      "to": "TASK-458",
+      "type": "implements",
+      "created_at": "2026-09-19T15:01:06+00:00"
+    },
+    {
+      "from": "TASK-454",
+      "to": "ISS-517",
+      "type": "addresses",
+      "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "TASK-455",
+      "to": "ISS-518",
+      "type": "addresses",
+      "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "TASK-456",
+      "to": "ISS-519",
+      "type": "addresses",
+      "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "TASK-457",
+      "to": "ISS-520",
+      "type": "addresses",
+      "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "TASK-458",
+      "to": "ISS-521",
+      "type": "addresses",
+      "created_at": "2026-09-19T15:02:02+00:00"
+    },
+    {
+      "from": "ISS-517",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-19T15:02:02+00:00"
     }
   ]
 }
