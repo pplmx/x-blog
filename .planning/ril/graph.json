@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 388,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T06:08:25+00:00",
+  "updated_at": "2026-09-19T07:20:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28784,6 +28784,101 @@
       "source": "frontend/aura/e2e/footnotes.spec.ts (Playwright, round 388)",
       "title": "E2E journey passes: publish footnoted post, citation renders without leaking raw [^1]",
       "confidence": 1.0
+    },
+    "DEC-442": {
+      "id": "DEC-442",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T06:25:34+00:00",
+      "updated_at": "2026-09-19T06:25:34+00:00",
+      "touched_round": 388,
+      "title": "Round 389: search inside a posts comment thread (feature evolution)",
+      "rationale": "Gap analysis round 388 (reader-side) ranked in-thread comment search #2 after footnotes. A long paginated thread (sorted newest/oldest/likes, arbitrarily large with deep-link landing) gives a reader who remembers \"someone mentioned Docker on this post\" exactly one escape: the GLOBAL comment search, which cannot scope to the current thread. The highest-intent variant (\"what did THEY say on THIS post\") has no surface. Evidence: list_comments (routers/comments.py:661) accepts only sort/page/limit, no q; get_comments_paginated (crud.py:945) has no keyword filter; the global search_comments (crud.py:4404) is post-agnostic. Reuses the existing deep-link infra (#comment-{id} scroll + page-walking in CommentList) and the substring-ilike dialect-agnostic pattern search_comments and search_posts already use. Surface: optional q on list_comments + content ilike filter in get_comments_paginated (whitelist q len, escape LIKE metacharacters), router/crud tests; frontend a small search input in CommentList.vue driving a q param (reset to page 1), highlight matches, ~3 files + component test + e2e. Net increment, no schema change.",
+      "alternatives_rejected": "Typo-tolerant global search — highest raw reach but the costliest slice under strict PG/SQLite + CJK/ASCII parity (do after 1-2); per-author/admin candidates (commenter history, author performance, slug audit) — real but pure-admin and each needs a new aggregation layer; copy-link-to-heading / pinned-comments — convenience affordances rejected by the value gate as patch-accumulation."
+    },
+    "TASK-452": {
+      "id": "TASK-452",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T06:26:06+00:00",
+      "updated_at": "2026-09-19T07:20:43+00:00",
+      "touched_round": 388,
+      "title": "Keyword search inside a posts comment thread",
+      "category": "core-feature",
+      "description": "Delivered by CHG-710/711/712; verified by EV-295/296/297 (backend 1846, frontend 2382, e2e green; typecheck/pyright/lint clean).",
+      "priority_score": 0,
+      "resolved_round": 389
+    },
+    "CHG-710": {
+      "id": "CHG-710",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:07+00:00",
+      "updated_at": "2026-09-19T07:20:07+00:00",
+      "touched_round": 388,
+      "title": "feat(backend): q param on thread list_comments + crud filter + tests",
+      "commit": "1ce8e2bc"
+    },
+    "CHG-711": {
+      "id": "CHG-711",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:07+00:00",
+      "updated_at": "2026-09-19T07:20:07+00:00",
+      "touched_round": 388,
+      "title": "feat(frontend): CommentList thread search box + api q + i18n + component tests",
+      "commit": "2a8dfcb6"
+    },
+    "CHG-712": {
+      "id": "CHG-712",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:07+00:00",
+      "updated_at": "2026-09-19T07:20:07+00:00",
+      "touched_round": 388,
+      "title": "test(e2e): comment thread search journey",
+      "commit": "8e8a88fa"
+    },
+    "EV-295": {
+      "id": "EV-295",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:42+00:00",
+      "updated_at": "2026-09-19T07:20:42+00:00",
+      "touched_round": 388,
+      "source": "backend/nova/tests/test_comments.py (pytest, round 389)",
+      "title": "Thread-search backend tests pass; full backend suite 1846 passed, coverage 93.70%",
+      "confidence": 1.0
+    },
+    "EV-296": {
+      "id": "EV-296",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:42+00:00",
+      "updated_at": "2026-09-19T07:20:42+00:00",
+      "touched_round": 388,
+      "source": "frontend/aura/tests/components/CommentList.spec.ts + api/public/comments.spec.ts (vitest, round 389)",
+      "title": "Thread-search component/api tests pass; full frontend suite 2382 passed",
+      "confidence": 1.0
+    },
+    "EV-297": {
+      "id": "EV-297",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T07:20:42+00:00",
+      "updated_at": "2026-09-19T07:20:42+00:00",
+      "touched_round": 388,
+      "source": "frontend/aura/e2e/comment-thread-search.spec.ts (Playwright, round 389)",
+      "title": "E2E journey passes: thread narrows on q, restores on clear",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -42764,6 +42859,24 @@
       "to": "TASK-451",
       "type": "implements",
       "created_at": "2026-09-19T06:06:56+00:00"
+    },
+    {
+      "from": "CHG-710",
+      "to": "TASK-452",
+      "type": "implements",
+      "created_at": "2026-09-19T07:20:07+00:00"
+    },
+    {
+      "from": "CHG-711",
+      "to": "TASK-452",
+      "type": "implements",
+      "created_at": "2026-09-19T07:20:07+00:00"
+    },
+    {
+      "from": "CHG-712",
+      "to": "TASK-452",
+      "type": "implements",
+      "created_at": "2026-09-19T07:20:07+00:00"
     }
   ]
 }

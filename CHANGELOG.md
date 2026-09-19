@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔎 **Search inside a comment thread (round 389)**: a long discussion (sorted
+  newest/oldest/helpful, arbitrarily paginated) had no way to find "that answer
+  that mentioned X" — the global comment search cannot scope to a post. The
+  thread now has its own debounced search box beside the sort control: typing
+  narrows the list server-side to approved comments whose content matches every
+  term (`GET /api/comments/post/{id}?q=`, case-insensitive substring AND, the
+  same dialect-agnostic path the global comment search uses, so Chinese terms
+  match partial runs). The term resets to page 1, composes with any sort, a
+  clear button restores the full thread, and LIKE metacharacters are escaped so
+  a `%` query matches literally. Backend 1846 + frontend 2382 unit tests + a
+  Playwright journey (seed a marked thread → box narrows → clear restores) all
+  green (round 389, DEC-442).
 - 📝 **Inline Markdown footnotes (round 388)**: an author citing a source had no
   way to render a footnote — the GFM `[^1]` / `[^1]: ...` marker printed as
   literal raw text mid-article. The frontend marked integration (markdown
