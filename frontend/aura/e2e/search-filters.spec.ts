@@ -51,7 +51,7 @@ test.describe("Search filters + sort", () => {
 		const inner = (await (
 			await request.get(`/api/search?q=${encodeURIComponent(TERM)}&limit=50`)
 		).json()) as {
-			items: Array<{ views: number; created_at: string }>;
+			items: Array<{ views: number; created_at: string; publish_at: string | null }>;
 		};
 
 		const views = await request.get(
@@ -69,13 +69,27 @@ test.describe("Search filters + sort", () => {
 		for (let i = 1; i < viewsItems.length; i++) {
 			expect(viewsItems[i - 1].views).toBeGreaterThanOrEqual(viewsItems[i].views);
 		}
-		const newestItems = (await newest.json()).items as Array<{ created_at: string }>;
+		// newest/oldest sort by EFFECTIVE publish time (publish_at ?? created_at,
+		// DEC-238) — the same key feeds/archive/sitemap order on, and a scheduled
+		// post that has gone live must rank by when it appeared, not by its older
+		// draft created_at. A raw created_at assertion silently fails once a
+		// seeded scheduled post passes its publish date.
+		const effective = (p: { created_at: string; publish_at: string | null }) =>
+			new Date(p.publish_at ?? p.created_at).getTime();
+		const newestItems = (await newest.json()).items as Array<{
+			created_at: string;
+			publish_at: string | null;
+		}>;
 		for (let i = 1; i < newestItems.length; i++) {
-			expect(new Date(newestItems[i - 1].created_at).getTime()).toBeGreaterThanOrEqual(
-				new Date(newestItems[i].created_at).getTime(),
-			);
+			expect(effective(newestItems[i - 1])).toBeGreaterThanOrEqual(effective(newestItems[i]));
 		}
-		const oldestItems = (await oldest.json()).items as Array<{ created_at: string }>;
+		const oldestItems = (await oldest.json()).items as Array<{
+			created_at: string;
+			publish_at: string | null;
+		}>;
 		expect(oldestItems.length).toBe(inner.items.length);
+		for (let i = 1; i < oldestItems.length; i++) {
+			expect(effective(oldestItems[i - 1])).toBeLessThanOrEqual(effective(oldestItems[i]));
+		}
 	});
 });
