@@ -88,7 +88,11 @@ async def upload_image(
     ext = ALLOWED_TYPES_MAP.get(file.content_type, "jpg") if safe_ext not in ALLOWED_EXTENSIONS else safe_ext
     filename = f"{uuid.uuid4()}.{ext}"
 
-    now = datetime.now()
+    # Directory keyed on naive-UTC now (the same clock the media listing uses
+    # for uploaded_at via st_mtime → UTC) — datetime.now() (server-local) could
+    # write into a month/year directory ahead of the timestamp the library
+    # reports for the file on a non-UTC box near a boundary.
+    now = datetime.now(UTC).replace(tzinfo=None)
     upload_dir = STATIC_DIR / "uploads" / str(now.year) / f"{now.month:02d}"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
