@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 395,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T22:28:42+00:00",
+  "updated_at": "2026-09-19T22:35:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29682,6 +29682,54 @@
       "title": "close round 394: unify admin & reader error surfacing",
       "rationale": "CHG-727 (commit 49445908) closed ISS-539 -> TASK-468: the duplicated per-page getErrorMessage helpers (6 admin pages + useReaderAuth) fell through to ofetch's technical string whenever the backend envelope was missing, defeating the {error:{message}} contract from round 393. Consolidated into shared api/errors.ts apiErrorMessage(error, fallback) with a 5-case unit test; VERIFY: frontend 2410 passed, pnpm typecheck EXIT=0, biome clean, backend untouched. Deep-dive value: TASK-468 priority 0.75 (< 3.0) — second consecutive sub-threshold deep-dive round (393: 0.25/2.5/2.5; 394: 0.75); the F3(b) row-button busy/disabled state and the per-button single-flight were deferred as a scoped task.",
       "alternatives_rejected": "Not bundling F3(b) (row action :disabled while a delete/batch op is in flight) into this round: it touches every admin list page's template and deserves its own focused round rather than widening a tight consolidation round. C0 control-char redirect hardening remains deferred per DEC-449 (Nuxt encodeRoutePath neutralizes it on the current stack)."
+    },
+    "ISS-540": {
+      "id": "ISS-540",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-19T22:35:05+00:00",
+      "updated_at": "2026-09-19T22:35:25+00:00",
+      "touched_round": 395,
+      "title": "pages.vue row actions lack in-flight disable (double-click race)",
+      "severity": "low",
+      "summary": "The static-pages CMS board published/unpublished and deleted without the :disabled=isProcessing guard every other admin row action carries; two rapid taps could issue concurrent deletes or publish flips against the same row. Deferred F3(b) from the round-392 deep-dive."
+    },
+    "TASK-469": {
+      "id": "TASK-469",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-19T22:35:05+00:00",
+      "updated_at": "2026-09-19T22:35:05+00:00",
+      "touched_round": 395,
+      "category": "stability",
+      "severity": "low",
+      "priority_score": 2.0,
+      "summary": "Add :disabled=isProcessing to pages.vue publish/unpublish + delete row actions (consistency with 5 sibling admin pages) plus a never-settles regression test pinning the busy state"
+    },
+    "CHG-728": {
+      "id": "CHG-728",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T22:35:05+00:00",
+      "updated_at": "2026-09-19T22:35:05+00:00",
+      "touched_round": 395,
+      "commit": "cf26a4be",
+      "summary": "fix(admin): disable pages.vue row actions while in flight (round 395)"
+    },
+    "DEC-451": {
+      "id": "DEC-451",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-19T22:35:25+00:00",
+      "updated_at": "2026-09-19T22:35:25+00:00",
+      "touched_round": 395,
+      "title": "close round 395: pages.vue in-flight row actions",
+      "rationale": "CHG-728 (commit cf26a4be) closed ISS-540 -> TASK-469: the static-pages CMS board was the last admin row lacking :disabled=isProcessing on its publish/unpublish + delete buttons, so a double-click could race two concurrent deletes or publish flips. Guard added (declining to disable the pure client-side edit/cancel toggle, matching the sibling pages' idiom) with a never-settles regression test. VERIFY: frontend 2411 passed (typecheck EXIT=0, biome clean); backend untouched since round-393 green (full baseline re-run follows before QUIESCE).",
+      "alternatives_rejected": "Disabling edit/cancel during in-flight ops was rejected: it is a pure client-side transition (startEdit/cancelEdit) with no network call, and the five sibling admin pages keep it enabled — only network row actions are guarded. A per-row busy id like users.vue penBusy is overkill here since isProcessing already serializes every page action."
     }
   },
   "edges": [
@@ -44160,6 +44208,36 @@
       "to": "DEC-448",
       "type": "supersedes",
       "created_at": "2026-09-19T22:28:42+00:00"
+    },
+    {
+      "from": "TASK-469",
+      "to": "ISS-540",
+      "type": "addresses",
+      "created_at": "2026-09-19T22:35:24+00:00"
+    },
+    {
+      "from": "CHG-728",
+      "to": "TASK-469",
+      "type": "implements",
+      "created_at": "2026-09-19T22:35:24+00:00"
+    },
+    {
+      "from": "CHG-728",
+      "to": "ISS-540",
+      "type": "resolves",
+      "created_at": "2026-09-19T22:35:24+00:00"
+    },
+    {
+      "from": "ISS-540",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-19T22:35:24+00:00"
+    },
+    {
+      "from": "DEC-451",
+      "to": "DEC-450",
+      "type": "supersedes",
+      "created_at": "2026-09-19T22:35:25+00:00"
     }
   ]
 }
