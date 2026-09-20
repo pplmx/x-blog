@@ -383,6 +383,11 @@ function formatDate(dateStr: string): string {
 
     <!-- Comment list -->
     <ul v-else class="space-y-3">
+      <!-- Screen-reader page announcement (round 398, same pattern as home):
+           pagination swaps the list in place, invisible to assistive tech. -->
+      <li class="sr-only" role="status" aria-live="polite">
+        {{ t("common.state.pageAnnounce", { page: currentPage }) }}
+      </li>
       <li
         v-for="comment in comments"
         :key="comment.id"

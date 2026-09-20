@@ -51,6 +51,11 @@ const paginationTokens = computed(() =>
 	paginationPages(pagination.value?.total_pages ?? 0, page.value),
 );
 
+// Screen-reader page announcement (round 398, same pattern as home): pagination
+// swaps the grid in place, which is invisible to assistive tech — announce the
+// landed page when it changes.
+const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
+
 // The feed is auth-scoped: a stale page deep link (e.g. /follows?page=999
 // after follows changed) would otherwise render the empty state while earlier
 // pages still hold content — clamp back to the last real page once known
@@ -195,6 +200,7 @@ function retry() {
 		</div>
 
 		<template v-else>
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<p v-if="pagination" class="text-sm text-gray-400 mb-4">
 				{{ t("follows.countLabel", { count: pagination.total }) }}
 			</p>

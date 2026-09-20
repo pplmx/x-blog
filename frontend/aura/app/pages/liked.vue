@@ -87,6 +87,11 @@ const paginationTokens = computed(() =>
 	paginationPages(pagination.value?.total_pages ?? 0, page.value),
 );
 
+// Screen-reader page announcement (round 398, same pattern as home): pagination
+// swaps the grid in place, which is invisible to assistive tech — announce the
+// landed page when it changes.
+const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
+
 // Stale deep-link clamp (home/search/archive pattern, ISS-308).
 watch(
 	() => pagination.value,
@@ -287,6 +292,7 @@ async function handleUnlike(post: PostList) {
 		</div>
 
 		<template v-else>
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<!-- Recall search over the liked posts (DEC-413, TASK-432): debounced,
 			     server-side, matches title/excerpt. -->
 			<div class="relative mb-4 max-w-sm">
