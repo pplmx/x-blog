@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 409,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T18:57:26+00:00",
+  "updated_at": "2026-09-20T19:04:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30204,11 +30204,11 @@
     "ISS-554": {
       "id": "ISS-554",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:30:05+00:00",
-      "updated_at": "2026-09-20T14:30:05+00:00",
-      "touched_round": 403,
+      "updated_at": "2026-09-20T19:00:15+00:00",
+      "touched_round": 409,
       "title": "Non-numeric/zero ?page= bricks discussion/search/readers pages with dead Retry",
       "severity": "medium",
       "summary": "discussion.vue:59, search.vue:29, readers/[id].vue:39 use an un-clamped page computed (parseInt of the query param, falling back to 1 only when empty). ?page=abc yields NaN and ?page=0 yields 0, both forwarded raw to the API (guaranteed 422), while the page-clamp watchers explicitly skip NaN/<2, so nothing ever redirects and the error Retry re-sends the same invalid value - a permanent load-failed state. follows.vue/liked.vue clamp inline (NaN||<1 -> 1); tags/categories/archive omit invalid values. Frontend deep-dive finding C1."
@@ -30232,11 +30232,11 @@
     "ISS-555": {
       "id": "ISS-555",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:31:42+00:00",
-      "updated_at": "2026-09-20T14:31:42+00:00",
-      "touched_round": 404,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "medium",
       "title": "Orphan author_id accepted on both post-update paths",
       "summary": "admin_update_post (admin.py:734-737) and crud.update_post (crud.py:518-519) assign post.author_id without an existence check, unlike category_id/series_id/tag_ids which are validated with 400/ValueError. A stale/deleted user id yields posts serialized with author: null, 404 writer archive/RSS, silent follower fan-out miss, orphan propagation on clone. Backend review finding 1."
@@ -30244,11 +30244,11 @@
     "ISS-556": {
       "id": "ISS-556",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:31:57+00:00",
-      "updated_at": "2026-09-20T14:31:57+00:00",
-      "touched_round": 404,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "medium",
       "title": "crud.update_post silently drops unknown tag_ids",
       "summary": "crud.update_post (crud.py:508-511) does db.query(Tag).filter(id.in_(tag_id_list)).all() and sets db_post.tags = tags, so ids that no longer exist vanish from the post with no error - while the admin route (admin.py:770-784) 400s on the same condition. PUT /api/posts/{id} backend silently strips tags the editor believes are assigned. Backend review finding 2."
@@ -30256,11 +30256,11 @@
     "ISS-557": {
       "id": "ISS-557",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:32:00+00:00",
-      "updated_at": "2026-09-20T14:32:00+00:00",
-      "touched_round": 406,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "medium",
       "title": "bulk_delete_comments N+1 (query per id + per-ancestor walk)",
       "summary": "crud.py:1313-1327: for up to BatchDeleteRequest-cap (100) comments, bulk_delete_comments issues one reply-list query per comment plus one db.get per ancestor while recomputing effective parents - O(ids) queries + O(thread-depth). A single parent_id IN delete_set query plus a parent-id map would collapse to constant queries. Backend review finding 4."
@@ -30268,11 +30268,11 @@
     "ISS-558": {
       "id": "ISS-558",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:32:16+00:00",
-      "updated_at": "2026-09-20T14:32:16+00:00",
-      "touched_round": 405,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "Frontend locale drifts (dates + number grouping use browser locale)",
       "summary": "admin/media.vue:292 and admin/posts/[id].vue:784 use toLocaleDateString()/toLocaleString() with no locale arg, so an admin on zh UI with an en browser sees mixed-language dates; index.vue:325-328 and posts/[slug]/index.vue:883 use .toLocaleString() for stat numbers. Every other page passes locale.value === \"zh\" ? \"zh-CN\" : \"en-US\" explicitly. Frontend findings C2+C4."
@@ -30357,11 +30357,11 @@
     "ISS-559": {
       "id": "ISS-559",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T15:17:30+00:00",
-      "updated_at": "2026-09-20T15:17:30+00:00",
-      "touched_round": 405,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "follows.vue pagination highlight keyed to server response not route",
       "summary": "follows.vue:260-271 uses pagination.page (previous server payload) for the current-page highlight/disabled/click-guard; every sibling page derives it from the route computed. Between navigating and the response landing the highlighted page is stale. Latent inconsistency, skeleton covers the window. Frontend finding C3."
@@ -30445,11 +30445,11 @@
     "ISS-560": {
       "id": "ISS-560",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T16:33:32+00:00",
-      "updated_at": "2026-09-20T16:33:32+00:00",
-      "touched_round": 407,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "like_comment commits the CommentLike row in a separate transaction from the counter bump",
       "summary": "crud.like_comment (crud.py:1792-1804) commits the CommentLike insert in its own transaction, then increment_comment_likes commits the atomic likes+1 UPDATE in a second transaction. If the second commit fails after the first succeeded, the row exists but the counter never increments — and there is no unlike/re-sync path (comments can only like). Backend review finding 6."
@@ -30495,11 +30495,11 @@
     "ISS-561": {
       "id": "ISS-561",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T16:47:28+00:00",
-      "updated_at": "2026-09-20T16:47:28+00:00",
-      "touched_round": 408,
+      "updated_at": "2026-09-20T19:00:16+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "list_users returns every admin account in one unbounded query",
       "summary": "admin.py:374 list_users does db.query(User).all() with no pagination - every admin account (id, username, role, is_superuser) serialized per request. Superuser-only surface so not a data-grade leak, but unbounded. Backend review finding 5."
@@ -30507,11 +30507,11 @@
     "ISS-562": {
       "id": "ISS-562",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T16:47:28+00:00",
-      "updated_at": "2026-09-20T16:47:28+00:00",
-      "touched_round": 408,
+      "updated_at": "2026-09-20T19:00:39+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "Deactivated readers keep a live public profile page",
       "summary": "get_reader_public_profile (crud.py:4369-4375) is a bare db.get(ReaderAccount) with no is_active filter; /api/readers/{id} + /likes + /bookmarks 404 only when the row is missing, while every other public reader surface filters is_active. Defensible (approved comments stay public) but inconsistent. Backend review finding 7."
@@ -30643,6 +30643,29 @@
       "touched_round": 409,
       "commit": "0083534f",
       "summary": "loginTarget const on liked/follows/notifications carrying ?redirect=/<route> for guest + stale-session redirects and the liked dead-session sign-in link; specs updated TDD-first, frontend suite 2452 passed"
+    },
+    "DEC-467": {
+      "id": "DEC-467",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:00:27+00:00",
+      "updated_at": "2026-09-20T19:00:27+00:00",
+      "touched_round": 409,
+      "rationale": "Deactivation is admin sign-in lock-out (misuse/moderation), not a content takedown; keeping the public profile live is intentional so profile links read consistently and 'deactivated' is not conflated with 'deleted'. Revisit only if abuse signals accumulate.",
+      "alternatives_rejected": "Hiding or 404ing deactivated-reader profiles would (a) semantically conflate deactivation with deletion and (b) orphan likes/comment authorship back-links into blank pages.",
+      "title": "Deactivated reader keeps public profile (WONTFIX for now)"
+    },
+    "CHG-748": {
+      "id": "CHG-748",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:04:43+00:00",
+      "updated_at": "2026-09-20T19:04:43+00:00",
+      "touched_round": 409,
+      "commit": "PENDING",
+      "summary": "CHANGELOG.md + CHANGELOG.zh-CN.md combined entry for rounds 403-409 (detail & reader-auth polish): page clamp, FK validation, locale formatting, bulk comment-delete batching, like atomicity, consent-restart gate, confirm/reset error states, post-login redirect, dynamic copyright"
     }
   },
   "edges": [

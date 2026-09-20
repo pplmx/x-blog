@@ -9,7 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- 🛠️ **Comment & consent polish round (round 393)**: a usability sweep crossed
+- 🛠️ **Detail & reader-auth polish rounds (rounds 403–409)**: six rounds of
+  verification-first polish across both stacks, closing the full reader-auth
+  review backlog. **Invalid deep links no longer loop**: discussion, search and
+  reader-profile pages clamp a `?page=0` / `?page=abc` query to page 1 instead
+  of firing a request the backend rejects with 422 (then reloading into the
+  same failure). **Post updates validate their references**: setting an author
+  or tag that no longer exists on the admin edit form now fails fast with a
+  clear error instead of silently dropping the association (both the editor and
+  the bare CRUD path). **Pagination and formatting follow the site language**:
+  the follows feed's current-page highlight reads the URL instead of the lagging
+  server payload, and admin media/post tables plus home stats render dates and
+  numbers in the site locale (zh-CN / en-US) rather than the browser's. Backend:
+  **bulk comment delete no longer runs ~300 queries** — the orphan-repair pass
+  (rehome replies, walk parents, drop flags/likes) batches into three bulk
+  statements; **liking a comment is atomic** — the like row and the counter bump
+  persist in one transaction, so a crash can no longer leave a like with no
+  count visible; and the **guest thread-follow consent-restart gate** (the
+  newsletter round-393 parity): replaying the original double-opt-in link after
+  an unsubscribe can no longer silently re-subscribe — the confirm now 400s into
+  a re-subscribe state, and the confirm pages map a deliberate 400 / unknown
+  token 404 / reachability failure to distinct, honest states (no more "invalid
+  link" for a network hiccup, no more retrying a dead link for an unsubscribed
+  address). **Reset-password shows success even if the redirect to /account
+  hiccups** — an already-signed-in reader never lands on a blank page. **Sign-in
+  returns you where you started**: liked, follows and notifications now carry
+  `?redirect=/<route>` to /login, so a reader who hits a login prompt lands back
+  on the page that prompted it instead of /bookmarks (the login page's
+  open-redirect guard only honors same-origin relative paths, so the new values
+  are safe by construction). And the **copyright foot line renders the current
+  year** rather than a hardcoded 2026. Backend 1898 @ 97.26%, frontend 2452
+  unit tests, typecheck/lint/migration-on-Postgres green (rounds 403–409).
   the comment form, the likes page, pagination and a four-findings backend
   pass. **Comment submit no longer leaks ofetch's technical error string**
   (`"[POST] …: 429 Too Many Requests"` with the internal URL) into the form's
