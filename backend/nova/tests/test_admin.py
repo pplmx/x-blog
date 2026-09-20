@@ -6,8 +6,9 @@ Credentials: username="testadmin", password="testpass123"
 """
 
 from datetime import datetime
+from uuid import uuid4
 
-from app import models
+from app import auth, models
 
 
 class TestAdminLogin:
@@ -364,6 +365,45 @@ class TestAdminPosts:
         )
         assert good.status_code == 200
         assert client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()["tag_ids"] == [tag.id]
+
+    def test_update_post_rejects_orphan_author_id_like_other_fks(self, client, auth_headers, db_session):
+        """An author_id that no longer exists must 400, not orphan the post.
+
+        Every other FK field (category/series/tags) 400s on an unknown id;
+        author_id was the one silent assignment path — a stale/deleted writer
+        produced a post serialized author: null, a 404 writer archive/RSS, and
+        a silently-missed author-follow fan-out (TASK-479, ISS-555)."""
+        post = models.Post(title="Test", slug="author-contract", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+
+        bad = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"author_id": 99999},
+        )
+        assert bad.status_code == 400
+        assert "99999" in bad.json()["error"]["message"]
+
+        # A valid author reassignment still saves cleanly.
+        editor = auth.User(
+            username=f"auth{uuid4().hex[:6]}",
+            password=auth.get_password_hash("editorpass123"),
+            role="editor",
+            display_name="New Writer",
+        )
+        db_session.add(editor)
+        db_session.flush()
+        good = client.put(
+            f"/api/admin/posts/{post.id}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"author_id": editor.id},
+        )
+        assert good.status_code == 200
+        # The admin PUT returns a minimal {"id"} envelope; the detail route
+        # carries the assignment.
+        detail = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers).json()
+        assert detail["author_id"] == editor.id
 
     def test_update_post_does_not_require_series(self, client, auth_headers, db_session):
         """A plain title/slug update must not 422 for wanting series fields."""

@@ -732,8 +732,17 @@ def admin_update_post(
         # to None (the column is non-nullable).
         post.comments_enabled = post_data.comments_enabled
     if post_data.author_id is not None:
-        # Author reassignment (DEC-359/TASK-405): null is never sent (authors
-        # aren't cleared), so any non-null value is an explicit reassignment.
+        # Author reassignment (DEC-359/TASK-405, TASK-479/ISS-555): null is
+        # never sent (authors aren't cleared), so any non-null value is an
+        # explicit reassignment — and an id that no longer exists must 400 like
+        # the sibling FK fields (author: null, 404 writer archive/RSS, missed
+        # author-follow fan-out otherwise).
+        author = db.query(auth.User).filter(auth.User.id == post_data.author_id).first()
+        if not author:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Author with id {post_data.author_id} not found",
+            )
         post.author_id = post_data.author_id
 
     # Fields that support explicit clearing (null) are handled via

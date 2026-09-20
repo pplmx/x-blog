@@ -276,6 +276,42 @@ def test_update_post(client, auth_headers):
     assert response.json()["title"] == "Updated Title"
 
 
+def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers):
+    """PUT /api/posts/{id} (crud.update_post) must 400 on an unknown author_id
+    or tag_id instead of silently orphaning (TASK-479, ISS-555/ISS-556).
+
+    category_id/series_id already 400 here; author_id was assigned blind (a
+    deleted writer left the post author: null with a 404 writer archive/RSS and
+    a missed author fan-out) and unknown tag_ids vanished from the save."""
+    create_response = client.post(
+        "/api/posts",
+        json={
+            "title": "Validation Contract",
+            "slug": "validation-contract",
+            "content": "Content",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    post_id = create_response.json()["id"]
+
+    bad_author = client.put(
+        f"/api/posts/{post_id}",
+        json={"author_id": 99999},
+        headers=auth_headers,
+    )
+    assert bad_author.status_code == 400
+    assert "99999" in bad_author.json()["error"]["message"]
+
+    bad_tag = client.put(
+        f"/api/posts/{post_id}",
+        json={"tag_ids": [99999]},
+        headers=auth_headers,
+    )
+    assert bad_tag.status_code == 400
+    assert "99999" in bad_tag.json()["error"]["message"]
+
+
 def test_delete_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",

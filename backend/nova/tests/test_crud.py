@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app import cache, crud, models, schemas
+from app import auth, cache, crud, models, schemas
 
 
 class TestEffectivePublishTs:
@@ -1655,6 +1655,76 @@ class TestUpdatePostTagIds:
         with patch("app.crud.clear_tags_cache"):
             result = crud.update_post(db_session, post.id, update_data)
 
+        assert result is not None
+        assert len(result.tags) == 0
+
+
+class TestUpdatePostValidation:
+    """update_post FK/reference validation (TASK-479, ISS-555/ISS-556).
+
+    category_id/series_id already raise ValueError on an unknown id; until this
+    round author_id was assigned blindly (serializing author: null, 404ing the
+    writer archive/RSS, and silently missing the author-follow fan-out) and
+    unknown tag_ids were silently dropped from the save. Both must now reject
+    with a clear ValueError like the sibling fields.
+    """
+
+    def test_update_post_rejects_unknown_author_id(self, db_session):
+        """An author_id that no longer exists must raise ValueError."""
+        post = models.Post(title="Orphan Author", slug="orphan-author-test", content="Content")
+        db_session.add(post)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(author_id=99999)
+        with pytest.raises(ValueError, match="99999"):
+            crud.update_post(db_session, post.id, update_data)
+
+    def test_update_post_accepts_known_author_id(self, db_session):
+        """A valid author_id reassignment still saves cleanly."""
+        user = auth.User(username="writer2", password="x", role=auth.ROLE_EDITOR)
+        db_session.add(user)
+        db_session.commit()
+
+        post = models.Post(title="Reassign", slug="reassign-author-test", content="Content")
+        db_session.add(post)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(author_id=user.id)
+        with patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
+        assert result is not None
+        assert result.author_id == user.id
+
+    def test_update_post_rejects_unknown_tag_ids(self, db_session):
+        """An unknown tag id must raise ValueError listing the missing ids, not
+        silently disappear from the save (same contract as the admin route)."""
+        tag = models.Tag(name="keep")
+        db_session.add(tag)
+        db_session.commit()
+
+        post = models.Post(title="Unknown Tag", slug="unknown-tag-test", content="Content")
+        db_session.add(post)
+        db_session.commit()
+
+        update_data = schemas.PostUpdate(tag_ids=[tag.id, 99999])
+        with pytest.raises(ValueError, match="99999"):
+            crud.update_post(db_session, post.id, update_data)
+
+    def test_update_post_clear_tag_ids_still_works(self, db_session):
+        """An EMPTY tag_ids list (clearing all tags) is not an unknown-id error."""
+        tag = models.Tag(name="to-clear")
+        db_session.add(tag)
+        db_session.commit()
+
+        post = models.Post(title="Clear Tags", slug="clear-tags-test", content="Content")
+        post.tags.append(tag)
+        db_session.add(post)
+        db_session.commit()
+        assert len(post.tags) == 1
+
+        update_data = schemas.PostUpdate(tag_ids=[])
+        with patch("app.crud.clear_tags_cache"):
+            result = crud.update_post(db_session, post.id, update_data)
         assert result is not None
         assert len(result.tags) == 0
 

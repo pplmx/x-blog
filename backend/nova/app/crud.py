@@ -505,9 +505,24 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         if not series:
             raise ValueError(f"Series with id {update_data['series_id']} not found")
 
+    if "author_id" in update_data and update_data["author_id"] is not None:
+        # Author reassignment (DEC-359/TASK-405, TASK-479/ISS-555): an id that
+        # no longer exists would serialize author: null, 404 the writer
+        # archive/RSS and silently miss the author-follow fan-out — same
+        # stale-id contract as category_id/series_id above.
+        author = db.query(auth.User).filter(auth.User.id == update_data["author_id"]).first()
+        if not author:
+            raise ValueError(f"Author with id {update_data['author_id']} not found")
+
     if "tag_ids" in update_data:
         tag_id_list = update_data.pop("tag_ids")
         tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all() if tag_id_list else []
+        if tag_id_list and len(tags) != len(tag_id_list):
+            # Same unknown-id contract as the admin route (TASK-479/ISS-556):
+            # a deleted/stale selection is an error, not a silent drop from the
+            # editor's save.
+            missing = [tid for tid in tag_id_list if tid not in {t.id for t in tags}]
+            raise ValueError(f"Tag(s) with id {missing} not found")
         db_post.tags = tags
 
     if "slug" in update_data and update_data["slug"] != db_post.slug:
