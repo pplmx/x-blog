@@ -1325,13 +1325,28 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
     if not comments:
         return 0
     existing_ids = {c.id for c in comments}
+    # ISS-557 (performance deep-dive): the old loop issued one reply-query per
+    # comment (up to the batch cap of 100) plus one db.get per ancestor while
+    # walking the parent chain. Both collapse to one query + an in-memory map:
+    #  - the ancestor walk only ever follows ids INSIDE the delete set (it
+    #    stops at the first surviving ancestor), so the parent ids of the
+    #    rows we already loaded are the whole walk table;
+    #  - all surviving direct replies of any deleted comment come from one
+    #    parent_id IN (...) query.
+    parent_of = {c.id: c.parent_id for c in comments}
+    child_rows = (
+        db.query(models.Comment.id, models.Comment.parent_id)
+        .filter(
+            models.Comment.parent_id.in_(existing_ids),
+            models.Comment.id.notin_(existing_ids),
+        )
+        .all()
+    )
+    children_by_parent: dict[int, list[int]] = {}
+    for cid, pid in child_rows:
+        children_by_parent.setdefault(pid, []).append(cid)
     for c in comments:
-        survivor_ids = [
-            sid
-            for (sid,) in db.query(models.Comment.id)
-            .filter(models.Comment.parent_id == c.id, models.Comment.id.notin_(existing_ids))
-            .all()
-        ]
+        survivor_ids = children_by_parent.get(c.id, [])
         if not survivor_ids:
             continue
         # Nearest ancestor of c that is not itself being deleted.
@@ -1339,14 +1354,25 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
         seen: set[int] = set()
         while eff_parent is not None and eff_parent in existing_ids and eff_parent not in seen:
             seen.add(eff_parent)
-            up = db.get(models.Comment, eff_parent)
-            eff_parent = up.parent_id if up is not None else None
+            eff_parent = parent_of.get(eff_parent)
         db.query(models.Comment).filter(models.Comment.id.in_(survivor_ids)).update(
             {models.Comment.parent_id: eff_parent},
             synchronize_session=False,
         )
-    for c in comments:
-        db.delete(c)
+    # Bulk deletes (ISS-557): the previous per-row `db.delete(c)` walked the
+    # self-referential `replies` backref one query per comment (a batch of 100
+    # = 100 extra SELECTs). comment_likes/comment_flags are additive tables
+    # with no DB-level FK (DEC-009), so their rows are reaped explicitly, then
+    # the comment set is removed with a single DELETE. The reparent above
+    # guarantees no surviving row references a deleted id, so the self-join
+    # FK cannot be violated even on PostgreSQL.
+    db.query(models.CommentFlag).filter(models.CommentFlag.comment_id.in_(existing_ids)).delete(
+        synchronize_session=False
+    )
+    db.query(models.CommentLike).filter(models.CommentLike.comment_id.in_(existing_ids)).delete(
+        synchronize_session=False
+    )
+    db.query(models.Comment).filter(models.Comment.id.in_(existing_ids)).delete(synchronize_session=False)
     try:
         db.commit()
     except IntegrityError:

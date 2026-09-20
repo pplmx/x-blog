@@ -181,3 +181,53 @@ class TestBulkDelete:
         c = _comment(client, post.id)
         resp = client.post("/api/admin/comments/batch-delete", json={"ids": [c["id"]]})
         assert resp.status_code == 401
+
+    def test_bulk_delete_is_batched_not_n_plus_one(self, client, db_session, auth_headers, test_engine):
+        """Deleting a deep thread must not run one query per deleted id.
+
+        ISS-557: the old loop issued a reply-query per comment plus a db.get
+        per ancestor while walking the chain. The batch rewrite answers the
+        thread with one parent_id IN (...) query and an in-memory parent map.
+        (The reparent behavior itself is locked in by the sibling tests;
+        this one pins the query COUNT.)
+        """
+        post = _post(db_session, slug="bulk-count")
+        # Nine-deep thread: top -> c1 -> ... -> c8, plus one surviving reply.
+        top = self._approved_comment(client, db_session, post.id, "top")
+        parent = top["id"]
+        ids = [top["id"]]
+        for i in range(8):
+            cid = self._reply(client, db_session, post.id, parent, f"level-{i}")
+            parent = cid
+            ids.append(cid)
+        survivor = self._reply(client, db_session, post.id, parent, "survivor")
+
+        # Delete all nine (leaving `survivor` to be promoted to top-level).
+        statements: list[str] = []
+        from sqlalchemy import event as _event
+
+        def capture(_conn, _cursor, statement, _parameters, _context, _executemany):
+            body = str(statement)
+            if body.lstrip().upper().startswith("SELECT") and "FROM comments" in body:
+                statements.append(body)
+
+        _event.listen(test_engine, "before_cursor_execute", capture)
+        try:
+            resp = client.post(
+                "/api/admin/comments/batch-delete",
+                json={"ids": ids},
+                headers=auth_headers,
+            )
+        finally:
+            _event.remove(test_engine, "before_cursor_execute", capture)
+
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == len(ids)
+        # The survivor still exists, promoted to top-level (reparent intact).
+        left = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        moved = next((c for c in left if c["id"] == survivor), None)
+        assert moved is not None
+        assert moved["parent_id"] is None
+        # One comments-SELECT loads the delete set, one answers the survivors —
+        # a constant, NOT one per id (which would be 9+ here).
+        assert len(statements) <= 3, f"expected O(1) comments SELECTs, got {len(statements)}"
