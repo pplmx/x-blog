@@ -2194,9 +2194,7 @@ def delete_series(db: Session, series_id: int) -> bool:
     # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
     # later series (same orphan class as category/tag follows — deep-dive
     # finding).
-    db.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series_id).delete(
-        synchronize_session=False
-    )
+    db.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series_id).delete(synchronize_session=False)
     db.delete(db_series)
     try:
         db.commit()
