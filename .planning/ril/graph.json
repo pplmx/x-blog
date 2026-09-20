@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 405,
+  "round": 406,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T15:15:56+00:00",
+  "updated_at": "2026-09-20T15:59:22+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30272,7 +30272,7 @@
       "version": 1,
       "created_at": "2026-09-20T14:32:16+00:00",
       "updated_at": "2026-09-20T14:32:16+00:00",
-      "touched_round": 403,
+      "touched_round": 405,
       "severity": "low",
       "title": "Frontend locale drifts (dates + number grouping use browser locale)",
       "summary": "admin/media.vue:292 and admin/posts/[id].vue:784 use toLocaleDateString()/toLocaleString() with no locale arg, so an admin on zh UI with an en browser sees mixed-language dates; index.vue:325-328 and posts/[slug]/index.vue:883 use .toLocaleString() for stat numbers. Every other page passes locale.value === \"zh\" ? \"zh-CN\" : \"en-US\" explicitly. Frontend findings C2+C4."
@@ -30338,6 +30338,71 @@
       "touched_round": 404,
       "commit": "72039479",
       "title": "Validate author_id + tag_ids on post update paths"
+    },
+    "TASK-480": {
+      "id": "TASK-480",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T15:17:20+00:00",
+      "updated_at": "2026-09-20T15:59:22+00:00",
+      "touched_round": 405,
+      "category": "correctness",
+      "severity": 0.35,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "title": "Honor app locale in date + number formatting",
+      "summary": "admin/media.vue:292 toLocaleDateString() and admin/posts/[id].vue:784 formatRevisionTime toLocaleString() render in the browser locale, not the selected site language; index.vue:325-328 hero/sidebar stats and posts/[slug]/index.vue:883 likes use .toLocaleString() grouping with no locale. All other dates pass locale === zh ? zh-CN : en-US explicitly. Pass the app locale everywhere; keep a 12-hour/24-hour choice matching the existing code. Frontend findings C2+C4 (ISS-558)."
+    },
+    "ISS-559": {
+      "id": "ISS-559",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T15:17:30+00:00",
+      "updated_at": "2026-09-20T15:17:30+00:00",
+      "touched_round": 405,
+      "severity": "low",
+      "title": "follows.vue pagination highlight keyed to server response not route",
+      "summary": "follows.vue:260-271 uses pagination.page (previous server payload) for the current-page highlight/disabled/click-guard; every sibling page derives it from the route computed. Between navigating and the response landing the highlighted page is stale. Latent inconsistency, skeleton covers the window. Frontend finding C3."
+    },
+    "TASK-481": {
+      "id": "TASK-481",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T15:17:56+00:00",
+      "updated_at": "2026-09-20T15:59:22+00:00",
+      "touched_round": 405,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 1.0,
+      "title": "follows.vue pagination: derive current page from route",
+      "summary": "Change follows.vue:260-271 to highlight/guard on the route-computed page (like index/liked/archive/discussion) instead of pagination.page from the last server payload, so navigating page 2 - 3 - 2 never marks the wrong button during the in-flight window. Add/adjust a page test. Frontend finding C3 (ISS-559)."
+    },
+    "CHG-741": {
+      "id": "CHG-741",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T15:58:51+00:00",
+      "updated_at": "2026-09-20T15:58:51+00:00",
+      "touched_round": 405,
+      "commit": "7382cb08",
+      "title": "Site-language date/number formatting + route-keyed follows pagination"
+    },
+    "DEC-463": {
+      "id": "DEC-463",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T15:58:51+00:00",
+      "updated_at": "2026-09-20T15:58:51+00:00",
+      "touched_round": 405,
+      "title": "Round 405: frontend i18n-locale + follows pagination polish",
+      "rationale": "Fixed locale drift (dates + number grouping using browser locale instead of the selected site language) and the follows-feed pagination highlight keyed to the stale server payload. Both user-visible polish items from the frontend deep-dive (C2/C4, C3).",
+      "alternatives_rejected": "bulk_delete_comments N+1 (ISS-557) remains below threshold; admin-push rebind (finding 3) documented-intentional; remaining LOW backend findings deferred."
     }
   },
   "edges": [
@@ -45164,6 +45229,42 @@
       "to": "TASK-479",
       "type": "implements",
       "created_at": "2026-09-20T15:15:35+00:00"
+    },
+    {
+      "from": "TASK-480",
+      "to": "ISS-558",
+      "type": "addresses",
+      "created_at": "2026-09-20T15:17:56+00:00"
+    },
+    {
+      "from": "TASK-481",
+      "to": "ISS-559",
+      "type": "addresses",
+      "created_at": "2026-09-20T15:17:56+00:00"
+    },
+    {
+      "from": "CHG-741",
+      "to": "ISS-558",
+      "type": "resolves",
+      "created_at": "2026-09-20T15:59:21+00:00"
+    },
+    {
+      "from": "CHG-741",
+      "to": "ISS-559",
+      "type": "resolves",
+      "created_at": "2026-09-20T15:59:22+00:00"
+    },
+    {
+      "from": "CHG-741",
+      "to": "TASK-480",
+      "type": "implements",
+      "created_at": "2026-09-20T15:59:22+00:00"
+    },
+    {
+      "from": "CHG-741",
+      "to": "TASK-481",
+      "type": "implements",
+      "created_at": "2026-09-20T15:59:22+00:00"
     }
   ]
 }
