@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 407,
+  "round": 408,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T16:28:54+00:00",
+  "updated_at": "2026-09-20T16:47:28+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 403,
+      "touched_round": 408,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -30441,6 +30441,80 @@
       "title": "Round 406: batch comment bulk-delete query plan",
       "rationale": "Fixed the last confirmed backend finding (ISS-557): bulk_delete_comments now O(1) comment SELECTs with a query-count regression test; PG-parity verified the self-referential FK stays safe.",
       "alternatives_rejected": "Kept the ORM delete-orphan cascades untouched for single-comment delete_comment; bulk path reaps additive child tables explicitly (DEC-009). Remaining LOW backend findings (SSR-5..7) withheld as below-threshold/deferred."
+    },
+    "ISS-560": {
+      "id": "ISS-560",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:33:32+00:00",
+      "updated_at": "2026-09-20T16:33:32+00:00",
+      "touched_round": 407,
+      "severity": "low",
+      "title": "like_comment commits the CommentLike row in a separate transaction from the counter bump",
+      "summary": "crud.like_comment (crud.py:1792-1804) commits the CommentLike insert in its own transaction, then increment_comment_likes commits the atomic likes+1 UPDATE in a second transaction. If the second commit fails after the first succeeded, the row exists but the counter never increments — and there is no unlike/re-sync path (comments can only like). Backend review finding 6."
+    },
+    "TASK-483": {
+      "id": "TASK-483",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T16:34:06+00:00",
+      "updated_at": "2026-09-20T16:46:46+00:00",
+      "touched_round": 407,
+      "category": "stability",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1.2,
+      "title": "Make like_comment row + counter a single transaction",
+      "summary": "Combine the CommentLike insert and the atomic likes+1 UPDATE into one commit inside like_comment (increment_comment_likes gains a commit=False mode for in-transaction use). A second-commit failure then rolls the whole like back instead of leaving an under-counted row with no re-sync. Fault-injection unit test pins the atomicity. ISS-560."
+    },
+    "CHG-743": {
+      "id": "CHG-743",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:46:45+00:00",
+      "updated_at": "2026-09-20T16:46:45+00:00",
+      "touched_round": 407,
+      "commit": "c038988a",
+      "title": "like_comment single-transaction row+counter"
+    },
+    "DEC-465": {
+      "id": "DEC-465",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:46:46+00:00",
+      "updated_at": "2026-09-20T16:46:46+00:00",
+      "touched_round": 407,
+      "title": "Round 407: like_comment atomic row+counter write",
+      "rationale": "Fixed the last fault-tolerance gap from the backend deep-dive (ISS-560): single transaction + fault-injection test; PG-parity green.",
+      "alternatives_rejected": "Remaining LOW findings: unbounded list_users (admin superuser-only, small scale) and deactivated-reader public profile (defensible, isolated) recorded as issues for a later round rather than churning behavior now."
+    },
+    "ISS-561": {
+      "id": "ISS-561",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:47:28+00:00",
+      "updated_at": "2026-09-20T16:47:28+00:00",
+      "touched_round": 408,
+      "severity": "low",
+      "title": "list_users returns every admin account in one unbounded query",
+      "summary": "admin.py:374 list_users does db.query(User).all() with no pagination - every admin account (id, username, role, is_superuser) serialized per request. Superuser-only surface so not a data-grade leak, but unbounded. Backend review finding 5."
+    },
+    "ISS-562": {
+      "id": "ISS-562",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:47:28+00:00",
+      "updated_at": "2026-09-20T16:47:28+00:00",
+      "touched_round": 408,
+      "severity": "low",
+      "title": "Deactivated readers keep a live public profile page",
+      "summary": "get_reader_public_profile (crud.py:4369-4375) is a bare db.get(ReaderAccount) with no is_active filter; /api/readers/{id} + /likes + /bookmarks 404 only when the row is missing, while every other public reader surface filters is_active. Defensible (approved comments stay public) but inconsistent. Backend review finding 7."
     }
   },
   "edges": [
@@ -45321,6 +45395,42 @@
       "to": "TASK-482",
       "type": "implements",
       "created_at": "2026-09-20T16:28:53+00:00"
+    },
+    {
+      "from": "ISS-560",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T16:33:33+00:00"
+    },
+    {
+      "from": "TASK-483",
+      "to": "ISS-560",
+      "type": "addresses",
+      "created_at": "2026-09-20T16:34:07+00:00"
+    },
+    {
+      "from": "CHG-743",
+      "to": "ISS-560",
+      "type": "resolves",
+      "created_at": "2026-09-20T16:46:46+00:00"
+    },
+    {
+      "from": "CHG-743",
+      "to": "TASK-483",
+      "type": "implements",
+      "created_at": "2026-09-20T16:46:46+00:00"
+    },
+    {
+      "from": "ISS-561",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T16:47:28+00:00"
+    },
+    {
+      "from": "ISS-562",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T16:47:28+00:00"
     }
   ]
 }
