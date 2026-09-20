@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 404,
+  "round": 405,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T14:53:13+00:00",
+  "updated_at": "2026-09-20T15:15:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30236,7 +30236,7 @@
       "version": 1,
       "created_at": "2026-09-20T14:31:42+00:00",
       "updated_at": "2026-09-20T14:31:42+00:00",
-      "touched_round": 403,
+      "touched_round": 404,
       "severity": "medium",
       "title": "Orphan author_id accepted on both post-update paths",
       "summary": "admin_update_post (admin.py:734-737) and crud.update_post (crud.py:518-519) assign post.author_id without an existence check, unlike category_id/series_id/tag_ids which are validated with 400/ValueError. A stale/deleted user id yields posts serialized with author: null, 404 writer archive/RSS, silent follower fan-out miss, orphan propagation on clone. Backend review finding 1."
@@ -30248,7 +30248,7 @@
       "version": 1,
       "created_at": "2026-09-20T14:31:57+00:00",
       "updated_at": "2026-09-20T14:31:57+00:00",
-      "touched_round": 403,
+      "touched_round": 404,
       "severity": "medium",
       "title": "crud.update_post silently drops unknown tag_ids",
       "summary": "crud.update_post (crud.py:508-511) does db.query(Tag).filter(id.in_(tag_id_list)).all() and sets db_post.tags = tags, so ids that no longer exist vanish from the post with no error - while the admin route (admin.py:770-784) 400s on the same condition. PUT /api/posts/{id} backend silently strips tags the editor believes are assigned. Backend review finding 2."
@@ -30280,11 +30280,11 @@
     "TASK-479": {
       "id": "TASK-479",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T14:32:24+00:00",
-      "updated_at": "2026-09-20T14:32:24+00:00",
-      "touched_round": 403,
+      "updated_at": "2026-09-20T15:15:35+00:00",
+      "touched_round": 404,
       "category": "correctness",
       "severity": 0.55,
       "confidence": 1.0,
@@ -30315,6 +30315,29 @@
       "title": "Round 403 work: frontend page-param clamp first",
       "rationale": "Deep-dive round 403 (operator: detail/bugfix/polish/usability). Highest-priority verified finding: un-clamped ?page= bricks discussion/search/readers pages with a dead Retry (ISS-554). Fixed with the in-tree proven follows.vue clamp pattern; 9 unit tests; typecheck+lint green.",
       "alternatives_rejected": "N+1 bulk_delete_comments (ISS-557) and post-update orphan author_id validation (TASK-479) are confirmed but lower score; scheduled for following rounds. Admin-push rebind is a documented intentional decision, not fixed."
+    },
+    "DEC-462": {
+      "id": "DEC-462",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T15:15:12+00:00",
+      "updated_at": "2026-09-20T15:15:12+00:00",
+      "touched_round": 404,
+      "title": "Round 404: post-update FK validation (backend finding 1+2)",
+      "rationale": "Fixed verified orphan author_id + silently-dropped tag_ids on both post-update paths with tests, matching the sibling category/series/tag contract. Full suite + pyright + ruff + PG-parity green.",
+      "alternatives_rejected": "bulk_delete_comments N+1 (ISS-557) and remaining LOW findings deferred; admin-push rebind (finding 3) is a documented-intentional decision. Frontend C2/C3/C4 locale/pagination nits logged as ISS-558."
+    },
+    "CHG-740": {
+      "id": "CHG-740",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T15:15:35+00:00",
+      "updated_at": "2026-09-20T15:15:35+00:00",
+      "touched_round": 404,
+      "commit": "72039479",
+      "title": "Validate author_id + tag_ids on post update paths"
     }
   },
   "edges": [
@@ -45123,6 +45146,24 @@
       "to": "TASK-478",
       "type": "implements",
       "created_at": "2026-09-20T14:52:43+00:00"
+    },
+    {
+      "from": "CHG-740",
+      "to": "ISS-555",
+      "type": "resolves",
+      "created_at": "2026-09-20T15:15:35+00:00"
+    },
+    {
+      "from": "CHG-740",
+      "to": "ISS-556",
+      "type": "resolves",
+      "created_at": "2026-09-20T15:15:35+00:00"
+    },
+    {
+      "from": "CHG-740",
+      "to": "TASK-479",
+      "type": "implements",
+      "created_at": "2026-09-20T15:15:35+00:00"
     }
   ]
 }
