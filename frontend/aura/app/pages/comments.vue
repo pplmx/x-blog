@@ -30,6 +30,7 @@ useSeo(() => ({
 	title: t("myComments.seoTitle"),
 	description: t("myComments.seoDesc"),
 	path: "/comments",
+	locale: locale.value,
 }));
 
 // Load on mount (not async setup, so the page is testable and SSR-hydration

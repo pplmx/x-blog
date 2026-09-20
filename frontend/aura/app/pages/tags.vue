@@ -51,12 +51,16 @@ const {
 	error: postsError,
 	refresh: refreshPosts,
 } = await usePosts(postsFilters, { enabled: hasTag });
-const pending = computed(() => tagsPending.value || postsPending.value);
-// A failed fetch must NOT fall through to the empty state and be mistaken for
-// "this tag simply has no posts" — surface it as an error with a retry.
-const error = computed(() => tagsError.value || postsError.value);
-function retry() {
+// The tag-cloud fetch and the posts fetch are independent. A tag→tag SPA
+// navigation refetches only the posts (the cloud URL never changes), so the
+// cloud view must NOT be gated on the combined pending — it would flash a
+// whole-page skeleton and unmount the cloud on every tag switch. Gate the
+// cloud view on the cloud's own pending/error, and the tag view's results
+// region on the posts pending/error instead (search.vue pattern).
+function retryTags() {
 	void refreshTags();
+}
+function retryPosts() {
 	void refreshPosts();
 }
 
@@ -107,11 +111,28 @@ const tagName = computed(() =>
 
 // SEO: set dynamic head metadata based on view state. Passed as a getter so
 // SPA navigation between ?tag_id=X values updates the <title> without a reload
-// (RIL TASK-080; useSeo accepts () => SeoOptions).
+// (RIL TASK-080; useSeo accepts () => SeoOptions). A selected tag's canonical
+// points at the tagged feed URL — never the contentless cloud stub, which would
+// consolidate the signal-rich tag view away (deep-dive finding).
+function tagPagePath(pg: number): string {
+	const parts: string[] = [];
+	if (tagId.value) parts.push(`tag_id=${tagId.value}`);
+	if (pg > 1) parts.push(`page=${pg}`);
+	return parts.length > 0 ? `/tags?${parts.join("&")}` : "/tags";
+}
+
 useSeo(() => ({
 	title: tagName.value ? t("tags.tagTitle", { name: tagName.value }) : t("tags.all"),
 	description: tagName.value ? t("tags.tagDesc", { name: tagName.value }) : t("tags.allDesc"),
-	path: "/tags",
+	path: tagId.value ? tagPagePath(posts.value?.pagination?.page ?? 1) : "/tags",
+	locale: locale.value,
+	pagination: tagId.value
+		? {
+				page: posts.value?.pagination?.page ?? 1,
+				totalPages: posts.value?.pagination?.total_pages ?? 1,
+				pagePath: tagPagePath,
+			}
+		: undefined,
 }));
 
 // Scoped RSS feed (DEC-074, TASK-146): on a selected tag, autodiscovery emits
@@ -262,82 +283,89 @@ watch(
 
 <template>
   <div class="max-w-5xl mx-auto">
-    <!-- Loading state -->
-    <div v-if="pending" class="space-y-4" role="status" aria-busy="true">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-      <div class="flex flex-wrap gap-3">
-        <div
-          v-for="i in 5"
-          :key="i"
-          class="bg-gray-100 animate-pulse h-10 rounded-xl w-20"
-        />
-      </div>
-    </div>
-
-    <!-- Load failed — distinct from "empty": never tell the reader the tag has
-         nothing when we simply couldn't load it. -->
-    <div v-else-if="error" class="text-center py-12" role="alert">
-      <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="retry"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
-
-    <!-- All tags view (no tag_id selected) -->
-    <div v-else-if="!tagId" class="space-y-6">
-      <div class="mb-8">
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
-        >
-          {{ t('tags.all') }}
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ t('tags.countLabel', { count: tags?.length || 0 }) }}
-        </p>
-      </div>
-
-      <!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
-           Client-side substring match so typing narrows the pills in place. -->
-      <div v-if="tags?.length" class="max-w-md">
-        <div class="relative">
-          <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            v-model="tagFilter"
-            type="search"
-            :placeholder="t('tags.filterPlaceholder')"
-            :aria-label="t('tags.filterPlaceholder')"
-            class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+    <!-- All tags view (no tag_id selected). Gates on the tag-cloud fetch alone:
+         the cloud URL never changes on tag→tag navigation, so this branch stays
+         mounted instead of flashing a whole-page skeleton the way the combined
+         pending/error did (which also unmounted the cloud mid-refetch). -->
+    <div v-if="!tagId">
+      <div v-if="tagsPending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div class="flex flex-wrap gap-3">
+          <div
+            v-for="i in 5"
+            :key="i"
+            class="bg-gray-100 animate-pulse h-10 rounded-xl w-20"
           />
         </div>
       </div>
 
-      <div
-        v-if="filteredTags.length"
-        class="flex flex-wrap gap-3"
-      >
-        <NuxtLink
-          v-for="tag in filteredTags"
-          :key="tag.id"
-          :to="{ query: { tag_id: String(tag.id) } }"
-          class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+      <!-- Cloud load failed — distinct from "empty": never tell the reader the
+           cloud has no tags when we simply couldn't load it. -->
+      <div v-else-if="tagsError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryTags"
         >
-          #{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
-        </NuxtLink>
+          {{ t('common.action.retry') }}
+        </button>
       </div>
 
-      <div
-        v-else
-        class="text-center py-12 text-gray-500"
-      >
-        {{ t('tags.empty') }}
+      <div v-else class="space-y-6">
+        <div class="mb-8">
+          <h1
+            class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
+          >
+            {{ t('tags.all') }}
+          </h1>
+          <p class="text-gray-500 dark:text-gray-400">
+            {{ t('tags.countLabel', { count: tags?.length || 0 }) }}
+          </p>
+        </div>
+
+        <!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
+             Client-side substring match so typing narrows the pills in place. -->
+        <div v-if="tags?.length" class="max-w-md">
+          <div class="relative">
+            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              v-model="tagFilter"
+              type="search"
+              :placeholder="t('tags.filterPlaceholder')"
+              :aria-label="t('tags.filterPlaceholder')"
+              class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="filteredTags.length"
+          class="flex flex-wrap gap-3"
+        >
+          <NuxtLink
+            v-for="tag in filteredTags"
+            :key="tag.id"
+            :to="{ query: { tag_id: String(tag.id) } }"
+            class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+          >
+            #{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
+          </NuxtLink>
+        </div>
+
+          <div
+            v-else
+            class="text-center py-12 text-gray-500"
+          >
+            {{ t('tags.empty') }}
+          </div>
       </div>
     </div>
 
-    <!-- Tag posts view (tag_id selected) -->
+    <!-- Tag posts view (tag_id selected). Chrome — back link, follow/notify
+         controls, RSS — stays mounted across tag→tag SPA navigation; only the
+         posts region below reflects pending/error, so a filter switch refreshes
+         the list without the header flickering away (search.vue pattern). -->
     <div v-else>
       <div class="mb-8">
         <NuxtLink
@@ -401,9 +429,33 @@ watch(
         </p>
       </div>
 
+      <!-- Posts region: only this swaps on pending/error — the chrome above
+           stays mounted while a tag→tag (or page) navigation refetches. -->
+      <div v-if="postsPending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div
+          v-for="i in 3"
+          :key="i"
+          class="bg-gray-100 animate-pulse h-24 rounded-lg"
+        />
+      </div>
+
+      <!-- Posts load failed — distinct from "empty": never tell the reader this
+           tag has no posts when we simply couldn't load them. -->
+      <div v-else-if="postsError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryPosts"
+        >
+          {{ t('common.action.retry') }}
+        </button>
+      </div>
+
       <!-- Posts list -->
       <div
-        v-if="posts?.items?.length"
+        v-else-if="posts?.items?.length"
         class="space-y-6"
       >
         <div

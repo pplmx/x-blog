@@ -34,6 +34,7 @@ useSeo(() => ({
 	title: series.value?.title ? `${series.value.title} — ${t("series.all")}` : t("series.all"),
 	description: series.value?.description || t("series.allDesc"),
 	path: `/series/${route.params.slug}`,
+	locale: locale.value,
 }));
 
 // Series reading progress (DEC-122, TASK-173): a signed-in reader sees how far

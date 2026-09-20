@@ -52,12 +52,16 @@ const {
 	error: postsError,
 	refresh: refreshPosts,
 } = await usePosts(postsFilters, { enabled: hasCategory });
-const pending = computed(() => categoriesPending.value || postsPending.value);
-// A failed fetch must NOT fall through to the empty state and be mistaken for
-// "this category simply has no posts" — surface it as an error with a retry.
-const error = computed(() => categoriesError.value || postsError.value);
-function retry() {
+// The category-cloud fetch and the posts fetch are independent. A
+// category→category SPA navigation refetches only the posts (the cloud URL
+// never changes), so the cloud view must NOT be gated on the combined pending —
+// it would flash a whole-page skeleton and unmount the cloud on every switch.
+// Gate the cloud view on its own pending/error, and the category view's results
+// region on the posts pending/error instead (search.vue pattern).
+function retryCategories() {
 	void refreshCategories();
+}
+function retryPosts() {
 	void refreshPosts();
 }
 
@@ -113,7 +117,16 @@ const categoryName = computed(() =>
 
 // SEO: set dynamic head metadata based on view state. Passed as a getter so
 // SPA navigation between ?category_id=X values updates the <title> (RIL
-// TASK-080; useSeo accepts () => SeoOptions).
+// TASK-080; useSeo accepts () => SeoOptions). A selected category's canonical
+// points at the filtered feed URL — never the contentless cloud stub
+// (deep-dive finding).
+function categoryPagePath(pg: number): string {
+	const parts: string[] = [];
+	if (categoryId.value) parts.push(`category_id=${categoryId.value}`);
+	if (pg > 1) parts.push(`page=${pg}`);
+	return parts.length > 0 ? `/categories?${parts.join("&")}` : "/categories";
+}
+
 useSeo(() => ({
 	title: categoryName.value
 		? t("categories.categoryTitle", { name: categoryName.value })
@@ -121,7 +134,15 @@ useSeo(() => ({
 	description: categoryName.value
 		? t("categories.categoryDesc", { name: categoryName.value })
 		: t("categories.allDesc"),
-	path: "/categories",
+	path: categoryId.value ? categoryPagePath(posts.value?.pagination?.page ?? 1) : "/categories",
+	locale: locale.value,
+	pagination: categoryId.value
+		? {
+				page: posts.value?.pagination?.page ?? 1,
+				totalPages: posts.value?.pagination?.total_pages ?? 1,
+				pagePath: categoryPagePath,
+			}
+		: undefined,
 }));
 
 // Scoped RSS feed (DEC-074, TASK-146): on a selected category, autodiscovery
@@ -317,82 +338,91 @@ watch(categoryId, () => {
 
 <template>
   <div class="max-w-5xl mx-auto">
-    <!-- Loading state -->
-    <div v-if="pending" class="space-y-4">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-      <div class="flex flex-wrap gap-3">
-        <div
-          v-for="i in 5"
-          :key="i"
-          class="bg-gray-100 animate-pulse h-10 rounded-xl w-20"
-        />
-      </div>
-    </div>
-
-    <!-- Load failed — distinct from "empty": never tell the reader the category
-         has nothing when we simply couldn't load it. -->
-    <div v-else-if="error" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="retry"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
-
-    <!-- All categories view (no category_id selected) -->
-    <div v-else-if="!categoryId" class="space-y-6">
-      <div class="mb-8">
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
-        >
-          {{ t('categories.all') }}
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ t('categories.countLabel', { count: categories?.length || 0 }) }}
-        </p>
-      </div>
-
-      <!-- Category-cloud filter (ISS-381): same substring narrowing the tags
-           page got, so a large category set stays scannable. -->
-      <div v-if="categories?.length" class="max-w-md">
-        <div class="relative">
-          <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            v-model="categoryFilter"
-            type="search"
-            :placeholder="t('categories.filterPlaceholder')"
-            :aria-label="t('categories.filterPlaceholder')"
-            class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+    <!-- All categories view (no category_id selected). Gates on the
+         category-cloud fetch alone: the cloud URL never changes on
+         category→category navigation, so this branch stays mounted instead of
+         flashing a whole-page skeleton the way the combined pending/error did
+         (which also unmounted the cloud mid-refetch). -->
+    <div v-if="!categoryId">
+      <div v-if="categoriesPending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div class="flex flex-wrap gap-3">
+          <div
+            v-for="i in 5"
+            :key="i"
+            class="bg-gray-100 animate-pulse h-10 rounded-xl w-20"
           />
         </div>
       </div>
 
-      <div
-        v-if="filteredCategories.length"
-        class="flex flex-wrap gap-3"
-      >
-        <NuxtLink
-          v-for="category in filteredCategories"
-          :key="category.id"
-          :to="{ query: { category_id: String(category.id) } }"
-          class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+      <!-- Cloud load failed — distinct from "empty": never tell the reader the
+           cloud has no categories when we simply couldn't load it. -->
+      <div v-else-if="categoriesError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryCategories"
         >
-          {{ category.name }} <span class="opacity-80 text-xs">({{ category.post_count ?? 0 }})</span>
-        </NuxtLink>
+          {{ t('common.action.retry') }}
+        </button>
       </div>
 
-      <div
-        v-else
-        class="text-center py-12 text-gray-500"
-      >
-        {{ t('categories.empty') }}
-      </div>
+      <div v-else class="space-y-6">
+        <div class="mb-8">
+          <h1
+            class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
+          >
+            {{ t('categories.all') }}
+          </h1>
+          <p class="text-gray-500 dark:text-gray-400">
+            {{ t('categories.countLabel', { count: categories?.length || 0 }) }}
+          </p>
+        </div>
+
+        <!-- Category-cloud filter (ISS-381): same substring narrowing the tags
+             page got, so a large category set stays scannable. -->
+        <div v-if="categories?.length" class="max-w-md">
+          <div class="relative">
+            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              v-model="categoryFilter"
+              type="search"
+              :placeholder="t('categories.filterPlaceholder')"
+              :aria-label="t('categories.filterPlaceholder')"
+              class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="filteredCategories.length"
+          class="flex flex-wrap gap-3"
+        >
+          <NuxtLink
+            v-for="category in filteredCategories"
+            :key="category.id"
+            :to="{ query: { category_id: String(category.id) } }"
+            class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+          >
+            {{ category.name }} <span class="opacity-80 text-xs">({{ category.post_count ?? 0 }})</span>
+          </NuxtLink>
+        </div>
+
+          <div
+            v-else
+            class="text-center py-12 text-gray-500"
+          >
+            {{ t('categories.empty') }}
+          </div>
+        </div>
     </div>
 
-    <!-- Category posts view (category_id selected) -->
+    <!-- Category posts view (category_id selected). Chrome — back link,
+         follow/notify/push controls, RSS — stays mounted across
+         category→category SPA navigation; only the posts region below reflects
+         pending/error, so a filter switch refreshes the list without the header
+         flickering away (search.vue pattern). -->
     <div v-else>
       <div class="mb-8">
         <NuxtLink
@@ -467,9 +497,34 @@ watch(categoryId, () => {
         </p>
       </div>
 
+      <!-- Posts region: only this swaps on pending/error — the chrome above
+           stays mounted while a category→category (or page) navigation
+           refetches. -->
+      <div v-if="postsPending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div
+          v-for="i in 3"
+          :key="i"
+          class="bg-gray-100 animate-pulse h-24 rounded-lg"
+        />
+      </div>
+
+      <!-- Posts load failed — distinct from "empty": never tell the reader this
+           category has no posts when we simply couldn't load them. -->
+      <div v-else-if="postsError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryPosts"
+        >
+          {{ t('common.action.retry') }}
+        </button>
+      </div>
+
       <!-- Posts list -->
       <div
-        v-if="posts?.items?.length"
+        v-else-if="posts?.items?.length"
         class="space-y-6"
       >
         <div

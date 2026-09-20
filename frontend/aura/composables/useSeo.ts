@@ -76,7 +76,9 @@ export interface SeoOptions {
 	title: string;
 	/** Page description (used for meta description and og:description). */
 	description?: string;
-	/** Page path relative to site root, e.g. "/posts/my-post". */
+	/** Page path relative to site root, e.g. "/posts/my-post". May carry query
+	 *  (e.g. "/tags?tag_id=5") — the canonical then points at the FILTERED
+	 *  content-bearing page, never a contentless index stub. */
 	path?: string;
 	/** Social share image URL (absolute or relative). */
 	image?: string;
@@ -86,6 +88,25 @@ export interface SeoOptions {
 	tags?: string[];
 	/** When true, adds robots meta "noindex, follow". */
 	noindex?: boolean;
+	/** OpenGraph content locale, e.g. "en_US". Defaults to siteConfig.locale
+	 *  ("zh_CN") — pages with a UI language switcher pass the active locale so
+	 *  an English reader's share preview isn't advertised as Simplified Chinese
+	 *  (deep-dive finding). Also drives the localized default keywords. */
+	locale?: string;
+	/** Pagination metadata — when provided, emits <link rel="prev|next">
+	 *  pointing at the neighbouring pages (indexable feeds/archives; search is
+	 *  noindex). The canonical continues to describe the CURRENT page: page 1
+	 *  keeps the query-free path, later pages carry ?page=N. */
+	pagination?: {
+		/** Current 1-based page number. */
+		page: number;
+		/** Last page number (0/undefined when the set has one page). */
+		totalPages?: number;
+		/** Build the current page's canonical path from a page number (page 1
+		 *  may drop the param). Used for prev/next hrefs and the canonical when
+		 *  page > 1. */
+		pagePath: (page: number) => string;
+	};
 }
 
 // ─── Site config ─────────────────────────────────────────────────────
@@ -252,14 +273,25 @@ export function useSeo(options: SeoOptions | (() => SeoOptions)): void {
 
 function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown> {
 	const path = options.path || "/";
-	const canonicalUrl = buildCanonicalUrl(path, siteUrl);
+	// Paginated views canonicalize the CURRENT page — page 1 keeps the
+	// query-free path, later pages carry ?page=N so a page-2 share link is not
+	// merged onto the index page's canonical (round 397).
+	const page = options.pagination?.page ?? 1;
+	const canonicalPath = options.pagination && page > 1 ? options.pagination.pagePath(page) : path;
+	const canonicalUrl = buildCanonicalUrl(canonicalPath, siteUrl);
 	const imageUrl = buildAbsoluteImageUrl(options.image || siteConfig.image, siteUrl);
 	const description = options.description || siteConfig.description;
 	const isArticle = !!options.article;
+	// og:locale follows the UI language when the caller passes it (round 397):
+	// an English reader sharing any page advertises en_US, not the zh_CN
+	// default. The localized default keywords follow the same locale.
+	const ogLocale = options.locale ?? siteConfig.locale;
 	const keywordList =
 		options.tags && options.tags.length > 0
 			? options.tags.join(", ")
-			: "X-Blog, 技术博客, FastAPI, Nuxt";
+			: options.locale === "en"
+				? "X-Blog, tech blog, FastAPI, Nuxt"
+				: "X-Blog, 技术博客, FastAPI, Nuxt";
 
 	const meta: Array<{ name?: string; property?: string; content: string }> = [
 		{ name: "description", content: description },
@@ -270,7 +302,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		{ property: "og:type", content: isArticle ? "article" : "website" },
 		{ property: "og:image", content: imageUrl },
 		{ property: "og:url", content: canonicalUrl },
-		{ property: "og:locale", content: siteConfig.locale },
+		{ property: "og:locale", content: ogLocale },
 		// Twitter Card
 		{ name: "twitter:card", content: "summary_large_image" },
 		{ name: "twitter:title", content: options.title },
@@ -305,10 +337,29 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		}
 	}
 
+	// Pagination rel-links (round 397): on an indexable multi-page feed Google
+	// treats rel=prev/next as boundary signals that keep deeper pages in the
+	// crawl. Page 1 has no prev; the last page has no next.
+	const links = [buildCanonicalLink(canonicalUrl)];
+	if (options.pagination?.totalPages && options.pagination.totalPages > 1) {
+		if (page > 1) {
+			links.push({
+				rel: "prev",
+				href: buildCanonicalUrl(options.pagination.pagePath(page - 1), siteUrl),
+			});
+		}
+		if (page < options.pagination.totalPages) {
+			links.push({
+				rel: "next",
+				href: buildCanonicalUrl(options.pagination.pagePath(page + 1), siteUrl),
+			});
+		}
+	}
+
 	const input: Record<string, unknown> = {
 		title: options.title,
 		meta,
-		link: [buildCanonicalLink(canonicalUrl)],
+		link: links,
 	};
 
 	if (options.article) {

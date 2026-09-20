@@ -62,12 +62,14 @@ async function mountTagsPage({
 	tags = mockTags,
 	posts = mockTagPosts,
 	pending = false,
+	tagsPending = false,
 	postsError = null,
 	routeQuery = {},
 }: {
 	tags?: typeof mockTags | null;
 	posts?: typeof mockTagPosts | null;
 	pending?: boolean;
+	tagsPending?: boolean;
 	postsError?: unknown;
 	routeQuery?: Record<string, string>;
 } = {}) {
@@ -98,7 +100,7 @@ async function mountTagsPage({
 			if (urlStr.includes("/api/tags") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(tags),
-					pending: ref(false),
+					pending: ref(tagsPending),
 					error: ref(null),
 					refresh: vi.fn(),
 				};
@@ -226,10 +228,28 @@ describe("Tags Page", () => {
 	});
 
 	describe("Loading state", () => {
-		it("renders loading skeletons when data is pending", async () => {
+		it("renders the cloud skeleton when the tag cloud is pending", async () => {
+			const wrapper = await mountTagsPage({ tagsPending: true });
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+		});
+
+		it("keeps the all-tags view mounted when only posts are pending", async () => {
+			// Posts pending must NOT unmount the cloud into a whole-page
+			// skeleton — on the all-tags view the posts fetch is disabled and
+			// a /posts refetch (e.g. a tag switch elsewhere) no longer gates
+			// this branch (ISS-368 pattern, search.vue gating).
 			const wrapper = await mountTagsPage({ pending: true });
-			const skeletons = wrapper.findAll(".animate-pulse");
-			expect(skeletons.length).toBeGreaterThan(0);
+			expect(wrapper.text()).toContain("所有标签");
+			expect(wrapper.findAll(".animate-pulse").length).toBe(0);
+		});
+
+		it("renders a posts-region skeleton while keeping the tag-view chrome mounted", async () => {
+			// The tag view keeps its header/back-link/follow controls mounted
+			// during a tag→tag refetch; only the posts region shows a skeleton.
+			const wrapper = await mountTagsPage({ pending: true, routeQuery: { tag_id: "1" } });
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+			expect(wrapper.text()).toContain("返回所有标签");
+			expect(wrapper.find('a[href="/rss/feed.xml?tag_id=1"]').exists()).toBe(true);
 		});
 	});
 

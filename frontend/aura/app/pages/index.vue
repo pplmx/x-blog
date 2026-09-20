@@ -15,7 +15,7 @@ import { paginationPages } from "~~/composables/usePagination";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useSeo } from "~~/composables/useSeo";
 
-const { t } = useLang();
+const { t, locale } = useLang();
 const route = useRoute();
 
 // Plain ref for current page — gives us explicit control over re-fetching.
@@ -216,10 +216,30 @@ const filterIndicatorText = computed(() =>
 // Getter form so an in-app language switch re-localizes <title>/og meta
 // without a reload (tags.vue/categories.vue/search.vue pass getters; a static
 // object froze the initial language into useHead — deep-dive finding).
+// A filtered/filtered-page home canonicalizes to the CURRENT URL — a ?page=3
+// share link must not collapse onto the index canonical, and /?category_id=X
+// is its own content-bearing page (deep-dive finding).
+function homePagePath(pg: number): string {
+	const parts: string[] = [];
+	if (categoryId.value) parts.push(`category_id=${categoryId.value}`);
+	if (tagId.value) parts.push(`tag_id=${tagId.value}`);
+	if (pg > 1) parts.push(`page=${pg}`);
+	return parts.length > 0 ? `/?${parts.join("&")}` : "/";
+}
+
 useSeo(() => ({
 	title: t("home.seo.title"),
 	description: t("home.seo.description"),
-	path: "/",
+	// homePagePath(1) with no filter is "/" (no parts) — so the canonical is
+	// the query-free root exactly when it should be, and any filter/page-query
+	// builds the content-bearing URL.
+	path: homePagePath(page.value || 1),
+	locale: locale.value,
+	pagination: {
+		page: page.value || 1,
+		totalPages: posts.value?.pagination?.total_pages ?? 1,
+		pagePath: homePagePath,
+	},
 }));
 
 // Continue-reading trail (DEC-104, TASK-164): recently opened posts, rendered

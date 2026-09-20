@@ -88,6 +88,7 @@ async function mountCategoriesPage({
 	categories = mockCategories,
 	posts = mockCategoryPosts,
 	pending = false,
+	categoriesPending = false,
 	postsError = null,
 	customFetch = undefined,
 	routeQuery = {},
@@ -95,6 +96,7 @@ async function mountCategoriesPage({
 	categories?: typeof mockCategories | null;
 	posts?: typeof mockCategoryPosts | null;
 	pending?: boolean;
+	categoriesPending?: boolean;
 	postsError?: unknown;
 	customFetch?: unknown;
 	routeQuery?: Record<string, string>;
@@ -143,7 +145,7 @@ async function mountCategoriesPage({
 			if (urlStr.includes("/api/categories") && !urlStr.includes("/posts")) {
 				return {
 					data: ref(categories),
-					pending: ref(false),
+					pending: ref(categoriesPending),
 					error: ref(null),
 					refresh: vi.fn(),
 				};
@@ -266,10 +268,31 @@ describe("Categories Page", () => {
 	});
 
 	describe("Loading state", () => {
-		it("renders loading skeletons when data is pending", async () => {
+		it("renders the cloud skeleton when the category cloud is pending", async () => {
+			const wrapper = await mountCategoriesPage({ categoriesPending: true });
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+		});
+
+		it("keeps the all-categories view mounted when only posts are pending", async () => {
+			// Posts pending must NOT unmount the cloud into a whole-page
+			// skeleton — on the all-categories view the posts fetch is disabled
+			// and a /posts refetch no longer gates this branch (search.vue
+			// gating).
 			const wrapper = await mountCategoriesPage({ pending: true });
-			const skeletons = wrapper.findAll(".animate-pulse");
-			expect(skeletons.length).toBeGreaterThan(0);
+			expect(wrapper.text()).toContain("Life");
+			expect(wrapper.findAll(".animate-pulse").length).toBe(0);
+		});
+
+		it("renders a posts-region skeleton while keeping the category-view chrome mounted", async () => {
+			// The category view keeps its header/back-link/follow controls
+			// mounted during a category→category refetch; only the posts region
+			// shows a skeleton.
+			const wrapper = await mountCategoriesPage({
+				pending: true,
+				routeQuery: { category_id: "1" },
+			});
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+			expect(wrapper.find('a[href="/categories"]').exists()).toBe(true);
 		});
 	});
 

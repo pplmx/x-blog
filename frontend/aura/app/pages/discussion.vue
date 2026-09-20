@@ -26,7 +26,13 @@ const route = useRoute();
 useSeo(() => ({
 	title: t("discussion.seo.title"),
 	description: t("discussion.seo.description"),
-	path: "/discussion",
+	path: page.value > 1 ? `/discussion?page=${page.value}` : "/discussion",
+	locale: locale.value,
+	pagination: {
+		page: page.value || 1,
+		totalPages: feed.value?.pagination?.total_pages ?? 1,
+		pagePath: (pg) => (pg > 1 ? `/discussion?page=${pg}` : "/discussion"),
+	},
 }));
 
 // Feed auto-discovery for the discussion (round 368, DEC-409): the RSS/Atom

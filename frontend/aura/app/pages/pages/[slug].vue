@@ -42,6 +42,7 @@ useSeo(() => ({
 	title: page.value?.title ?? t("pages.seoTitle"),
 	description: t("pages.seoDesc"),
 	path: `/pages/${slug.value ?? ""}`,
+	locale: locale.value,
 }));
 </script>
 

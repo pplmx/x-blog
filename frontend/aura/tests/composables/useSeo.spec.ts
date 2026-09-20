@@ -394,6 +394,23 @@ describe("useSeo composable", () => {
 		expect(ogLocale?.content).toBe("zh_CN");
 	});
 
+	it("honors the page's active UI locale for og:locale (round 397)", () => {
+		useSeo({
+			title: "My Page",
+			description: "A description.",
+			path: "/my-page",
+			locale: "en",
+		});
+
+		const callArg = useHeadSpy.mock.calls[0][0];
+		const ogLocale = callArg.meta.find((m: { property?: string }) => m.property === "og:locale");
+		expect(ogLocale?.content).toBe("en");
+		const keywords = callArg.meta.find((m: { name?: string }) => m.name === "keywords");
+		// The default keywords follow the locale too — no Chinese meta on an
+		// English share.
+		expect(keywords?.content).not.toContain("技术博客");
+	});
+
 	it("includes Twitter Card tags", () => {
 		useSeo({
 			title: "My Page",
@@ -710,5 +727,66 @@ describe("usePostSeo composable", () => {
 			(m: { property?: string }) => m.property === "article:published_time",
 		);
 		expect(publishedTime?.content).toBe(mockPost.created_at);
+	});
+
+	describe("pagination rel-links + paginated canonical (round 397)", () => {
+		const paginationOptions = {
+			title: "Archive",
+			description: "desc",
+			path: "/archive",
+			pagination: {
+				page: 2,
+				totalPages: 5,
+				pagePath: (p: number) => (p === 1 ? "/archive" : `/archive?page=${p}`),
+			},
+		};
+
+		it("emits rel=prev and rel=next alongside the canonical on an interior page", () => {
+			useSeo(paginationOptions);
+
+			const callArg = useHeadSpy.mock.calls[0][0];
+			const links: Array<{ rel: string; href: string }> = callArg.link;
+			// Page 2's canonical points at PAGE 2 — never merged onto page 1.
+			expect(links.find((l) => l.rel === "canonical")?.href).toBe(
+				"https://my-blog.com/archive?page=2",
+			);
+			// prev from page 2 uses pagePath(1), which drops the param (the
+			// clean query-free index URL).
+			expect(links.find((l) => l.rel === "prev")?.href).toBe("https://my-blog.com/archive");
+			expect(links.find((l) => l.rel === "next")?.href).toBe("https://my-blog.com/archive?page=3");
+		});
+
+		it("page 1 keeps the query-free canonical and has no prev link", () => {
+			useSeo({ ...paginationOptions, pagination: { ...paginationOptions.pagination, page: 1 } });
+
+			const callArg = useHeadSpy.mock.calls[0][0];
+			const links: Array<{ rel: string; href: string }> = callArg.link;
+			expect(links.find((l) => l.rel === "canonical")?.href).toBe("https://my-blog.com/archive");
+			expect(links.some((l) => l.rel === "prev")).toBe(false);
+			expect(links.find((l) => l.rel === "next")?.href).toBe("https://my-blog.com/archive?page=2");
+		});
+
+		it("the last page has no next link", () => {
+			useSeo({
+				...paginationOptions,
+				pagination: { ...paginationOptions.pagination, page: 5 },
+			});
+
+			const callArg = useHeadSpy.mock.calls[0][0];
+			const links: Array<{ rel: string; href: string }> = callArg.link;
+			expect(links.find((l) => l.rel === "next")).toBeUndefined();
+			expect(links.find((l) => l.rel === "prev")?.href).toBe("https://my-blog.com/archive?page=4");
+		});
+
+		it("emits no rel prev/next for a single-page set", () => {
+			useSeo({
+				...paginationOptions,
+				pagination: { ...paginationOptions.pagination, page: 1, totalPages: 1 },
+			});
+
+			const callArg = useHeadSpy.mock.calls[0][0];
+			const links: Array<{ rel: string; href: string }> = callArg.link;
+			expect(links.some((l) => l.rel === "prev" || l.rel === "next")).toBe(false);
+		});
 	});
 });

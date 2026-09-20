@@ -33,6 +33,7 @@ useSeo(() => ({
 	title: t("readerProfile.seoTitle"),
 	description: t("readerProfile.seoDesc"),
 	path: `/readers/${readerId.value}`,
+	locale: locale.value,
 }));
 
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));

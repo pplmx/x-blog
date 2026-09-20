@@ -358,6 +358,7 @@ useSeo(() => ({
 		: t("search.seo.description"),
 	path: query.value ? `/search?q=${encodeURIComponent(query.value)}` : "/search",
 	noindex: true,
+	locale: locale.value,
 }));
 
 // Search input handler: navigate to /search?q=keyword on Enter.

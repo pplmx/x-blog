@@ -57,6 +57,7 @@ async function mountArchivePage({
 	archive = mockArchive,
 	posts = mockArchivePosts,
 	pending = false,
+	archivePending = false,
 	postsError = null,
 	archiveError = null,
 	postsRef = undefined,
@@ -65,6 +66,7 @@ async function mountArchivePage({
 	archive?: typeof mockArchive | null;
 	posts?: typeof mockArchivePosts | null;
 	pending?: boolean;
+	archivePending?: boolean;
 	postsError?: unknown;
 	archiveError?: unknown;
 	postsRef?: { value: typeof mockArchivePosts | null };
@@ -101,7 +103,7 @@ async function mountArchivePage({
 			if (urlStr.includes("/api/posts/archive")) {
 				return {
 					data: ref(archive),
-					pending: ref(pending),
+					pending: ref(archivePending),
 					error: ref(archiveError),
 					refresh: vi.fn(),
 				};
@@ -159,10 +161,29 @@ describe("Archive Page", () => {
 	});
 
 	describe("Loading state", () => {
-		it("renders loading skeletons when data is pending", async () => {
+		it("renders the index skeleton when the archive index is pending", async () => {
+			const wrapper = await mountArchivePage({ archivePending: true });
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+		});
+
+		it("keeps the archive index mounted when only posts are pending", async () => {
+			// Posts pending must NOT unmount the index into a whole-page
+			// skeleton — on the index view the posts fetch is disabled and a
+			// /posts refetch no longer gates this branch (search.vue gating).
 			const wrapper = await mountArchivePage({ pending: true });
-			const skeletons = wrapper.findAll(".animate-pulse");
-			expect(skeletons.length).toBeGreaterThan(0);
+			expect(wrapper.text()).toContain("归档");
+			expect(wrapper.findAll(".animate-pulse").length).toBe(0);
+		});
+
+		it("renders a posts-region skeleton while keeping the period-view chrome mounted", async () => {
+			// The period view keeps its back link + adjacent-month nav mounted
+			// during a year→month refetch; only the posts region is a skeleton.
+			const wrapper = await mountArchivePage({
+				pending: true,
+				routeQuery: { year: "2024", month: "3" },
+			});
+			expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+			expect(wrapper.find('a[href="/archive"]').exists()).toBe(true);
 		});
 	});
 

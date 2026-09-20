@@ -44,12 +44,16 @@ const {
 	error: postsError,
 	refresh: refreshPosts,
 } = await usePosts(postsFilters, { enabled: hasPeriod });
-const pending = computed(() => archivePending.value || postsPending.value);
-// A failed fetch must NOT fall through to the empty state and be mistaken for
-// "this archive simply has no posts" — surface it as an error with a retry.
-const error = computed(() => archiveError.value || postsError.value);
-function retry() {
+// The archive-index fetch and the posts fetch are independent. A year→month SPA
+// navigation refetches only the posts (the archive URL never changes), so the
+// index view must NOT be gated on the combined pending — it would flash a
+// whole-page skeleton and unmount the year/month list on every switch. Gate the
+// index view on the archive fetch alone, and the period view's results region
+// on the posts pending/error instead (search.vue pattern).
+function retryArchive() {
 	void refreshArchive();
+}
+function retryPosts() {
 	void refreshPosts();
 }
 
@@ -180,6 +184,18 @@ watch(
 	},
 );
 
+// Build the archive page's canonical path for a given page: page 1 of the bare
+// archive drops stray query, and a selected period stays URL-visible so the
+// month view is its own canonical page (never merged onto the index stub —
+// deep-dive finding).
+function archivePagePath(pg: number): string {
+	const parts: string[] = [];
+	if (year.value) parts.push(`year=${year.value}`);
+	if (month.value) parts.push(`month=${month.value}`);
+	if (pg > 1) parts.push(`page=${pg}`);
+	return parts.length > 0 ? `/archive?${parts.join("&")}` : "/archive";
+}
+
 useSeo(() => ({
 	title: hasPeriod.value
 		? t("archive.monthTitle", { year: year.value ?? "", month: monthLabel.value })
@@ -187,103 +203,120 @@ useSeo(() => ({
 	description: hasPeriod.value
 		? t("archive.monthDesc", { year: year.value ?? "", month: monthLabel.value })
 		: t("archive.desc"),
-	path: "/archive",
+	path: hasPeriod.value ? archivePagePath(page.value || 1) : "/archive",
+	locale: locale.value,
+	pagination: hasPeriod.value
+		? {
+				page: page.value || 1,
+				totalPages: posts.value?.pagination?.total_pages ?? 1,
+				pagePath: archivePagePath,
+			}
+		: undefined,
 }));
 </script>
 
 <template>
   <div class="max-w-5xl mx-auto">
-    <!-- Loading state -->
-    <div v-if="pending" class="space-y-4">
-      <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-      <div class="space-y-2">
-        <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
-      </div>
-    </div>
-
-    <!-- Load failed — distinct from "empty": never tell the reader the archive
-         has nothing when we simply couldn't load it. -->
-    <div v-else-if="error" class="text-center py-12">
-      <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="retry"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
-
-    <!-- Archive index view (no year/month selected) -->
-    <div v-else-if="!hasPeriod" class="space-y-8">
-      <div>
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
-        >
-          {{ t('archive.title') }}
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ t('archive.desc') }}
-        </p>
-      </div>
-
-      <div
-        v-if="years.length"
-        class="space-y-6"
-      >
-        <!-- Narrowing filter (survey finding): matches the tags/categories
-             filter the ISS-381 fix added — a long multi-year archive is
-             otherwise unscannable. Rendered only when there is something to
-             filter. -->
-        <div class="relative max-w-sm">
-          <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input
-            v-model="archiveQuery"
-            type="search"
-            :placeholder="t('archive.searchPlaceholder')"
-            :aria-label="t('archive.searchAria')"
-            class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-          >
+    <!-- Archive index view (no year/month selected). Gates on the archive
+         fetch alone: the index URL never changes on year→month SPA navigation,
+         so this branch stays mounted instead of flashing a whole-page skeleton
+         the way the combined pending/error did (which also unmounted the
+         year/month list mid-refetch). -->
+    <div v-if="!hasPeriod">
+      <div v-if="archivePending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div class="space-y-2">
+          <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
         </div>
-        <p v-if="archiveQuery.trim() && filteredYears.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('archive.noResults') }}
-        </p>
+      </div>
 
-        <section
-          v-for="y in filteredYears"
-          :key="y.year"
+      <!-- Index load failed — distinct from "empty": never tell the reader the
+           archive has no years when we simply couldn't load it. -->
+      <div v-else-if="archiveError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryArchive"
         >
-          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">
-            {{ y.year }}
-          </h2>
-          <div class="flex flex-wrap gap-3">
-            <NuxtLink
-              v-for="m in y.months"
-              :key="m.month"
-              :to="{ query: { year: String(m.year), month: String(m.month) } }"
-              class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
-            >
-              {{
-                new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
-                  locale === "zh" ? "zh-CN" : "en-US",
-                  { month: "long" },
-                )
-              }}
-              <span class="opacity-80 text-xs">({{ m.count }})</span>
-            </NuxtLink>
-          </div>
-        </section>
+          {{ t('common.action.retry') }}
+        </button>
       </div>
 
-      <div
-        v-else
-        class="text-center py-12 text-gray-500"
-      >
-        {{ t('archive.empty') }}
-      </div>
+      <div v-else class="space-y-8">
+        <div>
+          <h1
+            class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
+          >
+            {{ t('archive.title') }}
+          </h1>
+          <p class="text-gray-500 dark:text-gray-400">
+            {{ t('archive.desc') }}
+          </p>
+        </div>
+
+        <div
+          v-if="years.length"
+          class="space-y-6"
+        >
+          <!-- Narrowing filter (survey finding): matches the tags/categories
+               filter the ISS-381 fix added — a long multi-year archive is
+               otherwise unscannable. Rendered only when there is something to
+               filter. -->
+          <div class="relative max-w-sm">
+            <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              v-model="archiveQuery"
+              type="search"
+              :placeholder="t('archive.searchPlaceholder')"
+              :aria-label="t('archive.searchAria')"
+              class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+            >
+          </div>
+          <p v-if="archiveQuery.trim() && filteredYears.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+            {{ t('archive.noResults') }}
+          </p>
+
+          <section
+            v-for="y in filteredYears"
+            :key="y.year"
+          >
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">
+              {{ y.year }}
+            </h2>
+            <div class="flex flex-wrap gap-3">
+              <NuxtLink
+                v-for="m in y.months"
+                :key="m.month"
+                :to="{ query: { year: String(m.year), month: String(m.month) } }"
+                class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+              >
+                {{
+                  new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
+                    locale === "zh" ? "zh-CN" : "en-US",
+                    { month: "long" },
+                  )
+                }}
+                <span class="opacity-80 text-xs">({{ m.count }})</span>
+              </NuxtLink>
+            </div>
+          </section>
+        </div>
+
+          <div
+            v-else
+            class="text-center py-12 text-gray-500"
+          >
+            {{ t('archive.empty') }}
+          </div>
+        </div>
     </div>
 
-    <!-- Posts for a selected year/month -->
+    <!-- Posts for a selected year/month. Chrome — back link, adjacent-month
+         navigation, title, count — stays mounted across year/month SPA
+         navigation; only the posts region below reflects pending/error, so a
+         period switch refreshes the list without the header flickering away
+         (search.vue pattern). -->
     <div v-else>
       <div class="mb-8">
         <div class="flex items-center justify-between gap-3 mb-4">
@@ -324,9 +357,31 @@ useSeo(() => ({
         </p>
       </div>
 
+      <!-- Posts region: only this swaps on pending/error — the chrome above
+           stays mounted while a year→month (or page) navigation refetches. -->
+      <div v-if="postsPending" class="space-y-4" role="status" aria-busy="true">
+        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+        <div class="space-y-2">
+          <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
+        </div>
+      </div>
+
+      <!-- Posts load failed — distinct from "empty": never tell the reader this
+           period has no posts when we simply couldn't load them. -->
+      <div v-else-if="postsError" class="text-center py-12" role="alert">
+        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
+        <button
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retryPosts"
+        >
+          {{ t('common.action.retry') }}
+        </button>
+      </div>
+
       <!-- Posts list -->
       <div
-        v-if="posts?.items?.length"
+        v-else-if="posts?.items?.length"
         class="space-y-6"
       >
         <div
