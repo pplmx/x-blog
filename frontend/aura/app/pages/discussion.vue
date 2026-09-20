@@ -102,6 +102,11 @@ function goToPage(pg: number | string) {
 const paginationTokens = computed(() =>
 	paginationPages(feed.value?.pagination?.total_pages ?? 0, page.value),
 );
+
+// Screen-reader page announcement (round 397, same pattern as home): pagination
+// swaps the feed in place, which is invisible to assistive tech — announce the
+// landed page when it changes.
+const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
 </script>
 
 <template>
@@ -163,6 +168,7 @@ const paginationTokens = computed(() =>
 
 		<!-- Feed -->
 		<div v-else class="space-y-4">
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<div
 				v-for="item in feedItems"
 				:key="item.id"

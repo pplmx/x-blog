@@ -40,7 +40,8 @@
 		"state": {
 			"loading": "Loading",
 			"loadFailed": "Failed to load",
-			"empty": "No content yet"
+			"empty": "No content yet",
+			"pageAnnounce": "Page {page}"
 		},
 		"push": {
 			"subscribe": "Subscribe to new posts",

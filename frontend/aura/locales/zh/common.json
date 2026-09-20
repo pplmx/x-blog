@@ -40,7 +40,8 @@
 		"state": {
 			"loading": "加载中",
 			"loadFailed": "加载失败",
-			"empty": "暂无内容"
+			"empty": "暂无内容",
+			"pageAnnounce": "第 {page} 页"
 		},
 		"push": {
 			"subscribe": "订阅新文章通知",

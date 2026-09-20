@@ -80,7 +80,7 @@ watch(
 // Screen-reader page announcement: pagination swaps the whole feed silently,
 // so a polite live region announces which page is showing.
 const pageAnnouncement = computed(() =>
-	t("home.pagination.announce", { page: posts.value?.pagination?.page ?? page.value }),
+	t("common.state.pageAnnounce", { page: posts.value?.pagination?.page ?? page.value }),
 );
 
 const { data: popularPosts } = await usePopularPosts();

@@ -295,6 +295,13 @@ const paginationTokens = computed(() =>
 	),
 );
 
+// Screen-reader page announcement (round 397, same pattern as home): pagination
+// swaps the results in place, which is invisible to assistive tech — announce
+// the landed page when it changes.
+const pageAnnouncement = computed(() =>
+	t("common.state.pageAnnounce", { page: activeResult.value?.pagination?.page ?? 1 }),
+);
+
 // Out-of-range deep link (e.g. /search?q=foo&page=5 on a dataset that now has
 // 2 pages): the backend returns an empty list with total_pages < requested, and
 // the empty-state block hides the pagination bar — a dead end with no way back
@@ -632,6 +639,7 @@ function goToPage(pg: number | string) {
       <!-- Results area: only here do loading/error swap in, leaving the query
            box and filters mounted (see note at the top of the results view).
            Which result set renders is decided by the active mode. -->
+      <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
       <div v-if="activePending" class="space-y-4">
         <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
         <div

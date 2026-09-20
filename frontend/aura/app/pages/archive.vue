@@ -159,6 +159,13 @@ const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
+// Screen-reader page announcement (round 397, same pattern as home): pagination
+// swaps the list in place, which is invisible to assistive tech — announce the
+// landed page when it changes.
+const pageAnnouncement = computed(() =>
+	t("common.state.pageAnnounce", { page: posts.value?.pagination?.page ?? page.value }),
+);
+
 // A stale/out-of-range page deep link (e.g. /archive?year=2020&month=1&page=999
 // after posts were deleted) would otherwise render the "no posts" empty state
 // while earlier pages still hold content — clamp back to the last real page
@@ -359,6 +366,7 @@ useSeo(() => ({
 
       <!-- Posts region: only this swaps on pending/error — the chrome above
            stays mounted while a year→month (or page) navigation refetches. -->
+      <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
       <div v-if="postsPending" class="space-y-4" role="status" aria-busy="true">
         <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
         <div class="space-y-2">
