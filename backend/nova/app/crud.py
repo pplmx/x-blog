@@ -1774,12 +1774,16 @@ def dismiss_comment_flags(db: Session, comment_id: int) -> int:
     return removed
 
 
-def increment_comment_likes(db: Session, comment_id: int) -> models.Comment | None:
-    """Increment the like count for a comment using atomic SQL update."""
+def increment_comment_likes(db: Session, comment_id: int, commit: bool = True) -> models.Comment | None:
+    """Increment the like count for a comment using atomic SQL update.
+
+    ``commit=False`` keeps the bump inside the caller's transaction (like_comment
+    persists the CommentLike row and the counter in ONE commit, ISS-560).
+    """
     stmt = update(models.Comment).where(models.Comment.id == comment_id).values(likes=models.Comment.likes + 1)
     db.execute(stmt)
     try:
-        db.commit()
+        db.flush() if not commit else db.commit()
     except Exception:
         db.rollback()
         raise
@@ -1805,13 +1809,21 @@ def like_comment(db: Session, comment_id: int, ip_key: str) -> tuple[bool, model
     is_new = existing is None
     if is_new:
         db.add(models.CommentLike(comment_id=comment_id, ip_key=ip_key))
+        # ISS-560: row + counter in ONE transaction. The old code committed
+        # the CommentLike insert and the atomic counter bump separately; a
+        # failure between them left a committed like row with no count and no
+        # re-sync path (comments can only be liked, never re-counted). A
+        # concurrent duplicate (IntegrityError at flush) stays an idempotent
+        # no-op; any other failure rolls the whole like back.
         try:
+            increment_comment_likes(db, comment_id, commit=False)
             db.commit()
         except IntegrityError:
             db.rollback()  # concurrent duplicate → treat as idempotent no-op
             is_new = False
-    if is_new:
-        increment_comment_likes(db, comment_id)
+        except Exception:
+            db.rollback()
+            raise
     comment = db.get(models.Comment, comment_id)
     if comment:
         db.refresh(comment)

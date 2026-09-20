@@ -966,6 +966,59 @@ class TestComments:
         assert remaining == 0
 
 
+class TestLikeCommentAtomicity:
+    """like_comment must persist row + counter in ONE transaction (ISS-560)."""
+
+    def _comment(self, db_session) -> models.Comment:
+        post = models.Post(title="Like", slug="like-atomic", content="Content")
+        db_session.add(post)
+        db_session.commit()
+        comment = models.Comment(post_id=post.id, nickname="L", content="like me", is_approved=True)
+        db_session.add(comment)
+        db_session.commit()
+        return comment
+
+    def test_like_comment_bumps_counter_and_creates_row(self, db_session):
+        comment = self._comment(db_session)
+        is_new, updated = crud.like_comment(db_session, comment.id, "ip-1")
+        assert is_new is True
+        assert updated is not None
+        assert updated.likes == 1
+        assert db_session.query(models.CommentLike).filter(models.CommentLike.comment_id == comment.id).count() == 1
+
+    def test_like_comment_single_commit_survives_counter_commit_failure(self, db_session, monkeypatch):
+        """A failed second commit must be UNREACHABLE — the like is one write.
+
+        The old code committed the CommentLike insert first, then the atomic
+        counter bump in a SECOND commit; a failure there left a committed row
+        with no count and no re-sync path (comments can only ever be liked).
+        Fail the second commit: the fixed code commits exactly once, so the
+        like still lands atomically with row + counter intact; the old code
+        would raise on that second commit after persisting the row.
+        """
+        comment = self._comment(db_session)
+
+        original_commit = db_session.commit
+        calls = {"n": 0}
+
+        def failing_second_commit():
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("simulated DB hiccup on the second commit")
+            return original_commit()
+
+        monkeypatch.setattr(db_session, "commit", failing_second_commit)
+
+        is_new, updated = crud.like_comment(db_session, comment.id, "ip-1")
+
+        # One commit total (the second is never reached): row + counter are
+        # one atomic write.
+        assert calls["n"] == 1
+        assert is_new is True
+        assert updated.likes == 1
+        assert db_session.query(models.CommentLike).filter(models.CommentLike.comment_id == comment.id).count() == 1
+
+
 class TestSearchPosts:
     """Tests for search_posts function."""
 
