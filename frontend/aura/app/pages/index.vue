@@ -322,10 +322,25 @@ const stats = computed(() => {
 	const totalLikes = statsData.value?.total_likes ?? 0;
 	const totalComments = statsData.value?.total_comments ?? 0;
 	return [
-		{ labelKey: "home.stats.posts", value: total.toLocaleString() },
-		{ labelKey: "home.stats.totalViews", value: totalViews.toLocaleString() },
-		{ labelKey: "home.stats.totalLikes", value: totalLikes.toLocaleString() },
-		{ labelKey: "home.stats.totalComments", value: totalComments.toLocaleString() },
+		// TASK-480/ISS-558: group per the selected site language, not the
+		// browser's (a de-DE browser would otherwise dot-group inside a zh/en
+		// UI). The date code elsewhere already passes the app locale.
+		{
+			labelKey: "home.stats.posts",
+			value: total.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
+		},
+		{
+			labelKey: "home.stats.totalViews",
+			value: totalViews.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
+		},
+		{
+			labelKey: "home.stats.totalLikes",
+			value: totalLikes.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
+		},
+		{
+			labelKey: "home.stats.totalComments",
+			value: totalComments.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
+		},
 	];
 });
 </script>

@@ -257,18 +257,18 @@ function retry() {
 					v-for="(pg, i) in paginationTokens"
 					:key="pg === '…' ? `ellipsis-${i}` : pg"
 					type="button"
-					:disabled="pg === '…' || pg === pagination.page"
-					:aria-current="pg !== '…' && pg === pagination.page ? 'page' : undefined"
+					:disabled="pg === '…' || pg === page"
+					:aria-current="pg !== '…' && pg === page ? 'page' : undefined"
 					:aria-label="pg !== '…' ? t('follows.paginationAnnounce', { page: String(pg) }) : undefined"
 					:class="[
 						'px-3 py-1 rounded transition-colors',
 						pg === '…'
 							? 'cursor-default text-gray-400'
-							: pg === pagination.page
+							: pg === page
 								? 'bg-emerald-600 text-white cursor-default'
 								: 'border hover:bg-gray-50',
 					]"
-					@click="pg !== '…' && pg !== pagination.page && goToPage(pg)"
+					@click="pg !== '…' && pg !== page && goToPage(pg)"
 				>
 					{{ pg }}
 				</button>

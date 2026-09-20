@@ -880,7 +880,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
             @click="likedThisPost && isAuthenticated ? handleUnlike() : handleLike()"
           >
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
-            {{ (post.likes ?? 0).toLocaleString() }}
+            {{ (post.likes ?? 0).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}
           </button>
           <span v-if="likeError" role="alert" class="text-sm text-red-500">{{ likeError }}</span>
         </div>

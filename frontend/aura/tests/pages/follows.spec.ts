@@ -148,6 +148,26 @@ describe("Follows page", () => {
 		expect(buttons.length).toBeGreaterThan(0);
 	});
 
+	it("highlights the ROUTE page, not the stale server payload (TASK-481, ISS-559)", async () => {
+		// The URL says page 2 while the last server payload still reports
+		// page 1 (the in-flight window between clicking and the response). The
+		// current-page marker must follow the route (sibling pages' pattern),
+		// not blink the old page as current.
+		mockRouteQuery = { page: "2" };
+		feedPayload = {
+			items: [samplePost],
+			pagination: { total: 25, page: 1, limit: 12, total_pages: 3 },
+		};
+		const wrapper = await mountFollows();
+		const page2 = wrapper.findAll("button").find((b) => b.text().trim() === "2");
+		const page1 = wrapper.findAll("button").find((b) => b.text().trim() === "1");
+		expect(page2?.attributes("disabled")).toBeDefined();
+		expect(page2?.attributes("aria-current")).toBe("page");
+		// The stale payload's page 1 must NOT render as current.
+		expect(page1?.attributes("aria-current")).toBeUndefined();
+		expect(page1?.attributes("disabled")).toBeUndefined();
+	});
+
 	it("surfaces a load failure with a retry instead of the empty state", async () => {
 		feedReject = new Error("network");
 		const wrapper = await mountFollows();

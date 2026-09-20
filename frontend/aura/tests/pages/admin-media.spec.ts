@@ -91,6 +91,20 @@ describe("Admin Media page", () => {
 		expect(wrapper.text()).toContain("使用中");
 	});
 
+	it("renders the uploaded date in the site language, not the browser's (TASK-480, ISS-558)", async () => {
+		// useLang falls back to the detected browser locale in vitest, which is
+		// zh here — so the date must render with the explicit zh-CN + options
+		// (month form), NOT the bare toLocaleDateString() slash-date the
+		// browser default produced ("2026/7/15"). Under an en browser it would
+		// have been "7/15/2026".
+		listMock.mockReturnValue(fakeListing([referenced, unreferenced]));
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("2026年7月15日");
+		expect(wrapper.text()).toContain("2026年7月16日");
+		expect(wrapper.text()).not.toContain("2026/7/15");
+		expect(wrapper.text()).not.toContain("2026/7/16");
+	});
+
 	it("deletes an unreferenced image and refreshes the list", async () => {
 		const refresh = vi.fn(() => Promise.resolve());
 		listMock.mockReturnValue(fakeListing([unreferenced], refresh));

@@ -22,7 +22,7 @@ import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
-const { t } = useLang();
+const { t, locale } = useLang();
 
 useHead({ title: computed(() => t("admin.postEdit.seoTitle")) });
 
@@ -781,7 +781,9 @@ function formatRevisionTime(iso: string): string {
 	// and showed every revision time shifted by the operator's offset.
 	// parseApiDate appends the Z the wire contract implies (deep-dive finding).
 	const d = parseApiDate(iso);
-	return d ? d.toLocaleString() : iso;
+	// TASK-480/ISS-558: render in the selected site language, not the browser's
+	// (the admin comment list already passes the app locale this way).
+	return d ? d.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US") : iso;
 }
 
 /** Open/close the version-history panel (lazily loads on first open). */

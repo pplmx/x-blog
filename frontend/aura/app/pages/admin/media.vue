@@ -13,12 +13,25 @@ import {
 	useAdminMedia,
 } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
+// parseApiDate is script-side (formatDate below), so it needs no biome-ignore.
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
-const { t } = useLang();
+const { t, locale } = useLang();
+
+// Compact date for the grid cell (TASK-480/ISS-558): honor the selected site
+// language, not the browser's — every other admin grid passes the app locale
+// (readers.vue/newsletter.vue pattern).
+function formatDate(value: string): string {
+	const d = parseApiDate(value);
+	if (!d) return "—";
+	return d.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	});
+}
 
 useHead({ title: computed(() => t("admin.media.seoTitle")) });
 
@@ -289,7 +302,7 @@ function goToPage(page: number) {
             {{ formatSize(item.size) }}
           </div>
           <div class="text-[11px] text-gray-400 dark:text-gray-500">
-            {{ t("admin.media.uploadedAt", { date: parseApiDate(item.uploaded_at)?.toLocaleDateString() ?? "" }) }}
+            {{ t("admin.media.uploadedAt", { date: formatDate(item.uploaded_at) }) }}
           </div>
 
           <div class="mt-auto pt-2 flex gap-1.5">
