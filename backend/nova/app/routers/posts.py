@@ -392,11 +392,15 @@ def guest_subscribe_to_post_thread(
     post = db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row, created = crud.add_guest_comment_subscription(db, email, post_id, digest_weekly=body.digest_weekly)
-    if created:
-        # Our insert won the race — this is the ONE confirmation email. A
-        # resubscribed address (pending or confirmed) is never re-emailed.
-        # Best-effort: a failure is swallowed; SMTP unconfigured -> pending.
+    row, _created, needs_opt_in = crud.add_guest_comment_subscription(
+        db, email, post_id, digest_weekly=body.digest_weekly
+    )
+    if needs_opt_in:
+        # Exactly ONE confirmation email: a brand-new row, or a deliberately
+        # UNSUBSCRIBED address re-subscribing (TASK-485/ISS-561 — a fresh
+        # token + fresh double-opt-in, so the old link can't re-activate it).
+        # A pending/confirmed resubscribe is never re-emailed. Best-effort: a
+        # failure is swallowed; SMTP unconfigured -> pending.
         try:
             send_guest_thread_confirm_email(email, row.token, post.title or "")
         except Exception:  # noqa: BLE001
@@ -419,10 +423,16 @@ def guest_confirm_post_thread(
     db: Session = Depends(get_db),
 ):
     """Activate a guest thread-follow after its confirmation link is clicked
-    (idempotent; an unknown token is 404 — no enumeration oracle). The stored
-    cadence choice rides back so the confirm page can seed its weekly-summary
-    toggle (DEC-429, mirroring the newsletter confirm response)."""
-    if not crud.confirm_guest_comment_subscription(db, body.token):
+    (idempotent; an unknown token is 404 — no enumeration oracle). Replaying
+    the OLD link after an unsubscribe is a 400 (consent-restart gate,
+    TASK-485/ISS-561, mirroring the newsletter round 393). The stored cadence
+    choice rides back so the confirm page can seed its weekly-summary toggle
+    (DEC-429)."""
+    try:
+        confirmed = crud.confirm_guest_comment_subscription(db, body.token)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not confirmed:
         raise HTTPException(status_code=404, detail="Invalid token")
     row = crud.get_guest_comment_subscription_by_token(db, body.token)
     return {"confirmed": True, "digest_weekly": row.digest_weekly if row else False}

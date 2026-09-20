@@ -615,6 +615,11 @@ class GuestCommentSubscription(Base):
     # utc_now_naive in digest.py) — the idempotency/window marker the weekly
     # job uses so a follower is never re-mailed the same comments.
     digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Consent-restart gate (TASK-485/ISS-561, mirroring NewsletterSubscriber
+    # round 393): set when the holder unsubscribes, so replaying the OLD
+    # double-opt-in link can never silently re-subscribe — re-activation
+    # requires a fresh subscribe with a fresh token + confirmation email.
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

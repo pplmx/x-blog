@@ -4212,32 +4212,46 @@ def get_guest_comment_subscription(db: Session, email: str, post_id: int) -> mod
 
 def add_guest_comment_subscription(
     db: Session, email: str, post_id: int, digest_weekly: bool = False
-) -> tuple[models.GuestCommentSubscription, bool]:
-    """Record a guest's intent to follow a post's thread; returns (row, created).
+) -> tuple[models.GuestCommentSubscription, bool, bool]:
+    """Record a guest's intent to follow a post's thread.
 
-    Idempotent per (email, post): a resubscribe returns the existing row with
-    created=False and its confirm state unchanged — so a repeated subscribe
-    never idempotently re-confirms and never mails twice (the endpoint fires
-    the double-opt-in email only on created=True). ``email`` is the caller's
-    already-lowercased value; token is a fresh opaque secret (no-enumeration).
-    ``digest_weekly`` (round 381, DEC-429) records the follower's chosen
-    cadence at subscribe time; a resubscribe never overrides the stored choice.
+    Returns ``(row, created, needs_opt_in_email)``. Idempotent per (email,
+    post): a pending/confirmed resubscribe returns the existing row with
+    ``needs_opt_in_email=False`` and its confirm state unchanged — so a
+    repeated subscribe never idempotently re-confirms and never mails twice.
+    A DELIBERATELY UNSUBSCRIBED address (``unsubscribed_at`` set) starts a
+    FRESH consent cycle (TASK-485/ISS-561, mirroring the newsletter round 393):
+    token rotated, consent reset, ``needs_opt_in_email=True`` so the endpoint
+    sends one new double-opt-in email and the old link can never re-activate.
+    ``email`` is the caller's already-lowercased value; token is a fresh opaque
+    secret (no-enumeration). ``digest_weekly`` (round 381, DEC-429) is the
+    follower's cadence; a plain resubscribe never overrides the stored choice,
+    but a re-activation re-records it like the newsletter does.
     """
     from secrets import token_urlsafe
 
     existing = get_guest_comment_subscription(db, email, post_id)
     if existing:
-        return existing, False
+        if existing.unsubscribed_at is not None:
+            existing.is_confirmed = False
+            existing.confirmed_at = None
+            existing.unsubscribed_at = None
+            existing.digest_weekly = digest_weekly
+            existing.token = token_urlsafe(32)
+            db.commit()
+            db.refresh(existing)
+            return existing, True, True
+        return existing, False, False
     row = models.GuestCommentSubscription(
         email=email, post_id=post_id, token=token_urlsafe(32), digest_weekly=digest_weekly
     )
     db.add(row)
     if _commit_reader_upsert(db):
         db.refresh(row)
-        return row, True
+        return row, True, True
     existing = get_guest_comment_subscription(db, email, post_id)
     if existing:
-        return existing, False
+        return existing, False, False
     raise RuntimeError("guest thread subscription insert lost the unique-key race but no row was found")
 
 
@@ -4247,11 +4261,21 @@ def get_guest_comment_subscription_by_token(db: Session, token: str) -> models.G
 
 
 def confirm_guest_comment_subscription(db: Session, token: str) -> bool:
-    """Flip a guest thread-subscription to confirmed via its token. Idempotent."""
+    """Flip a guest thread-subscription to confirmed via its token. Idempotent.
+
+    Consent restart gate (TASK-485/ISS-561, mirroring the newsletter round 393):
+    an address the holder explicitly unsubscribed must NOT be re-activated by
+    replaying its ORIGINAL confirmation link — re-activation starts over via a
+    fresh subscribe (fresh token + fresh double-opt-in email). The gate raises
+    ValueError so the router answers 400 like the newsletter; an unknown token
+    stays the no-oracle False (404).
+    """
     row = get_guest_comment_subscription_by_token(db, token)
     if row is None:
         return False
     if not row.is_confirmed:
+        if row.unsubscribed_at is not None:
+            raise ValueError("This address was unsubscribed. Please subscribe again to reactivate")
         row.is_confirmed = True
         row.confirmed_at = datetime.now(UTC)
         db.commit()
@@ -4266,6 +4290,9 @@ def unsubscribe_guest_comment_subscription(db: Session, token: str) -> bool:
     if row.is_confirmed:
         row.is_confirmed = False
         row.confirmed_at = None
+        # Consent-restart marker (TASK-485/ISS-561): the holder cancelled it, so
+        # a replayed confirm link must never flip this back on.
+        row.unsubscribed_at = datetime.now(UTC)
         db.commit()
     return True
 

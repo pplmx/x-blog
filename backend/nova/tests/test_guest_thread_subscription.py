@@ -229,6 +229,108 @@ class TestConfirmAndUnsubscribe:
         assert _unsubscribe(client, "bogus").status_code == 404
         assert _digest(client, "bogus", True).status_code == 404
 
+    def test_unsubscribe_stamps_unsubscribed_at(self, client, db_session, monkeypatch):
+        """Unsubscribing marks the row's consent as cancelled (TASK-485)."""
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "stamp@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "stamp@example.com")
+            .one()
+        )
+        _confirm(client, row.token)
+        _unsubscribe(client, row.token)
+        db_session.refresh(row)
+        assert row.is_confirmed is False
+        assert row.unsubscribed_at is not None
+
+    def test_replaying_old_confirm_link_after_unsubscribe_is_400(self, client, db_session, monkeypatch):
+        """The round-393 consent-restart gate must cover the guest thread too
+        (TASK-485/ISS-561): replaying the ORIGINAL confirmation link after an
+        unsubscribe silently re-subscribed before — now it is a 400."""
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "replay@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "replay@example.com")
+            .one()
+        )
+        _confirm(client, row.token)
+        _unsubscribe(client, row.token)
+        resp = _confirm(client, row.token)
+        assert resp.status_code == 400
+        assert "unsubscribed" in resp.json()["error"]["message"]
+        db_session.refresh(row)
+        assert row.is_confirmed is False  # not silently re-subscribed
+
+    def test_resubscribing_unsubscribed_address_restarts_opt_in(self, client, db_session, monkeypatch):
+        """Re-subscribing a cancelled address rotates the token and sends a
+        FRESH double-opt-in email (TASK-485) — no more dead-end that claimed
+        success while no mail would ever arrive."""
+        from uuid import uuid4
+
+        from app import models
+
+        post = _create_post(db_session)
+        sink = _sink(monkeypatch)
+        email = f"again-{uuid4().hex[:6]}@example.com"
+        _subscribe(client, post.id, email)
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == email)
+            .one()
+        )
+        _confirm(client, row.token)
+        _unsubscribe(client, row.token)
+        db_session.refresh(row)
+        old_token = row.token
+
+        assert _subscribe(client, post.id, email).status_code == 202
+        db_session.refresh(row)
+        # Token rotated, consent reset, cancellation cleared — a fresh cycle.
+        assert row.token != old_token
+        assert row.is_confirmed is False
+        assert row.unsubscribed_at is None
+        # Exactly ONE confirmation email for this address in total, and the
+        # second (re-activation) one carries the NEW token's link.
+        confirm_msgs = _to(sink, email)
+        assert len(confirm_msgs) == 2
+        assert "/comment-subscribe/confirm" in _plain(confirm_msgs[0])
+        assert "/comment-subscribe/confirm" in _plain(confirm_msgs[1])
+
+    def test_reactivated_row_confirms_with_fresh_token(self, client, db_session, monkeypatch):
+        """After a re-subscribe rotates the token, only the NEW confirmation
+        link confirms; the old token no longer resolves (rotated away -> 404),
+        so a stale link from a cancelled cycle can never re-activate."""
+        from app import models
+
+        post = _create_post(db_session)
+        _sink(monkeypatch)
+        _subscribe(client, post.id, "fresh@example.com")
+        row = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.email == "fresh@example.com")
+            .one()
+        )
+        _confirm(client, row.token)
+        _unsubscribe(client, row.token)
+        db_session.refresh(row)
+        old_token = row.token
+        _subscribe(client, post.id, "fresh@example.com")
+        db_session.refresh(row)
+
+        # Old (rotated) link: 404 — gone, no oracle. New link: 200 and confirmed.
+        assert _confirm(client, old_token).status_code == 404
+        assert _confirm(client, row.token).status_code == 200
+        db_session.refresh(row)
+        assert row.is_confirmed is True
+
     def test_confirm_reports_digest_weekly_cadence(self, client, db_session, monkeypatch):
         """The confirm response rides the stored cadence back so the confirm page
         can seed its weekly-summary toggle (DEC-429, newsletter parity)."""
