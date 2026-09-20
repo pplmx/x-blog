@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 410,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T19:25:36+00:00",
+  "updated_at": "2026-09-20T19:27:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30663,7 +30663,7 @@
       "version": 2,
       "created_at": "2026-09-20T19:04:43+00:00",
       "updated_at": "2026-09-20T19:04:59+00:00",
-      "touched_round": 409,
+      "touched_round": 410,
       "commit": "6205808b",
       "summary": "CHANGELOG.md + CHANGELOG.zh-CN.md combined entry for rounds 403-409 (detail & reader-auth polish): page clamp, FK validation, locale formatting, bulk comment-delete batching, like atomicity, consent-restart gate, confirm/reset error states, post-login redirect, dynamic copyright"
     },
@@ -30702,6 +30702,33 @@
       "source": "playwright e2e/reader-auth.spec.ts (chromium, 4 passed)",
       "summary": "Browser-level verification of CHG-747/ISS-563: guest lands on /liked, is handed to /login?redirect=..., signs in, returns to /liked (asserts 点赞, h1 喜欢的文章). New journey test plus existing reader-auth tests all green on the built preview + dev backend.",
       "confidence": 1.0
+    },
+    "TASK-488": {
+      "id": "TASK-488",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T19:26:51+00:00",
+      "updated_at": "2026-09-20T19:26:51+00:00",
+      "touched_round": 410,
+      "category": "docs",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "title": "Backfill changelog for rounds 403-409",
+      "summary": "Rounds 403-409 shipped seven user-visible polish/fix rounds but the release record (CHANGELOG.md + zh) had nothing after round 402. Backfill a combined entry documenting each round. Delivered as CHG-748."
+    },
+    "DEC-468": {
+      "id": "DEC-468",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:27:33+00:00",
+      "updated_at": "2026-09-20T19:27:33+00:00",
+      "touched_round": 410,
+      "rationale": "Quality-convergence stop conditions (SS 10.1-10.5) all met at round 410: (1) zero active tasks >= 3.0; (2) the only remaining active issues are infra deferrals already recorded by DEC-004/DEC-214/DEC-433 (multi-worker in-process cache/rate-limit, TRUSTED_PROXIES=x) and every review-finding issue (ISS-550..563 family) is resolved or decided; (3) last VERIFY green: frontend 2452, backend 1908 @ 94% on PostgreSQL parity (EV-306), typecheck/lint clean, alembic single-head (n3p5r7t9v1x3), reader-auth e2e 4/4 including the ISS-563 post-login return path (EV-308); (4) rounds 409-410 deep-dive sweeps (locale, console, print, migration-head, dangling-marker, changelog-gap) surfaced no new task above threshold (only TASK-488 docs @ 0.424); (5) ril.py check consistent (2560 nodes / 2490 edges). Rounds 403-410 delivered: page-page clamp, post-update FK validation, site-locale formatting, bulk-delete N+1 batching, like-comment atomicity, guest consent-restart gate, confirm/reset error states, post-login redirect, dynamic copyright, changelog backfill. Changelog entry documents rounds 403-409 (CHG-747/CHG-748). Loop enters idle; no round-turning chore commits will be emitted.",
+      "alternatives_rejected": "Continue emitting near-empty per-round chore commits (violates the non-spinning invariant and the QUIESCE intent); start carrying the deferred multi-worker cache/rate-limit/XFF work (ISS-242/243/244) against the standing DEC-004/DEC-214/DEC-433 decisions without operator authorization; begin feature-evolution mode, which requires an explicit enablement decision that has not been recorded.",
+      "title": "converged-idle at round 410"
     }
   },
   "edges": [
@@ -45678,6 +45705,12 @@
       "to": "TASK-487",
       "type": "implements",
       "created_at": "2026-09-20T18:57:26+00:00"
+    },
+    {
+      "from": "CHG-748",
+      "to": "TASK-488",
+      "type": "implements",
+      "created_at": "2026-09-20T19:26:51+00:00"
     }
   ]
 }
