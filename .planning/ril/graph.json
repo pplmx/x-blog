@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 397,
+  "round": 398,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T04:04:02+00:00",
+  "updated_at": "2026-09-20T04:41:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29997,6 +29997,51 @@
       "touched_round": 397,
       "commit": "838d601a",
       "title": "feat(a11y): SR page announcement on reader profile feed (TASK-473)"
+    },
+    "ISS-550": {
+      "id": "ISS-550",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T04:40:06+00:00",
+      "updated_at": "2026-09-20T04:40:38+00:00",
+      "touched_round": 398,
+      "title": "my-comments filter bar + search box unmount on refetch, dropping focus (gated on !loading)",
+      "severity": "low"
+    },
+    "TASK-474": {
+      "id": "TASK-474",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T04:40:06+00:00",
+      "updated_at": "2026-09-20T04:40:38+00:00",
+      "touched_round": 398,
+      "category": "dx",
+      "title": "Keep my-comments status filter bar + search mounted during refetch (search/admin-comments pattern)"
+    },
+    "CHG-734": {
+      "id": "CHG-734",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T04:40:38+00:00",
+      "updated_at": "2026-09-20T04:40:38+00:00",
+      "touched_round": 398,
+      "commit": "463baeb8",
+      "title": "fix(reader): keep my-comments filter bar + search mounted during refetch"
+    },
+    "DEC-457": {
+      "id": "DEC-457",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T04:41:11+00:00",
+      "updated_at": "2026-09-20T04:41:11+00:00",
+      "touched_round": 398,
+      "title": "close round 399 (CHG-734, TASK-474, ISS-550)",
+      "rationale": "Round 399: fixed the my-comments chrome-unmount-on-refetch bug — status filter bar + search box were gated on !loading, dropping focus and unmounting controls on a filter/page tap. Now mounted whenever authenticated; only the list region refetches (search/admin-comments pattern). Also applied the round-398 SR page-announcement across comments/follows/liked/reader-profile. Backend 1880 @ 93.69% and frontend 2436 verified green; typecheck/lint clean; graph consistent.",
+      "alternatives_rejected": "Skipped the search comment-summary count vs blocked-filtered visible count (already documented in DEC-456 as defensible); skipped reworking series/[slug]'s whole-page pending gate — its nav changes the slug (full document refetch), not a filter-value change on the same list, so no flash class present."
     }
   },
   "edges": [
@@ -44667,6 +44712,24 @@
       "to": "TASK-473",
       "type": "implements",
       "created_at": "2026-09-20T04:04:02+00:00"
+    },
+    {
+      "from": "TASK-474",
+      "to": "ISS-550",
+      "type": "addresses",
+      "created_at": "2026-09-20T04:40:38+00:00"
+    },
+    {
+      "from": "CHG-734",
+      "to": "TASK-474",
+      "type": "implements",
+      "created_at": "2026-09-20T04:40:38+00:00"
+    },
+    {
+      "from": "CHG-734",
+      "to": "ISS-550",
+      "type": "resolves",
+      "created_at": "2026-09-20T04:40:38+00:00"
     }
   ]
 }
