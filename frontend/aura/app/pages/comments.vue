@@ -239,7 +239,7 @@ function formatDate(dateStr: string): string {
          buttons with aria-pressed is the honest semantics (a fake role="tab"
          promised arrow-key navigation the buttons don't implement). -->
     <div
-      v-if="isAuthenticated && !loading"
+      v-if="isAuthenticated"
       class="flex items-center gap-2 mb-6 flex-wrap"
     >
       <button
@@ -263,7 +263,7 @@ function formatDate(dateStr: string): string {
          TASK-431): mirrors history's recall-search — debounced, server-side,
          composes with the status filter. -->
     <div
-      v-if="isAuthenticated && !loading"
+      v-if="isAuthenticated"
       class="relative mb-6 max-w-sm"
     >
       <Icon

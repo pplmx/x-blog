@@ -377,6 +377,30 @@ describe("My comments page", () => {
 			expect(wrapper.find("nav").exists()).toBe(false);
 		});
 
+		it("keeps the filter bar and search box mounted while a refetch is in flight", async () => {
+			// Round 399: the status filter bar and keyword-search box were gated
+			// on !loading, so a filter/page tap dropped focus off the search
+			// input and unmounted the controls mid-interaction (same chrome
+			// class the round-397 tags/categories/archive fix addressed). They
+			// must stay mounted during the refetch; only the list region swaps.
+			isAuthenticated.value = true;
+			mockData.value = { items: [makeComment()], total: 1 };
+			const wrapper = await mountPage();
+			// A filter tap begins a refetch whose response is deferred — the
+			// chrome must not unmount while the list reloads.
+			let release!: (v: MyCommentListResponse) => void;
+			mockFetchMyComments.mockImplementationOnce(
+				() => new Promise<MyCommentListResponse>((resolve) => (release = resolve)),
+			);
+			await wrapper.findAll("[aria-pressed]")[2].trigger("click");
+			await Promise.resolve(); // let the loading flag flip before settling
+			expect(wrapper.findAll("[aria-pressed]").length).toBe(4);
+			expect(wrapper.find('input[type="search"]').exists()).toBe(true);
+			// Release the deferred response so the suite's teardown is clean.
+			release({ items: [makeComment()], total: 1 });
+			await flushPromises();
+		});
+
 		it("says this filter is empty (not 'never commented') with a show-all reset (ISS-385)", async () => {
 			// A reader with approved comments on the Pending tab got told "you
 			// haven't commented yet" and steered to Browse posts — a lie that hid
