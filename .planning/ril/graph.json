@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 406,
+  "round": 407,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T15:59:22+00:00",
+  "updated_at": "2026-09-20T16:28:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30260,7 +30260,7 @@
       "version": 1,
       "created_at": "2026-09-20T14:32:00+00:00",
       "updated_at": "2026-09-20T14:32:00+00:00",
-      "touched_round": 403,
+      "touched_round": 406,
       "severity": "medium",
       "title": "bulk_delete_comments N+1 (query per id + per-ancestor walk)",
       "summary": "crud.py:1313-1327: for up to BatchDeleteRequest-cap (100) comments, bulk_delete_comments issues one reply-list query per comment plus one db.get per ancestor while recomputing effective parents - O(ids) queries + O(thread-depth). A single parent_id IN delete_set query plus a parent-id map would collapse to constant queries. Backend review finding 4."
@@ -30403,6 +30403,44 @@
       "title": "Round 405: frontend i18n-locale + follows pagination polish",
       "rationale": "Fixed locale drift (dates + number grouping using browser locale instead of the selected site language) and the follows-feed pagination highlight keyed to the stale server payload. Both user-visible polish items from the frontend deep-dive (C2/C4, C3).",
       "alternatives_rejected": "bulk_delete_comments N+1 (ISS-557) remains below threshold; admin-push rebind (finding 3) documented-intentional; remaining LOW backend findings deferred."
+    },
+    "TASK-482": {
+      "id": "TASK-482",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T16:27:38+00:00",
+      "updated_at": "2026-09-20T16:28:54+00:00",
+      "touched_round": 406,
+      "category": "performance",
+      "severity": 0.55,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "title": "Batch bulk_delete_comments (eliminate N+1 reply/per-ancestor queries)",
+      "summary": "bulk_delete_comments issued one reply-query per comment (up to the 100-id cap) plus one ORM lazy-load per deleted comment via the replies backref, and one db.get per ancestor while walking the parent chain. Rewritten to one parent_id IN survivor query + an in-memory parent map, with deletion as bulk query deletes (comment_flags/comment_likes reaped explicitly - additive tables with no DB FK, DEC-009). PG-verified self-referential FK safety."
+    },
+    "CHG-742": {
+      "id": "CHG-742",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:28:53+00:00",
+      "updated_at": "2026-09-20T16:28:53+00:00",
+      "touched_round": 406,
+      "commit": "d8184bdb",
+      "title": "Batch bulk_delete_comments query plan"
+    },
+    "DEC-464": {
+      "id": "DEC-464",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T16:28:54+00:00",
+      "updated_at": "2026-09-20T16:28:54+00:00",
+      "touched_round": 406,
+      "title": "Round 406: batch comment bulk-delete query plan",
+      "rationale": "Fixed the last confirmed backend finding (ISS-557): bulk_delete_comments now O(1) comment SELECTs with a query-count regression test; PG-parity verified the self-referential FK stays safe.",
+      "alternatives_rejected": "Kept the ORM delete-orphan cascades untouched for single-comment delete_comment; bulk path reaps additive child tables explicitly (DEC-009). Remaining LOW backend findings (SSR-5..7) withheld as below-threshold/deferred."
     }
   },
   "edges": [
@@ -45265,6 +45303,24 @@
       "to": "TASK-481",
       "type": "implements",
       "created_at": "2026-09-20T15:59:22+00:00"
+    },
+    {
+      "from": "TASK-482",
+      "to": "ISS-557",
+      "type": "addresses",
+      "created_at": "2026-09-20T16:28:16+00:00"
+    },
+    {
+      "from": "CHG-742",
+      "to": "ISS-557",
+      "type": "resolves",
+      "created_at": "2026-09-20T16:28:53+00:00"
+    },
+    {
+      "from": "CHG-742",
+      "to": "TASK-482",
+      "type": "implements",
+      "created_at": "2026-09-20T16:28:53+00:00"
     }
   ]
 }
