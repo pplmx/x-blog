@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 403,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T06:03:57+00:00",
+  "updated_at": "2026-09-20T06:15:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30188,6 +30188,18 @@
       "title": "close round 402 (CHG-738, TASK-477, ISS-553)",
       "rationale": "Round 402: finished the additive-table orphan audit across every delete path. delete_series orphaned SeriesFollow (plain-integer series_id, no cascade) and admin delete_user orphaned AuthorFollow (author_id, no cascade) — both could re-point at an unrelated later row on SQLite id reuse. Purged both with a regression test each. Audit now covers: post delete (bookmarks/history/comment-subs/views/likes/guest-subs), comment delete (ORM-cascaded likes/flags), category/tag/series/user delete (follows). Backend 1885 passed @ 93.69%, ruff clean; frontend + PG-parity untouched.",
       "alternatives_rejected": "Did not add DB FKs to the follow tables (DEC-009 keeps additive tables FK-free for SQLite alembic compatibility) — explicit purge in each delete path completes the invariant."
+    },
+    "EV-305": {
+      "id": "EV-305",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T06:15:08+00:00",
+      "updated_at": "2026-09-20T06:15:08+00:00",
+      "touched_round": 403,
+      "source": "pytest PG-parity (TESTS_DATABASE_URL dev PG 18.4)",
+      "hypothesis": "backend delete-orphan fixes work on PG dialect",
+      "confidence": 1.0
     }
   },
   "edges": [
