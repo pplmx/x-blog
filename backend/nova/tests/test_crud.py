@@ -854,6 +854,37 @@ class TestComments:
         remaining = db_session.query(models.ReaderPostLike).filter(models.ReaderPostLike.post_id == post.id).count()
         assert remaining == 0
 
+    def test_delete_post_cleans_guest_comment_subscriptions(self, db_session):
+        """Post deletion purges anonymous thread subscriptions too.
+
+        GuestCommentSubscription is an additive DEC-009 table with no ORM
+        cascade from Post (the same class _POST_CHILD_TABLES covers). Without
+        it, a deleted post left orphaned (email, post_id) rows that, on SQLite
+        autoincrement id reuse, could deliver another post's comment emails to
+        the guest who never opted into that thread — a genuine privacy/fan-out
+        leak. Confirmed by the same deep-dive audit as reader likes.
+        """
+        post = models.Post(title="Guest Sub Orphan", slug="guest-sub-orphan", content="Content")
+        db_session.add(post)
+        db_session.commit()
+        db_session.add(
+            models.GuestCommentSubscription(
+                email="guest@example.com",
+                post_id=post.id,
+                token="token-guest-sub-orphan",
+                is_confirmed=True,
+            )
+        )
+        db_session.commit()
+
+        assert crud.delete_post(db_session, post.id) is True
+        remaining = (
+            db_session.query(models.GuestCommentSubscription)
+            .filter(models.GuestCommentSubscription.post_id == post.id)
+            .count()
+        )
+        assert remaining == 0
+
 
 class TestSearchPosts:
     """Tests for search_posts function."""

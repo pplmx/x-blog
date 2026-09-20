@@ -51,6 +51,12 @@ _POST_CHILD_TABLES: list[tuple[Any, Any]] = [
     # drift the reader's like count and, on SQLite id reuse, could surface as
     # "liked" on an unrelated later post — deep-dive finding).
     (models.ReaderPostLike, models.ReaderPostLike.post_id),
+    # Guest (anonymous) thread subscriptions are the same additive DEC-009
+    # table class with no ORM cascade from Post: deleting a post must purge
+    # its (email, post_id) rows too, or on SQLite autoincrement reuse a later
+    # post could inherit ghost subscriptions and re-fire email that the guest
+    # never opted into for it (same class as reader likes — deep-dive finding).
+    (models.GuestCommentSubscription, models.GuestCommentSubscription.post_id),
 ]
 
 
