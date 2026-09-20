@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 396,
+  "round": 397,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T01:58:01+00:00",
+  "updated_at": "2026-09-20T03:26:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19305,7 +19305,7 @@
       "version": 2,
       "created_at": "2026-09-07T05:59:20+00:00",
       "updated_at": "2026-09-07T06:01:14+00:00",
-      "touched_round": 276,
+      "touched_round": 397,
       "title": "frontend-aura",
       "description": "Nuxt 4 frontend at frontend/aura (Vue 3 pages, components, composables)"
     },
@@ -29874,6 +29874,73 @@
       "title": "close round 396 (CHG-729, TASK-470, ISS-541..547)",
       "rationale": "Round 396: reactivated from converged-idle by operator directive (detail polish + PG verification). Full baseline verified on the dev PG 18.4 (1889 pass) before work; delivered 7 issue fixes across frontend PII/draft/race/feedback + backend hygiene; all suites green after (backend 1880 @ 93.69%, frontend 2424, PG 1889, lint/typecheck/format clean).",
       "alternatives_rejected": "Wired rel=prev/rel=next + per-page canonical in useSeo (search/archive agent MEDs): deferred to a dedicated SEO unit — reads as crawler-facing, not user-facing polish, and the round was already large."
+    },
+    "ISS-548": {
+      "id": "ISS-548",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T03:24:03+00:00",
+      "updated_at": "2026-09-20T03:26:42+00:00",
+      "touched_round": 397,
+      "title": "Filter-to-filter SPA nav flashes whole-page skeleton, unmounting chrome",
+      "severity": "medium"
+    },
+    "ISS-549": {
+      "id": "ISS-549",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T03:24:23+00:00",
+      "updated_at": "2026-09-20T03:26:42+00:00",
+      "touched_round": 397,
+      "title": "SeoOptions lacks pagination rel-links and localized og:locale (canonical collapsed onto index stub)",
+      "severity": "medium"
+    },
+    "TASK-471": {
+      "id": "TASK-471",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T03:24:23+00:00",
+      "updated_at": "2026-09-20T03:26:42+00:00",
+      "touched_round": 397,
+      "category": "dx",
+      "title": "Restructure tags/categories/archive templates: gate cloud view and posts region separately (search.vue pattern)"
+    },
+    "TASK-472": {
+      "id": "TASK-472",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T03:24:23+00:00",
+      "updated_at": "2026-09-20T03:26:43+00:00",
+      "touched_round": 397,
+      "category": "core-feature",
+      "title": "Wire paginated canonicals + rel=prev/next + localized og:locale into useSeo and feed pages"
+    },
+    "CHG-730": {
+      "id": "CHG-730",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T03:24:41+00:00",
+      "updated_at": "2026-09-20T03:24:41+00:00",
+      "touched_round": 397,
+      "commit": "2a536a06",
+      "title": "feat(seo): paginated canonicals, rel=prev/next, localized og:locale + skeleton-flash fix on tags/categories/archive"
+    },
+    "DEC-455": {
+      "id": "DEC-455",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T03:26:42+00:00",
+      "updated_at": "2026-09-20T03:26:42+00:00",
+      "touched_round": 397,
+      "title": "close round 397 (CHG-730, TASK-471/472, ISS-548/549)",
+      "rationale": "Round 397: SEO hardening + skeleton-flash fix on filtered feed pages. (1) useSeo emits rel=prev/next on indexable multi-page feeds, canonicalizes the current filtered page (never the contentless stub), and og:locale + default keywords follow the UI language. (2) tags/categories/archive no longer gate the whole page on combined pending/error: the cloud/index view gates on its own fetch and the filtered posts region on posts pending/error, so tag->tag / month->month SPA nav keeps header/back-link/follow controls mounted (search.vue pattern). Full frontend suite 2435 pass, backend baseline untouched, typecheck + lint + biome format clean.",
+      "alternatives_rejected": "Left search.vue comment-summary count overstatement (blocked-reader filtered items) unfixed — minor, requires server-side detail; reworked whole-page pending gates on admin/series/index instead: those are single-fetch pages with no filter nav, so no flash class present."
     }
   },
   "edges": [
@@ -44484,6 +44551,42 @@
       "to": "TASK-470",
       "type": "implements",
       "created_at": "2026-09-20T01:58:01+00:00"
+    },
+    {
+      "from": "TASK-471",
+      "to": "ISS-548",
+      "type": "addresses",
+      "created_at": "2026-09-20T03:25:40+00:00"
+    },
+    {
+      "from": "CHG-730",
+      "to": "TASK-471",
+      "type": "implements",
+      "created_at": "2026-09-20T03:25:40+00:00"
+    },
+    {
+      "from": "CHG-730",
+      "to": "ISS-548",
+      "type": "resolves",
+      "created_at": "2026-09-20T03:25:40+00:00"
+    },
+    {
+      "from": "CHG-730",
+      "to": "TASK-472",
+      "type": "implements",
+      "created_at": "2026-09-20T03:26:08+00:00"
+    },
+    {
+      "from": "CHG-730",
+      "to": "ISS-549",
+      "type": "resolves",
+      "created_at": "2026-09-20T03:26:08+00:00"
+    },
+    {
+      "from": "ISS-548",
+      "to": "COMP-008",
+      "type": "located_in",
+      "created_at": "2026-09-20T03:26:08+00:00"
     }
   ]
 }
