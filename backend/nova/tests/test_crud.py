@@ -937,6 +937,34 @@ class TestComments:
         remaining = db_session.query(models.TagFollow).filter(models.TagFollow.tag_id == tag.id).count()
         assert remaining == 0
 
+    def test_delete_series_cleans_reader_follows(self, db_session):
+        """Series deletion purges follow rows too.
+
+        SeriesFollow is an additive DEC-009 table with no ORM cascade from
+        Series — deleting a series left orphaned follows that, on SQLite
+        autoincrement id reuse, re-pointed at an unrelated later series
+        (deep-dive finding, same class as category/tag follows).
+        """
+        from app.auth import ReaderAccount
+
+        reader = ReaderAccount(email="series-follow@example.com", password="x", is_active=True)
+        db_session.add(reader)
+        db_session.commit()
+        series = models.Series(title="Follow Orphan Series", slug="follow-orphan-series")
+        db_session.add(series)
+        db_session.commit()
+        db_session.add(models.SeriesFollow(reader_id=reader.id, series_id=series.id))
+        db_session.commit()
+
+        with (
+            patch("app.crud.clear_series_cache"),
+            patch("app.crud.clear_posts_list_cache"),
+        ):
+            assert crud.delete_series(db_session, series.id) is True
+
+        remaining = db_session.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series.id).count()
+        assert remaining == 0
+
 
 class TestSearchPosts:
     """Tests for search_posts function."""

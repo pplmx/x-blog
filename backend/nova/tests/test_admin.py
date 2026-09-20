@@ -1173,6 +1173,31 @@ class TestAdminUserManagement:
         response = client.delete(f"/api/admin/users/{user_id}", headers=auth_headers)
         assert response.status_code == 204
 
+    def test_delete_user_cleans_author_follows(self, client, auth_headers, db_session):
+        """Admin user deletion purges writer-follow rows.
+
+        AuthorFollow is an additive DEC-009 table with no ORM cascade from
+        User — deleting a pen-named author left orphaned follow rows that, on
+        SQLite autoincrement id reuse, re-pointed at an unrelated later user
+        (deep-dive finding, same class as category/tag/series follows).
+        """
+        from app.auth import ReaderAccount, User, get_password_hash
+
+        author = User(username="pen_author", password=get_password_hash("pass"), display_name="Pen Author")
+        db_session.add(author)
+        db_session.commit()
+        reader = ReaderAccount(email="author-follow@example.com", password="x", is_active=True)
+        db_session.add(reader)
+        db_session.commit()
+        db_session.add(models.AuthorFollow(reader_id=reader.id, author_id=author.id))
+        db_session.commit()
+
+        response = client.delete(f"/api/admin/users/{author.id}", headers=auth_headers)
+        assert response.status_code == 204
+
+        remaining = db_session.query(models.AuthorFollow).filter(models.AuthorFollow.author_id == author.id).count()
+        assert remaining == 0
+
     def test_delete_user_not_found(self, client, auth_headers):
         """Test deleting a non-existent user returns 404."""
         response = client.delete("/api/admin/users/99999", headers=auth_headers)

@@ -2189,6 +2189,14 @@ def delete_series(db: Session, series_id: int) -> bool:
     db.query(models.Post).filter(models.Post.series_id == series_id).update(
         {models.Post.series_id: None, models.Post.series_order: 0}
     )
+    # SeriesFollow is an additive DEC-009 table with no ORM cascade from
+    # Series: purge the follow rows too, or a deleted series leaves stale
+    # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
+    # later series (same orphan class as category/tag follows — deep-dive
+    # finding).
+    db.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series_id).delete(
+        synchronize_session=False
+    )
     db.delete(db_series)
     try:
         db.commit()

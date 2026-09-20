@@ -409,6 +409,12 @@ def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # AuthorFollow is an additive DEC-009 table with no ORM cascade from User:
+    # purge the writer-follow rows too, or a deleted author leaves stale
+    # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
+    # later user (same orphan class as category/tag/series follows — deep-dive
+    # finding).
+    db.query(models.AuthorFollow).filter(models.AuthorFollow.author_id == user_id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
 
