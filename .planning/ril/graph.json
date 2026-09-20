@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 398,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T05:31:56+00:00",
+  "updated_at": "2026-09-20T05:47:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30143,6 +30143,51 @@
       "title": "close round 401 (CHG-737, TASK-476, ISS-552)",
       "rationale": "Round 401: continued the deep-dive orphan audit — delete_category/delete_tag refused only on post references, orphaning CategoryFollow/TagFollow rows for taxonomies with followers but zero posts. Purged follow rows in both delete paths with two regression tests, completing the additive-table orphan invariant across post/comment/category/tag deletes. Backend 1883 passed @ 93.69%, ruff format/lint clean; frontend baseline (2436) and PG-parity (1843) untouched.",
       "alternatives_rejected": "Did not add DB FKs to category_follows/tag_follows (DEC-009 keeps additive tables FK-free for SQLite alembic compatibility) — explicit purge in the delete path matches the established invariant."
+    },
+    "ISS-553": {
+      "id": "ISS-553",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T05:45:55+00:00",
+      "updated_at": "2026-09-20T05:46:39+00:00",
+      "touched_round": 398,
+      "title": "SeriesFollow/AuthorFollow orphan on series/user delete (DEC-009 no cascade)",
+      "severity": "medium"
+    },
+    "TASK-477": {
+      "id": "TASK-477",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T05:45:55+00:00",
+      "updated_at": "2026-09-20T05:46:38+00:00",
+      "touched_round": 398,
+      "category": "correctness",
+      "title": "Purge SeriesFollow in delete_series and AuthorFollow in admin delete_user"
+    },
+    "CHG-738": {
+      "id": "CHG-738",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T05:46:38+00:00",
+      "updated_at": "2026-09-20T05:46:38+00:00",
+      "touched_round": 398,
+      "commit": "b5514515",
+      "title": "fix(backend): purge series + author follow rows on delete"
+    },
+    "DEC-460": {
+      "id": "DEC-460",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T05:47:20+00:00",
+      "updated_at": "2026-09-20T05:47:20+00:00",
+      "touched_round": 398,
+      "title": "close round 402 (CHG-738, TASK-477, ISS-553)",
+      "rationale": "Round 402: finished the additive-table orphan audit across every delete path. delete_series orphaned SeriesFollow (plain-integer series_id, no cascade) and admin delete_user orphaned AuthorFollow (author_id, no cascade) — both could re-point at an unrelated later row on SQLite id reuse. Purged both with a regression test each. Audit now covers: post delete (bookmarks/history/comment-subs/views/likes/guest-subs), comment delete (ORM-cascaded likes/flags), category/tag/series/user delete (follows). Backend 1885 passed @ 93.69%, ruff clean; frontend + PG-parity untouched.",
+      "alternatives_rejected": "Did not add DB FKs to the follow tables (DEC-009 keeps additive tables FK-free for SQLite alembic compatibility) — explicit purge in each delete path completes the invariant."
     }
   },
   "edges": [
@@ -44873,6 +44918,24 @@
       "to": "ISS-552",
       "type": "resolves",
       "created_at": "2026-09-20T05:31:16+00:00"
+    },
+    {
+      "from": "TASK-477",
+      "to": "ISS-553",
+      "type": "addresses",
+      "created_at": "2026-09-20T05:46:38+00:00"
+    },
+    {
+      "from": "CHG-738",
+      "to": "TASK-477",
+      "type": "implements",
+      "created_at": "2026-09-20T05:46:38+00:00"
+    },
+    {
+      "from": "CHG-738",
+      "to": "ISS-553",
+      "type": "resolves",
+      "created_at": "2026-09-20T05:46:38+00:00"
     }
   ]
 }
