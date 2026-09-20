@@ -367,7 +367,7 @@ useSeo(() => ({
       <!-- Posts region: only this swaps on pending/error — the chrome above
            stays mounted while a year→month (or page) navigation refetches. -->
       <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
-      <div v-if="postsPending" class="space-y-4" role="status" aria-busy="true">
+      <div v-if="postsPending" class="space-y-4">
         <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
         <div class="space-y-2">
           <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
