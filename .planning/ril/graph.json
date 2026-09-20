@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 408,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T16:47:28+00:00",
+  "updated_at": "2026-09-20T18:45:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30515,6 +30515,108 @@
       "severity": "low",
       "title": "Deactivated readers keep a live public profile page",
       "summary": "get_reader_public_profile (crud.py:4369-4375) is a bare db.get(ReaderAccount) with no is_active filter; /api/readers/{id} + /likes + /bookmarks 404 only when the row is missing, while every other public reader surface filters is_active. Defensible (approved comments stay public) but inconsistent. Backend review finding 7."
+    },
+    "TASK-484": {
+      "id": "TASK-484",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T16:56:49+00:00",
+      "updated_at": "2026-09-20T18:44:43+00:00",
+      "touched_round": 408,
+      "category": "maintainability",
+      "severity": 0.3,
+      "confidence": 1.0,
+      "effort": 0.3,
+      "title": "Dynamic copyright year in layout footer",
+      "summary": "default.vue:365 hardcoded \"© 2026 X-Blog.\" goes stale from 2027. Render new Date().getFullYear() (same instant server+client, no hydration mismatch). +1 layout test."
+    },
+    "TASK-485": {
+      "id": "TASK-485",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T18:43:58+00:00",
+      "updated_at": "2026-09-20T18:44:43+00:00",
+      "touched_round": 408,
+      "category": "security",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "title": "Guest thread-follow consent restart gate (ISS-561)",
+      "summary": "GuestCommentSubscription had no unsubscribed_at: replaying the original double-opt-in link after an unsubscribe silently re-subscribed (the newsletter closed the same gap in round 393). Add unsubscribed_at + migration, gate confirm (400 on unsubscribed), reactivate on re-subscribe with rotated token + fresh email. Auth-flow review finding 1."
+    },
+    "TASK-486": {
+      "id": "TASK-486",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T18:43:58+00:00",
+      "updated_at": "2026-09-20T18:44:43+00:00",
+      "touched_round": 408,
+      "category": "correctness",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 1.5,
+      "title": "Fix confirm-page 400 mislabels + reset-password strand (ISS-561)",
+      "summary": "newsletter/confirm + comment-subscribe/confirm mapped deliberate 400 (replayed link on unsubscribed address) to network state (retry a dead link); reset-password awaited navigate inside try with no success block - a rejecting nav stranded a signed-in reader on a blank page. Auth-flow review findings 3+4+5."
+    },
+    "CHG-744": {
+      "id": "CHG-744",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:44:42+00:00",
+      "updated_at": "2026-09-20T18:44:42+00:00",
+      "touched_round": 408,
+      "commit": "d99610d4",
+      "title": "Guest thread-follow consent restart gate"
+    },
+    "CHG-745": {
+      "id": "CHG-745",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:44:42+00:00",
+      "updated_at": "2026-09-20T18:44:42+00:00",
+      "touched_round": 408,
+      "commit": "97394466",
+      "title": "Confirm-page 400 states + reset-password success block"
+    },
+    "CHG-746": {
+      "id": "CHG-746",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:44:42+00:00",
+      "updated_at": "2026-09-20T18:44:42+00:00",
+      "touched_round": 408,
+      "commit": "083a4e43",
+      "title": "Dynamic footer copyright year"
+    },
+    "ISS-563": {
+      "id": "ISS-563",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:45:37+00:00",
+      "updated_at": "2026-09-20T18:45:37+00:00",
+      "touched_round": 408,
+      "severity": "low",
+      "title": "Auth-scoped pages drop the post-login return path",
+      "summary": "liked.vue:151/169, follows.vue, notifications.vue hand guests to /login with no ?redirect param, so after sign-in they land on /bookmarks instead of the page that prompted login (comments.vue:309 and account.vue:1098 pass redirect). Auth-flow review finding 6."
+    },
+    "DEC-466": {
+      "id": "DEC-466",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:45:37+00:00",
+      "updated_at": "2026-09-20T18:45:37+00:00",
+      "touched_round": 408,
+      "title": "Round 408: consent-restart gate + confirm/reset UX (guest thread, round-393 parity)",
+      "rationale": "Fixed the auth-flow deep-dive top findings: the guest thread-follow consent-restart gap (HIGH), the re-subscribe dead-end (MED), the two confirm-page 400 mislabels and the reset-password strand (MED). 4 backend + 3 frontend tests; PG migration verified on a scratch database.",
+      "alternatives_rejected": "Post-login redirect pass-through (liked/follows/notifications) recorded as ISS-562 LOW for a later round. Unbounded list_users (ISS-563) and deactivated-reader profile left reviewed-as-defensible."
     }
   },
   "edges": [
@@ -45431,6 +45533,42 @@
       "to": "COMP-001",
       "type": "located_in",
       "created_at": "2026-09-20T16:47:28+00:00"
+    },
+    {
+      "from": "TASK-485",
+      "to": "ISS-561",
+      "type": "addresses",
+      "created_at": "2026-09-20T18:43:58+00:00"
+    },
+    {
+      "from": "TASK-486",
+      "to": "ISS-561",
+      "type": "addresses",
+      "created_at": "2026-09-20T18:43:58+00:00"
+    },
+    {
+      "from": "CHG-744",
+      "to": "ISS-561",
+      "type": "resolves",
+      "created_at": "2026-09-20T18:44:42+00:00"
+    },
+    {
+      "from": "CHG-744",
+      "to": "TASK-485",
+      "type": "implements",
+      "created_at": "2026-09-20T18:44:42+00:00"
+    },
+    {
+      "from": "CHG-745",
+      "to": "TASK-486",
+      "type": "implements",
+      "created_at": "2026-09-20T18:44:42+00:00"
+    },
+    {
+      "from": "CHG-746",
+      "to": "TASK-484",
+      "type": "implements",
+      "created_at": "2026-09-20T18:44:42+00:00"
     }
   ]
 }
