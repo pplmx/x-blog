@@ -203,6 +203,13 @@ await load();
 const paginationTokens = computed(() =>
 	paginationPages(activePagination.value?.total_pages ?? 0, page.value),
 );
+
+// Screen-reader page announcement (round 398, same pattern as home): pagination
+// swaps the active tab's list in place, which is invisible to assistive tech —
+// announce the landed page when it changes.
+const pageAnnouncement = computed(() =>
+	t("common.state.pageAnnounce", { page: activePagination.value?.page ?? page.value }),
+);
 </script>
 
 <template>
@@ -357,6 +364,10 @@ const paginationTokens = computed(() =>
 					{{ t("readerProfile.savedTab") }}
 				</button>
 			</div>
+
+			<!-- Screen-reader page announcement (round 398, same pattern as
+			     home): any tab's pagination swaps its list in place. -->
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 
 			<!-- Comments tab -->
 			<template v-if="view === 'comments'">
