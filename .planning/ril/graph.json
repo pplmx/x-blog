@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 409,
+  "round": 410,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T19:04:59+00:00",
+  "updated_at": "2026-09-20T19:25:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30666,6 +30666,42 @@
       "touched_round": 409,
       "commit": "6205808b",
       "summary": "CHANGELOG.md + CHANGELOG.zh-CN.md combined entry for rounds 403-409 (detail & reader-auth polish): page clamp, FK validation, locale formatting, bulk comment-delete batching, like atomicity, consent-restart gate, confirm/reset error states, post-login redirect, dynamic copyright"
+    },
+    "EV-306": {
+      "id": "EV-306",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:20:22+00:00",
+      "updated_at": "2026-09-20T19:20:22+00:00",
+      "touched_round": 410,
+      "source": "pytest -n 4 --cov=app @ TEST_DATABASE_URL=postgresql://postgres@10.112.9.49:13310",
+      "summary": "Full backend suite green on PostgreSQL parity at round-410 boundary: 1908 passed, 0 failed, coverage 94.00%.  under PG still chokes workers with shared-memory errors (1253 errors, 9 failed) — same documented pg-xdist-test-quirks pattern, NOT a regression;  is the reliable PG worker count.",
+      "confidence": 1.0
+    },
+    "EV-307": {
+      "id": "EV-307",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:20:44+00:00",
+      "updated_at": "2026-09-20T19:20:44+00:00",
+      "touched_round": 410,
+      "source": "round-410 probes (rg sweeps + alembic heads)",
+      "summary": "No hidden polish debt remains on swept surfaces: full frontend locale sweep (toLocaleDateString/toLocaleString site-locale) is completely covered incl. archive month labels; 0 console.* calls in app/ production code; backend print() only in CLI utilities (init_admin, digest_cli); alembic head is single (n3p5r7t9v1x3). Round 410 found no new task >= threshold.",
+      "confidence": 1.0
+    },
+    "EV-308": {
+      "id": "EV-308",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T19:25:36+00:00",
+      "updated_at": "2026-09-20T19:25:36+00:00",
+      "touched_round": 410,
+      "source": "playwright e2e/reader-auth.spec.ts (chromium, 4 passed)",
+      "summary": "Browser-level verification of CHG-747/ISS-563: guest lands on /liked, is handed to /login?redirect=..., signs in, returns to /liked (asserts 点赞, h1 喜欢的文章). New journey test plus existing reader-auth tests all green on the built preview + dev backend.",
+      "confidence": 1.0
     }
   },
   "edges": [

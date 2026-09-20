@@ -66,6 +66,25 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible({ timeout: 5000 });
 	});
 
+	test("guest on an auth-scoped page returns there after sign-in (ISS-563)", async ({
+		page,
+		request,
+	}) => {
+		// The page is auth-scoped: as a guest, /liked hands off to /login with a
+		// return path carrying this route, so signing in lands back on the
+		// fraudulent prompt page instead of the default /bookmarks.
+		const email = freshEmail();
+		await registerReader(request, email);
+
+		await page.goto("/liked");
+		await page.waitForURL(/\?redirect=%2Fliked|redirect=\/liked/);
+		await page.locator("main input[type='email']").fill(email);
+		await page.locator('input[type="password"]').fill(PASSWORD);
+		await page.locator("main form").press("Enter");
+		await page.waitForURL("**/liked");
+		await expect(page.locator("h1")).toContainText("喜欢的文章");
+	});
+
 	test("reader token cannot access admin API (audience separation)", async ({ request }) => {
 		const email = freshEmail();
 		const { access_token } = await registerReader(request, email);
