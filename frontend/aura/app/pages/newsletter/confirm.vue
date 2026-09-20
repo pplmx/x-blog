@@ -28,7 +28,7 @@ const token = computed(() => {
 	return typeof v === "string" && v ? v : "";
 });
 
-const state = ref<"pending" | "done" | "invalid" | "error">("pending");
+const state = ref<"pending" | "done" | "invalid" | "unsubscribed" | "error">("pending");
 // Weekly-digest cadence toggle (DEC-355, TASK-403): once confirmed, the holder
 // can switch to (or back from) a weekly summary instead of per-post mail using
 // the same token the confirm link carried.
@@ -76,13 +76,18 @@ async function run() {
 		state.value = "done";
 	} catch (e) {
 		// A 404 = unknown token (the only business-level answer the endpoint
-		// gives; it is also what a random guess gets). Anything else (no
-		// response: unreachable backend) is a NETWORK condition — the token may
-		// still be valid, so we must not tell the holder their link is spent.
+		// gives; it is also what a random guess gets). A 400 = the address was
+		// deliberately UNSUBSCRIBED and this is a replayed confirm link (round
+		// 393 consent-restart gate) — telling the holder to retry the link
+		// would send them in circles, so it gets its own re-subscribe state.
+		// Anything else (no response: unreachable backend) is a NETWORK
+		// condition — the token may still be valid, so we must not tell the
+		// holder their link is spent.
 		const status =
 			(e as { response?: { status?: number } } | undefined)?.response?.status ??
 			(e as { status?: number } | undefined)?.status;
-		state.value = status === 404 ? "invalid" : "error";
+		if (status === 400) state.value = "unsubscribed";
+		else state.value = status === 404 ? "invalid" : "error";
 	}
 }
 onMounted(() => void run());
@@ -134,6 +139,19 @@ onMounted(() => void run());
         </p>
         <p v-if="digestToggleError" role="alert" class="text-xs text-red-600 dark:text-red-400 mt-1">
           {{ t("newsletter.confirm.digestError") }}
+        </p>
+      </div>
+
+      <div
+        v-else-if="state === 'unsubscribed'"
+        role="status"
+        class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+      >
+        <!-- A replayed confirm link on a deliberately-unsubscribed address is
+             a business-level 400 (round 393) — the holder must re-subscribe,
+             not retry this (now dead) link. -->
+        <p class="text-sm text-amber-700 dark:text-amber-300">
+          {{ t("newsletter.confirm.unsubscribed") }}
         </p>
       </div>
 

@@ -114,4 +114,20 @@ describe("comment-subscribe confirm page", () => {
 		// Crucially NOT the "invalid/used" claim — the token may still be live.
 		expect(wrapper.text()).not.toContain("这个确认链接无效，或已经被使用过。");
 	});
+
+	it("tells an unsubscribed address to re-subscribe instead of retry (400, round 408)", async () => {
+		// The backend 400s a replayed confirm link on a deliberately
+		// unsubscribed guest-thread address (consent-restart gate); before this
+		// fix the page mislabeled it as a network error asking a dead-link
+		// retry.
+		confirmGuestThreadSubscription.mockRejectedValue({
+			response: { status: 400 },
+		});
+		const wrapper = mountPage({ token: "tok-unsub" });
+		await flushPromises();
+
+		expect(confirmGuestThreadSubscription).toHaveBeenCalledTimes(1);
+		expect(wrapper.text()).toContain("该邮箱此前已退出该话题");
+		expect(wrapper.text()).not.toContain("网络错误，请稍后重试。");
+	});
 });

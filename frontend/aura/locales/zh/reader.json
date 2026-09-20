@@ -78,7 +78,8 @@
 			"invalid": "重置链接无效或已过期，请重新发起忘记密码流程。",
 			"errors": {
 				"network": "网络错误，请重试。"
-			}
+			},
+			"goAccount": "前往我的账户"
 		},
 		"commentManage": {
 			"seoTitle": "管理你的评论",
@@ -147,7 +148,8 @@
 			"networkError": "网络错误，请稍后重试。",
 			"confirmDigestWeekly": "改为每周收到一次汇总邮件，而不是每条评论都发",
 			"confirmDigestSaving": "保存中…",
-			"confirmDigestError": "切换失败，请重试。"
+			"confirmDigestError": "切换失败，请重试。",
+			"confirmUnsubscribed": "该邮箱此前已退出该话题。如需重新关注，请回到文章页再次订阅。"
 		}
 	}
 }

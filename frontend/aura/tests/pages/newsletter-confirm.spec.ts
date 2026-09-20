@@ -99,6 +99,24 @@ describe("newsletter confirm page", () => {
 		expect(wrapper.text()).toContain("这个确认链接无效，或已经被使用过。");
 	});
 
+	it("tells an unsubscribed address to re-subscribe instead of retry (400, round 393)", async () => {
+		// The backend 400s a replayed confirm link on a deliberately
+		// unsubscribed address; before this fix the page mapped it to the
+		// "network" state and told the holder to click a link that can never
+		// work again.
+		confirmNewsletter.mockRejectedValue({
+			response: { status: 400 },
+			data: { message: "This address was unsubscribed" },
+		});
+		const wrapper = mountPage({ token: "tok-unsub" });
+		await flushPromises();
+
+		expect(confirmNewsletter).toHaveBeenCalledTimes(1);
+		expect(wrapper.text()).toContain("该邮箱此前已退订");
+		// NOT the network retry line.
+		expect(wrapper.text()).not.toContain("暂时无法连接服务器");
+	});
+
 	it("shows a network error (not 'invalid link') when the backend is unreachable", async () => {
 		confirmNewsletter.mockRejectedValue(
 			new Error("FetchError: request to /api/newsletter/confirm failed"),

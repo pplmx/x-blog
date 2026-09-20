@@ -29,7 +29,7 @@ const token = computed(() => {
 	return typeof v === "string" && v ? v : "";
 });
 
-const state = ref<"pending" | "done" | "invalid" | "error">("pending");
+const state = ref<"pending" | "done" | "invalid" | "unsubscribed" | "error">("pending");
 // Weekly-digest cadence toggle (round 381, DEC-429): once confirmed, the
 // holder can switch to (or back from) a weekly summary instead of a mail per
 // approved comment, using the same token the confirm link carried — terminal
@@ -77,11 +77,17 @@ async function run() {
 		state.value = "done";
 	} catch (e) {
 		// A 404 = unknown/spent token (the only business-level answer the
-		// endpoint gives; it is also what a random guess gets). Anything else
-		// (no response: unreachable backend) is a NETWORK condition — the token
-		// may still be valid, so we must not claim the link is spent.
-		const status = (e as { response?: { status?: number } } | undefined)?.response?.status;
-		state.value = status === 404 ? "invalid" : "error";
+		// endpoint gives; it is also what a random guess gets). A 400 = the
+		// address was deliberately unsubscribed and this is a replayed confirm
+		// link (round-393 consent-restart gate) — it gets its own re-subscribe
+		// state, not a "retry the link" message. Anything else (no response:
+		// unreachable backend) is a NETWORK condition — the token may still be
+		// valid, so we must not claim the link is spent.
+		const status =
+			(e as { response?: { status?: number } } | undefined)?.response?.status ??
+			(e as { status?: number } | undefined)?.status;
+		if (status === 400) state.value = "unsubscribed";
+		else state.value = status === 404 ? "invalid" : "error";
 	}
 }
 onMounted(() => void run());
@@ -131,6 +137,13 @@ onMounted(() => void run());
 			</div>
 			<p v-else-if="state === 'invalid'" role="status" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
 				{{ t("reader.commentSubscribe.confirmInvalid") }}
+			</p>
+			<p
+				v-else-if="state === 'unsubscribed'"
+				role="status"
+				class="mt-3 text-sm text-amber-700 dark:text-amber-400"
+			>
+				{{ t("reader.commentSubscribe.confirmUnsubscribed") }}
 			</p>
 			<p v-else role="status" class="mt-3 text-sm text-red-600 dark:text-red-400">
 				{{ t("reader.commentSubscribe.networkError") }}

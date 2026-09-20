@@ -12,7 +12,8 @@
 			"invalid": "这个确认链接无效，或已经被使用过。",
 			"errors": {
 				"network": "暂时无法连接服务器，请重新点击邮件中的链接。"
-			}
+			},
+			"unsubscribed": "该邮箱此前已退订。如需重新开启，请在页面底部重新提交订阅。"
 		},
 		"unsubscribe": {
 			"seoTitle": "取消订阅 — X-Blog",

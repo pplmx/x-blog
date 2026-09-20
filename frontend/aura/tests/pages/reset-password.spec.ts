@@ -82,6 +82,27 @@ describe("reset-password page", () => {
 	// Deep-dive finding: the footer link is labeled "Back to login" but used to
 	// point at /forgot-password when a token was present. A token-bearing landing
 	// is still a login-page visit (or a spent-link 400) — /login for both states.
+	it("shows the success state instead of a blank page if navigation fails (round 408)", async () => {
+		// The reader is signed in under the fresh session; a rejecting
+		// navigateTo must not be misreported as a network failure — the done
+		// success block carries them (round-342 pattern, was a blank page).
+		resetPassword.mockResolvedValue({ access_token: "x", reader: {} });
+		navigateTo.mockRejectedValueOnce(new Error("navigation failed"));
+		const wrapper = mountPage({ token: "abc.def.ghi" });
+		const inputs = wrapper.findAll('input[type="password"]');
+		await inputs[0].setValue("brandnew456");
+		await inputs[1].setValue("brandnew456");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("密码已重置");
+		expect(wrapper.find("form").exists()).toBe(false);
+		// Success block offers the /account route (the other stub is the footer
+		// "Back to login" link).
+		const hrefs = wrapper.findAll("a.nuxt-link-stub").map((a) => a.attributes("href"));
+		expect(hrefs).toContain("/account");
+	});
+
 	it("links 'Back to login' toward /login when a token is present", () => {
 		const wrapper = mountPage({ token: "abc.def.ghi" });
 		expect(wrapper.text()).toContain("返回登录");

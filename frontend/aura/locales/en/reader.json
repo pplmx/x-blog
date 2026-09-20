@@ -78,7 +78,8 @@
 			"invalid": "This reset link is invalid or has expired. Please request a new one.",
 			"errors": {
 				"network": "A network error occurred. Please try again."
-			}
+			},
+			"goAccount": "Go to my account"
 		},
 		"commentManage": {
 			"seoTitle": "Manage your comment",
@@ -147,7 +148,8 @@
 			"networkError": "A network error occurred. Please try again.",
 			"confirmDigestWeekly": "Instead, email me one weekly summary, not one per comment",
 			"confirmDigestSaving": "Saving…",
-			"confirmDigestError": "Couldn't switch — please try again."
+			"confirmDigestError": "Couldn't switch — please try again.",
+			"confirmUnsubscribed": "This address was previously unsubscribed from this thread. To follow again, please subscribe on the post page."
 		}
 	}
 }

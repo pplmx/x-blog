@@ -43,8 +43,6 @@ async function handleSubmit() {
 	isPending.value = true;
 	try {
 		await readerAuth.resetPassword(token.value, password.value);
-		done.value = true;
-		await navigateTo("/account", { replace: true });
 	} catch (e) {
 		const status =
 			(e as { statusCode?: number } | undefined)?.statusCode ??
@@ -53,8 +51,21 @@ async function handleSubmit() {
 		// from the backend — the reset page must not claim a network failure.
 		error.value =
 			status === 400 ? t("reader.resetPassword.invalid") : t("reader.resetPassword.errors.network");
+		return;
 	} finally {
 		isPending.value = false;
+	}
+	// Route only after a truthful success is fixed — a rejecting navigateTo
+	// (e.g. middleware error, tests) must not be caught as a network failure
+	// while the reader is in fact signed in under the fresh session; the
+	// `done` success block below carries them (round-342 pattern). The
+	// rejection is swallowed (nothing depends on the nav) so a redirect hiccup
+	// can't leave an unhandled rejection in the console.
+	done.value = true;
+	try {
+		await navigateTo("/account", { replace: true });
+	} catch {
+		// Success already truthy — stay on the success state.
 	}
 }
 </script>
@@ -74,6 +85,25 @@ async function handleSubmit() {
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {{ t("reader.resetPassword.subtitle") }}
         </p>
+      </div>
+
+      <!-- Success state (TASK-486/round-408): the reader is now signed in; if
+           navigation to /account were interrupted, this is what they see
+           instead of a blank page (round-342 pattern). -->
+      <div
+        v-if="done"
+        role="status"
+        class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
+      >
+        <p class="text-sm text-green-700 dark:text-green-300">
+          {{ t("reader.resetPassword.success") }}
+        </p>
+        <NuxtLink
+          to="/account"
+          class="mt-3 inline-block text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          {{ t("reader.resetPassword.goAccount") }}
+        </NuxtLink>
       </div>
 
       <form v-if="!done && token" @submit.prevent="handleSubmit" class="space-y-5">
