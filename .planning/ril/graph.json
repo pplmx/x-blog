@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 398,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T04:41:11+00:00",
+  "updated_at": "2026-09-20T04:55:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -29949,7 +29949,7 @@
       "version": 3,
       "created_at": "2026-09-20T03:46:03+00:00",
       "updated_at": "2026-09-20T03:57:25+00:00",
-      "touched_round": 397,
+      "touched_round": 398,
       "category": "dx",
       "title": "Screen-reader pagination announcement on feed pages (tags/categories/archive/discussion/search)"
     },
@@ -30042,6 +30042,17 @@
       "title": "close round 399 (CHG-734, TASK-474, ISS-550)",
       "rationale": "Round 399: fixed the my-comments chrome-unmount-on-refetch bug — status filter bar + search box were gated on !loading, dropping focus and unmounting controls on a filter/page tap. Now mounted whenever authenticated; only the list region refetches (search/admin-comments pattern). Also applied the round-398 SR page-announcement across comments/follows/liked/reader-profile. Backend 1880 @ 93.69% and frontend 2436 verified green; typecheck/lint clean; graph consistent.",
       "alternatives_rejected": "Skipped the search comment-summary count vs blocked-filtered visible count (already documented in DEC-456 as defensible); skipped reworking series/[slug]'s whole-page pending gate — its nav changes the slug (full document refetch), not a filter-value change on the same list, so no flash class present."
+    },
+    "CHG-735": {
+      "id": "CHG-735",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T04:55:35+00:00",
+      "updated_at": "2026-09-20T04:55:35+00:00",
+      "touched_round": 398,
+      "commit": "852fc176",
+      "title": "fix(a11y): single live region in paginated posts regions (TASK-473 scope)"
     }
   },
   "edges": [
@@ -44730,6 +44741,12 @@
       "to": "ISS-550",
       "type": "resolves",
       "created_at": "2026-09-20T04:40:38+00:00"
+    },
+    {
+      "from": "CHG-735",
+      "to": "TASK-473",
+      "type": "implements",
+      "created_at": "2026-09-20T04:55:35+00:00"
     }
   ]
 }
