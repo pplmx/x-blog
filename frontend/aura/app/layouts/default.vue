@@ -362,7 +362,9 @@ onMounted(initTheme);
         </nav>
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span>© 2026 X-Blog.</span>
+            <!-- The year is dynamic so the footer never goes stale; the same
+                 instant on server + client render, so no hydration mismatch. -->
+            <span>© {{ new Date().getFullYear() }} X-Blog.</span>
             <span>{{ t('common.footer.madeWith') }}</span>
             <Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
             <span>{{ t('common.footer.forDevelopers') }}</span>

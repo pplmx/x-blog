@@ -139,6 +139,13 @@ describe("Default Layout", () => {
 			expect(wrapper.text()).toMatch(/用/);
 		});
 
+		it("renders the copyright with the CURRENT year, not a hardcoded one", () => {
+			// TASK-485/round-408: the footer used to hardcode "© 2026"; it must
+			// always show this year so the footer never goes stale.
+			const wrapper = mountLayout();
+			expect(wrapper.text()).toContain(`© ${new Date().getFullYear()} X-Blog.`);
+		});
+
 		it("renders the 'for developers' text", () => {
 			const wrapper = mountLayout();
 			expect(wrapper.text()).toMatch(/为开发者打造/);
