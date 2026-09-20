@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 408,
+  "round": 409,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T18:46:29+00:00",
+  "updated_at": "2026-09-20T18:57:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30597,11 +30597,11 @@
     "ISS-563": {
       "id": "ISS-563",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-20T18:45:37+00:00",
-      "updated_at": "2026-09-20T18:45:37+00:00",
-      "touched_round": 408,
+      "updated_at": "2026-09-20T18:57:26+00:00",
+      "touched_round": 409,
       "severity": "low",
       "title": "Auth-scoped pages drop the post-login return path",
       "summary": "liked.vue:151/169, follows.vue, notifications.vue hand guests to /login with no ?redirect param, so after sign-in they land on /bookmarks instead of the page that prompted login (comments.vue:309 and account.vue:1098 pass redirect). Auth-flow review finding 6."
@@ -30617,6 +30617,32 @@
       "title": "Round 408: consent-restart gate + confirm/reset UX (guest thread, round-393 parity)",
       "rationale": "Fixed the auth-flow deep-dive top findings: the guest thread-follow consent-restart gap (HIGH), the re-subscribe dead-end (MED), the two confirm-page 400 mislabels and the reset-password strand (MED). 4 backend + 3 frontend tests; PG migration verified on a scratch database.",
       "alternatives_rejected": "Post-login redirect pass-through (liked/follows/notifications) recorded as ISS-562 LOW for a later round. Unbounded list_users (ISS-563) and deactivated-reader profile left reviewed-as-defensible."
+    },
+    "TASK-487": {
+      "id": "TASK-487",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T18:57:03+00:00",
+      "updated_at": "2026-09-20T18:57:26+00:00",
+      "touched_round": 409,
+      "category": "core-feature",
+      "severity": 0.5,
+      "confidence": 1.0,
+      "effort": 0.5,
+      "title": "Post-login return path on auth-scoped pages",
+      "summary": "liked/follows/notifications handed guests to /login with no ?redirect, landing them on /bookmarks after sign-in instead of the page that prompted login (comments/account pass the param). Reader-auth review finding 6."
+    },
+    "CHG-747": {
+      "id": "CHG-747",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T18:57:15+00:00",
+      "updated_at": "2026-09-20T18:57:15+00:00",
+      "touched_round": 409,
+      "commit": "0083534f",
+      "summary": "loginTarget const on liked/follows/notifications carrying ?redirect=/<route> for guest + stale-session redirects and the liked dead-session sign-in link; specs updated TDD-first, frontend suite 2452 passed"
     }
   },
   "edges": [
@@ -45575,6 +45601,24 @@
       "to": "COMP-002",
       "type": "located_in",
       "created_at": "2026-09-20T18:46:29+00:00"
+    },
+    {
+      "from": "TASK-487",
+      "to": "ISS-563",
+      "type": "addresses",
+      "created_at": "2026-09-20T18:57:15+00:00"
+    },
+    {
+      "from": "CHG-747",
+      "to": "ISS-563",
+      "type": "resolves",
+      "created_at": "2026-09-20T18:57:26+00:00"
+    },
+    {
+      "from": "CHG-747",
+      "to": "TASK-487",
+      "type": "implements",
+      "created_at": "2026-09-20T18:57:26+00:00"
     }
   ]
 }
