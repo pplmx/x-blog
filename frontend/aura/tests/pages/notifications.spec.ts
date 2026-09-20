@@ -332,7 +332,10 @@ describe("Notifications page (TASK-192)", () => {
 		mockFetch.mockRejectedValue({ statusCode: 401 });
 		const wrapper = await mountPage();
 		expect(mockLogout).toHaveBeenCalledTimes(1);
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({
+			path: "/login",
+			query: { redirect: "/notifications" },
+		});
 		// No misleading network-error banner when the cause is an stale session.
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
@@ -592,7 +595,10 @@ describe("Notifications page (TASK-192)", () => {
 		// like the guest guard / stale-session path.
 		isAuthenticated.value = false;
 		await flushPromises();
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({
+			path: "/login",
+			query: { redirect: "/notifications" },
+		});
 		expect(wrapper.text()).not.toContain("私有通知");
 		expect(wrapper.text()).not.toContain("通知偏好");
 	});

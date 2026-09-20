@@ -43,9 +43,12 @@ const mockUnlike = vi.fn(async () => {
 	if (mockUnlikeReject) throw mockUnlikeReject;
 	return mockUnlikeResult;
 });
+// The likes-mirror dead-session signal: refs so tests can raise the "auth"
+// warning that offers the sign-in link (which must carry the return path).
+const likesMirrorIssue = ref<string | null>(null);
 vi.mock("../../composables/useLikeSync", () => ({
 	useLikeSync: () => ({
-		likeSyncIssue: ref<string | null>(null),
+		likeSyncIssue: likesMirrorIssue,
 		clearLikeSyncIssue: vi.fn(),
 		mergeLocalToCloud: async () => {
 			/* no-op in tests */
@@ -71,7 +74,11 @@ vi.mock("../../api/reader/likes", () => ({
 
 const stubs = {
 	Icon: { template: "<svg class='icon-stub' />" },
-	NuxtLink: { template: "<a class='nuxt-link-stub'><slot/></a>" },
+	NuxtLink: {
+		name: "NuxtLinkStub",
+		props: ["to"],
+		template: "<a class='nuxt-link-stub'><slot/></a>",
+	},
 };
 
 const samplePost = {
@@ -139,7 +146,18 @@ describe("Liked page", () => {
 	it("redirects guests to /login", async () => {
 		mockAuth.value = { isAuthenticated: false };
 		await mountLiked();
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({ path: "/login", query: { redirect: "/liked" } });
+	});
+
+	it("offers the dead-session sign-in link with a return path to /liked", async () => {
+		likesMirrorIssue.value = "auth";
+		const wrapper = await mountLiked();
+		const loginLink = wrapper
+			.findAllComponents({ name: "NuxtLinkStub" })
+			.find((c) => c.text().includes("liked.login"));
+		expect(loginLink?.props("to")).toEqual({ path: "/login", query: { redirect: "/liked" } });
+		likesMirrorIssue.value = null;
+		wrapper.unmount();
 	});
 
 	it("shows the empty state when the reader has liked nothing", async () => {
@@ -181,7 +199,7 @@ describe("Liked page", () => {
 		mockAuth.value = { isAuthenticated: true };
 		likesReject = { stale: true };
 		wrapper = await mountLiked();
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({ path: "/login", query: { redirect: "/liked" } });
 		expect(wrapper.text()).not.toContain("liked.loadFailed");
 		wrapper.unmount();
 	});

@@ -28,6 +28,12 @@ const { t, locale } = useLang();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 const router = useRouter();
 
+// Guests and stale sessions land on /login with the return path back to this
+// page (ISS-563): sign in once and come straight back to the inbox instead of
+// dumping onto the default /bookmarks landing (comments/account parity — the
+// login page only honors same-origin relative redirect values).
+const loginTarget = { path: "/login", query: { redirect: "/notifications" } } as const;
+
 // The nav badge and this inbox share one count (ISS-124, TASK-224): every
 // read/mark-all action re-fetches the shared count from the server (not a
 // locally-decremented guess) so the header badge drop never overwrites a
@@ -86,7 +92,7 @@ async function load() {
 		// instead of surfacing a misleading network error. (ISS-110, TASK-198)
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		error.value = true;
@@ -117,7 +123,7 @@ async function loadMore() {
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		loadMoreError.value = true;
@@ -135,7 +141,7 @@ async function loadPrefs() {
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		// Non-fatal: the inbox still renders; the card just shows its error hint.
@@ -153,7 +159,7 @@ async function savePref(kind: keyof ReaderNotificationPrefs, enabled: boolean) {
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		// Roll the toggle back to the server-confirmed state and surface the hint.
@@ -251,7 +257,7 @@ const prefRows = computed(() => {
 
 onMounted(() => {
 	if (!isAuthenticated.value) {
-		void router.replace("/login");
+		void router.replace(loginTarget);
 		return;
 	}
 	void load();
@@ -275,7 +281,7 @@ watch(isAuthenticated, (authed) => {
 	loadMoreError.value = false;
 	prefs.value = null;
 	prefsError.value = false;
-	void router.replace("/login");
+	void router.replace(loginTarget);
 });
 
 // In-flight + failure state for the mark-read actions so the buttons disable

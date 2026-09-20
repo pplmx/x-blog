@@ -24,6 +24,12 @@ const router = useRouter();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 const { likeSyncIssue, clearLikeSyncIssue, mergeLocalToCloud, unlike } = useLikeSync();
 
+// Guests and stale sessions land on /login with the return path back to this
+// page (ISS-563): sign in once and come straight back to the likes instead of
+// dumping onto the default /bookmarks landing (comments/account parity — the
+// login page only honors same-origin relative redirect values).
+const loginTarget = { path: "/login", query: { redirect: "/liked" } } as const;
+
 useSeo(() => ({
 	title: t("liked.seoTitle"),
 	description: t("liked.seoDesc"),
@@ -131,7 +137,7 @@ async function load() {
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		if (seq !== loadSeq) return;
@@ -148,7 +154,7 @@ watch([page], () => {
 
 onMounted(async () => {
 	if (!isAuthenticated.value) {
-		void router.replace("/login");
+		void router.replace(loginTarget);
 		return;
 	}
 	// Reconcile device-local likes up ONCE (a reader who liked while offline or
@@ -166,7 +172,7 @@ watch(isAuthenticated, (authed) => {
 	pagination.value = null;
 	pending.value = false;
 	loadFailed.value = false;
-	void router.replace("/login");
+	void router.replace(loginTarget);
 });
 
 function goToPage(pg: number | string) {
@@ -197,7 +203,7 @@ async function handleUnlike(post: PostList) {
 	} catch (cause) {
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		unlikeFailed.value = true;
@@ -254,7 +260,7 @@ async function handleUnlike(post: PostList) {
 				<span class="min-w-0">
 					{{ t("liked.authWarning") }}
 					<NuxtLink
-						to="/login"
+						:to="loginTarget"
 						class="shrink-0 font-medium text-amber-800 dark:text-amber-200 underline underline-offset-2 hover:opacity-80"
 					>
 						{{ t("liked.login") }}

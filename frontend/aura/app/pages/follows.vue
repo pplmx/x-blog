@@ -22,6 +22,12 @@ const route = useRoute();
 const router = useRouter();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 
+// Guests and stale sessions land on /login with the return path back to this
+// page (ISS-563): sign in once and come straight back to the feed instead of
+// dumping onto the default /bookmarks landing (comments/account parity — the
+// login page only honors same-origin relative redirect values).
+const loginTarget = { path: "/login", query: { redirect: "/follows" } } as const;
+
 useSeo(() => ({
 	title: t("follows.seoTitle"),
 	description: t("follows.seoDesc"),
@@ -113,7 +119,7 @@ async function load() {
 		// showing a misleading "couldn't load" block under a dead privacy scope.
 		if (isStaleSession(cause)) {
 			logout();
-			void router.replace("/login");
+			void router.replace(loginTarget);
 			return;
 		}
 		if (seq !== loadSeq) return; // a newer request wins
@@ -132,7 +138,7 @@ watch([page], () => {
 
 onMounted(() => {
 	if (!isAuthenticated.value) {
-		void router.replace("/login");
+		void router.replace(loginTarget);
 		return;
 	}
 	void load();
@@ -147,7 +153,7 @@ watch(isAuthenticated, (authed) => {
 	pagination.value = null;
 	pending.value = false;
 	loadFailed.value = false;
-	void router.replace("/login");
+	void router.replace(loginTarget);
 });
 
 function goToPage(pg: number | string) {

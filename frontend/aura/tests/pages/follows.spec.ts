@@ -98,7 +98,7 @@ describe("Follows page", () => {
 	it("redirects guests to /login", async () => {
 		mockAuth.value = { isAuthenticated: false };
 		await mountFollows();
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({ path: "/login", query: { redirect: "/follows" } });
 	});
 
 	it("shows the empty state when the reader follows nothing", async () => {
@@ -190,7 +190,7 @@ describe("Follows page", () => {
 	it("drops a stale session to /login instead of a misleading failure block", async () => {
 		feedReject = { stale: true };
 		const wrapper = await mountFollows();
-		expect(mockReplace).toHaveBeenCalledWith("/login");
+		expect(mockReplace).toHaveBeenCalledWith({ path: "/login", query: { redirect: "/follows" } });
 		expect(wrapper.text()).not.toContain("follows.loadFailed");
 	});
 
