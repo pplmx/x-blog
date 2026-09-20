@@ -26,7 +26,15 @@ const route = useRoute();
 // /search?q=a → /search?q=b or page=2) must refetch. The computed URL below
 // is passed to useFetch, which re-runs when its URL changes.
 const query = computed(() => (route.query.q as string) || "");
-const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// page 1 at the computed — the search request must never carry NaN/0
+// (guaranteed 422), and the out-of-range clamp watcher below short-circuits
+// NaN/<2, so without this an invalid deep link would brick the results region
+// with a dead Retry. Same pattern as follows.vue/liked.vue.
+const page = computed(() => {
+	const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
+	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
+});
 
 // Search MODE (round 366, DEC-405): ?type=comments searches the DISCUSSION
 // (approved comments on public posts) instead of posts — the blog's thread is

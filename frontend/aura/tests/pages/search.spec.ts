@@ -1191,4 +1191,26 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.text()).toContain("没有找到相关文章");
 		expect(wrapper.text()).not.toContain("Blocked Author");
 	});
+
+	// TASK-478 / ISS-554: an invalid ?page= must resolve to page 1. The
+	// un-clamped computed forwarded NaN/0 raw to /api/search (guaranteed 422)
+	// while the clamp watcher short-circuits NaN/<2, bricking the results
+	// region with a dead Retry. Clamp at the computed (follows.vue pattern).
+	it.each([
+		["non-numeric", "abc"],
+		["zero", "0"],
+		["negative", "-3"],
+	])("clamps an invalid %s ?page= to page 1 in the search URL", async (_label, pageVal) => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "test query", page: pageVal } });
+		// The posts-search request carries page=1 — never NaN/0 — so no 422.
+		const useFetch = (globalThis as unknown as { useFetch: ReturnType<typeof vi.fn> }).useFetch;
+		const searchUrl = useFetch.mock.calls
+			.map(([url]) => (typeof url === "function" ? (url as () => string)() : String(url)))
+			.find(
+				(u) => String(u).includes("/api/search") && !String(u).includes("/api/search/comments"),
+			);
+		expect(String(searchUrl)).toContain("page=1");
+		// Results render instead of the failed state.
+		expect(wrapper.text()).toContain("Search Result Post");
+	});
 });

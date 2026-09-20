@@ -36,7 +36,15 @@ useSeo(() => ({
 	locale: locale.value,
 }));
 
-const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// page 1 at the computed — the profile fetch must never carry NaN/0
+// (guaranteed 422), and the out-of-range clamp watcher below short-circuits
+// NaN/<2, so without this an invalid deep link would brick the profile with a
+// dead Retry. Same pattern as follows.vue/liked.vue.
+const page = computed(() => {
+	const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
+	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
+});
 
 // Active tab; "likes"/"saved" only render for readers who opted in
 // (public_likes / public_bookmarks) — otherwise the URL's ?view=likes or

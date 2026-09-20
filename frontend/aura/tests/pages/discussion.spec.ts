@@ -228,4 +228,26 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).toContain("Reader Five");
 		expect(wrapper.text()).toContain("this is the deepest take yet");
 	});
+
+	// TASK-478 / ISS-554: a non-numeric or <1 ?page= deep link must resolve to
+	// page 1. The un-clamped computed forwarded NaN/0 to the API (guaranteed
+	// 422) while the page-clamp watcher short-circuits NaN/<2, leaving a
+	// load-failed state whose Retry can never succeed. Clamping at the computed
+	// (follows.vue/liked.vue pattern) makes page 1 render instead.
+	it.each([
+		["non-numeric", { page: "abc" }],
+		["zero", { page: "0" }],
+		["negative", { page: "-3" }],
+	])("clamps an invalid %s ?page= to page 1", async (_label, query) => {
+		const wrapper = await mountDiscussionPage({ routeQuery: query });
+		// The feed request carries page=1 — never NaN/0 — so no 422 can fire.
+		const useFetch = (globalThis as unknown as { useFetch: ReturnType<typeof vi.fn> }).useFetch;
+		const feedUrl = useFetch.mock.calls
+			.map(([url]) => (typeof url === "function" ? (url as () => string)() : String(url)))
+			.find((u) => String(u).includes("/api/comments/feed"));
+		expect(String(feedUrl)).toContain("page=1");
+		// Page 1 content renders instead of the error/retry state.
+		expect(wrapper.text()).toContain("this is the deepest take yet");
+		expect(wrapper.text()).not.toContain("讨论加载失败");
+	});
 });

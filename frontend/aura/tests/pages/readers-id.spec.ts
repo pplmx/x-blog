@@ -31,9 +31,13 @@ let mockSavedPayload: unknown = null;
 let mockSavedReject: unknown = null;
 let mockReaderId = "5";
 let mockQuery: Record<string, string> = {};
+// TASK-478 / ISS-554: records the page arg each getReaderProfile call received
+// so a test can assert an invalid ?page= resolves to 1 on the wire.
+let mockProfilePages: unknown[] = [];
 
 vi.mock("~~/api/public/readers", () => ({
-	getReaderProfile: async () => {
+	getReaderProfile: async (_id: number, page?: number) => {
+		mockProfilePages.push(page);
 		if (mockReject) throw mockReject;
 		return mockPayload;
 	},
@@ -161,6 +165,7 @@ beforeEach(() => {
 	mockSavedReject = null;
 	mockReaderId = "5";
 	mockQuery = {};
+	mockProfilePages = [];
 	mockFollowReader.mockClear();
 	mockUnfollowReader.mockClear();
 	mockBlockReader.mockClear();
@@ -553,5 +558,23 @@ describe("Reader block on the profile header (round 379, DEC-425)", () => {
 		const buttonTexts = wrapper.findAll("button").map((b) => b.text());
 		expect(buttonTexts).not.toContain("readerProfile.blockAction");
 		expect(buttonTexts).not.toContain("readerProfile.blocked");
+	});
+
+	// TASK-478 / ISS-554: an invalid ?page= must resolve to page 1 on the wire.
+	// The un-clamped computed forwarded NaN/0 to getReaderProfile (guaranteed
+	// 422) while the clamp watcher short-circuits NaN/<2, bricking the profile
+	// with a dead Retry. Clamp at the computed (follows.vue pattern).
+	it.each([
+		["non-numeric", "abc"],
+		["zero", "0"],
+		["negative", "-3"],
+	])("clamps an invalid %s ?page= to 1 for the profile fetch", async (_label, pageVal) => {
+		mockPayload = samplePage;
+		mockQuery = { page: pageVal };
+		const wrapper = await mountPage();
+		// The FIRST profile fetch (comments tab) must page 1, never NaN/0.
+		expect(mockProfilePages[0]).toBe(1);
+		// The profile still renders (no error/retry dead-end).
+		expect(wrapper.text()).toContain("Riki");
 	});
 });

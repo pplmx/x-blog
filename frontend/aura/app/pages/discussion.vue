@@ -56,7 +56,15 @@ useHead({
 	],
 });
 
-const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
+// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// page 1 at the computed — the feed request must never carry NaN/0 (guaranteed
+// 422), and the out-of-range clamp watcher below short-circuits NaN/<2, so
+// without this an invalid deep link would brick the page with a dead Retry.
+// Same pattern as follows.vue/liked.vue.
+const page = computed(() => {
+	const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
+	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
+});
 
 const { data: feed, pending, error, refresh: refreshFeed } = await useDiscussionFeed(page, 20);
 // Blocked-reader suppression (round 386, DEC-437): the feed is public, but a
