@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 395,
+  "round": 396,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-19T22:37:46+00:00",
+  "updated_at": "2026-09-20T01:58:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 391,
+      "touched_round": 396,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 395,
+      "touched_round": 396,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -29742,6 +29742,138 @@
       "title": "converged-idle: quality-convergence reached (round 396)",
       "rationale": "All five stop conditions hold. (1) No active task >= 3.0: ril.py tasks is empty - TASK-464..469 all resolved. (2) No unresolved high-severity issue: ISS-531..540 resolved; the single intentional deferral (C0 control-char redirect hardening, DEC-449) is recorded with rationale (Nuxt encodeRoutePath neutralizes it on the current stack). (3) Most-recent VERIFY green: backend 1879 passed @ 93.69% (ruff clean), frontend 2411 (typecheck EXIT=0, biome clean), graph check clean at 2478 nodes / 2411 edges. (4) Three consecutive sub-threshold deep-dive rounds: 393 (TASK-465/466/467 = 0.25/2.5/2.5), 394 (TASK-468 = 0.75), 395 (TASK-469 = 1.2) - all below the 3.0 threshold. (5) ril.py check reports graph consistent. Rounds 393-395 delivered real user-visible polish: envelope error surfacing, once-only comment fan-out, honest /liked unlike, pages.vue in-flight row-action guards. Continuing to mine sub-threshold items would repeat the round-100+ empty-spin failure mode the skill cites; converged state is the mode functioning correctly, not a defect.",
       "alternatives_rejected": "Rejected: mining further sub-threshold polish (F3(b) already closed; per-button busy ids like users.vue penBusy on the other five pages - formalizes an already-guarded interaction); resuming deep-dive on the backend - its round-392 CRITICAL finding was proven a Python-3.14 false positive and the remaining LOWs are consciously deferred (DEC-449); opening a feature-evolution round - no operator \"功能演进已启用\" decision exists, so mode stays in quality convergence. Reactivation happens only on a fresh operator direction or a real external signal (new issue, substantive repo change); first re-activated round must re-run VERIFY to confirm the baseline is genuinely green."
+    },
+    "ISS-541": {
+      "id": "ISS-541",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:48:58+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "Reader email leaks as comment author on /discussion + /search?type=comments",
+      "severity": "high",
+      "description": "crud.create_comment stamps a reader comment nickname as display_name-or-email; discussion.vue and search.vue render reader?.display_name ?? item.nickname, so a nameless reader's account email is shown publicly. Thread (CommentList) was fixed in 129b4b71; these two sites missed it."
+    },
+    "ISS-542": {
+      "id": "ISS-542",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:49:04+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "Thread-search commits drop unsaved reply/edit drafts without guard",
+      "severity": "medium",
+      "description": "applyQuery/clearQuery refetch and swap rows without confirmDiscardUnsaved, unlike sort/page-turn which guard. A typed reply or edit draft is lost on search commit."
+    },
+    "ISS-543": {
+      "id": "ISS-543",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:49:41+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "Reader edit re-enters moderation with no 'awaiting review' feedback",
+      "severity": "medium",
+      "description": "On a moderated deployment update_reader_comment resets is_approved; saveEdit patches content in place with no acknowledgement and the edited text renders as if approved until a refresh drops it."
+    },
+    "ISS-544": {
+      "id": "ISS-544",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:49:44+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "liked/follows pages lack stale-response seq guard + page<1 clamp",
+      "severity": "medium",
+      "description": "liked.vue/follows.vue load() had no request sequencing (stale search/page could overwrite newer) and ?page=0/-5 deep links hit the backend 422 loop."
+    },
+    "ISS-545": {
+      "id": "ISS-545",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:49:47+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "Account failures discard backend envelope message; notification delete is one-click unrecoverable",
+      "severity": "medium",
+      "description": "account.vue reduces all failures to generic localized strings via statusOf, discarding the backend reason (429 retry-after etc). notifications.vue deleteRow is destructive with no confirm/undo."
+    },
+    "ISS-546": {
+      "id": "ISS-546",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:50:30+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "delete_post orphans ReaderPostLike rows (like count drift, SQLite id-reuse mislisting)",
+      "severity": "low",
+      "description": "ReaderPostLike missing from _POST_CHILD_TABLES; post delete leaves orphaned like rows."
+    },
+    "ISS-547": {
+      "id": "ISS-547",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T01:50:33+00:00",
+      "updated_at": "2026-09-20T01:55:01+00:00",
+      "touched_round": 396,
+      "title": "N+1 per-row db.get on ReaderAccount in GET /api/reader/me/blocks",
+      "severity": "low",
+      "description": "list_reader_blocks loop issues one primary-key SELECT per blocked row; batched like list_reader_follows."
+    },
+    "CHG-729": {
+      "id": "CHG-729",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T01:54:19+00:00",
+      "updated_at": "2026-09-20T01:54:19+00:00",
+      "touched_round": 396,
+      "commit": "b05f47a3",
+      "title": "fix(reader): comment PII, draft-loss guards, async races, feedback"
+    },
+    "TASK-470": {
+      "id": "TASK-470",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-20T01:57:09+00:00",
+      "updated_at": "2026-09-20T01:57:09+00:00",
+      "touched_round": 396,
+      "category": "correctness",
+      "severity": "high",
+      "priority_score": 9,
+      "title": "Fix comment-author email PII leak on /discussion, /search?type=comments, reply header"
+    },
+    "DEC-453": {
+      "id": "DEC-453",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T01:57:17+00:00",
+      "updated_at": "2026-09-20T01:57:17+00:00",
+      "touched_round": 396,
+      "title": "recording PII leak resolution + hard requirement",
+      "rationale": "ISS-541 was my trigger: on the default TDD/base run I found discussion/search/reply-header rendering account emails as public names with only a two-site miss in the thread. Hard-rule: any public display of a comment author must route through commentAuthorName(), never emit reader.nickname=email verbatim.",
+      "alternatives_rejected": "Reverse-fix in crud (store 'Anonymous' instead of email): changes the wire shape other surfaces read for display-name-priority, more invasive."
+    },
+    "DEC-454": {
+      "id": "DEC-454",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T01:58:01+00:00",
+      "updated_at": "2026-09-20T01:58:01+00:00",
+      "touched_round": 396,
+      "title": "close round 396 (CHG-729, TASK-470, ISS-541..547)",
+      "rationale": "Round 396: reactivated from converged-idle by operator directive (detail polish + PG verification). Full baseline verified on the dev PG 18.4 (1889 pass) before work; delivered 7 issue fixes across frontend PII/draft/race/feedback + backend hygiene; all suites green after (backend 1880 @ 93.69%, frontend 2424, PG 1889, lint/typecheck/format clean).",
+      "alternatives_rejected": "Wired rel=prev/rel=next + per-page canonical in useSeo (search/archive agent MEDs): deferred to a dedicated SEO unit — reads as crawler-facing, not user-facing polish, and the round was already large."
     }
   },
   "edges": [
@@ -44256,6 +44388,102 @@
       "to": "DEC-451",
       "type": "supersedes",
       "created_at": "2026-09-19T22:37:46+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-541",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-542",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-543",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-544",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-545",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-546",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "ISS-547",
+      "type": "resolves",
+      "created_at": "2026-09-20T01:55:40+00:00"
+    },
+    {
+      "from": "ISS-541",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:25+00:00"
+    },
+    {
+      "from": "ISS-542",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:25+00:00"
+    },
+    {
+      "from": "ISS-543",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:25+00:00"
+    },
+    {
+      "from": "ISS-544",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:25+00:00"
+    },
+    {
+      "from": "ISS-545",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:25+00:00"
+    },
+    {
+      "from": "ISS-546",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:26+00:00"
+    },
+    {
+      "from": "ISS-547",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T01:56:26+00:00"
+    },
+    {
+      "from": "TASK-470",
+      "to": "ISS-541",
+      "type": "addresses",
+      "created_at": "2026-09-20T01:58:01+00:00"
+    },
+    {
+      "from": "CHG-729",
+      "to": "TASK-470",
+      "type": "implements",
+      "created_at": "2026-09-20T01:58:01+00:00"
     }
   ]
 }
