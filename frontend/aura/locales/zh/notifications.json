@@ -69,6 +69,7 @@
 			}
 		},
 		"loadMore": "加载更多",
-		"loadingMore": "加载中…"
+		"loadingMore": "加载中…",
+		"deleteConfirm": "确定删除这条通知？"
 	}
 }

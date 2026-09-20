@@ -46,6 +46,11 @@ _POST_CHILD_TABLES: list[tuple[Any, Any]] = [
     (models.ReadingHistory, models.ReadingHistory.post_id),
     (models.CommentSubscription, models.CommentSubscription.post_id),
     (models.PostViewsDaily, models.PostViewsDaily.post_id),
+    # Reader likes are the same additive DEC-009 table class as the others:
+    # deleting a post must not leave orphaned like rows behind (they would
+    # drift the reader's like count and, on SQLite id reuse, could surface as
+    # "liked" on an unrelated later post — deep-dive finding).
+    (models.ReaderPostLike, models.ReaderPostLike.post_id),
 ]
 
 

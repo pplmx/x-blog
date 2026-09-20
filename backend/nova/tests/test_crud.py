@@ -830,6 +830,30 @@ class TestComments:
         assert db_session.query(models.CommentLike).filter_by(comment_id=cid).count() == 0
         assert db_session.query(models.CommentFlag).filter_by(comment_id=cid).count() == 0
 
+    def test_delete_post_cleans_reader_post_likes(self, db_session):
+        """Post deletion purges the reader-like rows too (deep-dive finding).
+
+        ReaderPostLike is an additive DEC-009 table with no ORM cascade — the
+        same class as bookmarks/history/subscriptions, which _POST_CHILD_TABLES
+        already covers. Without it, a deleted post left orphaned like rows that
+        drifted the reader's like count and, on SQLite autoincrement id reuse,
+        could surface a later post as "liked" without the reader ever liking it.
+        """
+        from app.auth import ReaderAccount
+
+        reader = ReaderAccount(email="like@example.com", password="x", is_active=True)
+        db_session.add(reader)
+        db_session.commit()
+        post = models.Post(title="Like Orphan", slug="like-orphan", content="Content")
+        db_session.add(post)
+        db_session.commit()
+        db_session.add(models.ReaderPostLike(reader_id=reader.id, post_id=post.id))
+        db_session.commit()
+
+        assert crud.delete_post(db_session, post.id) is True
+        remaining = db_session.query(models.ReaderPostLike).filter(models.ReaderPostLike.post_id == post.id).count()
+        assert remaining == 0
+
 
 class TestSearchPosts:
     """Tests for search_posts function."""

@@ -598,70 +598,109 @@ describe("Notifications page (TASK-192)", () => {
 	});
 
 	it("deletes one notification row and updates the list and badge (DEC-312)", async () => {
-		mockFetch.mockResolvedValue({
-			items: [makeNotif({ id: 1, title: "第一条通知" }), makeNotif({ id: 2, title: "第二条通知" })],
-			total: 2,
-			unread: 2,
-			page: 1,
-			limit: 100,
-			total_pages: 1,
-		});
-		const wrapper = await mountPage();
-		const badge = await badgeApi();
-		expect(badge.unreadCount.value).toBe(2);
+		vi.stubGlobal("confirm", () => true);
+		try {
+			mockFetch.mockResolvedValue({
+				items: [
+					makeNotif({ id: 1, title: "第一条通知" }),
+					makeNotif({ id: 2, title: "第二条通知" }),
+				],
+				total: 2,
+				unread: 2,
+				page: 1,
+				limit: 100,
+				total_pages: 1,
+			});
+			const wrapper = await mountPage();
+			const badge = await badgeApi();
+			expect(badge.unreadCount.value).toBe(2);
 
-		// The per-row delete button lives outside the row's link/anchor
-		// (sibling, like mark-read), so it is a real clickable button. There
-		// are two rows → two delete controls (aria-label disambiguates).
-		const delButtons = wrapper
-			.findAll("button")
-			.filter((b) => b.attributes("aria-label") === "删除这条通知");
-		expect(delButtons.length).toBe(2);
+			// The per-row delete button lives outside the row's link/anchor
+			// (sibling, like mark-read), so it is a real clickable button. There
+			// are two rows → two delete controls (aria-label disambiguates).
+			const delButtons = wrapper
+				.findAll("button")
+				.filter((b) => b.attributes("aria-label") === "删除这条通知");
+			expect(delButtons.length).toBe(2);
 
-		// Post-delete the badge re-fetches from the server like mark-read does
-		// (KEEP the post-action server truth), so the next GET reflects the drop.
-		mockFetch.mockResolvedValue({
-			items: [makeNotif({ id: 2, title: "第二条通知" })],
-			total: 1,
-			unread: 1,
-			page: 1,
-			limit: 100,
-			total_pages: 1,
-		});
+			// Post-delete the badge re-fetches from the server like mark-read does
+			// (KEEP the post-action server truth), so the next GET reflects the drop.
+			mockFetch.mockResolvedValue({
+				items: [makeNotif({ id: 2, title: "第二条通知" })],
+				total: 1,
+				unread: 1,
+				page: 1,
+				limit: 100,
+				total_pages: 1,
+			});
 
-		await delButtons[0]?.trigger("click");
-		await flushPromises();
-		expect(mockDeleteRow).toHaveBeenCalledWith(1);
+			await delButtons[0]?.trigger("click");
+			await flushPromises();
+			expect(mockDeleteRow).toHaveBeenCalledWith(1);
 
-		// The row left the list and the unread badge dropped with it.
-		expect(wrapper.text()).not.toContain("第一条通知");
-		expect(wrapper.text()).toContain("第二条通知");
-		expect(badge.unreadCount.value).toBe(1);
+			// The row left the list and the unread badge dropped with it.
+			expect(wrapper.text()).not.toContain("第一条通知");
+			expect(wrapper.text()).toContain("第二条通知");
+			expect(badge.unreadCount.value).toBe(1);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("keeps the row when the delete is not confirmed (round 396)", async () => {
+		vi.stubGlobal("confirm", () => false);
+		try {
+			mockFetch.mockResolvedValue({
+				items: [makeNotif({ id: 7, title: "第七条通知" })],
+				total: 1,
+				unread: 0,
+				page: 1,
+				limit: 100,
+				total_pages: 1,
+			});
+			const wrapper = await mountPage();
+			const del = wrapper
+				.findAll("button")
+				.find((b) => b.attributes("aria-label") === "删除这条通知");
+			expect(del).toBeDefined();
+			await del?.trigger("click");
+			await flushPromises();
+			// Declining the confirm: nothing was deleted, the row stays.
+			expect(mockDeleteRow).not.toHaveBeenCalled();
+			expect(wrapper.text()).toContain("第七条通知");
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it("surfaces a failure and keeps the row when deleting fails", async () => {
-		mockFetch.mockResolvedValue({
-			items: [makeNotif({ id: 7, title: "第七条通知" })],
-			total: 1,
-			unread: 0,
-			page: 1,
-			limit: 100,
-			total_pages: 1,
-		});
-		mockDeleteRow.mockRejectedValueOnce(new Error("boom"));
-		const wrapper = await mountPage();
+		vi.stubGlobal("confirm", () => true);
+		try {
+			mockFetch.mockResolvedValue({
+				items: [makeNotif({ id: 7, title: "第七条通知" })],
+				total: 1,
+				unread: 0,
+				page: 1,
+				limit: 100,
+				total_pages: 1,
+			});
+			mockDeleteRow.mockRejectedValueOnce(new Error("boom"));
+			const wrapper = await mountPage();
 
-		const del = wrapper
-			.findAll("button")
-			.find((b) => b.attributes("aria-label") === "删除这条通知");
-		expect(del).toBeDefined();
-		await del?.trigger("click");
-		await flushPromises();
+			const del = wrapper
+				.findAll("button")
+				.find((b) => b.attributes("aria-label") === "删除这条通知");
+			expect(del).toBeDefined();
+			await del?.trigger("click");
+			await flushPromises();
 
-		// Failure is surfaced, row stays, button is enabled again for retry.
-		expect(wrapper.text()).toContain("网络错误");
-		expect(wrapper.text()).toContain("第七条通知");
-		expect(del?.attributes("disabled")).toBeUndefined();
+			// Failure is surfaced, row stays, button is enabled again for retry.
+			expect(wrapper.text()).toContain("网络错误");
+			expect(wrapper.text()).toContain("第七条通知");
+			expect(del?.attributes("disabled")).toBeUndefined();
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it("offers a retry on preference-load failure and reloads on click (deep-dive finding)", async () => {

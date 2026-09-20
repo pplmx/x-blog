@@ -73,6 +73,8 @@
 			"liked": "已点赞",
 			"likeError": "点赞失败，请重试。",
 			"editLabel": "编辑你的评论",
+			"editSuccess": "评论已更新。",
+			"editPendingReview": "已编辑，等待审核中。",
 			"readerNoName": "读者",
 			"guestFollow": {
 				"label": "用邮箱订阅本讨论",

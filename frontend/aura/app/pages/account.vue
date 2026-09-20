@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { apiErrorMessage } from "~~/api/errors";
 import { parseApiDate } from "~~/composables/apiDate";
 
 /**
@@ -98,6 +99,11 @@ const publicBookmarks = ref(reader.value?.public_bookmarks ?? false);
 const savingProfile = ref(false);
 const profileSaved = ref(false);
 const profileFailed = ref(false);
+// The backend's specific reason (e.g. a rate-limit "try again in 60s") shown
+// instead of the generic fallback — statusOf() alone discards it (round 396).
+const profileFailedMessage = ref("");
+// Monotonic profile-save sequence (see saveProfileName — the latest-wins guard).
+let profileSaveSeq = 0;
 
 // An empty-name submit (round 264): the Save button is disabled on an empty
 // field, but Enter in a text input still submits the form regardless — so the
@@ -115,10 +121,17 @@ async function saveProfileName() {
 		nameError.value = true;
 		return; // guard before touching state so Save never sticks disabled (ISS-127)
 	}
+	// Re-entry guard + monotonic sequence: a second Enter while the first
+	// request is in flight must not double-submit, and a slow first response
+	// must not overwrite the reader's newer edit with the server snapshot taken
+	// before it (deep-dive finding).
+	if (savingProfile.value) return;
+	const seq = ++profileSaveSeq;
 	nameError.value = false;
 	savingProfile.value = true;
 	profileSaved.value = false;
 	profileFailed.value = false;
+	profileFailedMessage.value = "";
 	try {
 		const trimmedBio = bio.value.trim();
 		const updated = await updateReaderProfile({
@@ -127,16 +140,22 @@ async function saveProfileName() {
 			public_likes: publicLikes.value,
 			public_bookmarks: publicBookmarks.value,
 		});
+		if (seq !== profileSaveSeq) return; // a newer save wins
 		setProfile(updated);
 		displayName.value = updated.display_name ?? "";
 		bio.value = updated.bio ?? "";
 		publicLikes.value = updated.public_likes ?? false;
 		publicBookmarks.value = updated.public_bookmarks ?? false;
 		profileSaved.value = true;
-	} catch {
+	} catch (err) {
+		if (seq !== profileSaveSeq) return;
+		// Surface the backend's reason (e.g. a rate-limit wait) over the generic
+		// fallback — the reader can act on "try again in 60s", not just retry
+		// blind and deepen the lockout (round 396; shared apiErrorMessage).
 		profileFailed.value = true;
+		profileFailedMessage.value = apiErrorMessage(err, t("account.profile.saveFailed"));
 	} finally {
-		savingProfile.value = false;
+		if (seq === profileSaveSeq) savingProfile.value = false;
 	}
 }
 
@@ -216,6 +235,8 @@ const pw = ref({ current: "", next: "", confirm: "" });
 const passwordState = ref<"idle" | "busy" | "success" | "wrong" | "mismatch" | "short" | "failed">(
 	"idle",
 );
+// The backend's specific reason on the generic "failed" bucket (round 396).
+const passwordFailedMessage = ref("");
 
 async function submitPassword() {
 	// Re-entry guard: `busy` only disables the button, but Enter in any of the
@@ -256,6 +277,9 @@ async function submitPassword() {
 			return;
 		}
 		passwordState.value = statusOf(err) === 401 ? "wrong" : "failed";
+		// Surface the backend's reason (e.g. a rate-limit wait) on the generic
+		// failed bucket instead of the fallback alone (round 396).
+		passwordFailedMessage.value = apiErrorMessage(err, t("account.password.failed"));
 	}
 }
 
@@ -890,7 +914,7 @@ async function downloadMyData() {
 
 const deletePassword = ref("");
 const deletingAccount = ref(false);
-const deleteError = ref<{ code: "wrong" | "failed" } | null>(null);
+const deleteError = ref<{ code: "wrong" | "failed"; message?: string } | null>(null);
 
 async function deleteAccount() {
 	if (deletingAccount.value) return;
@@ -910,7 +934,13 @@ async function deleteAccount() {
 			void navigateTo("/login");
 			return;
 		}
-		deleteError.value = { code: statusOf(e) === 401 ? "wrong" : "failed" };
+		const code = statusOf(e) === 401 ? "wrong" : "failed";
+		deleteError.value = {
+			code,
+			// Surface the backend's reason (rate-limit wait, etc.) over the
+			// generic fallback (round 396; shared apiErrorMessage).
+			message: apiErrorMessage(e, t("account.deleteAccount.failed")),
+		};
 	} finally {
 		deletingAccount.value = false;
 	}
@@ -1216,7 +1246,7 @@ function shortEndpoint(endpoint: string): string {
               {{ t('account.profile.saved') }}
             </span>
             <span v-if="profileFailed" class="text-sm text-red-500 dark:text-red-400">
-              {{ t('account.profile.saveFailed') }}
+              {{ profileFailedMessage || t('account.profile.saveFailed') }}
             </span>
           </div>
         </form>
@@ -1356,7 +1386,7 @@ function shortEndpoint(endpoint: string): string {
           <p
             v-if="passwordState === 'failed'"
             class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.password.failed') }}</p>
+          >{{ passwordFailedMessage || t('account.password.failed') }}</p>
         </form>
       </section>
 
@@ -2147,7 +2177,7 @@ function shortEndpoint(endpoint: string): string {
         <p
           v-else-if="deleteError?.code === 'failed'"
           class="mt-2 text-sm text-red-500 dark:text-red-400"
-        >{{ t('account.deleteAccount.failed') }}</p>
+        >{{ deleteError.message || t('account.deleteAccount.failed') }}</p>
       </section>
     </div>
   </div>

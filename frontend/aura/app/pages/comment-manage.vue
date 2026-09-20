@@ -46,17 +46,23 @@ const deleting = ref(false);
 const savedFlash = ref(false);
 const errorMsg = ref(false);
 
-// Fire once when the page mounts with a token; a missing token or an unknown
-// one (backend 404) both land on the invalid state, indistinguishable to the
-// visitor so tokens are not enumerable.
+// A network failure (unreachable backend, 5xx) must not be a dead end: the
+// token may still be valid, and the page offers a Retry. A missing token or
+// an unknown one (backend 404) both land on the terminal invalid state,
+// indistinguishable to the visitor so tokens are not enumerable.
 let fired = false;
 async function load() {
+	// One in-flight fetch at a time: the initial state is already "loading",
+	// so a separate flag (not the state) guards re-entry — a duplicate
+	// onMounted/route-change can't fire a second request mid-flight. Retry
+	// re-arms via the `fired` reset below.
 	if (fired) return;
 	fired = true;
 	if (!token.value) {
 		state.value = "invalid";
 		return;
 	}
+	state.value = "loading";
 	try {
 		const { getGuestCommentManage } = await import("~~/api/public/comments");
 		const data = await getGuestCommentManage(token.value);
@@ -64,6 +70,7 @@ async function load() {
 		post.value = data.post;
 		draft.value = data.comment.content;
 		state.value = "ready";
+		errorMsg.value = false; // a retry success clears the prior failure banner
 	} catch (e) {
 		const status =
 			(e as { response?: { status?: number } } | undefined)?.response?.status ??
@@ -71,6 +78,12 @@ async function load() {
 		state.value = status === 404 ? "invalid" : "error";
 		errorMsg.value = status !== 404;
 	}
+}
+
+/** Retry the token fetch after a transient network error (round 396). */
+function retry() {
+	fired = false;
+	void load();
 }
 
 async function save() {
@@ -154,10 +167,20 @@ onMounted(() => void load());
         </p>
       </div>
 
-      <div v-else-if="state === 'error'" role="status" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+      <div v-else-if="state === 'error'" role="alert" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
         <p class="text-sm text-red-600 dark:text-red-400">
           {{ t("reader.commentManage.errors.network") }}
         </p>
+        <!-- A network error is not a dead end: the token may still be valid, and
+             the email link is only clickable once. Offer an in-place retry
+             (round 396) so a flaky connection doesn't strand the visitor. -->
+        <button
+          type="button"
+          class="mt-3 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          @click="retry"
+        >
+          {{ t("common.action.retry") }}
+        </button>
       </div>
 
       <div v-else-if="state === 'ready' && comment" class="space-y-5">

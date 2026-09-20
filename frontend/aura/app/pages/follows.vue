@@ -30,17 +30,20 @@ useSeo(() => ({
 
 // Page comes from the query string so pagination is deep-linkable and
 // shareable; `navigateTo` with a `?page=` query drives the refetch below.
-// A malformed `?page=abc` parses to NaN — treat it as page 1 instead of
-// sending `?page=NaN` to the API (a guaranteed 422, review finding).
+// A malformed `?page=abc` parses to NaN, and a `?page=0`/negative is below the
+// lowest valid page — both resolve to page 1 instead of sending an invalid
+// value to the API (a guaranteed 422 loop, review finding).
 const page = computed(() => {
 	const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
-	return Number.isNaN(raw) ? 1 : raw;
+	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
 });
 
 const items = ref<PostList[]>([]);
 const pending = ref(true);
 const loadFailed = ref(false);
 const pagination = ref<PaginationInfo | null>(null);
+// Monotonic request sequence (see load() — the stale-response guard).
+let loadSeq = 0;
 
 // Windowed, ellipsis-aware pagination buttons (same pattern as home/search/
 // archive): a reader following a lot can't get a button per page.
@@ -70,10 +73,16 @@ watch(
 
 async function load() {
 	if (!isAuthenticated.value) return;
+	// Monotonic request sequence so a slow earlier response (page / any future
+	// filter) can never overwrite a newer one — the same race every sibling
+	// filter/search page already guards (liked.vue/follows.vue were the
+	// holdouts; deep-dive finding).
+	const seq = ++loadSeq;
 	pending.value = true;
 	loadFailed.value = false;
 	try {
 		const res = await getReaderFollowsFeed(12, page.value);
+		if (seq !== loadSeq) return; // a newer request wins
 		items.value = res?.items ?? [];
 		pagination.value = res?.pagination ?? null;
 		// Keep the skeleton up while an out-of-range page is being clamped:
@@ -102,6 +111,7 @@ async function load() {
 			void router.replace("/login");
 			return;
 		}
+		if (seq !== loadSeq) return; // a newer request wins
 		items.value = [];
 		pagination.value = null;
 		loadFailed.value = true;

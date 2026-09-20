@@ -1790,13 +1790,32 @@ describe("Account settings page", () => {
 	describe("profile + password failure surfaces", () => {
 		it("shows a save-failure message when the profile update fails", async () => {
 			isAuthenticated.value = true;
-			mockUpdateMyProfile.mockRejectedValue(new Error("boom"));
+			// An HTTP failure with no readable envelope renders the localized
+			// fallback — never ofetch's technical string.
+			mockUpdateMyProfile.mockRejectedValue({ status: 500 });
 			const wrapper = await mountPage();
 			const input = wrapper.get("input[type='text']");
 			await input.setValue("NewName");
 			await wrapper.get("form").trigger("submit");
 			await flushPromises();
 			expect(wrapper.text()).toContain("保存失败，请稍后再试");
+		});
+
+		it("surfaces the backend's specific reason when the profile save is rejected (round 396)", async () => {
+			// The shared apiErrorMessage prefers the backend envelope message —
+			// e.g. a 429 rate-limit explains WHEN to retry instead of a blind
+			// "saved failed" that deepens the lockout.
+			isAuthenticated.value = true;
+			mockUpdateMyProfile.mockRejectedValue({
+				status: 429,
+				data: { error: { message: "Too many attempts, try again in 60s" } },
+			});
+			const wrapper = await mountPage();
+			const input = wrapper.get("input[type='text']");
+			await input.setValue("NewName");
+			await wrapper.get("form").trigger("submit");
+			await flushPromises();
+			expect(wrapper.text()).toContain("Too many attempts, try again in 60s");
 		});
 
 		it("empties the input when the profile response omits a display name", async () => {
@@ -1818,7 +1837,7 @@ describe("Account settings page", () => {
 
 		it("shows a generic failure message when the password change fails with a non-401 error", async () => {
 			isAuthenticated.value = true;
-			mockChangeMyPassword.mockRejectedValue(new Error("network down"));
+			mockChangeMyPassword.mockRejectedValue({ status: 500 });
 			const wrapper = await mountPage();
 			const section = sectionByText(wrapper, "修改密码");
 			const inputs = section.findAll("input[type='password']");
@@ -2174,7 +2193,7 @@ describe("Account settings page", () => {
 		it("shows a generic failure message when deletion fails with a non-401 error", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
-			mockDeleteReaderAccount.mockRejectedValue(new Error("boom"));
+			mockDeleteReaderAccount.mockRejectedValue({ status: 500 });
 			vi.stubGlobal("confirm", () => true);
 			const wrapper = await mountPage();
 			const section = wrapper.findAll("section").find((s) => s.text().includes("删除账号"));

@@ -31,16 +31,21 @@ useSeo(() => ({
 }));
 
 // Page comes from the query string so pagination is deep-linkable; a malformed
-// `?page=abc` parses to NaN — treat it as page 1 (follows-page pattern).
+// `?page=abc` parses to NaN, and a `?page=0`/negative value is below the lowest
+// valid page — both resolve to page 1 (the backend rejects PageInt < 1 with 422,
+// and without this a bad deep link would loop on load-failure + retry; deep-dive
+// finding).
 const page = computed(() => {
 	const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
-	return Number.isNaN(raw) ? 1 : raw;
+	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
 });
 
 const items = ref<PostList[]>([]);
 const pending = ref(true);
 const loadFailed = ref(false);
 const pagination = ref<PaginationInfo | null>(null);
+// Monotonic request sequence (see load() — the stale-response guard).
+let loadSeq = 0;
 
 // Recall search over the reader's liked posts (DEC-413, TASK-432): the last
 // reader-owned surface without keyword search — bookmarks (DEC-124), history
@@ -97,10 +102,17 @@ watch(
 
 async function load() {
 	if (!isAuthenticated.value) return;
+	// Monotonic request sequence so a slow earlier response (page / search) can
+	// never overwrite a newer one — the same race every sibling filter/search
+	// page already guards (liked.vue/follows.vue were the holdouts). Without it,
+	// two quick search edits could land out of order and show stale results
+	// under the newer term (deep-dive finding).
+	const seq = ++loadSeq;
 	pending.value = true;
 	loadFailed.value = false;
 	try {
 		const res = await getReaderLikes(page.value, 12, searchQuery.value);
+		if (seq !== loadSeq) return; // a newer request wins
 		items.value = res?.items ?? [];
 		pagination.value = res?.pagination ?? null;
 		const p = res?.pagination;
@@ -117,6 +129,7 @@ async function load() {
 			void router.replace("/login");
 			return;
 		}
+		if (seq !== loadSeq) return;
 		items.value = [];
 		pagination.value = null;
 		loadFailed.value = true;

@@ -38,6 +38,9 @@ const { isAuthenticated: signedIn } = useReaderAuth();
 // server copy alive, and the next merge pulls those rows straight back — so a
 // permanent-looking "cleared" state would be a lie. Flag it instead.
 const clearFailed = ref(false);
+// In-flight marker for the Clear-all action (disables the button + guards the
+// handler against a second concurrent confirm — deep-dive finding).
+const clearingAll = ref(false);
 
 // Server-derived folder chips (f.count) would otherwise stay stale after a
 // remove/undo/clear while the local-first list updates instantly — reload
@@ -51,13 +54,23 @@ function refreshFolderCountsSoon() {
 }
 
 async function handleClearAll() {
+	// Single-flight the clear (deep-dive finding): a second confirm during a
+	// slow DELETE would issue a concurrent duplicate cloud clear — benign but
+	// unresponsive-feeling with no in-flight feedback. Disable + guard together
+	// (like history.vue's clearHistory `clearing` flag).
+	if (clearingAll.value) return;
 	if (confirm(t("bookmarks.confirmClear"))) {
 		// clearAll wipes the localStorage mirror AND the cloud copy when signed
 		// in, so the clear actually sticks (TASK-233). The old clearBookmarks
 		// only cleared local storage and the next cloud merge resurrected rows.
+		clearingAll.value = true;
 		clearFailed.value = false;
-		const ok = await clearAll();
-		if (!ok) clearFailed.value = true;
+		try {
+			const ok = await clearAll();
+			if (!ok) clearFailed.value = true;
+		} finally {
+			clearingAll.value = false;
+		}
 		refreshFolderCountsSoon();
 	}
 }
@@ -312,8 +325,9 @@ function handleToggleDone(bookmark: Bookmark) {
       <button
         v-if="bookmarkCount > 0"
         type="button"
+        :disabled="clearingAll"
         @click="handleClearAll"
-        class="text-sm text-gray-500 hover:text-red-500 transition-colors"
+        class="text-sm text-gray-500 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         :title="t('bookmarks.clearAll')"
       >
         <Icon icon="lucide:trash-2" class="w-4 h-4 inline mr-1" />

@@ -331,6 +331,11 @@ const deleteFailed = ref(false);
 
 async function deleteRow(item: ReaderNotification) {
 	if (deletingIds.value.has(item.id)) return;
+	// A row delete is permanent and has no undo — a stray tap on a small mobile
+	// trash icon (sat next to the mark-read control) would be unrecoverable.
+	// Confirm first, like the history clear (decided in the same round that
+	// kept bookmarks' remove-undo; this inbox has no trash to restore from).
+	if (!window.confirm(t("notifications.deleteConfirm"))) return;
 	deletingIds.value = new Set(deletingIds.value).add(item.id);
 	deleteFailed.value = false;
 	try {

@@ -191,6 +191,29 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { page: "2" } });
 	});
 
+	it("never renders a verified reader's email as the commenter (round 396)", async () => {
+		// A verified reader WITHOUT a display_name has their account email
+		// stamped as the comment nickname (crud), so the feed must render the
+		// generic identity instead of the PII — same rule the thread follows.
+		const nameless = {
+			items: [
+				{
+					id: 21,
+					nickname: "reader@example.com",
+					content: "nameless but verified",
+					likes: 0,
+					created_at: "2024-03-01T09:00:00Z",
+					reader: { id: 42, display_name: null, avatar_url: null },
+					post: { id: 9, title: "Searchable Post", slug: "searchable-post" },
+				},
+			],
+			pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+		};
+		const wrapper = await mountDiscussionPage({ feed: nameless });
+		expect(wrapper.text()).toContain("读者"); // generic identity (commentList.readerNoName, zh)
+		expect(wrapper.text()).not.toContain("reader@example.com");
+	});
+
 	it("hides blocked readers' cards and keeps the rest (round 386, DEC-437)", async () => {
 		mockBlockedSet.value = new Set([5]); // Reader Five (feed item id 12)
 		const wrapper = await mountDiscussionPage();

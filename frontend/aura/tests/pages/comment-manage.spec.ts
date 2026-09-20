@@ -100,6 +100,25 @@ describe("comment-manage page", () => {
 		expect(wrapper.text()).not.toContain("这个链接无效，或已经被使用过。");
 	});
 
+	it("offers an in-place retry after a network error (round 396)", async () => {
+		// The token-only link is clickable once; a transient failure must not
+		// strand the visitor on a dead-end error card with no way to re-fetch.
+		getGuestCommentManage.mockRejectedValueOnce(new Error("no response")).mockResolvedValueOnce({
+			comment: EXAMPLE_COMMENT,
+			post: { id: 3, title: "测试文章", slug: "test-post" },
+		});
+		const wrapper = mountPage({ token: "tok-retry" });
+		await flushPromises();
+		expect(wrapper.text()).toContain("网络错误，请稍后重试。");
+
+		await clickButton(wrapper, "重试");
+		await flushPromises();
+
+		expect(getGuestCommentManage).toHaveBeenCalledTimes(2);
+		expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("编辑前的评论");
+		expect(wrapper.text()).not.toContain("网络错误，请稍后重试。");
+	});
+
 	it("edits the comment text via the token and flashes saved", async () => {
 		getGuestCommentManage.mockResolvedValue({
 			comment: EXAMPLE_COMMENT,

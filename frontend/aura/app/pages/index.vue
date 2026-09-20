@@ -190,7 +190,7 @@ async function loadFollowedSeries() {
 // Look up active filter labels for the "filtered by" indicator (deep-link UX).
 const { data: categories } = await useCategories();
 const { data: tags } = await useTags();
-const { data: statsData } = await useBlogStats();
+const { data: statsData, error: statsError } = await useBlogStats();
 const activeFilterLabel = computed(() => {
 	if (categoryId.value && categories.value) {
 		const name = categories.value.find((c) => c.id === categoryId.value)?.name;
@@ -289,7 +289,15 @@ watch(
 // not the current page's items. Summing the first page's 10 items presented a
 // per-page number as a site total and changed with pagination (ISS-035).
 const stats = computed(() => {
-	const total = statsData.value?.total_posts ?? posts.value?.pagination?.total ?? 0;
+	// The stats endpoint is the source of the site-wide total. Falling back to
+	// `posts.pagination.total` under an ACTIVE filter (?category_id=X /
+	// ?tag_id=Y) re-introduces the original bug: the filtered feed's total (a
+	// handful of rows) would masquerade as the whole site's post count. The
+	// fallback is only legitimate on the UNFILTERED feed, where page-1's total
+	// IS the site total (deep-dive finding).
+	const hasFilter = categoryId.value !== undefined || tagId.value !== undefined;
+	const total =
+		statsData.value?.total_posts ?? (hasFilter ? 0 : (posts.value?.pagination?.total ?? 0));
 	const totalViews = statsData.value?.total_views ?? 0;
 	const totalLikes = statsData.value?.total_likes ?? 0;
 	const totalComments = statsData.value?.total_comments ?? 0;

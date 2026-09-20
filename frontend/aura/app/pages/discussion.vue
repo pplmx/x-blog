@@ -18,6 +18,7 @@ import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
+import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const { t, locale } = useLang();
 const route = useRoute();
@@ -170,7 +171,7 @@ const paginationTokens = computed(() =>
 				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-500 dark:text-gray-400">
 					<span class="inline-flex items-center gap-1">
 						<Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
-						{{ item.reader?.display_name ?? item.nickname }}
+						{{ commentAuthorName(item, t("components.commentList.readerNoName")) }}
 					</span>
 					<span v-if="item.post">
 						<Icon icon="lucide:file-text" class="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />

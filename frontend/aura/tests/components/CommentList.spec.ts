@@ -611,13 +611,21 @@ describe("CommentList", () => {
 		});
 
 		it("edits content and shows an edited marker", async () => {
-			const updated = {
+			// Auto-approve tier (is_approved stays true): the edit republishes
+			// immediately. The list refetches after save (server truth), so the
+			// refetch must return the edited row for it to stay visible.
+			const edited = {
 				...ownComments.items[0],
 				content: "my edited body",
 				edited_at: "2024-02-01T00:00:00Z",
+				is_approved: true,
 			};
-			mockUpdateMyComment.mockResolvedValue(updated);
-			const { wrapper } = await mountCommentList({ comments: ownComments });
+			const editedList = { ...ownComments, items: [edited] };
+			mockUpdateMyComment.mockResolvedValue(edited);
+			const { wrapper } = await mountCommentList({
+				comments: ownComments,
+				getCommentsImpl: () => Promise.resolve(editedList),
+			});
 
 			await wrapper.find(".comment-edit").trigger("click");
 			await flushPromises();
@@ -632,6 +640,39 @@ describe("CommentList", () => {
 			expect(mockUpdateMyComment).toHaveBeenCalledWith(50, "my edited body");
 			expect(wrapper.text()).toContain("my edited body");
 			expect(wrapper.text()).toContain("已编辑");
+		});
+
+		it("tells the author an edit re-entered moderation (awaiting review)", async () => {
+			// Moderated deployment (AUTO_APPROVE off — the default): the backend
+			// resets is_approved, so the edited text leaves the public thread. The
+			// refetch returns the row WITHOUT is_approved (list only serves approved
+			// comments), and the reader must get an explicit "awaiting review"
+			// acknowledgement instead of believing the edit is live.
+			const updated = {
+				...ownComments.items[0],
+				content: "my edited body",
+				edited_at: "2024-02-01T00:00:00Z",
+				is_approved: false,
+			};
+			mockUpdateMyComment.mockResolvedValue(updated);
+			const remaining = { ...ownComments, items: [], total: 0, total_pages: 1 };
+			const { wrapper } = await mountCommentList({
+				comments: ownComments,
+				getCommentsImpl: () => Promise.resolve(remaining),
+			});
+
+			await wrapper.find(".comment-edit").trigger("click");
+			await flushPromises();
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("my edited body");
+			const saveBtn = wrapper.findAll("button").find((b) => b.text() === "保存");
+			await saveBtn?.trigger("click");
+			await flushPromises();
+
+			expect(mockUpdateMyComment).toHaveBeenCalledWith(50, "my edited body");
+			// The awaiting-review acknowledgement is shown — not a silent refresh
+			// that merely drops the row.
+			expect(wrapper.text()).toContain("等待审核");
 		});
 
 		it("deletes a comment after confirmation", async () => {
@@ -1528,6 +1569,101 @@ describe("CommentList", () => {
 			await flushPromises();
 			expect(confirmSpy).not.toHaveBeenCalled();
 			expect(wrapper.find("textarea").exists()).toBe(false);
+		});
+
+		it("thread search asks before discarding a dirty reply draft (round 396)", async () => {
+			// The search box commits by re-fetching page 1 and swapping rows in
+			// place — pre-fix it bypassed confirmDiscardUnsaved (added after the
+			// sort/page-turn guard) and silently dropped a half-typed reply.
+			vi.useFakeTimers();
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			try {
+				const { wrapper } = await mountCommentList({ comments });
+				const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+				if (!replyBtn) throw new Error("expected a reply button");
+				await replyBtn.trigger("click");
+				await flushPromises();
+				await wrapper.find("textarea").setValue("Half-typed reply.");
+				await flushPromises();
+
+				const input = wrapper.find("input#comment-search");
+				await input.setValue("Docker");
+				vi.advanceTimersByTime(350);
+				await flushPromises();
+
+				expect(confirmSpy).toHaveBeenCalled();
+				// Declining: draft survives, no search was committed.
+				expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+					"Half-typed reply.",
+				);
+				expect(mockGetComments).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+				vi.unstubAllGlobals();
+			}
+		});
+
+		it("thread search proceeds when the dirty draft is confirmed discarded", async () => {
+			vi.useFakeTimers();
+			const confirmSpy = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmSpy);
+			try {
+				const { wrapper } = await mountCommentList({ comments });
+				const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+				if (!replyBtn) throw new Error("expected a reply button");
+				await replyBtn.trigger("click");
+				await flushPromises();
+				await wrapper.find("textarea").setValue("Half-typed reply.");
+				await flushPromises();
+
+				const input = wrapper.find("input#comment-search");
+				await input.setValue("Docker");
+				vi.advanceTimersByTime(350);
+				await flushPromises();
+
+				expect(confirmSpy).toHaveBeenCalled();
+				expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "Docker");
+			} finally {
+				vi.useRealTimers();
+				vi.unstubAllGlobals();
+			}
+		});
+
+		it("clearing the thread search also asks before dropping a dirty draft", async () => {
+			// clearQuery restores the full thread by re-swapping rows — the same
+			// draft-loss path as committing a term (round 396).
+			vi.useFakeTimers();
+			const confirmSpy = vi.fn(() => false);
+			vi.stubGlobal("confirm", confirmSpy);
+			try {
+				const { wrapper } = await mountCommentList({ comments });
+				const input = wrapper.find("input#comment-search");
+				await input.setValue("Docker");
+				vi.advanceTimersByTime(350);
+				await flushPromises();
+
+				const replyBtn = wrapper.findAll("button").find((b) => b.text() === "回复");
+				if (!replyBtn) throw new Error("expected a reply button");
+				await replyBtn.trigger("click");
+				await flushPromises();
+				await wrapper.find("textarea").setValue("Half-typed reply.");
+				await flushPromises();
+
+				const clear = wrapper.find("button[aria-label='清除搜索']");
+				await clear.trigger("click");
+				await flushPromises();
+
+				expect(confirmSpy).toHaveBeenCalled();
+				// Declining keeps the search committed and the draft alive.
+				expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+					"Half-typed reply.",
+				);
+				expect(mockGetComments).toHaveBeenLastCalledWith(1, 1, 20, "newest", "Docker");
+			} finally {
+				vi.useRealTimers();
+				vi.unstubAllGlobals();
+			}
 		});
 	});
 

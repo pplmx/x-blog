@@ -11,6 +11,11 @@
     </div>
     <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
     <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
+    <!-- Edited-comment acknowledgement (set by saveEdit; cleared on the next
+         action so it never lingers under unrelated context). -->
+    <p v-if="editFeedback" role="status" class="mb-3 text-sm text-green-600 dark:text-green-400">
+      {{ editFeedback }}
+    </p>
     <p v-if="flagError" class="mb-3 text-sm text-red-500">{{ flagError }}</p>
     <!-- Sort/pagination refresh failures used to be silent — an offline reader
          flipped the sort arrow and saw nothing change. Surfaced + retryable. -->
@@ -513,6 +518,7 @@ import { highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight"
 import { commentMarkdownToHtml, loadPurify, sanitizeUrl } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
+import { commentAuthorName } from "~~/utils/commentAuthorName";
 // biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
 // biome-ignore lint/correctness/noUnusedImports: rendered as <MarkdownLightbox> in the template — biome cannot resolve Vue template bindings (vue-tsc verifies).
@@ -655,6 +661,12 @@ let queryTimer: ReturnType<typeof setTimeout> | null = null;
 function applyQuery(): void {
 	const term = queryInput.value.trim();
 	if (term === currentQuery.value) return;
+	// Committing a search re-fetches page 1 and swaps the rendered rows in
+	// place — a reply draft or dirty edit on the outgoing rows would unmount
+	// and be lost, exactly like the sort switch and page turn (which both
+	// guard). Ask first (deep-dive finding; the box was added after the
+	// sort/page-turn guard and missed the protection).
+	if (!confirmDiscardUnsaved()) return;
 	currentQuery.value = term;
 	currentPage.value = 1;
 	void refreshList();
@@ -667,6 +679,9 @@ function onQueryInput(): void {
 
 function clearQuery(): void {
 	if (queryTimer) clearTimeout(queryTimer);
+	// Restoring the full thread swaps the rendered set just like committing a
+	// term — applyQuery owns the single draft-guard for both directions, so
+	// never double-confirm here.
 	queryInput.value = "";
 	applyQuery();
 }
@@ -715,7 +730,11 @@ async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
 	if (Number.isNaN(targetNum)) return;
 	const perPage = 20;
 	const totalPagesKnown = commentData.value?.total_pages || 1;
+	const seq = refreshSeq; // capture: disclose only if no newer refresh landed
 	for (let page = 2; page <= totalPagesKnown; page++) {
+		// A newer sort/page/search refresh invalidates the walk — its result
+		// must win, not this (now stale) deep-link payload (deep-dive finding).
+		if (seq !== refreshSeq) return;
 		const pageRes = await getComments(
 			props.postId,
 			page,
@@ -724,6 +743,7 @@ async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
 			currentQuery.value,
 		);
 		if (!pageRes?.items) break;
+		if (seq !== refreshSeq) return;
 		if (pageRes.items.some((c) => c.id === targetNum)) {
 			// Load the found page into the rendered list (mirrors loadPage),
 			// then scroll to the freshly-rendered anchor.
@@ -841,6 +861,10 @@ const editOriginal = ref("");
 // Comment ids with an in-flight edit/delete (disables the buttons + spinner).
 const actionIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
+// Success acknowledgement for a saved edit (round 396): under moderation a
+// saved edit re-enters the queue — say so instead of leaving the reader
+// believing their new text is live (and confused when a refresh drops it).
+const editFeedback = ref<string | null>(null);
 
 // The edit box focuses itself on open so a keyboard user lands in the editor
 // (Ctrl/⌘+Enter submits, Escape cancels — both on the textarea/wrapper above).
@@ -851,6 +875,7 @@ function startEdit(comment: Comment): void {
 	editContent.value = comment.content;
 	editOriginal.value = comment.content;
 	actionError.value = null;
+	editFeedback.value = null;
 	// happy-dom (and teardown) may hand back a detached element without focus;
 	// focus is a progressive nicety, never a requirements gate.
 	nextTick(() => {
@@ -902,12 +927,23 @@ async function saveEdit(comment: Comment): Promise<void> {
 	actionError.value = null;
 	try {
 		const updated = await updateMyComment(comment.id, trimmed);
-		const target = commentData.value?.items.find((c) => c.id === comment.id);
-		if (target) {
-			target.content = updated.content;
-			if (updated.edited_at !== undefined) target.edited_at = updated.edited_at;
-			editingId.value = null;
+		// An edit re-enters moderation on a moderated deployment: the backend
+		// resets is_approved unless auto-approve is on, and the list endpoint
+		// only serves approved rows — so the edited text must not sit on the
+		// thread as if still approved, and this edit is only truly public once
+		// a moderator approves it. Sync the returned state and say so.
+		if (updated.is_approved === false) {
+			editFeedback.value = t("components.commentList.editPendingReview");
+		} else {
+			editFeedback.value = t("components.commentList.editSuccess");
 		}
+		editingId.value = null;
+		editContent.value = "";
+		editOriginal.value = "";
+		// Re-fetch so the row reflects server truth — an edit that went back to
+		// pending leaves the public thread until the moderator approves it (the
+		// "awaiting review" flash is the truthful acknowledgement).
+		await refreshList();
 	} catch {
 		actionError.value = t("components.commentList.editError");
 	} finally {
@@ -922,6 +958,7 @@ async function confirmDelete(comment: Comment): Promise<void> {
 	if (!window.confirm(t("components.commentList.deleteConfirm"))) return;
 	actionIds.value = new Set(actionIds.value).add(comment.id);
 	actionError.value = null;
+	editFeedback.value = null;
 	try {
 		await deleteMyComment(comment.id);
 		// Re-fetch the current page: the backend reparents any replies, and the
@@ -1040,7 +1077,16 @@ function cancelReply(): void {
 function toggleReply(comment: Comment) {
 	if (!confirmDiscardReplyDraft()) return;
 	replyTo.value =
-		replyTo.value?.id === comment.id ? null : { id: comment.id, nickname: comment.nickname };
+		replyTo.value?.id === comment.id
+			? null
+			: // The composer "replying to {name}" header must show a reader's PUBLIC
+				// identity — a verified reader without a display_name would render as
+				// their account email if we used the stored nickname (TASK-377, same
+				// PII rule as the row header).
+				{
+					id: comment.id,
+					nickname: commentAuthorName(comment, t("components.commentList.readerNoName")),
+				};
 	replyDirty.value = false; // a freshly-mounted target starts clean
 }
 

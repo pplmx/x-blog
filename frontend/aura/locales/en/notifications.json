@@ -69,6 +69,7 @@
 			}
 		},
 		"loadMore": "Load more",
-		"loadingMore": "Loading…"
+		"loadingMore": "Loading…",
+		"deleteConfirm": "Delete this notification?"
 	}
 }

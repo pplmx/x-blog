@@ -1066,6 +1066,37 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.text()).not.toContain("Search Result Post");
 	});
 
+	it("never renders a verified reader's email as the commenter (round 396)", async () => {
+		// A reader with no display_name has their account email stamped as the
+		// nickname — the search results must render the generic identity, not
+		// the PII (same rule as the thread and discussion feed).
+		const nameless = {
+			items: [
+				{
+					id: 88,
+					post_id: 9,
+					parent_id: null,
+					nickname: "nameless@example.com",
+					content: "a verified reader without a display name",
+					is_approved: true,
+					is_author_reply: false,
+					likes: 0,
+					created_at: "2024-03-01T09:00:00Z",
+					reader: { id: 42, display_name: null, avatar_url: null },
+					snippet: "a verified reader",
+					post: { id: 9, title: "Searchable Post", slug: "searchable-post" },
+				},
+			],
+			pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
+		};
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "verified", type: "comments" },
+			commentResult: nameless,
+		});
+		expect(wrapper.text()).toContain("读者"); // commentList.readerNoName (zh)
+		expect(wrapper.text()).not.toContain("nameless@example.com");
+	});
+
 	it("shows the empty-results state and hides post filters in comments mode", async () => {
 		const wrapper = await mountSearchPage({
 			routeQuery: { q: "zzz", type: "comments" },

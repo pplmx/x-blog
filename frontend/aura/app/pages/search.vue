@@ -15,6 +15,7 @@ import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
+import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const { t, locale } = useLang();
 // used in template v-html (Biome cannot see template usage)
@@ -788,7 +789,7 @@ function goToPage(pg: number | string) {
             <div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
               <span class="inline-flex items-center gap-1">
                 <Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
-                {{ comment.reader?.display_name ?? comment.nickname }}
+                {{ commentAuthorName(comment, t("components.commentList.readerNoName")) }}
               </span>
               <span>
                 {{ parseApiDate(comment.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}

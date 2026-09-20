@@ -2423,9 +2423,16 @@ def list_reader_blocks(
     (same rule as list_reader_follows).
     """
     rows = crud.list_reader_blocks(db, current_reader.id)
+    # Batch-load the blocked profiles in ONE query instead of a per-row
+    # primary-key fetch (N+1) — a reader with hundreds of blocks was issuing
+    # that many sequential round-trips on a list they directly control
+    # (deep-dive finding; matches the sibling list_reader_follows batch).
+    blocked_ids = [b.blocked_id for b in rows]
+    accounts = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id.in_(blocked_ids)).all() if blocked_ids else []
+    by_id = {a.id: a for a in accounts}
     items = []
     for b in rows:
-        blocked = db.get(auth.ReaderAccount, b.blocked_id)
+        blocked = by_id.get(b.blocked_id)
         if blocked is None or blocked.is_active is False:
             continue
         items.append(
