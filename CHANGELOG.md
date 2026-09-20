@@ -984,6 +984,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deploy fix: pin the frontend Docker build to `node:24.20.0-alpine3.24` — the
   previously pinned `node:24.8.1-alpine3.20` was pruned from Docker Hub, so
   `Build and push frontend` failed in the Deploy workflow.
+- 🛠️ **SEO hardening (rounds 397)**: filtered/paginated views canonicalize to
+  the content-bearing URL (a `/?category_id=X` or `/tags?tag_id=Y&page=2` link
+  is its own page, never the contentless index stub), **indexable feeds emit
+  `<link rel=prev|next>`** on multi-page sets, and **`og:locale` + default
+  keywords follow the UI language** (an English reader's share preview no
+  longer advertises Simplified Chinese). Wired into home, archive, tags,
+  categories, discussion, search, comments, pages, series and reader profiles.
+- 🛠️ **"Chrome stays mounted" refetch fix (rounds 397–399)**: tags, categories
+  and archive pages flickered the whole page to a skeleton on a
+  filter→filter SPA navigation (an in-progress `pending/error` gate unmounted
+  the header, back link and follow/notify controls mid-interaction) — the
+  cloud/index view now gates on its own fetch and the filtered posts region on
+  the posts fetch, and the my-comments page no longer unmounts its status
+  filter bar + keyword search box on a refetch (no more dropped focus).
+- ♿ **Screen-reader pagination announcements (round 398)**: the home feed
+  announced page changes but every other paginated feed (tags, categories,
+  archive, discussion, search, comments, follows, liked, reader profiles)
+  swapped lists invisibly to assistive tech. A shared `common.state.pageAnnounce`
+  live region now announces the landed page on all of them; paginated posts
+  regions keep a single `role=status` source.
+- 🛠️ **Backend delete-orphan audit (rounds 400–402)**: the additive DEC-009
+  tables (plain-integer FKs, no ORM cascade) once cleaned only around post
+  deletes now purge on every delete path they reference. Guest thread
+  subscriptions now die with their post (a deleted post could otherwise
+  re-deliver another post's email to a follower who never opted in), and
+  category/tag/series/user deletes purge their reader-follow rows (stale
+  follows could otherwise re-point at an unrelated later row on SQLite id
+  reuse). Regression tests cover each path.
 
 ## [0.1.0] - 2026-09-09
 
