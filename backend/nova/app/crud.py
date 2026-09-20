@@ -825,6 +825,14 @@ def delete_category(db: Session, category_id: int) -> bool:
     post_count = db.query(models.Post).filter(models.Post.category_id == category_id).count()
     if post_count > 0:
         raise ValueError("Cannot delete category: it is referenced by posts")
+    # CategoryFollow is an additive DEC-009 table with no ORM cascade from
+    # Category: purge the follow rows too, or a deleted category leaves stale
+    # follows behind that, on SQLite autoincrement id reuse, re-point at an
+    # unrelated later category (same orphan class as guest thread subs —
+    # deep-dive finding).
+    db.query(models.CategoryFollow).filter(models.CategoryFollow.category_id == category_id).delete(
+        synchronize_session=False
+    )
     db.delete(db_category)
     try:
         db.commit()
@@ -941,6 +949,11 @@ def delete_tag(db: Session, tag_id: int) -> bool:
         post_count = db.query(models.Post).filter(models.Post.tags.any(id=tag_id)).count()
         if post_count > 0:
             raise ValueError("Cannot delete tag: it is referenced by posts")
+        # TagFollow is an additive DEC-009 table with no ORM cascade from Tag:
+        # purge the follow rows too, or a deleted tag leaves stale follows that,
+        # on SQLite autoincrement id reuse, re-point at an unrelated later tag
+        # (same orphan class as category follows + guest thread subs).
+        db.query(models.TagFollow).filter(models.TagFollow.tag_id == tag_id).delete(synchronize_session=False)
         db.delete(db_tag)
         try:
             db.commit()

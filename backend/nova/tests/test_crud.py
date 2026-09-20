@@ -885,6 +885,58 @@ class TestComments:
         )
         assert remaining == 0
 
+    def test_delete_category_cleans_reader_follows(self, db_session):
+        """Category deletion purges follow rows when no posts reference it.
+
+        CategoryFollow is an additive DEC-009 table with no ORM cascade from
+        Category — delete_category only refuses when posts reference the
+        category, so a follower with zero posts left an orphaned row that, on
+        SQLite autoincrement id reuse, re-pointed at an unrelated later
+        category (deep-dive finding, same class as guest thread subs).
+        """
+        from app.auth import ReaderAccount
+
+        reader = ReaderAccount(email="cat-follow@example.com", password="x", is_active=True)
+        db_session.add(reader)
+        db_session.commit()
+        category = models.Category(name="Follow Orphan Cat")
+        db_session.add(category)
+        db_session.commit()
+        db_session.add(models.CategoryFollow(reader_id=reader.id, category_id=category.id))
+        db_session.commit()
+
+        with patch("app.crud.clear_categories_cache"):
+            assert crud.delete_category(db_session, category.id) is True
+
+        remaining = (
+            db_session.query(models.CategoryFollow).filter(models.CategoryFollow.category_id == category.id).count()
+        )
+        assert remaining == 0
+
+    def test_delete_tag_cleans_reader_follows(self, db_session):
+        """Tag deletion purges follow rows when no posts reference it.
+
+        Mirrors the CategoryFollow case: TagFollow is an additive DEC-009 table
+        with no ORM cascade from Tag, so deleting a tag with followers but no
+        posts left orphaned rows (deep-dive finding).
+        """
+        from app.auth import ReaderAccount
+
+        reader = ReaderAccount(email="tag-follow@example.com", password="x", is_active=True)
+        db_session.add(reader)
+        db_session.commit()
+        tag = models.Tag(name="Follow Orphan Tag")
+        db_session.add(tag)
+        db_session.commit()
+        db_session.add(models.TagFollow(reader_id=reader.id, tag_id=tag.id))
+        db_session.commit()
+
+        with patch("app.crud.clear_tags_cache"):
+            assert crud.delete_tag(db_session, tag.id) is True
+
+        remaining = db_session.query(models.TagFollow).filter(models.TagFollow.tag_id == tag.id).count()
+        assert remaining == 0
+
 
 class TestSearchPosts:
     """Tests for search_posts function."""
