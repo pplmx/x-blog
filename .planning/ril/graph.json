@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 403,
+  "round": 404,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T06:15:08+00:00",
+  "updated_at": "2026-09-20T14:53:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 396,
+      "touched_round": 403,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 396,
+      "touched_round": 403,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -30200,6 +30200,121 @@
       "source": "pytest PG-parity (TESTS_DATABASE_URL dev PG 18.4)",
       "hypothesis": "backend delete-orphan fixes work on PG dialect",
       "confidence": 1.0
+    },
+    "ISS-554": {
+      "id": "ISS-554",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:30:05+00:00",
+      "updated_at": "2026-09-20T14:30:05+00:00",
+      "touched_round": 403,
+      "title": "Non-numeric/zero ?page= bricks discussion/search/readers pages with dead Retry",
+      "severity": "medium",
+      "summary": "discussion.vue:59, search.vue:29, readers/[id].vue:39 use an un-clamped page computed (parseInt of the query param, falling back to 1 only when empty). ?page=abc yields NaN and ?page=0 yields 0, both forwarded raw to the API (guaranteed 422), while the page-clamp watchers explicitly skip NaN/<2, so nothing ever redirects and the error Retry re-sends the same invalid value - a permanent load-failed state. follows.vue/liked.vue clamp inline (NaN||<1 -> 1); tags/categories/archive omit invalid values. Frontend deep-dive finding C1."
+    },
+    "TASK-478": {
+      "id": "TASK-478",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-20T14:30:43+00:00",
+      "updated_at": "2026-09-20T14:52:44+00:00",
+      "touched_round": 403,
+      "category": "correctness",
+      "severity": 0.6,
+      "title": "Clamp page computed on discussion/search/readers pages",
+      "summary": "Replace un-clamped page computed (route.query.page ? parseInt : 1) on discussion.vue:59, search.vue:29, readers/[id].vue:39 with follows.vue clamped form (NaN or <1 resolves to 1), so bad ?page= values never reach the API and the page stops bricking with a dead Retry. Add page unit tests for ?page=abc and ?page=0 rendering page 1.",
+      "priority_score": 4.1,
+      "confidence": 1.0,
+      "effort": 1.5
+    },
+    "ISS-555": {
+      "id": "ISS-555",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:31:42+00:00",
+      "updated_at": "2026-09-20T14:31:42+00:00",
+      "touched_round": 403,
+      "severity": "medium",
+      "title": "Orphan author_id accepted on both post-update paths",
+      "summary": "admin_update_post (admin.py:734-737) and crud.update_post (crud.py:518-519) assign post.author_id without an existence check, unlike category_id/series_id/tag_ids which are validated with 400/ValueError. A stale/deleted user id yields posts serialized with author: null, 404 writer archive/RSS, silent follower fan-out miss, orphan propagation on clone. Backend review finding 1."
+    },
+    "ISS-556": {
+      "id": "ISS-556",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:31:57+00:00",
+      "updated_at": "2026-09-20T14:31:57+00:00",
+      "touched_round": 403,
+      "severity": "medium",
+      "title": "crud.update_post silently drops unknown tag_ids",
+      "summary": "crud.update_post (crud.py:508-511) does db.query(Tag).filter(id.in_(tag_id_list)).all() and sets db_post.tags = tags, so ids that no longer exist vanish from the post with no error - while the admin route (admin.py:770-784) 400s on the same condition. PUT /api/posts/{id} backend silently strips tags the editor believes are assigned. Backend review finding 2."
+    },
+    "ISS-557": {
+      "id": "ISS-557",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:32:00+00:00",
+      "updated_at": "2026-09-20T14:32:00+00:00",
+      "touched_round": 403,
+      "severity": "medium",
+      "title": "bulk_delete_comments N+1 (query per id + per-ancestor walk)",
+      "summary": "crud.py:1313-1327: for up to BatchDeleteRequest-cap (100) comments, bulk_delete_comments issues one reply-list query per comment plus one db.get per ancestor while recomputing effective parents - O(ids) queries + O(thread-depth). A single parent_id IN delete_set query plus a parent-id map would collapse to constant queries. Backend review finding 4."
+    },
+    "ISS-558": {
+      "id": "ISS-558",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:32:16+00:00",
+      "updated_at": "2026-09-20T14:32:16+00:00",
+      "touched_round": 403,
+      "severity": "low",
+      "title": "Frontend locale drifts (dates + number grouping use browser locale)",
+      "summary": "admin/media.vue:292 and admin/posts/[id].vue:784 use toLocaleDateString()/toLocaleString() with no locale arg, so an admin on zh UI with an en browser sees mixed-language dates; index.vue:325-328 and posts/[slug]/index.vue:883 use .toLocaleString() for stat numbers. Every other page passes locale.value === \"zh\" ? \"zh-CN\" : \"en-US\" explicitly. Frontend findings C2+C4."
+    },
+    "TASK-479": {
+      "id": "TASK-479",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:32:24+00:00",
+      "updated_at": "2026-09-20T14:32:24+00:00",
+      "touched_round": 403,
+      "category": "correctness",
+      "severity": 0.55,
+      "confidence": 1.0,
+      "effort": 2.0,
+      "title": "Validate author_id + tag_ids on both post-update paths",
+      "summary": "Add an author existence check to admin_update_post (400 when the user id does not exist) and to crud.update_post (ValueError, matching category_id/series_id); change the silent tag_ids filter in crud.update_post to reject unknown ids (ValueError listing missing ids, matching the admin route contract). Tests: admin PUT with orphan author_id -> 400; crud.update_post with orphan author_id / unknown tag -> ValueError; ensure valid updates still pass. Backend review findings 1+2.",
+      "priority_score": 0
+    },
+    "CHG-739": {
+      "id": "CHG-739",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:52:28+00:00",
+      "updated_at": "2026-09-20T14:52:28+00:00",
+      "touched_round": 403,
+      "commit": "f16fa217",
+      "title": "Clamp invalid ?page= to 1 on discussion/search/readers"
+    },
+    "DEC-461": {
+      "id": "DEC-461",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T14:52:28+00:00",
+      "updated_at": "2026-09-20T14:52:28+00:00",
+      "touched_round": 403,
+      "title": "Round 403 work: frontend page-param clamp first",
+      "rationale": "Deep-dive round 403 (operator: detail/bugfix/polish/usability). Highest-priority verified finding: un-clamped ?page= bricks discussion/search/readers pages with a dead Retry (ISS-554). Fixed with the in-tree proven follows.vue clamp pattern; 9 unit tests; typecheck+lint green.",
+      "alternatives_rejected": "N+1 bulk_delete_comments (ISS-557) and post-update orphan author_id validation (TASK-479) are confirmed but lower score; scheduled for following rounds. Admin-push rebind is a documented intentional decision, not fixed."
     }
   },
   "edges": [
@@ -44948,6 +45063,66 @@
       "to": "ISS-553",
       "type": "resolves",
       "created_at": "2026-09-20T05:46:38+00:00"
+    },
+    {
+      "from": "TASK-478",
+      "to": "ISS-554",
+      "type": "addresses",
+      "created_at": "2026-09-20T14:32:56+00:00"
+    },
+    {
+      "from": "TASK-479",
+      "to": "ISS-555",
+      "type": "addresses",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "TASK-479",
+      "to": "ISS-556",
+      "type": "addresses",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "ISS-554",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "ISS-555",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "ISS-556",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "ISS-557",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "ISS-558",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-20T14:32:57+00:00"
+    },
+    {
+      "from": "CHG-739",
+      "to": "ISS-554",
+      "type": "resolves",
+      "created_at": "2026-09-20T14:52:43+00:00"
+    },
+    {
+      "from": "CHG-739",
+      "to": "TASK-478",
+      "type": "implements",
+      "created_at": "2026-09-20T14:52:43+00:00"
     }
   ]
 }
