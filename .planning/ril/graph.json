@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 398,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T05:18:10+00:00",
+  "updated_at": "2026-09-20T05:31:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30098,6 +30098,51 @@
       "title": "close round 400 (CHG-736, TASK-475, ISS-551)",
       "rationale": "Round 400: audited Post's additive DEC-009 child tables against _POST_CHILD_TABLES and found GuestCommentSubscription (anonymous guest thread-follow) missing — a post delete left orphaned (email, post_id) rows that, on SQLite id reuse, could deliver another post's thread email to a guest who never opted into it (privacy/fan-out leak; same class as round-396 reader likes). Added to the explicit cleanup list + regression test. Full backend 1881 passed @ 93.69% (was 1880; +1 test), ruff clean; frontend baseline (2436) and PG-parity (1843) untouched this round.",
       "alternatives_rejected": "Did not FK-cascade GuestCommentSubscription to posts (DEC-009 keeps additive tables FK-free for SQLite alembic compatibility) — explicit cleanup in delete_post matches the established invariant."
+    },
+    "ISS-552": {
+      "id": "ISS-552",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T05:30:37+00:00",
+      "updated_at": "2026-09-20T05:31:16+00:00",
+      "touched_round": 398,
+      "title": "CategoryFollow/TagFollow orphan on taxonomy delete (followers with no posts)",
+      "severity": "medium"
+    },
+    "TASK-476": {
+      "id": "TASK-476",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-20T05:30:37+00:00",
+      "updated_at": "2026-09-20T05:31:16+00:00",
+      "touched_round": 398,
+      "category": "correctness",
+      "title": "Purge CategoryFollow/TagFollow rows in delete_category/delete_tag"
+    },
+    "CHG-737": {
+      "id": "CHG-737",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T05:31:16+00:00",
+      "updated_at": "2026-09-20T05:31:16+00:00",
+      "touched_round": 398,
+      "commit": "afad5c48",
+      "title": "fix(backend): purge category/tag follow rows on taxonomy delete"
+    },
+    "DEC-459": {
+      "id": "DEC-459",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-20T05:31:56+00:00",
+      "updated_at": "2026-09-20T05:31:56+00:00",
+      "touched_round": 398,
+      "title": "close round 401 (CHG-737, TASK-476, ISS-552)",
+      "rationale": "Round 401: continued the deep-dive orphan audit — delete_category/delete_tag refused only on post references, orphaning CategoryFollow/TagFollow rows for taxonomies with followers but zero posts. Purged follow rows in both delete paths with two regression tests, completing the additive-table orphan invariant across post/comment/category/tag deletes. Backend 1883 passed @ 93.69%, ruff format/lint clean; frontend baseline (2436) and PG-parity (1843) untouched.",
+      "alternatives_rejected": "Did not add DB FKs to category_follows/tag_follows (DEC-009 keeps additive tables FK-free for SQLite alembic compatibility) — explicit purge in the delete path matches the established invariant."
     }
   },
   "edges": [
@@ -44810,6 +44855,24 @@
       "to": "ISS-551",
       "type": "resolves",
       "created_at": "2026-09-20T05:17:32+00:00"
+    },
+    {
+      "from": "TASK-476",
+      "to": "ISS-552",
+      "type": "addresses",
+      "created_at": "2026-09-20T05:31:16+00:00"
+    },
+    {
+      "from": "CHG-737",
+      "to": "TASK-476",
+      "type": "implements",
+      "created_at": "2026-09-20T05:31:16+00:00"
+    },
+    {
+      "from": "CHG-737",
+      "to": "ISS-552",
+      "type": "resolves",
+      "created_at": "2026-09-20T05:31:16+00:00"
     }
   ]
 }
