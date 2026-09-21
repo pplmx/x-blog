@@ -819,6 +819,40 @@ describe("CommentList", () => {
 			const { wrapper } = await mountCommentList({ comments: mockEmptyComments });
 			expect(wrapper.find("input#comment-search").exists()).toBe(false);
 		});
+
+		it("clears the pending search debounce on unmount (no delayed re-fetch after teardown)", async () => {
+			// The 350ms thread-search debounce must be cancelled when the thread
+			// unmounts (SPA navigation / page turn). Without that, a query typed
+			// just before leaving still fires applyQuery() against a dismantled
+			// list — re-fetching the whole thread for a reader who is no longer
+			// on the page (wasted server call, same hygiene as history/liked/
+			// comments which clear their search debounce on unmount).
+			vi.useFakeTimers();
+			try {
+				mockGetComments.mockResolvedValue({
+					items: [],
+					total: 0,
+					total_pages: 1,
+					page: 1,
+					limit: 20,
+				});
+				const { wrapper } = await mountCommentList();
+				const callsBefore = mockGetComments.mock.calls.length;
+
+				const input = wrapper.find("input#comment-search");
+				await input.setValue("Docker");
+				// Leave before the 350ms debounce elapses.
+				wrapper.unmount();
+				await vi.advanceTimersByTime(400);
+				await flushPromises();
+
+				// No re-fetch fires after teardown: the debounce was cleared with
+				// the component instead of triggering applyQuery's fetch.
+				expect(mockGetComments.mock.calls.length).toBe(callsBefore);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe("Comment surfacing (ISS-384 / round 278)", () => {

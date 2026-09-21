@@ -554,8 +554,14 @@ const listEl = ref<HTMLElement | null>(null);
 
 async function highlightCommentCode(): Promise<void> {
 	if (!listEl.value) return;
+	// Capture the root BEFORE the await: the list can unmount while the
+	// highlighter bundle loads (SPA navigation), nulling the ref — a second
+	// read after the await would throw on .querySelectorAll (post-teardown
+	// race, same hygiene as the cleared queryTimer below).
+	const root = listEl.value;
 	const h = await loadHighlighter();
-	const blocks = listEl.value.querySelectorAll<HTMLElement>(".comment-body pre code");
+	if (!root.isConnected && !root.parentNode) return;
+	const blocks = root.querySelectorAll<HTMLElement>(".comment-body pre code");
 	for (const el of blocks) {
 		const lang = (el.className.match(/language-([\w-]+)/)?.[1] ?? "").trim();
 		el.innerHTML = highlightCode(h, lang, el.textContent ?? "");
@@ -621,6 +627,15 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
 	listEl.value?.removeEventListener("click", onCommentListClick);
+	// Cancel the pending thread-search debounce so a query typed just before
+	// leaving can't fire applyQuery() against a dismantled list (re-fetching
+	// the whole thread for a reader no longer on the page — same hygiene as
+	// history.vue/liked.vue/comments.vue clearing their search debounce in
+	// their unmount hooks).
+	if (queryTimer) {
+		clearTimeout(queryTimer);
+		queryTimer = null;
+	}
 });
 
 interface Props {
