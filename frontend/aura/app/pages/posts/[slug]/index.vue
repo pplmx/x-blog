@@ -300,8 +300,19 @@ function onSheetKeydown(event: KeyboardEvent) {
 // onMounted observer stayed pinned to the first post's headings and the TOC
 // highlight froze on SPA nav.
 let tocObserver: IntersectionObserver | null = null;
+// The settle timer that defers the heading scan until the article renders
+// (ISS-564): tracked so SPA navigation between posts and unmount clear it —
+// an untracked timer fired against the NEXT post's DOM (double-observing its
+// headings) or scanned a dismantled document after teardown.
+let tocSettleTimer: ReturnType<typeof setTimeout> | null = null;
 function setupTocObserver() {
 	tocObserver?.disconnect();
+	// A re-setup (SPA nav within the settle window) must cancel the previous
+	// post's pending scan, or both passes would race on the same headings.
+	if (tocSettleTimer) {
+		clearTimeout(tocSettleTimer);
+		tocSettleTimer = null;
+	}
 	activeTocId.value = "";
 	tocObserver = new IntersectionObserver(
 		(entries) => {
@@ -316,7 +327,12 @@ function setupTocObserver() {
 	);
 	// Headings render with the content; a short settle lets the new post's
 	// article fully replace the previous one before we query for them.
-	setTimeout(() => {
+	tocSettleTimer = setTimeout(() => {
+		tocSettleTimer = null;
+		// Guard the post-teardown race: an unmount can clear the timer between
+		// its dispatch and this callback's turn; if the observer was already
+		// disconnected, skip the (pointless) scan entirely.
+		if (!tocObserver) return;
 		document.querySelectorAll("h1[id], h2[id], h3[id]").forEach((el) => {
 			tocObserver?.observe(el);
 		});
@@ -460,6 +476,15 @@ onMounted(() => {
 	onUnmounted(() => {
 		window.removeEventListener("scroll", updateProgress);
 		tocObserver?.disconnect();
+		tocObserver = null;
+		// Cancel the pending heading scan when the reader leaves before the
+		// article settles (ISS-564): an untracked timer would fire against a
+		// dismantled document — or the NEXT post's DOM after an SPA nav —
+		// and re-observe headings nobody is looking at.
+		if (tocSettleTimer) {
+			clearTimeout(tocSettleTimer);
+			tocSettleTimer = null;
+		}
 		// Never leave the background scroll locked if the reader navigates away
 		// while the mobile TOC sheet is open (SPA nav / unmount).
 		document.body.style.overflow = "";

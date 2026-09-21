@@ -1754,6 +1754,81 @@ describe("Post Detail Page", () => {
 		});
 	});
 
+	describe("TOC observer setup timer hygiene (ISS-564)", () => {
+		const multiHeadingContent =
+			'<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n' +
+			'<h2 id="getting-started">Getting Started</h2>\n<p>More text.</p>\n' +
+			'<h3 id="basics">Basics</h3>\n<p>Even more.</p>\n';
+
+		it("clears the pending heading-observation timer on unmount (no scan after teardown)", async () => {
+			// setupTocObserver defers the observe pass by 500ms to let the async
+			// content render. That timer must be cleared when the component is
+			// torn down (SPA navigation / unmount) — otherwise it fires against a
+			// dismantled page and scans the CURRENT document's headings (the next
+			// post after an SPA nav, or nothing meaningful after full unmount),
+			// leaking a stale observer (ISS-564, same hygiene as
+			// likeErrorTimer/resumeChipTimer which are both tracked and cleared).
+			// The only document.querySelectorAll on the page is this timer's
+			// heading scan, so spying on it isolates the leak exactly.
+			vi.useFakeTimers();
+			const qsa = vi.spyOn(document, "querySelectorAll");
+			try {
+				const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+				const wrapper = await mountPostPage({ post: postWithHeadings });
+				qsa.mockClear();
+
+				// Tear down while the 500ms settle timer is still pending.
+				wrapper.unmount();
+				await vi.advanceTimersByTimeAsync(600);
+				await flushPromises();
+
+				// With the fix, the heading scan never runs after teardown.
+				const headingScan = qsa.mock.calls.some(([sel]) => String(sel).includes("h1[id]"));
+				expect(headingScan).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it("a single setup observes each rendered heading exactly once", async () => {
+			// Guards against a re-armed timer double-observing the same headings
+			// within a single post's lifetime (a stale pass racing a fresh one).
+			// The observer is stubbed globally per-test (NOT spied on the shared
+			// prototype): earlier mounts in this file leave real Intersection-
+			// Observers whose pending 500ms timers can fire during THIS test's
+			// real-time window and add ambient observe() calls against the live
+			// document — a prototype spy counts those, a per-test global stub
+			// isolates exactly the observer THIS mount creates. Attaches to the
+			// document so the heading scan actually finds the rendered headings.
+			vi.useFakeTimers();
+			const observed: string[] = [];
+			class FakeIO {
+				observe(el: Element) {
+					observed.push(el.id);
+				}
+				disconnect() {}
+			}
+			vi.stubGlobal("IntersectionObserver", FakeIO);
+			document.body.innerHTML = "";
+			try {
+				const postWithHeadings = { ...mockPost, content: multiHeadingContent };
+				const wrapper = await mountPostPage({ post: postWithHeadings, attachToDoc: true });
+
+				await vi.advanceTimersByTimeAsync(600);
+				await flushPromises();
+
+				// exactly the three rendered headings — no dupes from a leaked
+				// earlier timer (set size === observed count).
+				expect(observed).toHaveLength(3);
+				expect(new Set(observed)).toEqual(new Set(["introduction", "getting-started", "basics"]));
+				wrapper.unmount();
+			} finally {
+				vi.useRealTimers();
+				document.body.innerHTML = "";
+			}
+		});
+	});
+
 	describe("Resume-reading chip (DEC-167, TASK-200)", () => {
 		afterEach(() => {
 			// Do not leak the signed-in state into later tests in this file.
