@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 410,
+  "round": 411,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-20T19:27:33+00:00",
+  "updated_at": "2026-09-21T03:01:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30729,6 +30729,131 @@
       "rationale": "Quality-convergence stop conditions (SS 10.1-10.5) all met at round 410: (1) zero active tasks >= 3.0; (2) the only remaining active issues are infra deferrals already recorded by DEC-004/DEC-214/DEC-433 (multi-worker in-process cache/rate-limit, TRUSTED_PROXIES=x) and every review-finding issue (ISS-550..563 family) is resolved or decided; (3) last VERIFY green: frontend 2452, backend 1908 @ 94% on PostgreSQL parity (EV-306), typecheck/lint clean, alembic single-head (n3p5r7t9v1x3), reader-auth e2e 4/4 including the ISS-563 post-login return path (EV-308); (4) rounds 409-410 deep-dive sweeps (locale, console, print, migration-head, dangling-marker, changelog-gap) surfaced no new task above threshold (only TASK-488 docs @ 0.424); (5) ril.py check consistent (2560 nodes / 2490 edges). Rounds 403-410 delivered: page-page clamp, post-update FK validation, site-locale formatting, bulk-delete N+1 batching, like-comment atomicity, guest consent-restart gate, confirm/reset error states, post-login redirect, dynamic copyright, changelog backfill. Changelog entry documents rounds 403-409 (CHG-747/CHG-748). Loop enters idle; no round-turning chore commits will be emitted.",
       "alternatives_rejected": "Continue emitting near-empty per-round chore commits (violates the non-spinning invariant and the QUIESCE intent); start carrying the deferred multi-worker cache/rate-limit/XFF work (ISS-242/243/244) against the standing DEC-004/DEC-214/DEC-433 decisions without operator authorization; begin feature-evolution mode, which requires an explicit enablement decision that has not been recorded.",
       "title": "converged-idle at round 410"
+    },
+    "DEC-469": {
+      "id": "DEC-469",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T00:40:58+00:00",
+      "updated_at": "2026-09-21T00:40:58+00:00",
+      "touched_round": 410,
+      "title": "reactivate loop under operator polish direction",
+      "rationale": "Operator re-invoked graph-engineering with an explicit polish directive (detail optimization, bug fixing, polish, interactivity, practicality, usability, ease-of-use) plus dev PostgreSQL at 10.112.9.49:13310 for parity verification. This supersedes the round-410 converged-idle decision DEC-468: quality-convergence mode resumes, with the operator's polish focus shaping SOURCE/EVALUATE priorities. First round re-runs full VERIFY to confirm true green baseline before any new work.",
+      "alternatives_rejected": "Stay idle despite fresh operator directive (ignores explicit reactivation); switch directly to feature-evolution mode (no enablement decision recorded)."
+    },
+    "EV-309": {
+      "id": "EV-309",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T00:44:09+00:00",
+      "updated_at": "2026-09-21T00:44:09+00:00",
+      "touched_round": 410,
+      "source": "baseline re-run 2026-09-21 (round 411-start)",
+      "title": "baseline green upon reactivation",
+      "description": "Frontend 2452/2452 vitest green (32.8s); backend 1908/1908 @ 94.0% app coverage on PostgreSQL parity at postgres:postgres@10.112.9.49:13310/postgres (99.95s). Matches DEC-468 round-410 baseline (EV-306). Repo HEAD e7ab8a74, clean tree.",
+      "confidence": 1.0
+    },
+    "ISS-564": {
+      "id": "ISS-564",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T01:05:30+00:00",
+      "updated_at": "2026-09-21T02:09:29+00:00",
+      "touched_round": 410,
+      "title": "Post page TOC observer 500ms setup timer is untracked and never cleared",
+      "description": "setupTocObserver() in app/pages/posts/[slug]/index.vue schedules setTimeout(...,500) that is neither stored in a variable nor cleared in onUnmounted or at the top of the next setupTocObserver call. On SPA navigation between posts within the 500ms window (prev/next, related, TOC, personal rec) the stale timer still fires: it re-queries the CURRENT DOM and observe()s whatever tocObserver now points to (the new post's observer) — duplicate observes, or observe on an already-disconnected observer after unmount; and it leaks a REAL timer into test runs that advance fake timers (same class as the leaked-debounce-timers memory). unlike likeErrorTimer/resumeChipTimer (both tracked+cleared), this one has no handle."
+    },
+    "TASK-489": {
+      "id": "TASK-489",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T01:05:53+00:00",
+      "updated_at": "2026-09-21T02:09:29+00:00",
+      "touched_round": 410,
+      "category": "correctness",
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 0.3,
+      "title": "Track and clear the post TOC observer 500ms setup timer"
+    },
+    "CHG-749": {
+      "id": "CHG-749",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T02:08:07+00:00",
+      "updated_at": "2026-09-21T02:08:07+00:00",
+      "touched_round": 410,
+      "title": "Track+clear post-page TOC observer settle timer",
+      "commit": "8eede594",
+      "description": "setupTocObserver deferred its heading scan with an untracked 500ms setTimeout; on SPA nav or unmount it fired against the next/dismantled document, double-observing headings or leaking an observer. Fixed in 8eede594: timer cancelled at re-setup and cleared in onUnmounted; callback guards post-teardown race. Two unit tests (unmount-clears + per-test stub exactly-once)."
+    },
+    "EV-310": {
+      "id": "EV-310",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T02:08:47+00:00",
+      "updated_at": "2026-09-21T02:08:47+00:00",
+      "touched_round": 410,
+      "source": " tests/pages/posts/slug.spec.ts",
+      "title": "sl bug_red_green_verified",
+      "description": "RED: without fix, the unmount test failed (pending scan still ran after teardown). GREEN: with the timer tracked+cleared, all 78 slug.spec tests pass, stable across 3 consecutive runs. Typecheck and biome lint clean on the changed files.",
+      "confidence": 1.0
+    },
+    "ISS-565": {
+      "id": "ISS-565",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T02:58:24+00:00",
+      "updated_at": "2026-09-21T03:01:29+00:00",
+      "touched_round": 411,
+      "title": "CommentList thread-search debounce and code-highlight race on unmount",
+      "description": "Two post-teardown races in components/CommentList.vue, both surfacing under a debounce-unmount test: (1) the 350ms thread-search queryTimer is never cleared (onBeforeUnmount only removes the click listener), so a query typed just before leaving fires applyQuery() after unmount — re-fetching the whole thread for a reader no longer on the page (wasted server call; history/liked/comments pages all clear their search debounce on unmount). (2) highlightCommentCode reads listEl.value twice around await loadHighlighter() — an unmount during that load nulls the ref and the second read threw on .querySelectorAll (unhandled rejection once the debounce test unmounted mid-highlight)."
+    },
+    "TASK-490": {
+      "id": "TASK-490",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T02:59:18+00:00",
+      "updated_at": "2026-09-21T03:01:29+00:00",
+      "touched_round": 411,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": 0.3,
+      "title": "Clear CommentList thread-search debounce and guard code-highlight teardown race"
+    },
+    "CHG-750": {
+      "id": "CHG-750",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T03:00:27+00:00",
+      "updated_at": "2026-09-21T03:00:27+00:00",
+      "touched_round": 411,
+      "title": "Clear CommentList debounce + guard highlight race",
+      "commit": "2731352d",
+      "description": "CommentList thread-search queryTimer was un-cleared on unmount (fired a whole-thread refetch post-teardown) and highlightCommentCode read the list ref after an await (threw on null when the list unmounted mid-highlight). Fixed in 2731352d; RED-OFF first (test asserted no re-fetch after unmount, got 1) then GREEN."
+    },
+    "EV-311": {
+      "id": "EV-311",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T03:00:58+00:00",
+      "updated_at": "2026-09-21T03:00:58+00:00",
+      "touched_round": 411,
+      "source": " tests/components/CommentList.spec.ts",
+      "title": "commentlist_red_green_verified",
+      "description": "RED on HEAD code: debounce-unmount test failed (re-fetch count went 0→1) and surface an unhandled rejection from highlightCommentCode's null listEl ref. GREEN with fix: all 89 CommentList tests pass; full slug.spec suite 78 stable across 3 runs; biome lint clean on both changed files.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -45711,6 +45836,48 @@
       "to": "TASK-488",
       "type": "implements",
       "created_at": "2026-09-20T19:26:51+00:00"
+    },
+    {
+      "from": "DEC-469",
+      "to": "DEC-468",
+      "type": "supersedes",
+      "created_at": "2026-09-21T00:41:04+00:00"
+    },
+    {
+      "from": "TASK-489",
+      "to": "ISS-564",
+      "type": "addresses",
+      "created_at": "2026-09-21T01:05:53+00:00"
+    },
+    {
+      "from": "CHG-749",
+      "to": "ISS-564",
+      "type": "resolves",
+      "created_at": "2026-09-21T02:08:47+00:00"
+    },
+    {
+      "from": "CHG-749",
+      "to": "TASK-489",
+      "type": "implements",
+      "created_at": "2026-09-21T02:08:47+00:00"
+    },
+    {
+      "from": "TASK-490",
+      "to": "ISS-565",
+      "type": "addresses",
+      "created_at": "2026-09-21T02:59:18+00:00"
+    },
+    {
+      "from": "CHG-750",
+      "to": "ISS-565",
+      "type": "resolves",
+      "created_at": "2026-09-21T03:00:58+00:00"
+    },
+    {
+      "from": "CHG-750",
+      "to": "TASK-490",
+      "type": "implements",
+      "created_at": "2026-09-21T03:00:58+00:00"
     }
   ]
 }
