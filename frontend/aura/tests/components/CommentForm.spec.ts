@@ -552,6 +552,53 @@ describe("Markdown live preview (DEC-306/TASK-381)", () => {
 		expect(wrapper.find(".comment-preview p").text()).toContain("Markdown");
 	});
 
+	it("cycles the Write/Preview tabs with arrow keys (ARIA roving, audit)", async () => {
+		// The roving handler reads the live tablist from document, so the
+		// component must be mounted into the body (as the widget test below does).
+		mockCreateComment.mockReset().mockResolvedValue({});
+		const wrapper = mount(CommentForm, {
+			props: { postId: 1 },
+			attachTo: document.body,
+			global: {
+				stubs: {
+					Icon: { template: '<svg class="iconstub" />', props: ["icon"] },
+				},
+			},
+		});
+		await flushPromises();
+		const tablist = wrapper.find('[role="tablist"]');
+		const write = wrapper.find('button[role="tab"][data-tab="write"]');
+		const preview = wrapper.find('button[role="tab"][data-tab="preview"]');
+		expect(write.attributes("aria-selected")).toBe("true");
+
+		// ArrowRight → Preview tab activates and its textarea mounts.
+		await tablist.trigger("keydown", { key: "ArrowRight" });
+		await flushPromises();
+		expect(preview.attributes("aria-selected")).toBe("true");
+		expect(wrapper.find(".comment-preview").exists()).toBe(true);
+
+		// ArrowLeft returns to Write.
+		await tablist.trigger("keydown", { key: "ArrowLeft" });
+		await flushPromises();
+		expect(write.attributes("aria-selected")).toBe("true");
+		expect(wrapper.find("textarea").exists()).toBe(true);
+
+		// ArrowLeft on the first tab wraps around to Preview (last).
+		await tablist.trigger("keydown", { key: "ArrowLeft" });
+		await flushPromises();
+		expect(preview.attributes("aria-selected")).toBe("true");
+
+		// Home / End jump to first / last.
+		await tablist.trigger("keydown", { key: "Home" });
+		await flushPromises();
+		expect(write.attributes("aria-selected")).toBe("true");
+		await tablist.trigger("keydown", { key: "End" });
+		await flushPromises();
+		expect(preview.attributes("aria-selected")).toBe("true");
+
+		wrapper.unmount();
+	});
+
 	it("renders the draft as sanitized Markdown: bold, links and fenced code", async () => {
 		const wrapper = await mountCommentForm();
 		await (wrapper.find("textarea") as any).setValue(

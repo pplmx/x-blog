@@ -33,7 +33,7 @@
 
     <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
-    <div v-if="total > 0" class="flex items-center justify-end gap-2 mb-3 text-sm">
+    <div v-if="total > 0" class="flex flex-wrap items-center justify-end gap-2 mb-3 text-sm">
       <label for="comment-sort" class="text-gray-500 dark:text-gray-400">{{ t('components.commentList.sortBy') }}</label>
       <select
         id="comment-sort"
@@ -52,7 +52,7 @@
           id="comment-search"
           v-model="queryInput"
           type="search"
-          class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 pl-7 pr-7 py-1 text-sm w-44"
+          class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 pl-7 pr-7 py-1 text-sm w-44 max-w-full"
           :placeholder="t('components.commentList.searchPlaceholder')"
           :aria-label="t('components.commentList.searchLabel')"
           @input="onQueryInput"
@@ -176,7 +176,8 @@
                 class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
                 :title="t('components.commentList.verifiedReader')"
               >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
+                <span class="sr-only">{{ t('components.commentList.verifiedReader') }}</span>
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
             </div>
@@ -348,7 +349,8 @@
                 class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
                 :title="t('components.commentList.verifiedReader')"
               >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
+                <span class="sr-only">{{ t('components.commentList.verifiedReader') }}</span>
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
             </div>

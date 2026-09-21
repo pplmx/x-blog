@@ -813,7 +813,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
             {{ post.title }}
           </h1>
 
-          <div class="flex items-center gap-4 text-sm text-gray-400">
+          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
             <!-- Author byline (DEC-359/TASK-405): present only when the writing
                  admin chose a public pen name; links to their archive. The
                  inline follow control (round 353) is the primary surface where
@@ -926,7 +926,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
               type="button"
               :disabled="densityMin"
               :aria-label="t('post.density.decrease')"
-              class="w-7 h-7 inline-flex items-center justify-center rounded-full text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               @click="densityDecrease"
             >
               A−
@@ -935,7 +935,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
               type="button"
               :disabled="densityMax"
               :aria-label="t('post.density.increase')"
-              class="w-7 h-7 inline-flex items-center justify-center rounded-full text-base text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-base text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               @click="densityIncrease"
             >
               A+

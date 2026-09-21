@@ -15,6 +15,7 @@ import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const { t, locale } = useLang();
@@ -127,6 +128,31 @@ function setMode(next: SearchMode): void {
 		navigateTo({ query: q });
 	}
 	scrollToPageTop();
+}
+
+// ARIA tabs roving (audit): the Posts/Comments mode tablist cycles on
+// ArrowLeft/Right/Home/End, matching the idiomatic role="tab" contract the
+// CommentForm preview tabs follow. Focus rides the active tab.
+function onTablistKeydown(e: KeyboardEvent): void {
+	const tabs = Array.from(
+		document.querySelectorAll<HTMLButtonElement>(`[role="tablist"] [role="tab"]`),
+	);
+	if (tabs.length === 0) return;
+	const current = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+	const next =
+		e.key === "Home"
+			? 0
+			: e.key === "End"
+				? tabs.length - 1
+				: e.key === "ArrowRight"
+					? (current + 1) % tabs.length
+					: e.key === "ArrowLeft"
+						? (current - 1 + tabs.length) % tabs.length
+						: null;
+	if (next === null) return;
+	e.preventDefault();
+	tabs[next]?.click();
+	tabs[next]?.focus();
 }
 
 // Search params mirror the previous URL construction: `withQuery` omits empty
@@ -507,6 +533,7 @@ function goToPage(pg: number | string) {
         role="tablist"
         :aria-label="t('search.mode.label')"
         class="mb-6 flex w-fit items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-900"
+        @keydown="onTablistKeydown"
       >
         <button
           type="button"

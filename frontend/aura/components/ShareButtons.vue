@@ -9,7 +9,7 @@
     <button
       type="button"
       @click="shareToWeibo"
-      class="p-2 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+      class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
       :title="t('components.share.weibo')"
       :aria-label="t('components.share.weibo')"
     >
@@ -22,7 +22,7 @@
     <button
       type="button"
       @click="shareToX"
-      class="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       :title="t('components.share.x')"
       :aria-label="t('components.share.x')"
     >
@@ -35,7 +35,7 @@
     <button
       type="button"
       @click="shareToFacebook"
-      class="p-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+      class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
       :title="t('components.share.facebook')"
       :aria-label="t('components.share.facebook')"
     >
@@ -48,7 +48,7 @@
     <button
       type="button"
       @click="shareToLinkedIn"
-      class="p-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+      class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
       :title="t('components.share.linkedin')"
       :aria-label="t('components.share.linkedin')"
     >
@@ -61,7 +61,7 @@
     <button
       type="button"
       @click="handleCopyLink"
-      class="p-2 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       :title="copied ? t('components.share.linkCopied') : (copyFailed ? t('components.share.copyFailed') : t('components.share.copyLink'))"
       :aria-label="copied ? t('components.share.linkCopied') : (copyFailed ? t('components.share.copyFailed') : t('components.share.copyLink'))"
     >

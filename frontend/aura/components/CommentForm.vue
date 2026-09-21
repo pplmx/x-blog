@@ -107,6 +107,7 @@
           role="tablist"
           aria-label="Comment markdown preview"
           class="flex items-center border-b border-gray-200 dark:border-gray-700 mb-2"
+          @keydown="onTablistKeydown"
         >
           <button
             type="button"
@@ -377,6 +378,33 @@ const success = ref("");
 const previewing = ref(false);
 const previewEl = ref<HTMLElement | null>(null);
 const previewHtml = computed(() => commentMarkdownToHtml(form.value.content));
+
+// ARIA tabs roving (audit): the Write/Preview tablist must cycle on
+// ArrowLeft/Right/Home/End, not just Tab+Enter — the idiomatic keyboard
+// contract for role="tab". Focus moves with the active tab and follows.
+function onTablistKeydown(e: KeyboardEvent): void {
+	const tabs = Array.from(
+		document.querySelectorAll<HTMLButtonElement>(
+			`[role="tablist"][aria-label="Comment markdown preview"] [role="tab"]`,
+		),
+	);
+	if (tabs.length === 0) return;
+	const current = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+	const next =
+		e.key === "Home"
+			? 0
+			: e.key === "End"
+				? tabs.length - 1
+				: e.key === "ArrowRight"
+					? (current + 1) % tabs.length
+					: e.key === "ArrowLeft"
+						? (current - 1 + tabs.length) % tabs.length
+						: null;
+	if (next === null) return;
+	e.preventDefault();
+	tabs[next]?.click();
+	tabs[next]?.focus();
+}
 
 // Lazy syntax highlighting for fenced code in the preview (same loadHighlighter
 // + highlightCode path as CommentList DEC-090/TASK-157): once the preview pane

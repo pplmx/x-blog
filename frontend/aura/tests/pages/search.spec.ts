@@ -104,6 +104,7 @@ async function mountSearchPage({
 	suggestResult = { query: "", suggestions: [] as SearchSuggestion[] },
 	taxonomy = undefined,
 	routeQuery = { q: "test query" },
+	attachToBody = false,
 }: {
 	searchResult?: typeof mockSearchResult | null;
 	pending?: boolean;
@@ -117,6 +118,8 @@ async function mountSearchPage({
 	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
 	taxonomy?: { categories?: { id: number; name: string }[]; tags?: { id: number; name: string }[] };
 	routeQuery?: Record<string, string>;
+	/** Attach the page to document.body (needed when a handler reads the live DOM). */
+	attachToBody?: boolean;
 } = {}) {
 	const navigateToMock = vi.fn();
 
@@ -198,6 +201,7 @@ async function mountSearchPage({
 	};
 
 	const wrapper = mount(SuspenseWrapper, {
+		attachTo: attachToBody ? document.body : undefined,
 		global: {
 			stubs: {
 				NuxtLink: {
@@ -1127,6 +1131,23 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		await commentsTab?.trigger("click");
 		await flushPromises();
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "nuxt", type: "comments", page: "1" } });
+	});
+
+	it("cycles the Posts/Comments mode tabs with arrow keys (ARIA roving, audit)", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" }, attachToBody: true });
+		const tablist = wrapper.find('[role="tablist"]');
+		expect(tablist.exists()).toBe(true);
+		// ArrowRight on the Posts tab must run the same navigateTo as a click
+		// (the roving handler clicks the newly activated tab).
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		await tablist.trigger("keydown", { key: "ArrowRight" });
+		await flushPromises();
+		expect(navigateSpy).toHaveBeenCalledWith({
+			query: { q: "nuxt", type: "comments", page: "1" },
+		});
+
+		wrapper.unmount();
 	});
 
 	it("keeps the comments mode when paging a comment result", async () => {

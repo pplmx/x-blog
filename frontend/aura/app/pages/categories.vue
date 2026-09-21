@@ -444,11 +444,11 @@ watch(categoryId, () => {
           <Icon icon="lucide:arrow-left" class="w-4 h-4" />
           {{ t('categories.backToAll') }}
         </NuxtLink>
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
           <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
             {{ t('categories.categoryPosts') }}
           </h1>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <button
               v-if="catSignedIn && !sessionExpired"
               type="button"
