@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 412,
+  "round": 413,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T03:34:49+00:00",
+  "updated_at": "2026-09-21T03:43:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30737,7 +30737,7 @@
       "version": 1,
       "created_at": "2026-09-21T00:40:58+00:00",
       "updated_at": "2026-09-21T00:40:58+00:00",
-      "touched_round": 410,
+      "touched_round": 413,
       "title": "reactivate loop under operator polish direction",
       "rationale": "Operator re-invoked graph-engineering with an explicit polish directive (detail optimization, bug fixing, polish, interactivity, practicality, usability, ease-of-use) plus dev PostgreSQL at 10.112.9.49:13310 for parity verification. This supersedes the round-410 converged-idle decision DEC-468: quality-convergence mode resumes, with the operator's polish focus shaping SOURCE/EVALUATE priorities. First round re-runs full VERIFY to confirm true green baseline before any new work.",
       "alternatives_rejected": "Stay idle despite fresh operator directive (ignores explicit reactivation); switch directly to feature-evolution mode (no enablement decision recorded)."
@@ -30867,6 +30867,18 @@
       "title": "round-412 backend baseline green on PG parity",
       "description": "1908/1908 passed @ 94.00% app coverage on PostgreSQL parity (postgres:postgres@10.112.9.49:13310/postgres), alembic single head n3p5r7t9v1x3. Matches EV-309 baseline; no backend code changed this round.",
       "confidence": 1.0
+    },
+    "DEC-470": {
+      "id": "DEC-470",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T03:43:02+00:00",
+      "updated_at": "2026-09-21T03:43:02+00:00",
+      "touched_round": 413,
+      "title": "converged-idle at round 413 (after reactivation round 411)",
+      "rationale": "Reactivated by operator polish directive (DEC-469), round 411 delivered two verified teardown-race fixes: (1) post-page TOC observer 500ms settle timer now tracked+cleared on re-setup/unmount with the scan skipping a disconnected observer (TASK-489/ISS-564, CHG-749, test-first RED on HEAD, GREEN+stable across 3 runs); (2) CommentList thread-search 350ms debounce cleared on unmount and highlightCommentCode no longer null-derefs a list ref awaiting the highlight bundle after teardown (TASK-490/ISS-565, CHG-750, same RED to GREEN). Stop conditions re-checked at round 413: zero active tasks >= 3.0; only remaining active issues are standing infra deferrals DEC-004/DEC-214/DEC-433; VERIFY green (frontend 2455, backend 1908 @ 94% PG parity EV-312, typecheck/lint clean, single migration head); rounds 412-413 sweeps across components/nav/auth/likes/transport/rate-limit/admin/newsletter/search/RSS/sitemap/migrations/reader-profile/series-tags-categories/subscribe-buttons/ReaderMenu surfaced no new task above threshold; graph consistent 2572 nodes. Flash-timer vars still left in categories/tags/comment-manage/series/SubscribeButton flip refs only (no DOM/network/observer post-unmount, specs use no fake timers) scoring below threshold, not churn-worthy. Changelog updated en+zh. Loop enters idle.",
+      "alternatives_rejected": "Keep emitting near-empty per-round sweeps despite two consecutive empty above-threshold rounds (violates the non-spinning invariant); refactor account.vue's 1071-line script or the sub-threshold ref-flip flash timers into tasks (below the 3.0 gate, churn without user-visible value); begin feature-evolution mode (explicit enablement decision never recorded)."
     }
   },
   "edges": [
@@ -45891,6 +45903,12 @@
       "to": "TASK-490",
       "type": "implements",
       "created_at": "2026-09-21T03:00:58+00:00"
+    },
+    {
+      "from": "DEC-470",
+      "to": "DEC-469",
+      "type": "supersedes",
+      "created_at": "2026-09-21T03:43:34+00:00"
     }
   ]
 }
