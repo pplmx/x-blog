@@ -68,20 +68,20 @@
 /* Mobile menu slide transition */
 .slide-enter-active,
 .slide-leave-active {
-	transition: all 0.2s ease-out;
+	transition: opacity 0.2s ease-out;
 	overflow: hidden;
 }
 
 .slide-enter-from,
 .slide-leave-to {
 	opacity: 0;
-	max-height: 0;
+	transform: translateY(-8px);
 }
 
 .slide-enter-to,
 .slide-leave-from {
 	opacity: 1;
-	max-height: 500px;
+	transform: translateY(0);
 }
 
 /* Mobile TOC bottom sheet (TASK-223): backdrop fades as the panel slides up. */

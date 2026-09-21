@@ -230,7 +230,7 @@ onMounted(initTheme);
 
       <!-- Mobile navigation -->
       <Transition name="slide">
-        <div v-if="mobileMenuOpen" id="mobile-nav" class="xl:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div v-if="mobileMenuOpen" id="mobile-nav" class="xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
           <div class="page-shell px-4 py-4 space-y-1">
             <NuxtLink
               v-for="link in contentLinks"
