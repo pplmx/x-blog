@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 415,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T09:41:32+00:00",
+  "updated_at": "2026-09-21T09:50:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30951,6 +30951,42 @@
       "touched_round": 415,
       "commit": "cfc4581e",
       "summary": "Comment form shortcut validation + edit-save pending state"
+    },
+    "ISS-567": {
+      "id": "ISS-567",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:50:26+00:00",
+      "updated_at": "2026-09-21T09:50:48+00:00",
+      "touched_round": 415,
+      "severity": "high",
+      "summary": "Mobile nav bottom items unreachable on short screens",
+      "desc": "Mobile menu slide transition maxes at 500px and is an animation end-state, not an overflow guard; signed-in compact-phone content (~500px+) scrolled out of reach behind sticky header with no scroll on the panel."
+    },
+    "TASK-493": {
+      "id": "TASK-493",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:50:26+00:00",
+      "updated_at": "2026-09-21T09:50:47+00:00",
+      "touched_round": 415,
+      "category": "correctness",
+      "severity": "high",
+      "summary": "Make mobile nav a viewport-clamped scroll container",
+      "desc": "Fix the clipped mobile menu bottom items by clamping the panel to the vh below the header with overflow-y-auto and swapping the max-height animation for opacity/translateY."
+    },
+    "CHG-754": {
+      "id": "CHG-754",
+      "type": "change",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:50:34+00:00",
+      "updated_at": "2026-09-21T09:50:47+00:00",
+      "touched_round": 415,
+      "commit": "3ffff718",
+      "summary": "Mobile nav viewport-clamped scroll container + opacity/translateY transition"
     }
   },
   "edges": [
@@ -46023,6 +46059,24 @@
       "to": "TASK-489",
       "type": "implements",
       "created_at": "2026-09-21T09:41:32+00:00"
+    },
+    {
+      "from": "TASK-493",
+      "to": "ISS-567",
+      "type": "addresses",
+      "created_at": "2026-09-21T09:50:34+00:00"
+    },
+    {
+      "from": "CHG-754",
+      "to": "TASK-493",
+      "type": "implements",
+      "created_at": "2026-09-21T09:50:47+00:00"
+    },
+    {
+      "from": "CHG-754",
+      "to": "ISS-567",
+      "type": "resolves",
+      "created_at": "2026-09-21T09:50:48+00:00"
     }
   ]
 }
