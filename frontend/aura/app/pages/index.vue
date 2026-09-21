@@ -389,7 +389,9 @@ const stats = computed(() => {
             {{ t("home.hero.aboutAction") }}
           </NuxtLink>
         </div>
-        <div class="flex gap-8 mt-8 pt-8 border-t border-white/15">
+        <!-- Hero stat strip: wrap below sm so four 6-digit locale-grouped
+             numbers + CJK labels never overflow a 375px phone. -->
+        <div class="flex flex-wrap gap-x-8 gap-y-4 mt-8 pt-8 border-t border-white/15">
           <!-- A stats fetch failure must not read as "this blog has 0 posts":
                show the strip only when the totals are real (round 414). -->
           <template v-if="statsFailed">
