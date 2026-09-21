@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Post-page reading polish (round 411)**: the reader-facing article page now
+  cleans up its table-of-contents observer properly. **The mobile TOC's heading
+  scan can no longer fire after you've left the post**: `setupTocObserver` deferred
+  its heading scan with a 500 ms settle timer that was never tracked — SPA-navigating
+  to the next/previous post (or closing the tab) within that window let the straggler
+  timer run against the *next* article's DOM (double-observing its headings) or
+  against a dismantled document. The pending scan is now cancelled at every re-setup
+  and on unmount (same hygiene as the like-failure and resume-chip timers), and the
+  scan itself skips once the observer is already disconnected. Frontend 2454 unit
+  tests (round 411, TASK-489, ISS-564).
 - 🛠️ **Detail & reader-auth polish rounds (rounds 403–409)**: six rounds of
   verification-first polish across both stacks, closing the full reader-auth
   review backlog. **Invalid deep links no longer loop**: discussion, search and
