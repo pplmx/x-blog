@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 416,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T10:28:22+00:00",
+  "updated_at": "2026-09-21T10:28:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30875,7 +30875,7 @@
       "version": 1,
       "created_at": "2026-09-21T03:43:02+00:00",
       "updated_at": "2026-09-21T03:43:02+00:00",
-      "touched_round": 413,
+      "touched_round": 416,
       "title": "converged-idle at round 413 (after reactivation round 411)",
       "rationale": "Reactivated by operator polish directive (DEC-469), round 411 delivered two verified teardown-race fixes: (1) post-page TOC observer 500ms settle timer now tracked+cleared on re-setup/unmount with the scan skipping a disconnected observer (TASK-489/ISS-564, CHG-749, test-first RED on HEAD, GREEN+stable across 3 runs); (2) CommentList thread-search 350ms debounce cleared on unmount and highlightCommentCode no longer null-derefs a list ref awaiting the highlight bundle after teardown (TASK-490/ISS-565, CHG-750, same RED to GREEN). Stop conditions re-checked at round 413: zero active tasks >= 3.0; only remaining active issues are standing infra deferrals DEC-004/DEC-214/DEC-433; VERIFY green (frontend 2455, backend 1908 @ 94% PG parity EV-312, typecheck/lint clean, single migration head); rounds 412-413 sweeps across components/nav/auth/likes/transport/rate-limit/admin/newsletter/search/RSS/sitemap/migrations/reader-profile/series-tags-categories/subscribe-buttons/ReaderMenu surfaced no new task above threshold; graph consistent 2572 nodes. Flash-timer vars still left in categories/tags/comment-manage/series/SubscribeButton flip refs only (no DOM/network/observer post-unmount, specs use no fake timers) scoring below threshold, not churn-worthy. Changelog updated en+zh. Loop enters idle.",
       "alternatives_rejected": "Keep emitting near-empty per-round sweeps despite two consecutive empty above-threshold rounds (violates the non-spinning invariant); refactor account.vue's 1071-line script or the sub-threshold ref-flip flash timers into tasks (below the 3.0 gate, churn without user-visible value); begin feature-evolution mode (explicit enablement decision never recorded)."
@@ -31079,6 +31079,17 @@
       "touched_round": 415,
       "commit": "77f9916e",
       "summary": "ARIA tab roving, a11y labels, 44px targets, 375px overflow polish"
+    },
+    "DEC-471": {
+      "id": "DEC-471",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T10:28:52+00:00",
+      "updated_at": "2026-09-21T10:28:52+00:00",
+      "touched_round": 416,
+      "rationale": "Quality-convergence stop conditions met at round 416: (1) zero active tasks >= 3.0 (audit batch TASK-495 scored 2.5 and is resolved; the only stale tasks are the multi-worker infra deferrals ISS-242/243/244 accepted via DEC-004/DEC-214/DEC-433 for the single-instance dev topology); (2) only remaining active issues are those recorded deferrals, plus every issue/change from the round-415 nav/responsive audit is resolved (ISS-567/568/569, TASK-493/494/495, CHG-754/755/756, hero-strip wrap, mobile-nav clip, ARIA tab roving, 44px targets, sr-only verified badge); (3) VERIFY green: frontend 2466/2466, typecheck clean, lint clean (5 pre-existing e2e/2fa + discussion.vue template-import warnings), ril.py check consistent (2590 nodes/2517 edges); (4) audit subagent delivered 7 defects, all fixed and unit-tested.",
+      "alternatives_rejected": "Carry the deferred multi-worker cache/rate-limit/XFF infra (ISS-242/243/244) now (needs Redis + deploy topology, re-verified vertical too large for polish mode); add more UI/UX refactors beyond the concrete audit defects (no net-new >= 3.0 task surfaced); keep emitting round-advance commits after all work delivered (violates non-spinning invariant)."
     }
   },
   "edges": [
@@ -46223,6 +46234,12 @@
       "to": "TASK-495",
       "type": "implements",
       "created_at": "2026-09-21T10:25:41+00:00"
+    },
+    {
+      "from": "DEC-471",
+      "to": "DEC-470",
+      "type": "supersedes",
+      "created_at": "2026-09-21T10:28:59+00:00"
     }
   ]
 }
