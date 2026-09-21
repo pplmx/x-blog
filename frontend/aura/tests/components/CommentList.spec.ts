@@ -675,6 +675,34 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("等待审核");
 		});
 
+		it("shows a saving state on the inline edit Save while the update is in flight", async () => {
+			// An unresolved promise keeps the edit in the saving state so the
+			// pending affordance is observable — a disabled-looking Save with no
+			// spinner was indistinguishable from a dead click (round-414 deep-dive).
+			let resolveUpdate: ((v: (typeof ownComments.items)[0]) => void) | undefined;
+			mockUpdateMyComment.mockImplementation(() => new Promise((res) => (resolveUpdate = res)));
+			const { wrapper } = await mountCommentList({ comments: ownComments });
+
+			await wrapper.find(".comment-edit").trigger("click");
+			await flushPromises();
+			const textarea = wrapper.find("textarea");
+			await textarea.setValue("my edited body");
+			const saveBtn = wrapper.findAll("button").find((b) => b.text() === "保存");
+			await saveBtn?.trigger("click");
+			await flushPromises();
+
+			// After the click, the button flips to a "保存中…" label with a spinner.
+			const savingBtn = wrapper.findAll("button").find((b) => b.text() === "保存中…");
+			expect(savingBtn).toBeDefined();
+			expect(savingBtn?.attributes("disabled")).toBeDefined();
+			expect(savingBtn?.find("[data-testid='comment-edit-save-spinner']").exists()).toBe(true);
+
+			// Once the update resolves the edit box closes and the label returns.
+			resolveUpdate?.(ownComments.items[0] as never);
+			await flushPromises();
+			expect(wrapper.findAll("button").find((b) => b.text() === "保存中…")).toBeUndefined();
+		});
+
 		it("deletes a comment after confirmation", async () => {
 			mockDeleteMyComment.mockResolvedValue(undefined);
 			vi.stubGlobal("confirm", () => true);

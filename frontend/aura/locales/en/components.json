@@ -35,10 +35,13 @@
 			"write": "Write",
 			"preview": "Preview",
 			"previewEmpty": "Nothing to preview yet — type something and it will render as Markdown here.",
-			"previewError": "Couldn't render a preview."
+			"previewError": "Couldn't render a preview.",
+			"contentRequired": "Write something before submitting.",
+			"identityRequired": "Add your nickname and email before submitting."
 		},
 		"commentList": {
 			"loadError": "Couldn't load comments. Please try again.",
+			"saving": "Saving…",
 			"flag": "Report",
 			"flagged": "Reported",
 			"flagError": "Couldn't report this comment. Please try again.",

@@ -198,6 +198,20 @@ describe("CommentForm", () => {
 				reply_notify_email: false,
 			});
 		});
+
+		it("Ctrl+Enter on an incomplete guest form shows validation feedback instead of a silent no-op", async () => {
+			// The keyboard shortcut calls handleSubmit directly (bypassing native
+			// `required`), so an incomplete form used to do nothing with no
+			// feedback. It must surface the "fill these in" problem inline.
+			const wrapper = await mountCommentForm();
+			await wrapper.find("textarea").setValue("Great post!");
+			// Leave nickname + email empty.
+			await wrapper.find("textarea").trigger("keydown", { key: "Enter", ctrlKey: true });
+			await flushPromises();
+
+			expect(mockCreateComment).not.toHaveBeenCalled();
+			expect(wrapper.text()).toContain("请填写昵称和邮箱后再提交。");
+		});
 	});
 
 	describe("Guest reply-email consent (DEC-332)", () => {

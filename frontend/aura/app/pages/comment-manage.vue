@@ -213,6 +213,8 @@ onMounted(() => void load());
             rows="5"
             class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
             :disabled="deleting"
+            @keydown.ctrl.enter.prevent="save"
+            @keydown.meta.enter.prevent="save"
           />
         </div>
 
@@ -232,7 +234,7 @@ onMounted(() => void load());
             <Icon v-if="saving" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
             <span>{{ saving ? t("reader.commentManage.saving") : t("reader.commentManage.save") }}</span>
           </button>
-          <span v-if="savedFlash" class="text-sm text-green-600 dark:text-green-400">
+          <span v-if="savedFlash" role="status" class="text-sm text-green-600 dark:text-green-400">
             {{ t("reader.commentManage.saved") }}
           </span>
           <button

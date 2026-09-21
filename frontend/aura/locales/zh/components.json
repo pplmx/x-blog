@@ -35,10 +35,13 @@
 			"write": "撰写",
 			"preview": "预览",
 			"previewEmpty": "还没有可预览的内容——输入后 Markdown 会在这里渲染。",
-			"previewError": "无法渲染预览。"
+			"previewError": "无法渲染预览。",
+			"contentRequired": "请先输入评论内容再提交。",
+			"identityRequired": "请填写昵称和邮箱后再提交。"
 		},
 		"commentList": {
 			"loadError": "评论加载失败，请稍后重试。",
+			"saving": "保存中…",
 			"flag": "举报",
 			"flagged": "已举报",
 			"flagError": "举报失败，请重试。",

@@ -285,11 +285,12 @@
               <div class="flex gap-2">
                 <button
                   type="button"
-                  class="px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
                   :disabled="actionIds.has(comment.id)"
                   @click="saveEdit(comment)"
                 >
-                  {{ t('components.commentList.save') }}
+                  <Icon v-if="actionIds.has(comment.id)" data-testid="comment-edit-save-spinner" icon="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  {{ actionIds.has(comment.id) ? t('components.commentList.saving') : t('components.commentList.save') }}
                 </button>
                 <button
                   type="button"
@@ -448,11 +449,12 @@
               <div class="flex gap-2">
                 <button
                   type="button"
-                  class="px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
                   :disabled="actionIds.has(reply.id)"
                   @click="saveEdit(reply)"
                 >
-                  {{ t('components.commentList.save') }}
+                  <Icon v-if="actionIds.has(reply.id)" icon="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  {{ actionIds.has(reply.id) ? t('components.commentList.saving') : t('components.commentList.save') }}
                 </button>
                 <button
                   type="button"

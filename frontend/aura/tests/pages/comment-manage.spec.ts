@@ -141,6 +141,27 @@ describe("comment-manage page", () => {
 		expect(wrapper.text()).toContain("已保存");
 	});
 
+	it("submits the guest-edit save via Ctrl+Enter (keyboard parity)", async () => {
+		getGuestCommentManage.mockResolvedValue({
+			comment: EXAMPLE_COMMENT,
+			post: { id: 3, title: "测试文章", slug: "test-post" },
+		});
+		editGuestCommentManage.mockResolvedValue({
+			...EXAMPLE_COMMENT,
+			content: "改后的评论",
+			is_approved: false,
+		});
+		const wrapper = mountPage({ token: "tok-ke" });
+		await flushPromises();
+
+		await wrapper.find("textarea").setValue("改后的评论");
+		await wrapper.find("textarea").trigger("keydown", { key: "Enter", ctrlKey: true });
+		await flushPromises();
+
+		expect(editGuestCommentManage).toHaveBeenCalledTimes(1);
+		expect(editGuestCommentManage).toHaveBeenCalledWith("tok-ke", "改后的评论");
+	});
+
 	it("deletes the comment after confirm and shows the deleted state", async () => {
 		getGuestCommentManage.mockResolvedValue({
 			comment: EXAMPLE_COMMENT,

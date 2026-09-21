@@ -323,6 +323,30 @@ onMounted(() => {
 /** Ctrl/⌘+Enter submits the form without a mouse click (keyboard parity). */
 function submitWithShortcut(): void {
 	if (submitting.value || props.disabled) return;
+	// The shortcut bypasses the browser's native `required` validation (it calls
+	// handleSubmit directly, not the form-submit path), so an incomplete guest
+	// form used to be a silent no-op — a keyboard-first reader pressing the
+	// advertised shortcut got zero feedback. Surface the same "fill these in"
+	// problem inline and focus the first offending field instead.
+	const missing = !form.value.content.trim()
+		? "content"
+		: !signedIn.value && (!form.value.nickname.trim() || !form.value.email.trim())
+			? "identity"
+			: null;
+	if (missing) {
+		error.value =
+			missing === "content"
+				? t("components.commentForm.contentRequired")
+				: t("components.commentForm.identityRequired");
+		if (missing === "content") {
+			contentRef.value?.focus();
+		} else {
+			// The guest name/email fields aren't ref'd; focus the first missing input.
+			const nameInput = document.querySelector<HTMLInputElement>(`#${fieldId("comment-nickname")}`);
+			if (nameInput) nameInput.focus();
+		}
+		return;
+	}
 	void handleSubmit();
 }
 const signedIn = computed(() => hydrated.value && isAuthenticated.value && !!reader.value);
