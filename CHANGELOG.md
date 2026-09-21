@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Mobile nav no longer clips its bottom items on short screens (round 415)**:
+  a signed-in reader's full "我的" menu (8–9 rows) exceeded the mobile nav's
+  `max-height:500px` slide-transition end state, so the last links and sign-out
+  rendered but scrolled out of reach behind the sticky header with no way to reach
+  them (the panel had no overflow scroll). The panel is now a real scroll container
+  clamped to the viewport below the header (`max-h-[calc(100dvh-4rem)] overflow-y-auto`),
+  and the slide animates opacity/translateY instead of max-height — every item is
+  reachable at any screen height (round 415, TASK-493, ISS-567).
 - 🛠️ **Home & browse-page failure polish + form shortcut safeguards (round 415)**:
   the home feed's **site stats and browse-by sidebar no longer masquerade as
   empty** on a transient fetch failure. A `/api/stats` hiccup previously rendered
