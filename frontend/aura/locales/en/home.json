@@ -12,10 +12,11 @@
 			"aboutAction": "About this site"
 		},
 		"stats": {
-			"posts": "Articles",
-			"totalViews": "Total reads",
-			"totalLikes": "Total likes",
-			"totalComments": "Comments"
+			"posts": "Posts",
+			"totalViews": "Total Views",
+			"totalLikes": "Total Likes",
+			"totalComments": "Total Comments",
+			"retry": "Couldn't load stats — retry"
 		},
 		"posts": {
 			"views": "reads",
@@ -45,7 +46,9 @@
 			"browseCategories": "Categories",
 			"browseTags": "Tags",
 			"noCategories": "No categories yet",
-			"noTags": "No tags yet"
+			"noTags": "No tags yet",
+			"loadFailed": "Couldn't load categories.",
+			"tagsLoadFailed": "Couldn't load tags."
 		}
 	}
 }

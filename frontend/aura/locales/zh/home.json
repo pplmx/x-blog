@@ -13,9 +13,10 @@
 		},
 		"stats": {
 			"posts": "文章",
-			"totalViews": "总阅读",
-			"totalLikes": "总点赞",
-			"totalComments": "评论"
+			"totalViews": "总阅读量",
+			"totalLikes": "总点赞数",
+			"totalComments": "总评论数",
+			"retry": "统计加载失败——重试"
 		},
 		"posts": {
 			"views": "阅读",
@@ -45,7 +46,9 @@
 			"browseCategories": "分类",
 			"browseTags": "标签",
 			"noCategories": "暂无分类",
-			"noTags": "暂无标签"
+			"noTags": "暂无标签",
+			"loadFailed": "分类加载失败。",
+			"tagsLoadFailed": "标签加载失败。"
 		}
 	}
 }

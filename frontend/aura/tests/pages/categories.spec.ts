@@ -265,6 +265,17 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).toContain("Tech");
 			expect(wrapper.text()).toContain("Life");
 		});
+
+		it("shows a no-results message when the filter matches nothing (round 414)", async () => {
+			// A non-matching filter must say "no categories match your filter",
+			// not the genuinely-empty "暂无分类" (which implies no categories exist).
+			const wrapper = await mountCategoriesPage();
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("zzz-no-such-category");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有分类匹配你的过滤条件");
+			expect(wrapper.text()).not.toContain("暂无分类");
+		});
 	});
 
 	describe("Loading state", () => {

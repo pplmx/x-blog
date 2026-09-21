@@ -360,12 +360,18 @@ watch(
           </NuxtLink>
         </div>
 
-          <div
-            v-else
-            class="text-center py-12 text-gray-500"
-          >
-            {{ t('tags.empty') }}
-          </div>
+        <div
+          v-else-if="tagFilter.trim()"
+          class="text-center py-12 text-gray-500"
+        >
+          {{ t('tags.noFilterResults') }}
+        </div>
+        <div
+          v-else
+          class="text-center py-12 text-gray-500"
+        >
+          {{ t('tags.empty') }}
+        </div>
       </div>
     </div>
 

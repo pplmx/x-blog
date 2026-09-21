@@ -188,9 +188,22 @@ async function loadFollowedSeries() {
 }
 
 // Look up active filter labels for the "filtered by" indicator (deep-link UX).
-const { data: categories } = await useCategories();
-const { data: tags } = await useTags();
-const { data: statsData, error: statsError } = await useBlogStats();
+const {
+	data: categories,
+	error: categoriesError,
+	refresh: refreshCategories,
+} = await useCategories();
+const { data: tags, error: tagsError, refresh: refreshTags } = await useTags();
+const { data: statsData, error: statsError, refresh: refreshStats } = await useBlogStats();
+// A failed taxonomy/stats fetch must not masquerade as "no categories/tags"
+// or "0 posts" — the browse card and hero totals silently collapsed to empty
+// on a transient failure (search.vue already distinguishes the two; index
+// was the inconsistent holdout, round 414).
+const taxonomyFailed = computed(() => Boolean(categoriesError.value) || Boolean(tagsError.value));
+function retryTaxonomy() {
+	void refreshCategories();
+	void refreshTags();
+}
 const activeFilterLabel = computed(() => {
 	if (categoryId.value && categories.value) {
 		const name = categories.value.find((c) => c.id === categoryId.value)?.name;
@@ -308,6 +321,7 @@ watch(
 // Hero/global stats — sourced from the real /api/stats aggregates (site-wide),
 // not the current page's items. Summing the first page's 10 items presented a
 // per-page number as a site total and changed with pagination (ISS-035).
+const statsFailed = computed(() => Boolean(statsError.value));
 const stats = computed(() => {
 	// The stats endpoint is the source of the site-wide total. Falling back to
 	// `posts.pagination.total` under an ACTIVE filter (?category_id=X /
@@ -376,10 +390,26 @@ const stats = computed(() => {
           </NuxtLink>
         </div>
         <div class="flex gap-8 mt-8 pt-8 border-t border-white/15">
-          <div v-for="stat in stats" :key="stat.labelKey" class="text-center">
-            <div class="text-2xl font-bold text-white">{{ stat.value }}</div>
-            <div class="text-xs text-white/60 mt-1">{{ t(stat.labelKey) }}</div>
-          </div>
+          <!-- A stats fetch failure must not read as "this blog has 0 posts":
+               show the strip only when the totals are real (round 414). -->
+          <template v-if="statsFailed">
+            <div class="text-sm text-white/70">
+              <Icon icon="lucide:alert-triangle" class="w-4 h-4 inline -mt-0.5 mr-1" />
+              <button
+                type="button"
+                class="underline underline-offset-2 hover:text-white transition-colors"
+                @click="() => refreshStats()"
+              >
+                {{ t("home.stats.retry") }}
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <div v-for="stat in stats" :key="stat.labelKey" class="text-center">
+              <div class="text-2xl font-bold text-white">{{ stat.value }}</div>
+              <div class="text-xs text-white/60 mt-1">{{ t(stat.labelKey) }}</div>
+            </div>
+          </template>
         </div>
       </div>
     </section>
@@ -700,7 +730,20 @@ const stats = computed(() => {
               <Icon icon="lucide:activity" class="w-4 h-4 text-blue-500" />
               {{ t("home.sidebar.stats") }}
             </h3>
-            <div class="space-y-3">
+            <!-- A stats failure must not masquerade as all-zeros here either
+                 (round 414: the sidebar card duplicated the hero's 0s). -->
+            <div v-if="statsFailed" class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+              <Icon icon="lucide:alert-triangle" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+              <span>{{ t("home.stats.retry") }}</span>
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                @click="() => refreshStats()"
+              >
+                {{ t("common.action.retry") }}
+              </button>
+            </div>
+            <div v-else class="space-y-3">
               <div v-for="stat in stats" :key="stat.labelKey" class="flex items-center justify-between text-sm">
                 <span class="text-gray-500 dark:text-gray-400">{{ t(stat.labelKey) }}</span>
                 <span class="font-semibold text-gray-900 dark:text-gray-100">{{ stat.value }}</span>
@@ -718,6 +761,8 @@ const stats = computed(() => {
             <h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
               {{ t("home.sidebar.browseCategories") }}
             </h4>
+            <!-- A taxonomy failure must not masquerade as "no categories yet":
+                 offer the retry instead. -->
             <div v-if="categories?.length" class="flex flex-wrap gap-2 mb-4">
               <NuxtLink
                 v-for="cat in categories"
@@ -730,6 +775,17 @@ const stats = computed(() => {
               >
                 {{ cat.name }}
               </NuxtLink>
+            </div>
+            <div v-else-if="taxonomyFailed" class="mb-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+              <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+              {{ t("home.sidebar.loadFailed") }}
+              <button
+                type="button"
+                class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                @click="retryTaxonomy"
+              >
+                {{ t("common.action.retry") }}
+              </button>
             </div>
             <div v-else class="mb-4 text-sm text-gray-400">
               {{ t("home.sidebar.noCategories") }}
@@ -750,6 +806,10 @@ const stats = computed(() => {
               >
                 #{{ tag.name }}
               </NuxtLink>
+            </div>
+            <div v-else-if="taxonomyFailed" class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+              <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
+              {{ t("home.sidebar.tagsLoadFailed") }}
             </div>
             <div v-else class="text-sm text-gray-400">
               {{ t("home.sidebar.noTags") }}

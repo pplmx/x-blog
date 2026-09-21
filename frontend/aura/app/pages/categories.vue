@@ -416,15 +416,20 @@ watch(categoryId, () => {
           </NuxtLink>
         </div>
 
-          <div
-            v-else
-            class="text-center py-12 text-gray-500"
-          >
-            {{ t('categories.empty') }}
-          </div>
+        <div
+          v-else-if="categoryFilter.trim()"
+          class="text-center py-12 text-gray-500"
+        >
+          {{ t('categories.noFilterResults') }}
         </div>
+        <div
+          v-else
+          class="text-center py-12 text-gray-500"
+        >
+          {{ t('categories.empty') }}
+        </div>
+      </div>
     </div>
-
     <!-- Category posts view (category_id selected). Chrome — back link,
          follow/notify/push controls, RSS — stays mounted across
          category→category SPA navigation; only the posts region below reflects

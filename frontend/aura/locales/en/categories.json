@@ -23,6 +23,7 @@
 		"notifyOn": "Notifications on",
 		"notifyOff": "Notifications off",
 		"followFailed": "Couldn't update this follow — check your connection and try again.",
-		"filterPlaceholder": "Filter categories…"
+		"filterPlaceholder": "Filter categories…",
+		"noFilterResults": "No categories match your filter."
 	}
 }

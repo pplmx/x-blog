@@ -23,6 +23,7 @@
 		"notifyOn": "通知已开",
 		"notifyOff": "通知已关",
 		"followFailed": "关注操作失败，请检查网络后重试。",
-		"filterPlaceholder": "过滤分类…"
+		"filterPlaceholder": "过滤分类…",
+		"noFilterResults": "没有分类匹配你的过滤条件。"
 	}
 }

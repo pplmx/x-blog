@@ -20,6 +20,7 @@
 		"notifyOn": "Notifications on",
 		"notifyOff": "Notifications off",
 		"followFailed": "Couldn't update, please try again",
-		"filterPlaceholder": "Filter tags…"
+		"filterPlaceholder": "Filter tags…",
+		"noFilterResults": "No tags match your filter."
 	}
 }

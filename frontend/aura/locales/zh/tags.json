@@ -20,6 +20,7 @@
 		"notifyOn": "通知已开",
 		"notifyOff": "通知已关",
 		"followFailed": "操作失败，请重试",
-		"filterPlaceholder": "过滤标签…"
+		"filterPlaceholder": "过滤标签…",
+		"noFilterResults": "没有标签匹配你的过滤条件。"
 	}
 }

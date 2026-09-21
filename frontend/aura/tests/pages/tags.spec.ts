@@ -225,6 +225,17 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("#React");
 			expect(wrapper.text()).toContain("#Vue");
 		});
+
+		it("shows a no-results message when the filter matches nothing (round 414)", async () => {
+			// A non-matching filter must say "no results for this filter", not the
+			// genuinely-empty "暂无标签" (which implies the blog has no tags at all).
+			const wrapper = await mountTagsPage();
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("zzz-no-such-tag");
+			await flushPromises();
+			expect(wrapper.text()).toContain("没有标签匹配你的过滤条件");
+			expect(wrapper.text()).not.toContain("暂无标签");
+		});
 	});
 
 	describe("Loading state", () => {

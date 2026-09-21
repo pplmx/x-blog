@@ -40,6 +40,11 @@ const { mockState } = vi.hoisted(() => ({
 		}>,
 		categories: [] as Array<{ id: number; name: string }>,
 		tags: [] as Array<{ id: number; name: string }>,
+		// Failure states for the taxonomy/stats mocks (round 414): when an error
+		// is set the page must not masquerade as "no categories/tags/0 posts".
+		categoriesError: null as null | { message: string },
+		tagsError: null as null | { message: string },
+		statsError: null as null | { message: string },
 		statsData: null as null | {
 			total_posts: number;
 			total_views: number;
@@ -120,9 +125,13 @@ vi.mock("../../api/public/posts", async () => {
 vi.mock("../../api/public/taxonomy", () => ({
 	useCategories: () => ({
 		data: ref(mockState.categories),
+		error: ref(mockState.categoriesError),
+		refresh: vi.fn(),
 	}),
 	useTags: () => ({
 		data: ref(mockState.tags),
+		error: ref(mockState.tagsError),
+		refresh: vi.fn(),
 	}),
 }));
 vi.mock("../../api/public/stats", () => ({
@@ -130,6 +139,8 @@ vi.mock("../../api/public/stats", () => ({
 		data: ref(
 			mockState.statsData ?? { total_posts: 0, total_views: 0, total_likes: 0, total_comments: 0 },
 		),
+		error: ref(mockState.statsError),
+		refresh: vi.fn(),
 	}),
 }));
 vi.mock("../../api/reader/history", () => ({
@@ -314,6 +325,9 @@ function resetMockState() {
 	mockState.trendingPosts = [];
 	mockState.categories = [];
 	mockState.tags = [];
+	mockState.categoriesError = null;
+	mockState.tagsError = null;
+	mockState.statsError = null;
 	mockState.statsData = null;
 	mockState.recommended = [];
 	mockState.followedSeries = [];
@@ -972,6 +986,53 @@ describe("Index Page", () => {
 			mockState.followsFeed = [];
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).not.toContain("关注内容的最新文章");
+		});
+	});
+
+	describe("Taxonomy/stats fetch failure (round 414)", () => {
+		it("shows a retry button in the hero stats strip instead of 0s on stats failure", async () => {
+			// A failed /api/stats fetch must not read as "this blog has 0 posts":
+			// the hero strip swaps to a failure message with a retry affordance.
+			mockState.posts = mockPostsData;
+			mockState.statsError = { message: "boom" };
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("统计加载失败——重试");
+			// ... and it must NOT render the 0-valued stat cells.
+			expect(wrapper.text()).not.toContain("总阅读量");
+		});
+
+		it("shows the categories load-failure message instead of 'no categories'", async () => {
+			// A transient taxonomy failure used to masquerade as "暂无分类";
+			// now it offers a retry so the reader knows it's a network issue,
+			// not that the blog genuinely has no categories (round 414).
+			mockState.posts = mockPostsData;
+			mockState.categoriesError = { message: "boom" };
+			mockState.tagsError = null;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("分类加载失败");
+			expect(wrapper.text()).toContain("重试");
+			expect(wrapper.text()).not.toContain("暂无分类");
+		});
+
+		it("shows the tags load-failure message instead of 'no tags'", async () => {
+			mockState.posts = mockPostsData;
+			mockState.categories = [{ id: 1, name: "Tech" }];
+			mockState.categoriesError = null;
+			mockState.tagsError = { message: "boom" };
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("标签加载失败");
+			expect(wrapper.text()).not.toContain("暂无标签");
+		});
+
+		it("renders the normal empty/success branches when taxonomy loads fine", async () => {
+			mockState.posts = mockPostsData;
+			mockState.categories = [];
+			mockState.tags = [];
+			mockState.categoriesError = null;
+			mockState.tagsError = null;
+			const wrapper = await mountIndexPage();
+			expect(wrapper.text()).toContain("暂无分类");
+			expect(wrapper.text()).toContain("暂无标签");
 		});
 	});
 });
