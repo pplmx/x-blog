@@ -17,8 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timer run against the *next* article's DOM (double-observing its headings) or
   against a dismantled document. The pending scan is now cancelled at every re-setup
   and on unmount (same hygiene as the like-failure and resume-chip timers), and the
-  scan itself skips once the observer is already disconnected. Frontend 2454 unit
-  tests (round 411, TASK-489, ISS-564).
+  scan itself skips once the observer is already disconnected. And **leaving a
+  comment thread no longer leaves stray work behind**: the thread-search debounce
+  (350 ms) is cancelled on unmount, so a query typed just before navigating away can
+  no longer fire a whole-thread re-fetch for a reader who isn't on the page anymore,
+  and the comment code-highlighter no longer dereferences a nulled list ref if the
+  thread unmounts while the highlight bundle is still loading (it was an unhandled
+  rejection). Frontend 2455 unit tests (round 411, TASK-489/490, ISS-564/565).
 - 🛠️ **Detail & reader-auth polish rounds (rounds 403–409)**: six rounds of
   verification-first polish across both stacks, closing the full reader-auth
   review backlog. **Invalid deep links no longer loop**: discussion, search and
