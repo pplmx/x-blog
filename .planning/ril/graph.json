@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 413,
+  "round": 415,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T03:43:34+00:00",
+  "updated_at": "2026-09-21T09:40:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -30773,7 +30773,7 @@
       "version": 2,
       "created_at": "2026-09-21T01:05:53+00:00",
       "updated_at": "2026-09-21T02:09:29+00:00",
-      "touched_round": 410,
+      "touched_round": 415,
       "category": "correctness",
       "severity": "low",
       "confidence": 0.9,
@@ -30879,6 +30879,78 @@
       "title": "converged-idle at round 413 (after reactivation round 411)",
       "rationale": "Reactivated by operator polish directive (DEC-469), round 411 delivered two verified teardown-race fixes: (1) post-page TOC observer 500ms settle timer now tracked+cleared on re-setup/unmount with the scan skipping a disconnected observer (TASK-489/ISS-564, CHG-749, test-first RED on HEAD, GREEN+stable across 3 runs); (2) CommentList thread-search 350ms debounce cleared on unmount and highlightCommentCode no longer null-derefs a list ref awaiting the highlight bundle after teardown (TASK-490/ISS-565, CHG-750, same RED to GREEN). Stop conditions re-checked at round 413: zero active tasks >= 3.0; only remaining active issues are standing infra deferrals DEC-004/DEC-214/DEC-433; VERIFY green (frontend 2455, backend 1908 @ 94% PG parity EV-312, typecheck/lint clean, single migration head); rounds 412-413 sweeps across components/nav/auth/likes/transport/rate-limit/admin/newsletter/search/RSS/sitemap/migrations/reader-profile/series-tags-categories/subscribe-buttons/ReaderMenu surfaced no new task above threshold; graph consistent 2572 nodes. Flash-timer vars still left in categories/tags/comment-manage/series/SubscribeButton flip refs only (no DOM/network/observer post-unmount, specs use no fake timers) scoring below threshold, not churn-worthy. Changelog updated en+zh. Loop enters idle.",
       "alternatives_rejected": "Keep emitting near-empty per-round sweeps despite two consecutive empty above-threshold rounds (violates the non-spinning invariant); refactor account.vue's 1071-line script or the sub-threshold ref-flip flash timers into tasks (below the 3.0 gate, churn without user-visible value); begin feature-evolution mode (explicit enablement decision never recorded)."
+    },
+    "ISS-566": {
+      "id": "ISS-566",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:37:43+00:00",
+      "updated_at": "2026-09-21T09:40:32+00:00",
+      "touched_round": 415,
+      "severity": "high",
+      "summary": "Home feed taxonomy/stats fetch failure masquerades as empty/zero",
+      "desc": "A transient /api/stats or /api/taxonomy failure on index.vue rendered hero totals as 0 and the browse card as \"no categories/tags yet\", indistinguishable from a genuinely empty blog."
+    },
+    "TASK-491": {
+      "id": "TASK-491",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:37:50+00:00",
+      "updated_at": "2026-09-21T09:40:32+00:00",
+      "touched_round": 415,
+      "category": "correctness",
+      "severity": "high",
+      "summary": "Add home stats/taxonomy failure branches (retry instead of empty/zero)",
+      "desc": "index.vue: show retry affordances on stats + taxonomy failure instead of 0s / \"no categories\" / \"no tags\"; add locale keys and tests."
+    },
+    "TASK-492": {
+      "id": "TASK-492",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:37:56+00:00",
+      "updated_at": "2026-09-21T09:40:32+00:00",
+      "touched_round": 415,
+      "category": "maintainability",
+      "severity": "medium",
+      "summary": "Distinguish tag/category filter-no-match from genuinely-empty state",
+      "desc": "tags.vue/categories.vue showed \"no tags/categories yet\" when the filter matched nothing; add a noFilterResults branch + locale keys + tests."
+    },
+    "CHG-751": {
+      "id": "CHG-751",
+      "type": "change",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-21T09:39:34+00:00",
+      "updated_at": "2026-09-21T09:40:13+00:00",
+      "touched_round": 415,
+      "commit": "cfc4581e",
+      "summary": "Comment form shortcut validation + edit-save pending state",
+      "why": "duplicate of CHG-753 (same commit cfc4581e)"
+    },
+    "CHG-752": {
+      "id": "CHG-752",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T09:39:46+00:00",
+      "updated_at": "2026-09-21T09:39:46+00:00",
+      "touched_round": 415,
+      "commit": "953e9726",
+      "summary": "Home stats/taxonomy failure branches + no-filter-results state"
+    },
+    "CHG-753": {
+      "id": "CHG-753",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T09:39:51+00:00",
+      "updated_at": "2026-09-21T09:39:51+00:00",
+      "touched_round": 415,
+      "commit": "cfc4581e",
+      "summary": "Comment form shortcut validation + edit-save pending state"
     }
   },
   "edges": [
@@ -45909,6 +45981,42 @@
       "to": "DEC-469",
       "type": "supersedes",
       "created_at": "2026-09-21T03:43:34+00:00"
+    },
+    {
+      "from": "TASK-491",
+      "to": "ISS-566",
+      "type": "addresses",
+      "created_at": "2026-09-21T09:40:24+00:00"
+    },
+    {
+      "from": "TASK-492",
+      "to": "ISS-566",
+      "type": "addresses",
+      "created_at": "2026-09-21T09:40:25+00:00"
+    },
+    {
+      "from": "CHG-752",
+      "to": "TASK-491",
+      "type": "implements",
+      "created_at": "2026-09-21T09:40:25+00:00"
+    },
+    {
+      "from": "CHG-752",
+      "to": "TASK-492",
+      "type": "implements",
+      "created_at": "2026-09-21T09:40:25+00:00"
+    },
+    {
+      "from": "CHG-753",
+      "to": "TASK-489",
+      "type": "implements",
+      "created_at": "2026-09-21T09:40:25+00:00"
+    },
+    {
+      "from": "CHG-752",
+      "to": "ISS-566",
+      "type": "resolves",
+      "created_at": "2026-09-21T09:40:25+00:00"
     }
   ]
 }

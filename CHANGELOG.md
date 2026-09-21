@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Home & browse-page failure polish + form shortcut safeguards (round 415)**:
+  the home feed's **site stats and browse-by sidebar no longer masquerade as
+  empty** on a transient fetch failure. A `/api/stats` hiccup previously rendered
+  the hero totals and sidebar card as all-zeros (reading "this blog has 0 posts"),
+  and a `/api/taxonomy` failure rendered "No categories/tags yet" — indistinguishable
+  from a genuinely empty blog. Both now surface a distinct load-failed message with
+  an in-place retry button. The **tags and categories pages distinguish "your filter
+  matched nothing" from "none exist"**: a non-matching cloud filter shows "no … match
+  your filter" instead of the genuinely-empty "No tags/categories yet". And **comment
+  shortcuts are hardened**: Ctrl+Enter on an incomplete guest comment form now
+  validates first (the previous version bypassed the browser's `required` check and
+  silently no-op'd), Ctrl+Enter on the admin comment-manage textarea saves the guest
+  edit, the edit-save button shows a "Saving…" pending state and disabled cursor while
+  the request is in flight, and the saved-flash gains an ARIA status role.
+  Frontend 2455+ unit tests green, typecheck/lint green (round 415, TASK-491/492,
+  ISS-566).
 - 🛠️ **Post-page reading polish (round 411)**: the reader-facing article page now
   cleans up its table-of-contents observer properly. **The mobile TOC's heading
   scan can no longer fire after you've left the post**: `setupTocObserver` deferred
