@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Accessibility & narrow-phone polish from the round-415 audit**: the
+  Write/Preview and Posts/Comments tablists now support **ArrowLeft/Right/Home/End
+  roving navigation** (the standard `role="tab"` keyboard contract, previously
+  Tab+Enter only); the **verified-reader badge** is no longer title/hover-only —
+  it gains sr-only text so screen readers announce it; the **tag/category action
+  headers, post byline, and comment sort toolbar** wrap (`flex-wrap`, search box
+  `max-w-full`) instead of overflowing a 375px phone; and the **share buttons and
+  A−/A+ density keys** meet the 44px minimum tap target (round 415, TASK-495).
 - 🛠️ **Mobile nav no longer clips its bottom items on short screens (round 415)**:
   a signed-in reader's full "我的" menu (8–9 rows) exceeded the mobile nav's
   `max-height:500px` slide-transition end state, so the last links and sign-out

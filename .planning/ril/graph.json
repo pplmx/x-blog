@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 415,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T09:50:48+00:00",
+  "updated_at": "2026-09-21T10:25:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -44,7 +44,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 272,
+      "touched_round": 415,
       "title": "database-layer",
       "description": "SQLAlchemy models.py; alembic migrations; init_db.py seeding; SQLite dev + PostgreSQL prod"
     },
@@ -30987,6 +30987,98 @@
       "touched_round": 415,
       "commit": "3ffff718",
       "summary": "Mobile nav viewport-clamped scroll container + opacity/translateY transition"
+    },
+    "ISS-568": {
+      "id": "ISS-568",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:54:40+00:00",
+      "updated_at": "2026-09-21T09:56:27+00:00",
+      "touched_round": 415,
+      "severity": "high",
+      "summary": "Home hero stat strip overflows 375px phones",
+      "desc": "flex gap-8 fixed row rendered four locale-grouped totals (large numbers + CJK labels) too wide for a 375px viewport, forcing horizontal scroll."
+    },
+    "TASK-494": {
+      "id": "TASK-494",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:54:40+00:00",
+      "updated_at": "2026-09-21T09:56:27+00:00",
+      "touched_round": 415,
+      "category": "correctness",
+      "severity": "high",
+      "summary": "Make hero stats wrap below sm",
+      "desc": "index.vue hero stats flex row wraps (flex-wrap gap-y-4) so totals stack on narrow phones instead of overflowing."
+    },
+    "CHG-755": {
+      "id": "CHG-755",
+      "type": "change",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T09:54:40+00:00",
+      "updated_at": "2026-09-21T09:56:27+00:00",
+      "touched_round": 415,
+      "commit": "94cf23b6",
+      "summary": "Hero stat strip wraps on narrow phones"
+    },
+    "COMP-009": {
+      "id": "COMP-009",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T09:56:18+00:00",
+      "updated_at": "2026-09-21T09:56:18+00:00",
+      "touched_round": 415,
+      "path": "frontend/aura/app/pages/index.vue"
+    },
+    "COMP-010": {
+      "id": "COMP-010",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T09:56:18+00:00",
+      "updated_at": "2026-09-21T09:56:18+00:00",
+      "touched_round": 415,
+      "path": "frontend/aura/app/pages/index.vue"
+    },
+    "ISS-569": {
+      "id": "ISS-569",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T10:25:24+00:00",
+      "updated_at": "2026-09-21T10:25:25+00:00",
+      "touched_round": 415,
+      "severity": "medium",
+      "summary": "Reader-facing a11y + 375px overflow defects from nav/responsive audit",
+      "desc": "Composite: tablists lacked ARIA arrow-key roving; verified-reader badge was title-only; tag/category headers, post byline, comment toolbar could overflow 375px; share/density buttons below 44px tap target."
+    },
+    "TASK-495": {
+      "id": "TASK-495",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T10:25:24+00:00",
+      "updated_at": "2026-09-21T10:25:41+00:00",
+      "touched_round": 415,
+      "category": "correctness",
+      "severity": "medium",
+      "summary": "Fix audit a11y/overflow defects",
+      "desc": "Add tab roving, sr-only verified label, flex-wrap on short-viewport rows, 44px tap targets."
+    },
+    "CHG-756": {
+      "id": "CHG-756",
+      "type": "change",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T10:25:24+00:00",
+      "updated_at": "2026-09-21T10:25:25+00:00",
+      "touched_round": 415,
+      "commit": "77f9916e",
+      "summary": "ARIA tab roving, a11y labels, 44px targets, 375px overflow polish"
     }
   },
   "edges": [
@@ -46077,6 +46169,60 @@
       "to": "ISS-567",
       "type": "resolves",
       "created_at": "2026-09-21T09:50:48+00:00"
+    },
+    {
+      "from": "ISS-568",
+      "to": "COMP-009",
+      "type": "located_in",
+      "created_at": "2026-09-21T09:56:18+00:00"
+    },
+    {
+      "from": "ISS-568",
+      "to": "COMP-010",
+      "type": "located_in",
+      "created_at": "2026-09-21T09:56:18+00:00"
+    },
+    {
+      "from": "TASK-494",
+      "to": "ISS-568",
+      "type": "addresses",
+      "created_at": "2026-09-21T09:56:19+00:00"
+    },
+    {
+      "from": "CHG-755",
+      "to": "TASK-494",
+      "type": "implements",
+      "created_at": "2026-09-21T09:56:19+00:00"
+    },
+    {
+      "from": "CHG-755",
+      "to": "ISS-568",
+      "type": "resolves",
+      "created_at": "2026-09-21T09:56:19+00:00"
+    },
+    {
+      "from": "ISS-569",
+      "to": "COMP-004",
+      "type": "located_in",
+      "created_at": "2026-09-21T10:25:24+00:00"
+    },
+    {
+      "from": "CHG-756",
+      "to": "ISS-569",
+      "type": "resolves",
+      "created_at": "2026-09-21T10:25:24+00:00"
+    },
+    {
+      "from": "TASK-495",
+      "to": "ISS-569",
+      "type": "addresses",
+      "created_at": "2026-09-21T10:25:41+00:00"
+    },
+    {
+      "from": "CHG-756",
+      "to": "TASK-495",
+      "type": "implements",
+      "created_at": "2026-09-21T10:25:41+00:00"
     }
   ]
 }
