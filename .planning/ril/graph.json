@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 420,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T06:59:33+00:00",
+  "updated_at": "2026-09-22T07:17:04+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31744,6 +31744,39 @@
       "updated_at": "2026-09-22T06:59:32+00:00",
       "touched_round": 420,
       "commit": "d51eca3f"
+    },
+    "ISS-593": {
+      "id": "ISS-593",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:17:04+00:00",
+      "updated_at": "2026-09-22T07:17:04+00:00",
+      "touched_round": 420,
+      "severity": "low",
+      "title": "9 interactive button components never clear their error/copied-flash one-shot timers on unmount"
+    },
+    "TASK-515": {
+      "id": "TASK-515",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:17:04+00:00",
+      "updated_at": "2026-09-22T07:17:04+00:00",
+      "touched_round": 420,
+      "category": "stability",
+      "severity": "low",
+      "title": "Add onUnmounted timer cleanup across follow/subscribe/bookmark/share buttons"
+    },
+    "CHG-770": {
+      "id": "CHG-770",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T07:17:04+00:00",
+      "updated_at": "2026-09-22T07:17:04+00:00",
+      "touched_round": 420,
+      "commit": "a73aa212"
     }
   },
   "edges": [
@@ -47404,6 +47437,30 @@
       "to": "TASK-514",
       "type": "implements",
       "created_at": "2026-09-22T06:59:33+00:00"
+    },
+    {
+      "from": "TASK-515",
+      "to": "ISS-593",
+      "type": "addresses",
+      "created_at": "2026-09-22T07:17:04+00:00"
+    },
+    {
+      "from": "ISS-593",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T07:17:04+00:00"
+    },
+    {
+      "from": "CHG-770",
+      "to": "ISS-593",
+      "type": "resolves",
+      "created_at": "2026-09-22T07:17:04+00:00"
+    },
+    {
+      "from": "CHG-770",
+      "to": "TASK-515",
+      "type": "implements",
+      "created_at": "2026-09-22T07:17:04+00:00"
     }
   ]
 }
