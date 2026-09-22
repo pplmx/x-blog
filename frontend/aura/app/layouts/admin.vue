@@ -124,6 +124,8 @@ const passwordForm = ref({ current_password: "", new_password: "", confirm: "" }
 const passwordError = ref<string | null>(null);
 const passwordSuccess = ref(false);
 const passwordBusy = ref(false);
+// The 1.5s success auto-close, tracked so unmount cancels it (round-420 sweep).
+let passwordFlashTimer: ReturnType<typeof setTimeout> | undefined;
 const passwordCurrentInput = ref<HTMLInputElement | null>(null);
 const passwordPanelRef = ref<HTMLElement | null>(null);
 /** Element to return focus to when the modal closes (the opening trigger). */
@@ -220,7 +222,13 @@ async function handleChangePassword() {
 		}
 		passwordSuccess.value = true;
 		passwordForm.value = { current_password: "", new_password: "", confirm: "" };
-		setTimeout(() => {
+		// Tracked + cleared on unmount (round-420 sweep, same class as every
+		// other flash one-shot): the layout is long-lived so the window is
+		// small, but a captured timer firing after teardown (or a second change
+		// within 1.5s) should not double-close the modal.
+		if (passwordFlashTimer) clearTimeout(passwordFlashTimer);
+		passwordFlashTimer = setTimeout(() => {
+			passwordFlashTimer = undefined;
 			closePasswordModal();
 		}, 1500);
 	} catch (err) {
@@ -274,6 +282,9 @@ const navItems = computed(() => {
 		items.push({ href: "/admin/users", labelKey: "admin.nav.users", icon: "lucide:users" });
 	}
 	return items;
+});
+onBeforeUnmount(() => {
+	if (passwordFlashTimer) clearTimeout(passwordFlashTimer);
 });
 </script>
 
