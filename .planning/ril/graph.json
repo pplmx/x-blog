@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 418,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T02:16:34+00:00",
+  "updated_at": "2026-09-22T03:32:17+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 417,
+      "touched_round": 418,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31406,6 +31406,108 @@
       "touched_round": 418,
       "severity": "low",
       "title": "Lint hygiene: template-only import flagged by biome in discussion feed"
+    },
+    "ISS-580": {
+      "id": "ISS-580",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T02:59:37+00:00",
+      "updated_at": "2026-09-22T02:59:38+00:00",
+      "touched_round": 418,
+      "severity": "medium",
+      "title": "Notifications: page-2 loadMore can overwrite unread with a stale pre-mutation server snapshot after mark-read/all/delete",
+      "description": "Local mutation resolves first (badge drops), then the in-flight loadMore writes its older unread back (+1) until next poll — same class the badge composable's refreshEpoch guards."
+    },
+    "TASK-505": {
+      "id": "TASK-505",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T02:59:37+00:00",
+      "updated_at": "2026-09-22T02:59:38+00:00",
+      "touched_round": 418,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Guard loadMore's unread write against concurrent local read/delete mutations"
+    },
+    "CHG-763": {
+      "id": "CHG-763",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T02:59:38+00:00",
+      "updated_at": "2026-09-22T02:59:38+00:00",
+      "touched_round": 418,
+      "commit": "b71b1db2"
+    },
+    "ISS-581": {
+      "id": "ISS-581",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:32:15+00:00",
+      "updated_at": "2026-09-22T03:32:17+00:00",
+      "touched_round": 418,
+      "severity": "low",
+      "title": "Admin media pager: no in-flight guard — rapid double-click on Next can advance two pages",
+      "description": "goToPage has no pending check and buttons only disable on boundaries; useFetch's pending flag paints next render. Modal sibling guards it."
+    },
+    "ISS-582": {
+      "id": "ISS-582",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:32:15+00:00",
+      "updated_at": "2026-09-22T03:32:17+00:00",
+      "touched_round": 418,
+      "severity": "low",
+      "title": "Admin media: search debounce + copyUrl timeouts never cleared on unmount — debounce fires on dead instance after SPA nav"
+    },
+    "ISS-583": {
+      "id": "ISS-583",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:32:15+00:00",
+      "updated_at": "2026-09-22T03:32:17+00:00",
+      "touched_round": 418,
+      "severity": "low",
+      "title": "MediaPickerModal: remembered currentPage across opens — reopen after library shrink requests an out-of-range page"
+    },
+    "TASK-506": {
+      "id": "TASK-506",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:32:15+00:00",
+      "updated_at": "2026-09-22T03:32:16+00:00",
+      "touched_round": 418,
+      "category": "stability",
+      "severity": "low",
+      "title": "Media pager pending guard + button disable (parity with picker)"
+    },
+    "TASK-507": {
+      "id": "TASK-507",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:32:15+00:00",
+      "updated_at": "2026-09-22T03:32:16+00:00",
+      "touched_round": 418,
+      "category": "stability",
+      "severity": "low",
+      "title": "Media timer cleanup on unmount + picker page-reset on open"
+    },
+    "CHG-764": {
+      "id": "CHG-764",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T03:32:16+00:00",
+      "updated_at": "2026-09-22T03:32:16+00:00",
+      "touched_round": 418,
+      "commit": "d0b5300c"
     }
   },
   "edges": [
@@ -46802,6 +46904,84 @@
       "to": "ISS-579",
       "type": "resolves",
       "created_at": "2026-09-22T02:16:16+00:00"
+    },
+    {
+      "from": "TASK-505",
+      "to": "ISS-580",
+      "type": "addresses",
+      "created_at": "2026-09-22T02:59:38+00:00"
+    },
+    {
+      "from": "ISS-580",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T02:59:38+00:00"
+    },
+    {
+      "from": "CHG-763",
+      "to": "ISS-580",
+      "type": "resolves",
+      "created_at": "2026-09-22T02:59:38+00:00"
+    },
+    {
+      "from": "CHG-763",
+      "to": "TASK-505",
+      "type": "implements",
+      "created_at": "2026-09-22T02:59:38+00:00"
+    },
+    {
+      "from": "TASK-506",
+      "to": "ISS-581",
+      "type": "addresses",
+      "created_at": "2026-09-22T03:32:15+00:00"
+    },
+    {
+      "from": "TASK-507",
+      "to": "ISS-582",
+      "type": "addresses",
+      "created_at": "2026-09-22T03:32:15+00:00"
+    },
+    {
+      "from": "TASK-507",
+      "to": "ISS-583",
+      "type": "addresses",
+      "created_at": "2026-09-22T03:32:15+00:00"
+    },
+    {
+      "from": "ISS-581",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T03:32:15+00:00"
+    },
+    {
+      "from": "ISS-582",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T03:32:16+00:00"
+    },
+    {
+      "from": "ISS-583",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T03:32:16+00:00"
+    },
+    {
+      "from": "CHG-764",
+      "to": "ISS-581",
+      "type": "resolves",
+      "created_at": "2026-09-22T03:32:16+00:00"
+    },
+    {
+      "from": "CHG-764",
+      "to": "ISS-582",
+      "type": "resolves",
+      "created_at": "2026-09-22T03:32:16+00:00"
+    },
+    {
+      "from": "CHG-764",
+      "to": "ISS-583",
+      "type": "resolves",
+      "created_at": "2026-09-22T03:32:16+00:00"
     }
   ]
 }
