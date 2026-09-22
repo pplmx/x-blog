@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 419,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T03:42:27+00:00",
+  "updated_at": "2026-09-22T03:57:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 418,
+      "touched_round": 419,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31508,6 +31508,40 @@
       "updated_at": "2026-09-22T03:32:16+00:00",
       "touched_round": 418,
       "commit": "d0b5300c"
+    },
+    "ISS-584": {
+      "id": "ISS-584",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:57:17+00:00",
+      "updated_at": "2026-09-22T03:57:18+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "HeaderSearch debounce + blur one-shot timers never cleared on unmount",
+      "description": "Same timer-leak class as ISS-582; long-lived header so window is small, but layout swap mid-debounce fires on a dead instance."
+    },
+    "TASK-508": {
+      "id": "TASK-508",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T03:57:17+00:00",
+      "updated_at": "2026-09-22T03:57:18+00:00",
+      "touched_round": 419,
+      "category": "stability",
+      "severity": "low",
+      "title": "Clear HeaderSearch timers on unmount"
+    },
+    "CHG-765": {
+      "id": "CHG-765",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T03:57:18+00:00",
+      "updated_at": "2026-09-22T03:57:18+00:00",
+      "touched_round": 419,
+      "commit": "f043074e"
     }
   },
   "edges": [
@@ -46982,6 +47016,30 @@
       "to": "ISS-583",
       "type": "resolves",
       "created_at": "2026-09-22T03:32:16+00:00"
+    },
+    {
+      "from": "TASK-508",
+      "to": "ISS-584",
+      "type": "addresses",
+      "created_at": "2026-09-22T03:57:17+00:00"
+    },
+    {
+      "from": "ISS-584",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T03:57:18+00:00"
+    },
+    {
+      "from": "CHG-765",
+      "to": "ISS-584",
+      "type": "resolves",
+      "created_at": "2026-09-22T03:57:18+00:00"
+    },
+    {
+      "from": "CHG-765",
+      "to": "TASK-508",
+      "type": "implements",
+      "created_at": "2026-09-22T03:57:18+00:00"
     }
   ]
 }
