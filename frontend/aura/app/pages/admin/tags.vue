@@ -133,6 +133,7 @@ async function handleDelete(id: number) {
           v-model="newTagName"
           type="text"
           :placeholder="t('admin.tags.namePlaceholder')"
+          :aria-label="t('admin.tags.namePlaceholder')"
           class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
         <button

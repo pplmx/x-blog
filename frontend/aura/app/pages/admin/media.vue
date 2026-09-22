@@ -226,6 +226,7 @@ function goToPage(page: number) {
           v-model="searchInput"
           type="search"
           :placeholder="t('admin.media.searchPlaceholder')"
+          :aria-label="t('admin.media.searchPlaceholder')"
           class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           @input="onSearchInput"
         >

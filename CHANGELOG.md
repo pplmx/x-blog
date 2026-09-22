@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Admin dashboard: the Pending-comments card's header now shows the real
+  backlog, not a capped slice (round 424, audit finding)** — the quick card's
+  header counted `pendingComments.length`, the length of the newest pending
+  5-row slice fetched at load, so a blog with more than 5 pending comments
+  showed "N pending" where N was stuck at ≤5 while the stat card beside it said
+  the true total — two contradicting moderation signals on one dashboard. The
+  header now uses the authoritative `pending_count` (the same number the stat
+  card uses and adjusts on approve/reject), with the 5-row slice reserved for
+  the list body. (TASK-525, ISS-603)
+- ♿ **Admin a11y labels (round 424, audit)**: the media library's search box
+  and the tags/categories create-name fields now carry aria-labels (they were
+  placeholder-only), and the comment-moderator's author-reply textarea gains an
+  accessible name plus keyboard/screen-reader focus moves into it the moment
+  the reply box opens (no more Tab-ing through the row's controls to reach the
+  new editing surface). (TASK-526/527, ISS-604/605)
 - 🐛 **Bookmarks: every recently-removed bookmark stays independently undoable
   (round 423, audit finding)** — the row-removal Undo used a single slot: removing
   bookmark A then bookmark B within the 6s window overwrote A's undo target, and

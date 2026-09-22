@@ -1069,8 +1069,8 @@ const stats = computed(() => [
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Icon icon="lucide:message-square" class="w-5 h-5 text-red-500" />
           {{ t("admin.dashboard.pendingComments.title") }}
-          <span v-if="pendingComments.length > 0" class="ml-auto text-sm font-normal text-gray-500">
-            {{ t("admin.dashboard.pendingComments.count", { n: pendingComments.length }) }}
+          <span v-if="pendingCommentsCount > 0" class="ml-auto text-sm font-normal text-gray-500">
+            {{ t("admin.dashboard.pendingComments.count", { n: pendingCommentsCount }) }}
           </span>
         </h3>
         <div

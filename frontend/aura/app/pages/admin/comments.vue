@@ -335,6 +335,10 @@ async function handleApprove(id: number, approved: boolean) {
 const replyOpenId = ref<number | null>(null);
 const replyText = ref("");
 const replySending = ref(false);
+// Template ref for the inline author-reply box: move keyboard + screen-reader
+// focus into the textarea when it opens so the operator doesn't have to Tab
+// through the row's controls to reach the new editing surface (a11y audit).
+const replyTextareaRef = ref<HTMLTextAreaElement | null>(null);
 
 function openReply(id: number) {
 	// One inline box at a time: don't silently drop the draft already being
@@ -349,6 +353,20 @@ function openReply(id: number) {
 	}
 	replyOpenId.value = id;
 	replyText.value = "";
+	// Focus the box once it renders so keyboard/SR operators land in the new
+	// editing surface. Guarded: some test stubs / environments lack a focus
+	// method, and focus() itself can throw in happy-dom — never break the
+	// click that opened the box over an a11y nicety.
+	nextTick(() => {
+		const el = replyTextareaRef.value;
+		if (el && typeof el.focus === "function") {
+			try {
+				el.focus();
+			} catch {
+				// best effort — focus failing must not interrupt opening
+			}
+		}
+	});
 }
 
 function closeReply() {
@@ -640,9 +658,11 @@ async function submitReply(id: number) {
                  blog owner, then reloads the queue to show the created reply. -->
             <div v-if="replyOpenId === comment.id" class="mb-2">
               <textarea
+                ref="replyTextareaRef"
                 v-model="replyText"
                 rows="2"
                 :placeholder="t('admin.comments.replyPlaceholder')"
+                :aria-label="t('admin.comments.replyPlaceholder')"
                 class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 @keydown.esc="closeReply"
               ></textarea>

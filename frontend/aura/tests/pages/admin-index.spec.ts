@@ -100,4 +100,44 @@ describe("Admin Dashboard Page", () => {
 		expect(wrapper.text()).toContain("OldReader");
 		expect(wrapper.text()).toContain("A pending comment an old page would never have shown");
 	});
+
+	it("header count shows the authoritative pending count, not the capped 5-row slice (round-424 audit)", async () => {
+		// The quick card's header used pendingComments.length — the length of the
+		// pending slice fetched with limit 5 — so a blog with more than 5 pending
+		// comments showed "N pending" where N was capped by the slice, while the
+		// stat card beside it showed the real total: two contradicting moderation
+		// signals on one dashboard. The header must use the authoritative
+		// pending_count (which the stat card already uses), with the 5-row slice
+		// reserved for the list body.
+		const api = (url: string, o: Record<string, unknown> = {}) => {
+			if (url.endsWith("/api/admin/comments")) {
+				commentsQuery = o.query;
+				return {
+					// Only 2 rows are within the newest pending slice…
+					items: [pendingComment, { ...pendingComment, id: 100, nickname: "SecondPending" }],
+					pagination: { total: 7, page: 1, limit: 5, total_pages: 2 },
+				};
+			}
+			// …but the stats endpoint says 7 are pending overall.
+			if (url.includes("/api/admin/stats/comments")) {
+				return { days: 30, total: 0, series: [], top_posts: [], pending_count: 7 };
+			}
+			return apiStub(url, o);
+		};
+		fetchMock.mockImplementation(api);
+		vi.stubGlobal("$fetch", fetchMock);
+
+		const { default: AdminIndex } = await import("@/pages/admin/index.vue");
+		const wrapper = mount(AdminIndex, {
+			global: { stubs: { NuxtLink: { template: "<a><slot/></a>" } } },
+		});
+		await flushPromises();
+
+		// Header reflects the authoritative 7 ("7 条待审核"), NOT the 2-row slice
+		// the old `pendingComments.length` would have rendered.
+		expect(wrapper.text()).toContain("7 条待审核");
+		// And the self-consistency: the header count (7) exceeds the rows shown (2).
+		expect(wrapper.text()).toContain("SecondPending");
+		expect(wrapper.text()).toContain("OldReader");
+	});
 });
