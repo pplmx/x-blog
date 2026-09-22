@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 422,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T08:10:58+00:00",
+  "updated_at": "2026-09-22T09:27:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 421,
+      "touched_round": 422,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31843,6 +31843,75 @@
       "updated_at": "2026-09-22T07:53:13+00:00",
       "touched_round": 421,
       "commit": "2b263f84"
+    },
+    "ISS-596": {
+      "id": "ISS-596",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T09:24:52+00:00",
+      "updated_at": "2026-09-22T09:24:52+00:00",
+      "touched_round": 422,
+      "description": "resume-reading restore() has no stale-response guard: an in-flight GET for the OLD post can resolve after an SPA post switch (reset() only cancels started applyScrolls, not the fetch window), scrolling the NEW post to a wrong offset and lighting a lying resume chip; also A->B->A navigations defeat an id-only check (round-422 frontend audit, HIGH).",
+      "severity": "high"
+    },
+    "ISS-597": {
+      "id": "ISS-597",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T09:25:16+00:00",
+      "updated_at": "2026-09-22T09:25:16+00:00",
+      "touched_round": 422,
+      "description": "reader-profile discovery-tab fetchers loadLikes()/loadSaved() lack the monotonic seq guard load() has (ISS-572): a fast page-click fires a second tab request while the first is in flight (both pass their own load() seq), and the last-resolver writes likedPosts/likedPagination with no check - page N can paint under page N+1's pagination (round-422 frontend audit, MEDIUM).",
+      "severity": "medium"
+    },
+    "ISS-598": {
+      "id": "ISS-598",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T09:25:44+00:00",
+      "updated_at": "2026-09-22T09:25:44+00:00",
+      "touched_round": 422,
+      "description": "post page likeErrorTimer armed in the like catch (index.vue:220) is not cleared in onUnmounted, violating the repo's every-timer-on-unmount pattern (ISS-564): a leaked 5s timer only nulls a detached ref but the hygiene rule is uniform (round-422 frontend audit, LOW).",
+      "severity": "low"
+    },
+    "TASK-518": {
+      "id": "TASK-518",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-22T09:26:07+00:00",
+      "updated_at": "2026-09-22T09:27:23+00:00",
+      "touched_round": 422,
+      "category": "correctness",
+      "severity": "high",
+      "priority_score": 7.2
+    },
+    "TASK-519": {
+      "id": "TASK-519",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-22T09:26:07+00:00",
+      "updated_at": "2026-09-22T09:27:23+00:00",
+      "touched_round": 422,
+      "category": "correctness",
+      "severity": "medium",
+      "priority_score": 5.1
+    },
+    "TASK-520": {
+      "id": "TASK-520",
+      "type": "task",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-22T09:26:07+00:00",
+      "updated_at": "2026-09-22T09:27:23+00:00",
+      "touched_round": 422,
+      "category": "maintainability",
+      "severity": "low",
+      "priority_score": 2.4
     }
   },
   "edges": [
@@ -47575,6 +47644,42 @@
       "to": "TASK-517",
       "type": "implements",
       "created_at": "2026-09-22T07:53:13+00:00"
+    },
+    {
+      "from": "TASK-518",
+      "to": "ISS-596",
+      "type": "addresses",
+      "created_at": "2026-09-22T09:27:24+00:00"
+    },
+    {
+      "from": "TASK-519",
+      "to": "ISS-597",
+      "type": "addresses",
+      "created_at": "2026-09-22T09:27:24+00:00"
+    },
+    {
+      "from": "TASK-520",
+      "to": "ISS-598",
+      "type": "addresses",
+      "created_at": "2026-09-22T09:27:24+00:00"
+    },
+    {
+      "from": "ISS-596",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T09:27:24+00:00"
+    },
+    {
+      "from": "ISS-597",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T09:27:24+00:00"
+    },
+    {
+      "from": "ISS-598",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T09:27:24+00:00"
     }
   ]
 }

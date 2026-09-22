@@ -29,6 +29,10 @@ let mockLikesPayload: unknown = null;
 let mockLikesReject: unknown = null;
 let mockSavedPayload: unknown = null;
 let mockSavedReject: unknown = null;
+// Round-422: manual-release handle for getReaderPublicLikes so a test can hold
+// one tab response open while a newer page lands, then release the stale one
+// (the tab-fetcher twin of the profile mock's `defer`).
+let mockLikesDefer: ((release: (value: unknown) => void) => void) | null = null;
 let mockReaderId = "5";
 let mockQuery: Record<string, string> = {};
 // TASK-478 / ISS-554: records the page arg each getReaderProfile call received
@@ -57,6 +61,13 @@ vi.mock("~~/api/public/readers", () => ({
 	},
 	getReaderPublicLikes: async () => {
 		if (mockLikesReject) throw mockLikesReject;
+		if (mockLikesDefer) {
+			// Hold THIS response open until the test releases it; every later
+			// call falls back to the static payload (round-422 tab-race test).
+			const defer = mockLikesDefer;
+			mockLikesDefer = null;
+			return new Promise<unknown>((release) => defer(release));
+		}
 		return mockLikesPayload;
 	},
 	getReaderPublicBookmarks: async () => {
@@ -175,6 +186,7 @@ beforeEach(() => {
 	mockReject = null;
 	mockLikesPayload = null;
 	mockLikesReject = null;
+	mockLikesDefer = null;
 	mockSavedPayload = null;
 	mockSavedReject = null;
 	mockReaderId = "5";
@@ -377,6 +389,56 @@ describe("Reader profile page", () => {
 		// The newer profile is still intact (tab still offered, comment count
 		// list still the liker payload's).
 		expect(wrapper.text()).toContain("readerProfile.likesTab");
+	});
+
+	it("a stale likes-tab response cannot overwrite a newer page (round 422)", async () => {
+		// load() is seq-guarded (ISS-572), but the discovery-tab fetchers were
+		// not: a fast page-click on the Likes tab fires a second loadLikes()
+		// while the first is still in flight (both profiles resolve, so each
+		// passes its own load()'s seq check), and the last-resolver wrote the
+		// grid with no guard — page N could arrive LAST and paint under page
+		// N+1's pagination. Round-422 audit: the tab fetchers got their own
+		// monotonic generation; this proves a stale older page is dropped.
+		mockPayload = sampleLikerPage;
+		mockLikesPayload = sampleLikes;
+		mockQuery = { view: "likes" };
+
+		// Directly drive the fetchers through a reactive query so a page change
+		// re-runs load() → loadLikes() exactly as the UI would.
+		const { wrapper, setQuery } = await mountPageReactiveQuery({ view: "likes" });
+		// First likes page rendered.
+		expect(wrapper.text()).toContain("Loved post");
+
+		// Page 2's likes request HANGS (deferred) — the "older, slower" one.
+		let releaseStaleLikes!: (value: unknown) => void;
+		mockLikesDefer = (release) => {
+			releaseStaleLikes = release;
+		};
+		setQuery({ view: "likes", page: "2" });
+		await flushPromises();
+
+		// Page 3 resolves FIRST with a distinct marker. The newer data must win
+		// even though the older page-2 request is still pending.
+		mockLikesPayload = {
+			...sampleLikes,
+			items: [{ ...sampleLikes.items[0], title: "Newest liked post", id: 31 }],
+		};
+		setQuery({ view: "likes", page: "3" });
+		await flushPromises();
+		expect(wrapper.text()).toContain("Newest liked post");
+		expect(wrapper.text()).not.toContain("Loved post");
+
+		// The stale page-2 response finally lands — it must be discarded, never
+		// replacing the newer page with its marker.
+		releaseStaleLikes({
+			...sampleLikes,
+			items: [{ ...sampleLikes.items[0], title: "Stale liked post", id: 30 }],
+		});
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("Stale liked post");
+		expect(wrapper.text()).toContain("Newest liked post");
+
+		wrapper.unmount();
 	});
 
 	it("drops the page param when an empty profile is deep-linked out of range", async () => {

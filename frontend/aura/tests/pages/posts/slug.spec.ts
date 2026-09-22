@@ -883,6 +883,118 @@ describe("Post Detail Page", () => {
 			wrapper.unmount();
 		});
 
+		it("clears the like-failure auto-dismiss timer on unmount (round 422)", async () => {
+			// round-422 audit (LOW): likeErrorTimer was armed in the like catch
+			// but never cleared on unmount — the repo's every-timer-on-unmount
+			// pattern (ISS-564) applies to it too. A leaked timer only nulls a
+			// detached ref, but the hygiene rule is uniform. Prove it by arming
+			// the timer, unmounting before it fires, and asserting the exact
+			// 5s handle is clearTimeout'd during teardown.
+			vi.useFakeTimers();
+			vi.stubGlobal("useRuntimeConfig", () => ({
+				public: { apiUrl: "http://localhost:18888" },
+			}));
+			vi.stubGlobal("useHead", vi.fn());
+			vi.stubGlobal("useRoute", () => ({
+				params: { slug: "test-article-post" },
+				query: {},
+			}));
+			vi.stubGlobal("navigateTo", vi.fn());
+			vi.stubGlobal(
+				"useFetch",
+				vi.fn((url: string) => {
+					if (typeof url === "function") url = url();
+					return {
+						data: ref(mockPost),
+						pending: ref(false),
+						error: ref(null),
+						refresh: vi.fn(),
+					};
+				}),
+			);
+			// The TOC observer setup defers its heading scan; without a stub a
+			// pending 500ms timer would fire during this test's manual advance.
+			// Stub IntersectionObserver so setupTocObserver has nothing to arm
+			// (a class, because `new IntersectionObserver` requires a
+			// constructible global — matching the file's FakeIO pattern).
+			class NoopIntersectionObserver {
+				observe() {}
+				disconnect() {}
+				unobserve() {}
+				takeRecords() {
+					return [];
+				}
+			}
+			vi.stubGlobal("IntersectionObserver", NoopIntersectionObserver);
+			vi.stubGlobal(
+				"$fetch",
+				vi.fn((url: string) => {
+					if (String(url).includes("/like")) {
+						return Promise.reject(new Error("Network error"));
+					}
+					return Promise.resolve(mockPost);
+				}),
+			);
+
+			const { default: PostPage } = await import("@/pages/posts/[slug]/index.vue");
+			const SuspenseWrapper: any = {
+				components: { PostPage },
+				template:
+					"<Suspense>" +
+					"<template #default><PostPage /></template>" +
+					"<template #fallback>Loading...</template>" +
+					"</Suspense>",
+			};
+			const wrapper = mount(SuspenseWrapper, {
+				global: {
+					stubs: {
+						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },
+						Icon: {
+							template: '<svg class="iconstub" :data-icon="icon"></svg>',
+							props: ["icon"],
+						},
+						MarkdownContent: {
+							template: '<div class="markdown-content"><div v-html="content"></div></div>',
+							props: ["content"],
+						},
+					},
+				},
+			});
+			await flushPromises();
+
+			try {
+				// Track what the page's own setTimeout calls create so we can
+				// name the exact like-error handle when the like fails below.
+				const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+				const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+
+				// Fail a like so the 5s auto-dismiss timer is armed.
+				await wrapper.find('button[type="button"]').trigger("click");
+				await flushPromises();
+				expect(wrapper.text()).toContain("点赞失败，请稍后重试。");
+
+				// The like-error timer is the auto-dismiss armed from the like
+				// catch: the setTimeout whose delay is 5000ms (likeErrorTimer).
+				const likeErrorHandle = setTimeoutSpy.mock.results.find(
+					(r) =>
+						r.value !== undefined &&
+						setTimeoutSpy.mock.calls[setTimeoutSpy.mock.results.indexOf(r)][1] === 5000,
+				)?.value;
+				expect(likeErrorHandle).toBeDefined();
+
+				// Tear the page down BEFORE the timer fires.
+				clearTimeoutSpy.mockClear();
+				wrapper.unmount();
+				// With the round-422 fix, unmount clears the like-failure timer
+				// handle (through clearLikeError()). A leaked timer would NOT be
+				// in this list — clearTimeout for the 5s handle is the proof.
+				const clearedHandles = clearTimeoutSpy.mock.calls.map((c) => c[0]);
+				expect(clearedHandles).toContain(likeErrorHandle);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it("updates the rendered like count after a successful like", async () => {
 			// Stub $fetch so the POST /like returns a post with an incremented
 			// like count — the UI must reflect the new value (regression guard for

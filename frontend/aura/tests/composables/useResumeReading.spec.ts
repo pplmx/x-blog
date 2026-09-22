@@ -380,6 +380,103 @@ describe("useResumeReading (TASK-200)", () => {
 		wrapper.unmount();
 	});
 
+	it("drops a restore that resolves after reset() — an SPA post switch mid-fetch", async () => {
+		// The post page's postId watcher calls reset() the moment the reader
+		// navigates to another post. A restore that was still awaiting its GET
+		// when that reset ran must NOT resolve later and scroll the NEW post —
+		// the old post's saved offset would be re-interpreted against the new
+		// article's (different) scroll height and teleport the reader down the
+		// wrong article. (RIL round-422 frontend audit, HIGH)
+		authRef.value = true;
+		// Capture the deferred fetch so restore() stays in flight across "navigation".
+		let resolvePosition!: (v: unknown) => void;
+		fetchPosition.mockImplementationOnce(
+			() =>
+				new Promise((r) => {
+					resolvePosition = r;
+				}),
+		);
+		const postIdRef = ref(7);
+		const Wrapper = defineComponent({
+			setup() {
+				return { api: useResumeReading(() => postIdRef.value) };
+			},
+			render: () => h("div"),
+		});
+		const wrapper = mount(Wrapper);
+		const api = (wrapper.vm as unknown as { api: ReturnType<typeof useResumeReading> }).api;
+
+		const restorePromise = api.restore(); // in flight for post 7
+		await flushPromises();
+		expect(fetchPosition).toHaveBeenCalledWith(7);
+
+		// Reader navigates to post 8 while the fetch is still pending.
+		postIdRef.value = 8;
+		api.reset();
+
+		// The OLD post's position finally lands — it must be discarded.
+		resolvePosition({ post_id: 7, scroll_position: 1200 });
+		await flushPromises();
+
+		expect(await restorePromise).toBeNull();
+		expect(window.scrollTo).not.toHaveBeenCalled();
+		expect(api.restoredPosition.value).toBeNull();
+
+		wrapper.unmount();
+	});
+
+	it("drops a stale restore even after an A→B→A round-trip back to the same post", async () => {
+		// The nastier window: reader hops 7 → 8 → 7 so fast that the FIRST
+		// restore for 7 is still in flight when they land back on 7. An id-based
+		// guard ("id !== activePostId()") would pass here — the reader IS back on
+		// 7 — and let the stale position apply. Only a monotonic generation that
+		// reset() advances (and each newer restore supersedes) closes it.
+		authRef.value = true;
+		let resolveOriginal!: (v: unknown) => void;
+		fetchPosition.mockImplementationOnce(
+			() =>
+				new Promise((r) => {
+					resolveOriginal = r;
+				}),
+		);
+		const postIdRef = ref(7);
+		const Wrapper = defineComponent({
+			setup() {
+				return { api: useResumeReading(() => postIdRef.value) };
+			},
+			render: () => h("div"),
+		});
+		const wrapper = mount(Wrapper);
+		const api = (wrapper.vm as unknown as { api: ReturnType<typeof useResumeReading> }).api;
+
+		const originalRestore = api.restore(); // post 7, hung
+		await flushPromises();
+
+		// 7 → 8: reset + a restore for 8 that resolves immediately (nothing saved).
+		postIdRef.value = 8;
+		api.reset();
+		fetchPosition.mockResolvedValueOnce({ post_id: 8, scroll_position: null });
+		expect(await api.restore()).toBeNull();
+
+		// 8 → 7: reset + a NEW restore for 7, also empty.
+		postIdRef.value = 7;
+		api.reset();
+		fetchPosition.mockResolvedValueOnce({ post_id: 7, scroll_position: null });
+		expect(await api.restore()).toBeNull();
+		expect(api.restoredPosition.value).toBeNull();
+
+		// The ORIGINAL post-7 fetch finally arrives with a real saved position.
+		// It belongs to the pre-hop session and must not apply now.
+		resolveOriginal({ post_id: 7, scroll_position: 2000 });
+		await flushPromises();
+
+		expect(window.scrollTo).not.toHaveBeenCalled();
+		expect(api.restoredPosition.value).toBeNull();
+		expect(await originalRestore).toBeNull();
+
+		wrapper.unmount();
+	});
+
 	it("cancelRestore clears any pending auto-scroll re-applies", async () => {
 		authRef.value = true;
 		fetchPosition.mockResolvedValue({ post_id: 7, scroll_position: 1200 });
