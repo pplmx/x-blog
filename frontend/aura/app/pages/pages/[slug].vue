@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePage } from "~~/api/public/pages";
-import { parseApiDate } from "~~/composables/apiDate";
+import { formatPostDate } from "~~/composables/apiDate";
 import { useSeo } from "~~/composables/useSeo";
 
 const { t, locale } = useLang();
@@ -28,15 +28,9 @@ function retry() {
 	void refreshPage();
 }
 
-// "Last updated" date for the public page (naive-UTC wire contract).
-const updatedLabel = computed(() =>
-	page.value?.updated_at
-		? (parseApiDate(page.value.updated_at)?.toLocaleDateString(
-				locale.value === "zh" ? "zh-CN" : "en-US",
-				{ year: "numeric", month: "long", day: "numeric" },
-			) ?? "")
-		: "",
-);
+// "Last updated" date for the public page (naive-UTC wire contract,
+// site-wide long form — same format as PostCard/article/bookmarks, ISS-573).
+const updatedLabel = computed(() => formatPostDate(page.value?.updated_at, locale.value));
 
 useSeo(() => ({
 	title: page.value?.title ?? t("pages.seoTitle"),
