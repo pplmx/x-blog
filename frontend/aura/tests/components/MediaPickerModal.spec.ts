@@ -192,6 +192,49 @@ describe("MediaPickerModal", () => {
 		expect(pageRefState.ref?.value).toBe(1);
 	});
 
+	it("resets to page 1 on every open (round 418 audit)", async () => {
+		// currentPage is a persistent ref: paging deep into the library, closing
+		// and reopening used to re-request the remembered page (which may no
+		// longer exist after the library shrank) instead of the first page.
+		// The open-watcher must reset the page ref so the reactive listing
+		// starts from the current first page.
+		const pageRefState = { ref: null as null | { value: number } };
+		listMock.mockImplementation((page: { value: number }) => {
+			pageRefState.ref = page;
+			return {
+				data: computed(() => ({
+					items: [{ ...image }],
+					pagination: { total: 3, page: page.value, limit: 60, total_pages: 3 },
+				})),
+				pending: ref(false),
+				error: ref(null),
+				refresh: vi.fn(() => Promise.resolve()),
+			};
+		});
+		const wrapper = mountPicker(true);
+		await vi.waitFor(() => {
+			expect(document.body.querySelectorAll("img").length).toBe(1);
+		});
+
+		// Page forward twice → page 3 (1-based request page).
+		const nextBtn = () =>
+			Array.from(document.body.querySelectorAll("button")).find((b) =>
+				b.textContent?.includes("components.mediaPicker.next"),
+			);
+		nextBtn()?.click();
+		await nextTick();
+		expect(pageRefState.ref?.value).toBe(2);
+		nextBtn()?.click();
+		await nextTick();
+		expect(pageRefState.ref?.value).toBe(3);
+
+		// Close and reopen — the remembered page must reset to 1.
+		await wrapper.setProps({ open: false });
+		await wrapper.setProps({ open: true });
+		await nextTick();
+		expect(pageRefState.ref?.value).toBe(1);
+	});
+
 	it("emits select with the image URL on click", async () => {
 		listMock.mockReturnValue(fakeQuery([image]));
 		const wrapper = mountPicker();

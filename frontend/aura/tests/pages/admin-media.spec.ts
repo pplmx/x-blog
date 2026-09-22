@@ -504,5 +504,39 @@ describe("Admin Media page", () => {
 			await next?.trigger("click");
 			expect(wrapper.text()).toContain("3 / 3");
 		});
+
+		it("single-flights the pager while a page fetch is in flight (round 418 audit)", async () => {
+			// The pending guard (goToPage early-returns + Next disabled) stops a
+			// rapid double-click from advancing two pages before useFetch's
+			// pending flag paints (it updates on the NEXT render). The admin
+			// page previously lacked the guard its media-picker sibling has.
+			listMock.mockReturnValue(
+				mockFetchResult(
+					{
+						items: [{ ...unreferenced }],
+						pagination: { total: 120, page: 1, limit: 60, total_pages: 3 },
+					},
+					{ pending: true },
+				),
+			);
+			const wrapper = await mountPage();
+			expect(wrapper.text()).toContain("1 / 3");
+
+			const next = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			const prev = wrapper.findAll("button").find((b) => b.text().trim() === "上一页");
+			expect(next).toBeDefined();
+			expect(prev).toBeDefined();
+
+			// Both pager buttons are disabled while the request is in flight.
+			expect(next?.attributes("disabled")).toBeDefined();
+			expect(prev?.attributes("disabled")).toBeDefined();
+
+			// Even if a click slipped through (happy-dom suppresses disabled
+			// buttons, so this exercises the handler guard directly), the page
+			// must not move while pending.
+			await next?.trigger("click");
+			await flushPromises();
+			expect(wrapper.text()).toContain("1 / 3");
+		});
 	});
 });

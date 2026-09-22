@@ -45,12 +45,25 @@ watch(
 	async (open) => {
 		if (open) {
 			previouslyFocused.value = document.activeElement as HTMLElement | null;
+			// Reset to page 1 on every open (round-418 audit): currentPage is a
+			// module-persistent ref, so a picker reopened after the library
+			// shrank (uploads/deletes between opens) used to re-fetch a
+			// remembered out-of-range page — the backend returns items:[] for
+			// it — and the modal showed the "没有媒体文件" empty state with an
+			// impossible "3 / 2" pager instead of the current first page.
+			// A change to currentPage re-runs the reactive listing path itself
+			// (useFetch watches the computed), so only call refresh() when it
+			// was already page 1 — otherwise the reset + refresh double-fetch.
+			if (currentPage.value !== 0) {
+				currentPage.value = 0;
+			} else {
+				refresh();
+			}
 			// flush:"post" + an extra tick: the teleport moves its nodes during
 			// its own render effect, so the panel may not be in the target
 			// container until the next flush. Focus lands after that.
 			await nextTick();
 			closeButtonRef.value?.focus({ preventScroll: true });
-			refresh();
 		} else if (previouslyFocused.value) {
 			previouslyFocused.value.focus({ preventScroll: true });
 			previouslyFocused.value = null;

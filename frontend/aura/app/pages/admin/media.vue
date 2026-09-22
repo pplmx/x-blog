@@ -43,7 +43,13 @@ const pageSize = 60;
 const searchInput = ref("");
 const searchQ = ref("");
 const q = computed(() => searchQ.value);
+// Debounce + copied-flash timers are tracked here so onUnmounted can clear them
+// (round-418 audit): a 300ms search debounce armed right before an SPA
+// navigation away would otherwise fire on the unmounted instance, mutate
+// searchQ/currentPage and issue a stray refetch. The copyUrl flashes are
+// one-shots but clearing them is free and avoids late setState warnings.
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+const copyTimers = new Set<ReturnType<typeof setTimeout>>();
 function onSearchInput() {
 	clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => {
@@ -56,6 +62,15 @@ const { data, pending, error, refresh } = await useAdminMedia(currentPage, pageS
 const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
+
+// Tear down the debounce + copied-flash timers with the page (round-418 audit):
+// an in-flight timer firing after SPA navigation mutates refs on a dead
+// instance and issues a stray request.
+onUnmounted(() => {
+	clearTimeout(searchTimer);
+	for (const timer of copyTimers) clearTimeout(timer);
+	copyTimers.clear();
+});
 
 // Per-PATH in-flight single-delete markers keyed by URL. Keeping them per row
 // (not one global `isDeleting` that disables the whole grid) means one card's
@@ -125,9 +140,11 @@ async function copyUrl(item: UploadFileInfo) {
 	try {
 		await navigator.clipboard.writeText(item.url);
 		copiedUrl.value = item.url;
-		setTimeout(() => {
+		const timer = setTimeout(() => {
+			copyTimers.delete(timer);
 			if (copiedUrl.value === item.url) copiedUrl.value = null;
 		}, 1500);
+		copyTimers.add(timer);
 	} catch {
 		// Clipboard API can be unavailable (non-secure context); fall back to
 		// selecting the URL in an input so the author can copy manually.
@@ -138,9 +155,11 @@ async function copyUrl(item: UploadFileInfo) {
 		document.execCommand("copy");
 		document.body.removeChild(fallback);
 		copiedUrl.value = item.url;
-		setTimeout(() => {
+		const timer = setTimeout(() => {
+			copyTimers.delete(timer);
 			if (copiedUrl.value === item.url) copiedUrl.value = null;
 		}, 1500);
+		copyTimers.add(timer);
 	}
 }
 
@@ -178,7 +197,12 @@ async function handleDelete(item: UploadFileInfo) {
 }
 
 function goToPage(page: number) {
-	if (page < 1 || page > totalPages.value) return;
+	// Re-entry guard during the in-flight refetch (round-418 audit): currentPage
+	// drives useAdminMedia's reactive path, but useFetch's pending flag updates
+	// on the NEXT render — a rapid double-click on Next could otherwise advance
+	// two pages before the button disabled (the grid flashing "Loading"
+	// between). Mirrors components/MediaPickerModal.goToPage.
+	if (pending.value || page < 1 || page > totalPages.value) return;
 	// Setting currentPage re-runs the computed listing path (useFetch watches
 	// it), so there's no manual refresh here — a click refetches automatically.
 	currentPage.value = page;
@@ -332,7 +356,7 @@ function goToPage(page: number) {
     <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
       <button
         type="button"
-        :disabled="currentPage === 1"
+        :disabled="pending || currentPage === 1"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
         @click="goToPage(currentPage - 1)"
       >
@@ -341,7 +365,7 @@ function goToPage(page: number) {
       <span class="text-sm text-gray-500 dark:text-gray-400">{{ currentPage }} / {{ totalPages }}</span>
       <button
         type="button"
-        :disabled="currentPage >= totalPages"
+        :disabled="pending || currentPage >= totalPages"
         class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
         @click="goToPage(currentPage + 1)"
       >
