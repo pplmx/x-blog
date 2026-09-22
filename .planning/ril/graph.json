@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 423,
+  "round": 424,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T09:34:27+00:00",
+  "updated_at": "2026-09-22T11:21:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31932,6 +31932,117 @@
       "updated_at": "2026-09-22T09:29:34+00:00",
       "touched_round": 422,
       "commit": "d0cd3261"
+    },
+    "ISS-599": {
+      "id": "ISS-599",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:42+00:00",
+      "updated_at": "2026-09-22T11:20:42+00:00",
+      "touched_round": 423,
+      "title": "Bookmarks row-removal Undo is a single slot: earlier removals unrecoverable",
+      "description": "A one-click removal clouds immediately, then keeps a single 6s undo slot. Removing A then B within the window overwrites the target; A cloud DELETE already went out so A is permanently gone.",
+      "severity": "high"
+    },
+    "ISS-600": {
+      "id": "ISS-600",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:42+00:00",
+      "updated_at": "2026-09-22T11:20:42+00:00",
+      "touched_round": 423,
+      "title": "Comment Write/Preview tablist aria-label hardcoded English",
+      "description": "The comment form tablist used static English aria-label while every other accessible name is localized via t().",
+      "severity": "low"
+    },
+    "ISS-601": {
+      "id": "ISS-601",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:42+00:00",
+      "updated_at": "2026-09-22T11:20:42+00:00",
+      "touched_round": 423,
+      "title": "Lightbox dialog accessible name is the Close button label",
+      "description": "MarkdownLightbox dialog reused lightboxClose for its aria-label.",
+      "severity": "low"
+    },
+    "ISS-602": {
+      "id": "ISS-602",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:42+00:00",
+      "updated_at": "2026-09-22T11:20:42+00:00",
+      "touched_round": 423,
+      "title": "Decorative avatar images use hardcoded English alt",
+      "description": "ReaderMenu and account page avatars used English alt literals in zh context; decorative, prefer alt=empty.",
+      "severity": "low"
+    },
+    "TASK-521": {
+      "id": "TASK-521",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:48+00:00",
+      "updated_at": "2026-09-22T11:20:48+00:00",
+      "touched_round": 423,
+      "title": "Bookmarks: make row-removal Undo a stack so earlier removals stay recoverable",
+      "category": "core-feature",
+      "severity": "high",
+      "confidence": 1
+    },
+    "TASK-522": {
+      "id": "TASK-522",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:48+00:00",
+      "updated_at": "2026-09-22T11:20:48+00:00",
+      "touched_round": 423,
+      "title": "Localize comment Write/Preview tablist aria-label",
+      "category": "dx",
+      "severity": "low",
+      "confidence": 1
+    },
+    "TASK-523": {
+      "id": "TASK-523",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:49+00:00",
+      "updated_at": "2026-09-22T11:20:49+00:00",
+      "touched_round": 423,
+      "title": "Give lightbox dialog a descriptive accessible name",
+      "category": "dx",
+      "severity": "low",
+      "confidence": 1
+    },
+    "TASK-524": {
+      "id": "TASK-524",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:49+00:00",
+      "updated_at": "2026-09-22T11:20:49+00:00",
+      "touched_round": 423,
+      "title": "Use empty alt for decorative avatars (ReaderMenu + account)",
+      "category": "dx",
+      "severity": "low",
+      "confidence": 1
+    },
+    "CHG-775": {
+      "id": "CHG-775",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T11:20:53+00:00",
+      "updated_at": "2026-09-22T11:20:53+00:00",
+      "touched_round": 423,
+      "commit": "29737a21",
+      "title": "Bookmarks multi-undo stack + reader a11y/i18n cleanups (TASK-521..524, ISS-599..602)"
     }
   },
   "edges": [
@@ -47754,6 +47865,78 @@
       "to": "TASK-520",
       "type": "implements",
       "created_at": "2026-09-22T09:30:52+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "ISS-599",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "ISS-600",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "ISS-601",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "ISS-602",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "TASK-521",
+      "type": "implements",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "TASK-522",
+      "type": "implements",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "TASK-523",
+      "type": "implements",
+      "created_at": "2026-09-22T11:20:59+00:00"
+    },
+    {
+      "from": "CHG-775",
+      "to": "TASK-524",
+      "type": "implements",
+      "created_at": "2026-09-22T11:21:00+00:00"
+    },
+    {
+      "from": "TASK-521",
+      "to": "ISS-599",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:21:00+00:00"
+    },
+    {
+      "from": "TASK-522",
+      "to": "ISS-600",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:21:00+00:00"
+    },
+    {
+      "from": "TASK-523",
+      "to": "ISS-601",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:21:00+00:00"
+    },
+    {
+      "from": "TASK-524",
+      "to": "ISS-602",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:21:00+00:00"
     }
   ]
 }
