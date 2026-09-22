@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 420,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T06:51:26+00:00",
+  "updated_at": "2026-09-22T06:59:33+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31710,6 +31710,40 @@
       "updated_at": "2026-09-22T06:51:25+00:00",
       "touched_round": 420,
       "commit": "24536b8d"
+    },
+    "ISS-592": {
+      "id": "ISS-592",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:59:32+00:00",
+      "updated_at": "2026-09-22T06:59:33+00:00",
+      "touched_round": 420,
+      "severity": "low",
+      "title": "MarkdownContent copy-flash one-shot timers never cleared on unmount",
+      "description": "2s copied/failed flash timers per key; leaked real timers can break later fake-timer tests too."
+    },
+    "TASK-514": {
+      "id": "TASK-514",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:59:32+00:00",
+      "updated_at": "2026-09-22T06:59:33+00:00",
+      "touched_round": 420,
+      "category": "stability",
+      "severity": "low",
+      "title": "Track + clear MarkdownContent copy timers"
+    },
+    "CHG-769": {
+      "id": "CHG-769",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T06:59:32+00:00",
+      "updated_at": "2026-09-22T06:59:32+00:00",
+      "touched_round": 420,
+      "commit": "d51eca3f"
     }
   },
   "edges": [
@@ -47346,6 +47380,30 @@
       "to": "TASK-513",
       "type": "implements",
       "created_at": "2026-09-22T06:51:26+00:00"
+    },
+    {
+      "from": "TASK-514",
+      "to": "ISS-592",
+      "type": "addresses",
+      "created_at": "2026-09-22T06:59:32+00:00"
+    },
+    {
+      "from": "ISS-592",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T06:59:32+00:00"
+    },
+    {
+      "from": "CHG-769",
+      "to": "ISS-592",
+      "type": "resolves",
+      "created_at": "2026-09-22T06:59:32+00:00"
+    },
+    {
+      "from": "CHG-769",
+      "to": "TASK-514",
+      "type": "implements",
+      "created_at": "2026-09-22T06:59:33+00:00"
     }
   ]
 }
