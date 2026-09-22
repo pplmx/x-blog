@@ -953,8 +953,9 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("Plain March");
 			expect(wrapper.text()).toContain("Scheduled Feb");
 			// Both dates appear; the scheduled one shows Feb, never January.
-			expect(wrapper.text()).toContain("2024/2/1");
-			expect(wrapper.text()).not.toContain("2024/1/5");
+			// Site-wide long format (round 417, ISS-573), same as the other feeds.
+			expect(wrapper.text()).toContain("2024年2月1日");
+			expect(wrapper.text()).not.toContain("2024年1月5日");
 		});
 
 		it("excludes future-scheduled posts from 'recently published'", async () => {

@@ -790,6 +790,10 @@ describe("Admin Post Editor Page", () => {
 			setupRoute("1"); // existing post — published=true shows the notify button
 			setupMocks();
 			mockNotifyPushSubscribers.mockResolvedValue({ total: 1, sent: 1, failed: 0, removed: 0 });
+			// restoreAllMocks (afterEach) doesn't zero a plain vi.fn's call
+			// history — without this the previous notify test's call leaks into
+			// the next test's toHaveBeenCalledTimes(1).
+			mockNotifyPushSubscribers.mockClear();
 		});
 
 		it("renders the notify button for a published post", async () => {
@@ -813,6 +817,37 @@ describe("Admin Post Editor Page", () => {
 			];
 			expect(payload.title).toBe("Existing Post");
 			expect(payload.url).toBe("/posts/existing-post");
+			expect(wrapper.text()).toContain("已通知订阅者");
+		});
+
+		it("single-flights a slow notify so a double-click cannot push twice", async () => {
+			// The dispatch is a broadcast to every subscriber; the in-flight guard
+			// must swallow a re-entrant click during the await (the button's
+			// :disabled only paints on the next render). Hold the push open and
+			// confirm a second tap is a no-op.
+			let releasePush!: (value: unknown) => void;
+			mockNotifyPushSubscribers.mockImplementation(
+				() =>
+					new Promise<unknown>((resolve) => {
+						releasePush = resolve;
+					}),
+			);
+			const PostEditor = await loadPage();
+			const wrapper = await mountWithSuspense(PostEditor);
+
+			const notifyBtn = () =>
+				wrapper.findAll("button").find((b) => b.text().includes("通知订阅者"));
+			await notifyBtn()?.trigger("click");
+			await flushPromises();
+			expect(mockNotifyPushSubscribers).toHaveBeenCalledTimes(1);
+
+			await notifyBtn()?.trigger("click");
+			await flushPromises();
+			expect(mockNotifyPushSubscribers).toHaveBeenCalledTimes(1);
+
+			releasePush(undefined);
+			await flushPromises();
+			expect(mockNotifyPushSubscribers).toHaveBeenCalledTimes(1);
 			expect(wrapper.text()).toContain("已通知订阅者");
 		});
 

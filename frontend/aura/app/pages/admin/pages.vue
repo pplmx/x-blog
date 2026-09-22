@@ -238,7 +238,17 @@ async function handleDelete(id: number) {
       {{ t("admin.pages.loading") }}
     </div>
     <div v-else-if="error" class="text-center py-12 text-gray-500">
-      {{ t("admin.pages.loadFailed") }}
+      <p role="alert">{{ t("admin.pages.loadFailed") }}</p>
+      <!-- A transient fetch failure must not be a dead end (sibling admin lists
+           all offer retry): the failed list is hidden, so this button is the
+           only way back to the content without a full reload. -->
+      <button
+        type="button"
+        class="mt-4 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        @click="() => refresh()"
+      >
+        {{ t("common.action.retry") }}
+      </button>
     </div>
     <div v-else-if="!pages?.length" class="text-center py-12 text-gray-500">
       {{ t("admin.pages.empty") }}

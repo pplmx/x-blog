@@ -600,6 +600,65 @@ describe("Admin Comments Page", () => {
 			);
 		});
 
+		it("pages by the APPLIED filter set, not a search term still in the box (round 417)", async () => {
+			// Typing a new term without pressing Enter used to leak into the next
+			// page's request: gotoPage read the live searchQuery, so Prev/Next
+			// silently switched to the NEW term's result set while the screen
+			// still showed the old one. Paging must traverse the committed set.
+			const page1 = {
+				items: mockComments,
+				pagination: { total: 40, page: 1, limit: 20, total_pages: 2 },
+			};
+			const page2 = {
+				items: [
+					{
+						id: 3,
+						post_id: 30,
+						post_title: "Page Two Post",
+						nickname: "Carol",
+						email: "carol@test.com",
+						content: "Comment from page two",
+						ip_address: "127.0.0.4",
+						is_approved: false,
+						created_at: "2024-03-12T10:00:00Z",
+					},
+				],
+				pagination: { total: 40, page: 2, limit: 20, total_pages: 2 },
+			};
+			mockFetchAdminComments.mockResolvedValueOnce(page1).mockResolvedValue(page2);
+			const CommentsPage = await loadPage();
+			const wrapper = await mountWithSuspense(CommentsPage);
+
+			// Type a search term but do NOT apply it (no Enter / 应用 click).
+			const searchInput = wrapper.find("#admin-comments-search");
+			await searchInput.setValue("unsubmitted-term");
+			await flushPromises();
+
+			const nextButton = wrapper.findAll("button").find((b) => b.text().trim() === "下一页");
+			expect(nextButton).toBeDefined();
+			await nextButton?.trigger("click");
+			await flushPromises();
+
+			// The unsubmitted term must NOT ride along on the paged request.
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: undefined, q: undefined, dateFrom: undefined, dateTo: undefined },
+				2,
+				20,
+			);
+			expect(wrapper.text()).toContain("第 2 / 2 页");
+
+			// Applying the term returns to page 1 under the new filter.
+			mockFetchAdminComments.mockClear();
+			await searchInput.setValue("submitted-term");
+			await searchInput.trigger("keydown.enter");
+			await flushPromises();
+			expect(mockFetchAdminComments).toHaveBeenLastCalledWith(
+				{ isApproved: undefined, q: "submitted-term", dateFrom: undefined, dateTo: undefined },
+				1,
+				20,
+			);
+		});
+
 		it("filters by pending status and clears filters back to all", async () => {
 			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			const CommentsPage = await loadPage();

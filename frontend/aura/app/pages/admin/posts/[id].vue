@@ -718,6 +718,10 @@ const isScheduledFuture = computed(() => {
  * pipeline first and only broadcast if the save actually landed (deep-dive).
  */
 async function handleNotify() {
+	// Single-flight: the flush below awaits autosave, and without a top-of-
+	// function guard a double-click in that window would run TWO broadcasts to
+	// every subscriber. The button's :disabled only paints on the next render.
+	if (isNotifying.value) return;
 	if (!formData.value.published) return;
 	notifyMessage.value = null;
 	// A published post without a slug can't be deep-linked; say so instead of

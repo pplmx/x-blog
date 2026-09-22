@@ -91,13 +91,22 @@ describe("Admin Pages Page", () => {
 
 	describe("Error state", () => {
 		it("renders the load-failed state instead of the empty state", async () => {
-			mockFetchAdminPages.mockReturnValue(
-				mockFetchResult(null, { error: { message: "Fetch error" } }),
-			);
+			// Stable state object so the page's `refresh` (reached via the retry
+			// button) is addressable after the AsyncData-like destructure.
+			const state = mockFetchResult(null, { error: { message: "Fetch error" } });
+			mockFetchAdminPages.mockReturnValue(state);
 			const Page = await loadPage();
 			const wrapper = await mountWithSuspense(Page);
 			expect(wrapper.text()).toContain("页面加载失败");
 			expect(wrapper.text()).not.toContain("还没有页面");
+			// A failed list must not be a dead end: the retry button re-runs the
+			// fetch (sibling admin lists contract, round-417 polish).
+			const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
+			expect(retry).toBeDefined();
+			expect(state.refresh).not.toHaveBeenCalled();
+			await retry?.trigger("click");
+			await flushPromises();
+			expect(state.refresh).toHaveBeenCalledTimes(1);
 		});
 	});
 

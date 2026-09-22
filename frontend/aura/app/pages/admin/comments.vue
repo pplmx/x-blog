@@ -68,6 +68,21 @@ function activeFilters() {
 	};
 }
 
+/**
+ * The filter set the LIST is actually showing — the snapshot last committed by
+ * applyFilters/clearFilters, NOT the live input refs. Without this, typing a
+ * new search term (but not yet pressing Enter/Apply) and then clicking
+ * Prev/Next would page through the NEW term's result set while the screen
+ * still showed the OLD one — the box and the list silently disagree. Paging,
+ * retry, and post-action refresh all traverse the committed set; the new term
+ * only takes effect on an explicit Apply.
+ */
+let committedFilters: ReturnType<typeof activeFilters> | null = null;
+
+function listFilters(): ReturnType<typeof activeFilters> {
+	return committedFilters ?? activeFilters();
+}
+
 // The list is our OWN ref, written only through the sequenced loader below.
 // Binding it to the setup-top-level useFetch's live data ref let the initial
 // (slower) request clobber a later applied filter — clicking 待审核 then
@@ -123,30 +138,34 @@ async function loadComments(filters: ReturnType<typeof activeFilters>, page: num
  * out-of-range page showing a false "暂无评论" (deep-dive finding). Shared by the
  * batch and single delete paths. */
 async function reloadWithClamp() {
-	await loadComments(activeFilters(), currentPage.value);
+	await loadComments(listFilters(), currentPage.value);
 	if (currentPage.value > totalPages.value && totalPages.value >= 1) {
 		currentPage.value = totalPages.value;
-		await loadComments(activeFilters(), totalPages.value);
+		await loadComments(listFilters(), totalPages.value);
 	}
 }
 
 /** Retry the failed list load in place (same loader, current page) so a
  * transient failure isn't a dead end. */
 function retryComments() {
-	void loadComments(activeFilters(), currentPage.value);
+	void loadComments(listFilters(), currentPage.value);
 }
 
 /** Initial load (same guarded loader as every other writer). */
 onMounted(() => {
-	void loadComments(activeFilters(), 1);
+	committedFilters = activeFilters();
+	void loadComments(listFilters(), 1);
 });
 
 /** Apply the active filters and reload from page 1. */
 async function applyFilters() {
+	// Commit the snapshot NOW: paging after this reload traverses this exact
+	// set even if the moderator edits the inputs again before paging.
+	committedFilters = activeFilters();
 	currentPage.value = 1;
 	selectedIds.value = new Set();
 	resetFeedback();
-	await loadComments(activeFilters(), 1);
+	await loadComments(listFilters(), 1);
 }
 
 /** Clear all filters back to the unfiltered list. */
@@ -173,7 +192,7 @@ async function gotoPage(page: number) {
 	currentPage.value = page;
 	selectedIds.value = new Set();
 	resetFeedback();
-	await loadComments(activeFilters(), page);
+	await loadComments(listFilters(), page);
 }
 
 // Global moderation backlog straight from the server (survey finding). The
@@ -229,7 +248,7 @@ async function batchApprove(approved: boolean) {
 		actionSuccess.value = approved
 			? t("admin.comments.batchApprovedFeedback", { n: ids.length })
 			: t("admin.comments.batchRejectedFeedback", { n: ids.length });
-		await loadComments(activeFilters(), currentPage.value);
+		await loadComments(listFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -284,7 +303,7 @@ async function handleDismissFlags(id: number) {
 	try {
 		await dismissAdminCommentFlags(id);
 		deselect(id);
-		await loadComments(activeFilters(), currentPage.value);
+		await loadComments(listFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -302,7 +321,7 @@ async function handleApprove(id: number, approved: boolean) {
 		actionSuccess.value = approved
 			? t("admin.comments.approvedFeedback")
 			: t("admin.comments.revokedFeedback");
-		await loadComments(activeFilters(), currentPage.value);
+		await loadComments(listFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {
@@ -346,7 +365,7 @@ async function submitReply(id: number) {
 		await replyAdminComment(id, content);
 		replyOpenId.value = null;
 		replyText.value = "";
-		await loadComments(activeFilters(), currentPage.value);
+		await loadComments(listFilters(), currentPage.value);
 	} catch (e) {
 		actionError.value = getErrorMessage(e);
 	} finally {

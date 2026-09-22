@@ -10,7 +10,8 @@ import { approveAdminComment } from "~~/api/admin/comments";
 import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
 import type { BlogStats } from "~~/api/public/stats";
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
+import { effectivePublishTs, formatPostDate, parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
 
@@ -1046,7 +1047,7 @@ const stats = computed(() => [
                 {{ post.title }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ formatPostDate(effectivePublishTs(post), locale) }}
               </p>
             </div>
             <div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">

@@ -108,6 +108,37 @@ describe("Admin Newsletter page", () => {
 		expect(wrapper.text()).toContain("无法加载订阅者列表");
 	});
 
+	it("single-flights a slow remove so a double-click cannot re-fire the DELETE", async () => {
+		// The per-row busy guard must mark the row in-flight BEFORE the await:
+		// previously busyIds.add was never called, so a second click on a slow
+		// delete fired a duplicate DELETE (only rescued by the 404-as-success
+		// branch). Hold the first delete open and confirm the second tap is a no-op.
+		let releaseDelete!: (value: unknown) => void;
+		deleteMock.mockImplementation(
+			() =>
+				new Promise<undefined>((resolve) => {
+					releaseDelete = resolve;
+				}),
+		);
+		listMock.mockReturnValue(fakeListing([fakeSubscriber()]));
+		const wrapper = await mountPage();
+
+		await wrapper.find("button[aria-label*='alice@example.com']").trigger("click");
+		await flushPromises();
+		expect(deleteMock).toHaveBeenCalledTimes(1);
+
+		// Second tap while the first is still in flight — must not re-enter.
+		const busyButton = wrapper.find("button[aria-label*='alice@example.com']");
+		expect(busyButton.attributes("aria-busy")).toBe("true");
+		await busyButton.trigger("click");
+		await flushPromises();
+		expect(deleteMock).toHaveBeenCalledTimes(1);
+
+		releaseDelete(undefined);
+		await flushPromises();
+		expect(deleteMock).toHaveBeenCalledTimes(1);
+	});
+
 	it("removes a subscriber via the confirm dialog and refetches", async () => {
 		// Stable object so the page's `refresh` call is addressable after the
 		// AsyncData-like destructure.

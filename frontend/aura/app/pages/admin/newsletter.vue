@@ -135,6 +135,7 @@ async function sendDigest() {
 async function removeSubscriber(id: number, email: string) {
 	if (busyIds.value.has(id)) return; // single-flight per row
 	if (!window.confirm(t("admin.newsletter.confirmDelete", { email }))) return;
+	busyIds.value.add(id); // mark in-flight BEFORE the await so a double-click can't re-enter
 	let rowGone = true;
 	try {
 		await deleteNewsletterSubscriber(id);
