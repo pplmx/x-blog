@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Reader like count can no longer drift from the durable like rows (round 417/418)**: a like/unlike on the post page committed the per-reader row and the public badge counter in **two separate transactions** — a crash between them could leave a liked post with an unbumped count (or a vanished row still counted) and no re-sync path. Both paths now bump the counter inside the same transaction (the comment-like fix pattern), so the badge always matches the rows. (TASK-500, ISS-574)
+- 🛠️ **Bashed/empty deep links no longer break the home feed or reader profile (round 417)**: a `?page=-3` / `?page=abc` home URL previously parsed to a negative page → API 422 → permanent dead retry; now invalid page/filter params clamp to a clean first page. A quick page-click + tab-switch on a reader profile could also let a slow stale response overwrite newer tabs — the load now ignores superseded responses. (TASK-497/498, ISS-571/572)
+- 🛠️ **Consistent long-form dates site-wide (round 417)**: the same post's date showed as bare `9/22/2026` on some (ambiguous) pages and `September 22, 2026` on others; every public page, search result, reader profile, and the admin dashboard now render the canonical long form through one `formatPostDate` helper. (TASK-499, ISS-573)
+- 🛠️ **Admin moderation/list touch-ups (round 417)**: typing a comment-search term without pressing Enter then paging no longer silently switches to the new term's result set (paging uses the applied filter snapshot); the newsletter row-delete and post-editor notify are single-flight so a double-click can't fire a duplicate DELETE / duplicate broadcast; a failed admin pages list now offers a retry button like its sibling lists. (TASK-501..504, ISS-575..578)
 - 🛠️ **Accessibility & narrow-phone polish from the round-415 audit**: the
   Write/Preview and Posts/Comments tablists now support **ArrowLeft/Right/Home/End
   roving navigation** (the standard `role="tab"` keyboard contract, previously
