@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 420,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T06:11:55+00:00",
+  "updated_at": "2026-09-22T06:38:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 419,
+      "touched_round": 420,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31643,6 +31643,40 @@
       "touched_round": 419,
       "severity": "low",
       "title": "issue"
+    },
+    "ISS-590": {
+      "id": "ISS-590",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:38:24+00:00",
+      "updated_at": "2026-09-22T06:38:25+00:00",
+      "touched_round": 420,
+      "severity": "low",
+      "title": "Admin posts search debounce never cleared on unmount",
+      "description": "Same timer-leak class as ISS-582; stray refetch on dead instance after SPA nav."
+    },
+    "TASK-512": {
+      "id": "TASK-512",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:38:24+00:00",
+      "updated_at": "2026-09-22T06:38:25+00:00",
+      "touched_round": 420,
+      "category": "stability",
+      "severity": "low",
+      "title": "Clear admin posts search debounce on unmount"
+    },
+    "CHG-767": {
+      "id": "CHG-767",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T06:38:24+00:00",
+      "updated_at": "2026-09-22T06:38:24+00:00",
+      "touched_round": 420,
+      "commit": "dbb9bfaf"
     }
   },
   "edges": [
@@ -47231,6 +47265,30 @@
       "to": "ISS-587",
       "type": "addresses",
       "created_at": "2026-09-22T05:59:13+00:00"
+    },
+    {
+      "from": "TASK-512",
+      "to": "ISS-590",
+      "type": "addresses",
+      "created_at": "2026-09-22T06:38:24+00:00"
+    },
+    {
+      "from": "ISS-590",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T06:38:24+00:00"
+    },
+    {
+      "from": "CHG-767",
+      "to": "ISS-590",
+      "type": "resolves",
+      "created_at": "2026-09-22T06:38:24+00:00"
+    },
+    {
+      "from": "CHG-767",
+      "to": "TASK-512",
+      "type": "implements",
+      "created_at": "2026-09-22T06:38:25+00:00"
     }
   ]
 }
