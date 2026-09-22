@@ -105,7 +105,7 @@
              highlight.js), so "what you see here" IS "what gets posted". -->
         <div
           role="tablist"
-          aria-label="Comment markdown preview"
+          :aria-label="t('components.commentForm.tablistAria')"
           class="flex items-center border-b border-gray-200 dark:border-gray-700 mb-2"
           @keydown="onTablistKeydown"
         >

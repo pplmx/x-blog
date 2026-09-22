@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Bookmarks: every recently-removed bookmark stays independently undoable
+  (round 423, audit finding)** — the row-removal Undo used a single slot: removing
+  bookmark A then bookmark B within the 6s window overwrote A's undo target, and
+  since the one-click removal's cloud DELETE had already gone out, A was
+  permanently gone with no recovery. Each removal now pushes its own undo entry
+  (a shared sweeper prunes each 6s window independently, no timer per row), so a
+  reader tidying up several bookmarks can undo each in turn, and undoing one
+  leaves the others intact. (TASK-521, ISS-599)
+- ♿ **Reader a11y/i18n cleanups (round 423, audit)**: the comment Write/Preview
+  tablist's accessible label is now localized (was a hardcoded English
+  "Comment markdown preview"), the fullscreen image lightbox dialog names itself
+  "Image viewer" instead of reusing its Close button's label, and decorative
+  avatar images across the reader menu and account page now carry empty alt text
+  (their names render as adjacent text) instead of hardcoded English
+  "avatar of …". (TASK-522/523/524, ISS-600/601/602)
 - 🐛 **Round-422 audit fixes — three stale-response / timer races**:
   **resume-reading** no longer applies an old post's saved offset after an SPA
   post switch: an in-flight restore for the article you just left could resolve

@@ -37,7 +37,8 @@
 			"previewEmpty": "还没有可预览的内容——输入后 Markdown 会在这里渲染。",
 			"previewError": "无法渲染预览。",
 			"contentRequired": "请先输入评论内容再提交。",
-			"identityRequired": "请填写昵称和邮箱后再提交。"
+			"identityRequired": "请填写昵称和邮箱后再提交。",
+			"tablistAria": "评论 Markdown 预览"
 		},
 		"commentList": {
 			"loadError": "评论加载失败，请稍后重试。",
@@ -124,7 +125,8 @@
 			"lightboxClose": "关闭全屏图片",
 			"lightboxPrevious": "上一张图片",
 			"lightboxNext": "下一张图片",
-			"lightboxCounter": "第 {current} / {total} 张图片"
+			"lightboxCounter": "第 {current} / {total} 张图片",
+			"lightboxDialogAria": "图片查看器"
 		},
 		"postCard": {
 			"pinned": "置顶",

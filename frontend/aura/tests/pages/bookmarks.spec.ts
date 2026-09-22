@@ -280,6 +280,49 @@ describe("Bookmarks page", () => {
 			expect(wrapper.find("[role='status']").exists()).toBe(false);
 		});
 
+		it("keeps every recently-removed bookmark independently undoable (audit finding)", async () => {
+			// The old single undo slot overwrote earlier removals: removing A then
+			// B in the same 6s window left only B recoverable — A's cloud DELETE
+			// already went out so it was permanently gone. Each removal must now
+			// keep its own undo entry, and undoing one must not drop the others.
+			const second = { ...sampleBookmark, id: 2, title: "Second Post", slug: "second" };
+			mockBookmarks.value = [sampleBookmark, second];
+			mockRemoveBookmark.mockClear();
+			mockAddBookmark.mockClear();
+			mockIsAuthenticated.value = true;
+			vi.useFakeTimers();
+
+			const wrapper = mountBookmarks();
+			const removeBtns = wrapper.findAll("button[title='移除收藏']");
+			expect(removeBtns.length).toBe(2);
+			await removeBtns[0].trigger("click");
+			await removeBtns[1].trigger("click");
+
+			// Both removals are still eligible for undo.
+			const statuses = wrapper.findAll("[role='status']");
+			expect(statuses.length).toBe(2);
+
+			// Undo the FIRST bookmark only; the second must remain undoable.
+			const firstUndo = statuses[0].find("button");
+			await firstUndo?.trigger("click");
+			expect(mockAddBookmark).toHaveBeenCalledTimes(1);
+			expect(mockAddBookmark).toHaveBeenCalledWith(sampleBookmark);
+
+			const remaining = wrapper.findAll("[role='status']");
+			expect(remaining.length).toBe(1);
+			expect(remaining[0].text()).toContain("Second Post");
+
+			// And the second can still be undone too.
+			await remaining[0].find("button")?.trigger("click");
+			expect(mockAddBookmark).toHaveBeenCalledTimes(2);
+			expect(mockAddBookmark).toHaveBeenLastCalledWith(second);
+			expect(wrapper.findAll("[role='status']").length).toBe(0);
+
+			wrapper.unmount();
+			mockIsAuthenticated.value = true;
+			vi.useRealTimers();
+		});
+
 		it("restores a removed bookmark's folder assignment on undo (ISS-388)", async () => {
 			// A bookmark inside a folder that gets removed + undone: the undo's
 			// add() re-PUTs only the post id, so without an explicit folder

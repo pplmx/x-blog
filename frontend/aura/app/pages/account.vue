@@ -1131,7 +1131,7 @@ function shortEndpoint(endpoint: string): string {
           <img
             v-if="(avatarPreview ?? reader?.avatar_url)"
             :src="(avatarPreview ?? reader?.avatar_url) ?? ''"
-            :alt="reader?.display_name || 'avatar'"
+            alt=""
             class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-gray-700"
           />
           <div
@@ -1958,7 +1958,7 @@ function shortEndpoint(endpoint: string): string {
                 <img
                   v-if="rf.avatar_url"
                   :src="rf.avatar_url"
-                  :alt="rf.display_name || 'avatar'"
+                  alt=""
                   class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
                 />
                 <span
@@ -2031,7 +2031,7 @@ function shortEndpoint(endpoint: string): string {
                 <img
                   v-if="rb.avatar_url"
                   :src="rb.avatar_url"
-                  :alt="rb.display_name || 'avatar'"
+                  alt=""
                   class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
                 />
                 <span

@@ -37,7 +37,8 @@
 			"previewEmpty": "Nothing to preview yet — type something and it will render as Markdown here.",
 			"previewError": "Couldn't render a preview.",
 			"contentRequired": "Write something before submitting.",
-			"identityRequired": "Add your nickname and email before submitting."
+			"identityRequired": "Add your nickname and email before submitting.",
+			"tablistAria": "Comment markdown preview"
 		},
 		"commentList": {
 			"loadError": "Couldn't load comments. Please try again.",
@@ -124,7 +125,8 @@
 			"lightboxClose": "Close fullscreen image",
 			"lightboxPrevious": "Previous image",
 			"lightboxNext": "Next image",
-			"lightboxCounter": "Image {current} of {total}"
+			"lightboxCounter": "Image {current} of {total}",
+			"lightboxDialogAria": "Image viewer"
 		},
 		"postCard": {
 			"pinned": "Pinned",

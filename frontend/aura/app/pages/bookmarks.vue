@@ -78,46 +78,82 @@ async function handleClearAll() {
 // One-click row removal mirrors straight to the cloud — a mis-click must not be
 // unrecoverable, so keep the removed bookmark and offer a short Undo inline
 // (differs from Clear-all / folder-delete, which confirm up front).
-const undoItem = ref<Bookmark | null>(null);
-let undoClearTimer: ReturnType<typeof setTimeout> | undefined;
+//
+// Undo is a STACK, not a single slot (audit finding): a reader "tidying up"
+// several bookmarks in a row used to overwrite the earlier removal's undo
+// target in the same window — the cloud DELETE already went out for bookmark A
+// by the time B's remove replaced `undoItem`, so A became permanently gone
+// with no recovery. Each removal now pushes its own entry (with its own
+// expiry timer), so every recently-removed bookmark stays undoable; undoing
+// one leaves the others intact.
+interface UndoEntry {
+	bookmark: Bookmark;
+	expiresAt: number;
+}
+const undoItems = ref<UndoEntry[]>([]);
+let undoWatchTimer: ReturnType<typeof setInterval> | undefined;
+
 function handleRemove(bookmark: Bookmark) {
 	remove(bookmark.id);
-	undoItem.value = bookmark;
-	if (undoClearTimer) clearTimeout(undoClearTimer);
-	undoClearTimer = setTimeout(() => {
-		undoItem.value = null;
-	}, 6000);
+	undoItems.value = undoItems.value.filter((e) => e.bookmark.id !== bookmark.id);
+	undoItems.value.push({ bookmark, expiresAt: Date.now() + 6000 });
+	ensureUndoSweeper();
 	refreshFolderCountsSoon();
 }
-async function undoRemove() {
-	if (!undoItem.value) return;
-	const { ...restored } = undoItem.value;
+
+// A single shared sweeper prunes expired undo entries every beat, so each item
+// keeps its own 6s window without a timer per row (and without a "newest
+// removal resets older ones" bug). Started lazily on first removal and stopped
+// once the stack empties (unmount hygiene: no leaked interval).
+function ensureUndoSweeper() {
+	if (undoWatchTimer || typeof window === "undefined") return;
+	undoWatchTimer = setInterval(() => {
+		const now = Date.now();
+		undoItems.value = undoItems.value.filter((e) => e.expiresAt > now);
+		if (undoItems.value.length === 0) {
+			stopUndoSweeper();
+		}
+	}, 1000);
+}
+function stopUndoSweeper() {
+	if (undoWatchTimer) {
+		clearInterval(undoWatchTimer);
+		undoWatchTimer = undefined;
+	}
+}
+
+async function undoRemove(id: number) {
+	const entry = undoItems.value.find((e) => e.bookmark.id === id);
+	if (!entry) return;
+	const { bookmark: restored } = entry;
+	// Drop the entry first so a re-click can't double-restore the same row, and
+	// so the sweeper's expiry can't race the restore (the re-added row is no
+	// longer a removal candidate).
+	undoItems.value = undoItems.value.filter((e) => e.bookmark.id !== id);
 	add(restored);
 	// The undo re-PUTs the bookmark to the cloud (via add -> mirrorAdd), but
 	// that PUT carries only the post id — a removed bookmark that lived in a
 	// folder would come back UN-filed on the next cloud merge when the pull
 	// re-adopts the server row. Re-apply the folder assignment explicitly so
 	// the restored row keeps its folder across devices (deep-dive, ISS-388).
-	if (undoItem.value.folder_id != null && signedIn.value) {
+	if (restored.folder_id != null && signedIn.value) {
 		// A failed re-assign (offline / dead session) must not be silent: the
 		// bookmark returns locally with its folder chip, but the cloud row has
 		// no folder and the next merge drops it — tell the reader so the
 		// restored bookmark's folder isn't lost without a trace (deep-dive,
 		// ISS-428 — every sibling folder action surfaces its failure).
-		if (!(await assignFolder(undoItem.value.id, undoItem.value.folder_id))) {
+		if (!(await assignFolder(restored.id, restored.folder_id))) {
 			noteFolderActionFailure();
 		}
 	}
-	if (undoClearTimer) clearTimeout(undoClearTimer);
-	undoClearTimer = undefined;
-	undoItem.value = null;
+	if (undoItems.value.length === 0) stopUndoSweeper();
 	refreshFolderCountsSoon();
 }
 
-// Clear both timers so a delayed ref-set can't fire after unmount (same
-// hygiene as the history page's debounce cleanup).
+// Clear the sweeper so a delayed tick can't fire after unmount (same hygiene
+// as the history page's debounce cleanup).
 onUnmounted(() => {
-	if (undoClearTimer) clearTimeout(undoClearTimer);
+	stopUndoSweeper();
 	if (folderActionTimer) clearTimeout(folderActionTimer);
 	if (countRefreshTimer) clearTimeout(countRefreshTimer);
 	if (assignFailedTimer) clearTimeout(assignFailedTimer);
@@ -402,20 +438,26 @@ function handleToggleDone(bookmark: Bookmark) {
       </button>
     </div>
 
-    <!-- Removal undo (single bookmark remove is one-click + clouds immediately) -->
-    <div
-      v-if="undoItem"
-      class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-300"
-      role="status"
-    >
-      <span class="min-w-0 truncate">{{ t('bookmarks.removedToast', { title: undoItem.title }) }}</span>
-      <button
-        type="button"
-        class="shrink-0 font-medium text-blue-700 dark:text-blue-300 hover:underline"
-        @click="undoRemove"
+    <!-- Removal undo (single bookmark remove is one-click + clouds immediately).
+         Renders ONE banner per recently-removed bookmark, so a reader removing
+         several in a row can undo each independently (audit finding — the old
+         single slot silently dropped earlier removals). -->
+    <div v-if="undoItems.length > 0" class="mb-4 space-y-2">
+      <div
+        v-for="entry in undoItems"
+        :key="entry.bookmark.id"
+        class="flex items-center justify-between gap-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-300"
+        role="status"
       >
-        {{ t('bookmarks.undo') }}
-      </button>
+        <span class="min-w-0 truncate">{{ t('bookmarks.removedToast', { title: entry.bookmark.title }) }}</span>
+        <button
+          type="button"
+          class="shrink-0 font-medium text-blue-700 dark:text-blue-300 hover:underline"
+          @click="undoRemove(entry.bookmark.id)"
+        >
+          {{ t('bookmarks.undo') }}
+        </button>
+      </div>
     </div>
 
     <!-- Bookmark search (DEC-124, TASK-174) -->

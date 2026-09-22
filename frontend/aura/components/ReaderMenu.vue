@@ -130,7 +130,7 @@ function onSignOut() {
         <img
           v-if="reader?.avatar_url"
           :src="reader.avatar_url"
-          :alt="displayName ? `avatar of ${displayName}` : 'avatar'"
+          alt=""
           class="h-8 w-8 rounded-full object-cover"
         />
         <span
@@ -170,7 +170,7 @@ function onSignOut() {
           <img
             v-if="reader?.avatar_url"
             :src="reader.avatar_url"
-            :alt="displayName ? `avatar of ${displayName}` : 'avatar'"
+            alt=""
             class="h-9 w-9 rounded-full object-cover"
           />
           <span
