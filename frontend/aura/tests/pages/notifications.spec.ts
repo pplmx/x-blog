@@ -605,7 +605,10 @@ describe("Notifications page (TASK-192)", () => {
 		// The stale loadMore finally lands with its pre-read unread snapshot —
 		// it must NOT resurrect the mark-all button (the count stays 0).
 		releaseLoadMore({
-			items: [makeNotif({ id: 1, read: true }), makeNotif({ id: 0, title: "旧页那条", read: true })],
+			items: [
+				makeNotif({ id: 1, read: true }),
+				makeNotif({ id: 0, title: "旧页那条", read: true }),
+			],
 			total: 150,
 			unread: 2,
 			page: 2,
