@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 419,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T03:57:18+00:00",
+  "updated_at": "2026-09-22T05:59:14+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31542,6 +31542,107 @@
       "updated_at": "2026-09-22T03:57:18+00:00",
       "touched_round": 419,
       "commit": "f043074e"
+    },
+    "CHG-766": {
+      "id": "CHG-766",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T05:59:10+00:00",
+      "updated_at": "2026-09-22T05:59:10+00:00",
+      "touched_round": 419,
+      "commit": "cc586932"
+    },
+    "TASK-509": {
+      "id": "TASK-509",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:10+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "CommentForm tab roving scoped to its own tablist (cross-instance hijack)"
+    },
+    "TASK-510": {
+      "id": "TASK-510",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:10+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Account avatar upload/remove handler re-entry guard + remove confirm; bookmarks+headersearch timer cleanup"
+    },
+    "TASK-511": {
+      "id": "TASK-511",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:11+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "CommentList startEdit confirms before discarding a dirty edit draft"
+    },
+    "ISS-585": {
+      "id": "ISS-585",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:11+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "issue"
+    },
+    "ISS-586": {
+      "id": "ISS-586",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:11+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "issue"
+    },
+    "ISS-587": {
+      "id": "ISS-587",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:11+00:00",
+      "updated_at": "2026-09-22T05:59:13+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "issue"
+    },
+    "ISS-588": {
+      "id": "ISS-588",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:12+00:00",
+      "updated_at": "2026-09-22T05:59:14+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "issue"
+    },
+    "ISS-589": {
+      "id": "ISS-589",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T05:59:12+00:00",
+      "updated_at": "2026-09-22T05:59:14+00:00",
+      "touched_round": 419,
+      "severity": "low",
+      "title": "issue"
     }
   },
   "edges": [
@@ -47040,6 +47141,96 @@
       "to": "TASK-508",
       "type": "implements",
       "created_at": "2026-09-22T03:57:18+00:00"
+    },
+    {
+      "from": "ISS-585",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T05:59:11+00:00"
+    },
+    {
+      "from": "CHG-766",
+      "to": "ISS-585",
+      "type": "resolves",
+      "created_at": "2026-09-22T05:59:11+00:00"
+    },
+    {
+      "from": "ISS-586",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T05:59:11+00:00"
+    },
+    {
+      "from": "CHG-766",
+      "to": "ISS-586",
+      "type": "resolves",
+      "created_at": "2026-09-22T05:59:11+00:00"
+    },
+    {
+      "from": "ISS-587",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T05:59:11+00:00"
+    },
+    {
+      "from": "CHG-766",
+      "to": "ISS-587",
+      "type": "resolves",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "ISS-588",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "CHG-766",
+      "to": "ISS-588",
+      "type": "resolves",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "ISS-589",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "CHG-766",
+      "to": "ISS-589",
+      "type": "resolves",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "TASK-509",
+      "to": "ISS-585",
+      "type": "addresses",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "TASK-510",
+      "to": "ISS-586",
+      "type": "addresses",
+      "created_at": "2026-09-22T05:59:12+00:00"
+    },
+    {
+      "from": "TASK-510",
+      "to": "ISS-588",
+      "type": "addresses",
+      "created_at": "2026-09-22T05:59:13+00:00"
+    },
+    {
+      "from": "TASK-510",
+      "to": "ISS-589",
+      "type": "addresses",
+      "created_at": "2026-09-22T05:59:13+00:00"
+    },
+    {
+      "from": "TASK-511",
+      "to": "ISS-587",
+      "type": "addresses",
+      "created_at": "2026-09-22T05:59:13+00:00"
     }
   ]
 }
