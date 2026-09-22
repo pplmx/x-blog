@@ -95,6 +95,9 @@ async function toggleFollow() {
 		followBusy.value = false;
 	}
 }
+onUnmounted(() => {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+});
 </script>
 
 <template>

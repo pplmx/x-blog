@@ -88,6 +88,9 @@ async function toggleBlock() {
 	if (!blocked.value && !window.confirm(t("readerProfile.blockConfirm"))) return;
 	await applyBlock(!blocked.value);
 }
+onUnmounted(() => {
+	if (blockErrorTimer) clearTimeout(blockErrorTimer);
+});
 </script>
 
 <template>

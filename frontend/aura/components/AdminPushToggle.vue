@@ -82,6 +82,9 @@ async function onClick() {
 		flashError();
 	}
 }
+onUnmounted(() => {
+	if (errorTimer) clearTimeout(errorTimer);
+});
 </script>
 
 <template>

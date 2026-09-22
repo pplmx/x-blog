@@ -93,6 +93,9 @@ async function handleSetNotify() {
 		flashError();
 	}
 }
+onUnmounted(() => {
+	if (errorTimer) clearTimeout(errorTimer);
+});
 </script>
 
 <template>

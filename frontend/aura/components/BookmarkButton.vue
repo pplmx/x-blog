@@ -59,6 +59,9 @@ const label = computed(() => {
 		? t("components.bookmark.remove")
 		: t("components.bookmark.article");
 });
+onUnmounted(() => {
+	if (togglingTimer) clearTimeout(togglingTimer);
+});
 </script>
 
 <template>

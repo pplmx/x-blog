@@ -200,4 +200,7 @@ async function handleCopyLink() {
 	}
 	flashCopy(ok);
 }
+onUnmounted(() => {
+	if (copyTimer) clearTimeout(copyTimer);
+});
 </script>

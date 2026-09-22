@@ -138,6 +138,9 @@ async function toggleNotify() {
 		followBusy.value = false;
 	}
 }
+onUnmounted(() => {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+});
 </script>
 
 <template>

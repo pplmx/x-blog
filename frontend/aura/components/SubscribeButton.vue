@@ -33,6 +33,9 @@ function flashError() {
 onMounted(() => {
 	init();
 });
+onUnmounted(() => {
+	if (errorTimer) clearTimeout(errorTimer);
+});
 
 // Re-bind an existing (previously anonymous) subscription whenever the reader
 // is signed in AND the browser subscription is detected. Safe no-op when there
