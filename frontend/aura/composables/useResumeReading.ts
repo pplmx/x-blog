@@ -78,6 +78,16 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	// back-to-top wipe so the smooth animation's intermediate offsets cannot
 	// write a stale position back over the explicit 0).
 	let suppressSavesUntil = 0;
+	// Monotonic generation for restore() (round-422 audit, HIGH): the post
+	// page's postId watcher calls reset() the moment an SPA post switch happens,
+	// but an in-flight restore() that has not resolved yet sees nothing to
+	// cancel (its applyScroll hasn't begun). Without a generation an old post's
+	// saved offset could land after the switch and scroll the NEW post to a
+	// wrong position. Every restore() takes a fresh generation and reset() (this
+	// generation's "context changed" signal) advances it, so a resolve whose
+	// generation is stale is discarded — the same monotonic pattern as
+	// loadSeq/refreshEpoch elsewhere.
+	let restoreGeneration = 0;
 
 	/** True in any DOM environment (real browser or the happy-dom test env);
 	 * on the SSR render there is no window and the whole composable is inert.
@@ -115,9 +125,16 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	async function restore(): Promise<number | null> {
 		const id = activePostId();
 		if (!id) return null;
+		const generation = ++restoreGeneration;
 		restoring.value = true;
 		try {
 			const data = await getReaderReadingPosition(id);
+			// A stale resolve (post switched mid-fetch, reset() advanced the
+			// generation, or a newer restore() superseded it) must not scroll or
+			// mark a position for the WRONG article. fractionToPixel/applyScroll
+			// below read the CURRENT document, so even the math would be against
+			// the new post — drop the whole result (round-422 audit).
+			if (generation !== restoreGeneration) return null;
 			// Prefer the cross-viewport fraction (DEC-346/TASK-399): it restores
 			// at the same place on any viewport. Fall back to the pixel for
 			// pre-feature rows (null fraction) — today's exact behavior.
@@ -136,7 +153,9 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 			// Best-effort resume — a failed fetch must not break the post page.
 			return null;
 		} finally {
-			restoring.value = false;
+			// Only the newest generation clears the spinner — a stale restore
+			// resolving after a newer one is in flight must not flip it off early.
+			if (generation === restoreGeneration) restoring.value = false;
 		}
 	}
 
@@ -242,6 +261,10 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	}
 
 	function jumpToTop(): void {
+		// The reader explicitly chose the top — a restore still in flight must
+		// not resolve after this and yank them back down. Same generation
+		// invalidation as reset() (round-422 audit).
+		restoreGeneration += 1;
 		cancelRestores?.();
 		window.scrollTo({ top: 0, behavior: "smooth" });
 		restoredPosition.value = null;
@@ -281,6 +304,11 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	}
 
 	function reset(): void {
+		// Invalidate any in-flight restore() for the OLD post before flushing:
+		// the pending fetch must not resolve after the switch and scroll the new
+		// article (round-422 audit). cancelRestores() below only cancels an
+		// already-started applyScroll — the generation covers the fetch window.
+		restoreGeneration += 1;
 		cancelRestores?.();
 		suppressSavesUntil = 0;
 		// Flush before discarding: on an SPA post switch the previous post's

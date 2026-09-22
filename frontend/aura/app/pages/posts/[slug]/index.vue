@@ -492,6 +492,11 @@ onMounted(() => {
 			clearTimeout(resumeChipTimer);
 			resumeChipTimer = null;
 		}
+		// A like-failure auto-dismiss that never fired must not survive the
+		// unmount: it would only null a detached ref, but the repo pattern is
+		// every timer in this file is cleared here (round-422 audit, LOW).
+		// clearLikeError() also nulls the banner — harmless on teardown.
+		clearLikeError();
 	});
 });
 

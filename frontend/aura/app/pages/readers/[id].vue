@@ -68,15 +68,27 @@ const likedFailed = ref(false);
 const likedPosts = ref<PostList[]>([]);
 const likedPagination = ref<PaginationInfo | null>(null);
 
+// Monotonic guards for the discovery-tab fetchers (round-422 audit, MEDIUM):
+// load() is seq-guarded against profile races, but a fast page-click on the
+// likes tab fires a second loadLikes() while the first is still in flight (the
+// profile seq passes for BOTH, since each awaits its own profile first) — the
+// last-resolver then wins with no check, painting page N under page N+1's
+// pagination. Each tab fetcher takes its own generation so a slow earlier page
+// cannot overwrite a newer one (the exact ISS-572 symptom, on the tab data).
+let likedSeq = 0;
+
 async function loadLikes() {
 	if (!data.value?.profile.public_likes) return;
+	const seq = ++likedSeq;
 	likedLoading.value = true;
 	likedFailed.value = false;
 	try {
 		const res: PostListResponse | null = await getReaderPublicLikes(readerId.value, page.value, 20);
+		if (seq !== likedSeq) return; // a newer likes request superseded this one
 		likedPosts.value = res?.items ?? [];
 		likedPagination.value = res?.pagination ?? null;
 	} catch (cause) {
+		if (seq !== likedSeq) return;
 		// The tab only renders when the profile said public_likes, so a 404 is
 		// a lost race (reader just opted out) rather than a "couldn't load".
 		const status = (cause as { response?: { status?: number } } | undefined)?.response?.status;
@@ -84,7 +96,7 @@ async function loadLikes() {
 		likedPosts.value = [];
 		likedPagination.value = null;
 	} finally {
-		likedLoading.value = false;
+		if (seq === likedSeq) likedLoading.value = false;
 	}
 }
 
@@ -95,8 +107,11 @@ const savedFailed = ref(false);
 const savedPosts = ref<PostList[]>([]);
 const savedPagination = ref<PaginationInfo | null>(null);
 
+let savedSeq = 0;
+
 async function loadSaved() {
 	if (!data.value?.profile.public_bookmarks) return;
+	const seq = ++savedSeq;
 	savedLoading.value = true;
 	savedFailed.value = false;
 	try {
@@ -105,16 +120,18 @@ async function loadSaved() {
 			page.value,
 			20,
 		);
+		if (seq !== savedSeq) return; // a newer saved request superseded this one
 		savedPosts.value = res?.items ?? [];
 		savedPagination.value = res?.pagination ?? null;
 	} catch (cause) {
+		if (seq !== savedSeq) return;
 		// 404 = lost race (reader just opted out), not a load failure.
 		const status = (cause as { response?: { status?: number } } | undefined)?.response?.status;
 		if (status !== 404) savedFailed.value = true;
 		savedPosts.value = [];
 		savedPagination.value = null;
 	} finally {
-		savedLoading.value = false;
+		if (seq === savedSeq) savedLoading.value = false;
 	}
 }
 
