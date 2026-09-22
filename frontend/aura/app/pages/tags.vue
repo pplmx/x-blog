@@ -286,6 +286,9 @@ watch(
 	},
 	{ immediate: true },
 );
+onUnmounted(() => {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+});
 </script>
 
 <template>

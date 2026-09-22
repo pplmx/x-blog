@@ -27,10 +27,16 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 function onSearchInput() {
 	clearTimeout(searchTimer);
 	searchTimer = setTimeout(() => {
+		searchTimer = undefined;
 		searchQ.value = searchInput.value;
 		currentPage.value = 1;
 	}, 300);
 }
+// Round-420 unmount-safety sweep: a debounce armed right before an SPA
+// navigation would otherwise fire on the unmounted instance and refetch.
+onUnmounted(() => {
+	clearTimeout(searchTimer);
+});
 
 const { data, pending, error, refresh } = await useAdminReaders(currentPage, pageSize, searchQ);
 const items = computed(() => data.value?.items ?? []);

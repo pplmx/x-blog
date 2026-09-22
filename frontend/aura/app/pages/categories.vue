@@ -341,6 +341,9 @@ watch(categoryId, () => {
 	catNotify.value = true;
 	void loadCategoryFollow();
 });
+onUnmounted(() => {
+	if (followErrorTimer) clearTimeout(followErrorTimer);
+});
 </script>
 
 <template>
