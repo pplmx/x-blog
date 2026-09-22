@@ -45,6 +45,9 @@ const saving = ref(false);
 const deleting = ref(false);
 const savedFlash = ref(false);
 const errorMsg = ref(false);
+// The 2.5s saved-flash auto-clear, tracked so unmount cancels it (round-420
+// sweep, same one-shot pattern the media/copyUrl + bookmarks fix tracked).
+let savedFlashTimer: ReturnType<typeof setTimeout> | undefined;
 
 // A network failure (unreachable backend, 5xx) must not be a dead end: the
 // token may still be valid, and the page offers a Retry. A missing token or
@@ -98,7 +101,9 @@ async function save() {
 		comment.value = updated;
 		draft.value = updated.content;
 		savedFlash.value = true;
-		window.setTimeout(() => {
+		if (savedFlashTimer) clearTimeout(savedFlashTimer);
+		savedFlashTimer = window.setTimeout(() => {
+			savedFlashTimer = undefined;
 			savedFlash.value = false;
 		}, 2500);
 	} catch {
@@ -132,6 +137,9 @@ const statusKey = computed(() => {
 });
 
 onMounted(() => void load());
+onBeforeUnmount(() => {
+	if (savedFlashTimer) clearTimeout(savedFlashTimer);
+});
 </script>
 
 <template>
