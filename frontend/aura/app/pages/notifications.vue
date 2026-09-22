@@ -53,6 +53,17 @@ const unread = ref(0);
 const loading = ref(false);
 const error = ref(false);
 
+// Monotonic guard for loadMore's unread write (audit finding): a page-2
+// loadMore already in flight when the reader marks a row read / deletes it can
+// resolve AFTER the local decrement and write its older server snapshot back
+// (+1) until the next refresh/poll — the same stale-response class the badge
+// composable guards with refreshEpoch. Every local mutation bumps this; a
+// loadMore only writes unread if nothing changed since it started.
+let unreadEpoch = 0;
+function noteUnreadChanged() {
+	unreadEpoch++;
+}
+
 // Paged inbox (bounded reachability, deep-dive finding): the API returns at
 // most 100 rows per page, so a reader with >100 notifications could never see
 // the older ones. We page on with a load-more button; totalPages is the
@@ -111,12 +122,20 @@ async function loadMore() {
 	if (next > totalPages.value) return;
 	loadingMore.value = true;
 	loadMoreError.value = false;
+	const epoch = unreadEpoch; // snapshot — a local mutation invalidates this write
 	try {
 		const data = await getReaderNotifications(next, 100);
 		const seen = new Set(items.value.map((i) => i.id));
 		const fresh = data.items.filter((i) => !seen.has(i.id));
 		items.value.push(...fresh);
-		unread.value = data.unread;
+		// Only commit the server unread snapshot if no read/delete happened
+		// while this request was in flight — otherwise a mark-read that
+		// resolved first (local decrement, say to 4) would be reverted to the
+		// older snapshot (5) until the next poll. refreshBadge below always
+		// runs (fresh fetch, guarded inside the badge composable itself).
+		if (epoch === unreadEpoch) {
+			unread.value = data.unread;
+		}
 		page.value = data.page || next;
 		totalPages.value = data.total_pages || totalPages.value;
 		void refreshBadge();
@@ -298,6 +317,7 @@ async function markRead(item: ReaderNotification) {
 		const updated = await markReaderNotificationRead(item.id);
 		item.read = updated.read;
 		if (unread.value > 0) unread.value -= 1;
+		noteUnreadChanged();
 		void refreshBadge();
 	} catch {
 		markActionFailed.value = true;
@@ -315,6 +335,7 @@ async function markAllRead() {
 	try {
 		await markAllReaderNotificationsRead();
 		unread.value = 0;
+		noteUnreadChanged();
 		void refreshBadge();
 		items.value.forEach((i) => {
 			i.read = true;
@@ -347,6 +368,7 @@ async function deleteRow(item: ReaderNotification) {
 	try {
 		await deleteReaderNotification(item.id);
 		if (!item.read && unread.value > 0) unread.value -= 1;
+		noteUnreadChanged();
 		items.value = items.value.filter((i) => i.id !== item.id);
 		void refreshBadge();
 	} catch {

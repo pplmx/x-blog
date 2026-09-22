@@ -557,6 +557,65 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("最旧的那条");
 	});
 
+	it("a stale page-2 loadMore cannot resurrect the unread count after mark-all (round 418 audit)", async () => {
+		// Race: reader clicks 加载更多 then (before it resolves) 全部标为已读.
+		// The mark-all commits first (unread → 0, button hides); the older
+		// loadMore response then resolves with its pre-read server snapshot
+		// (unread=2) and — without a guard — writes it back, resurrecting the
+		// button until the next poll. The page's unread write must be dropped
+		// when a local read mutation happened during the request.
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1 }), makeNotif({ id: 2 })],
+			total: 150,
+			unread: 2,
+			page: 1,
+			limit: 100,
+			total_pages: 2,
+		});
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("全部标为已读");
+
+		// Hold the page-2 load open (its response carries the stale unread=2).
+		let releaseLoadMore!: (value: unknown) => void;
+		mockFetch.mockImplementationOnce(
+			() =>
+				new Promise<unknown>((resolve) => {
+					releaseLoadMore = resolve;
+				}),
+		);
+		const loadMore = wrapper.findAll("button").find((b) => b.text().includes("加载更多"));
+		await loadMore?.trigger("click");
+		await flushPromises();
+
+		// Mark ALL read while loadMore is in flight — resolves first.
+		mockMarkAllRead.mockResolvedValue({ updated: 2 });
+		mockFetch.mockResolvedValue({
+			items: [makeNotif({ id: 1, read: true }), makeNotif({ id: 2, read: true })],
+			total: 150,
+			unread: 0,
+			page: 1,
+			limit: 100,
+			total_pages: 2,
+		});
+		const markAll = wrapper.findAll("button").find((b) => b.text().includes("全部标为已读"));
+		await markAll?.trigger("click");
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("全部标为已读");
+
+		// The stale loadMore finally lands with its pre-read unread snapshot —
+		// it must NOT resurrect the mark-all button (the count stays 0).
+		releaseLoadMore({
+			items: [makeNotif({ id: 1, read: true }), makeNotif({ id: 0, title: "旧页那条", read: true })],
+			total: 150,
+			unread: 2,
+			page: 2,
+			limit: 100,
+			total_pages: 2,
+		});
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("全部标为已读");
+	});
+
 	it("hides the load-more affordance when there is only one page", async () => {
 		mockFetch.mockResolvedValue({
 			items: [makeNotif({ id: 101 })],
