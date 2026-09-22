@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import type { PostList, PostListResponse } from "~~/api/contracts/shared";
 import { command } from "~~/api/transport";
 
@@ -21,6 +21,15 @@ const searched = ref(false);
 const failed = ref(false);
 const activeIndex = ref(-1);
 let timer: ReturnType<typeof setTimeout> | null = null;
+// The debounce + blur-close one-shot are cleared on unmount too (round-418
+// audit, same class as admin/media's timer leak): the header is long-lived so
+// the window is small, but a login/logout or layout swap mid-debounce would
+// otherwise fire a delayed search/close on a dead instance.
+let blurTimer: ReturnType<typeof setTimeout> | null = null;
+onBeforeUnmount(() => {
+	if (timer) clearTimeout(timer);
+	if (blurTimer) clearTimeout(blurTimer);
+});
 // Monotonic token so a slow, out-of-order response can't clobber a newer one:
 // only the latest request's result is applied (TASK-096, ISS-077).
 let requestSeq = 0;
@@ -143,7 +152,11 @@ function onFocus(): void {
 // left the box, so the "/" shortcut chip may return.
 function onBlur(): void {
 	focused.value = false;
-	setTimeout(close, 150);
+	if (blurTimer) clearTimeout(blurTimer);
+	blurTimer = setTimeout(() => {
+		blurTimer = null;
+		close();
+	}, 150);
 }
 </script>
 
