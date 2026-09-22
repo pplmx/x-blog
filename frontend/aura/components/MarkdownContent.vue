@@ -107,6 +107,13 @@ const renderedMermaidKeys = ref<Set<string>>(new Set());
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
 const copyFailedKeys = ref<Set<string>>(new Set());
+// The 2s copy-flash auto-clears, tracked so unmount cancels them (round-420
+// sweep — leaked real timers also break later fake-timer tests).
+const copyTimers = new Set<ReturnType<typeof setTimeout>>();
+onBeforeUnmount(() => {
+	for (const timer of copyTimers) clearTimeout(timer);
+	copyTimers.clear();
+});
 
 // Content-generation counter: bumped every time props.content changes. Async
 // mermaid/math renders capture it on entry and bail early if a newer content
@@ -171,14 +178,20 @@ async function copyCode(code: string, key: string, trigger: HTMLButtonElement | 
 	}
 	if (!ok) {
 		copyFailedKeys.value.add(key);
-		setTimeout(() => copyFailedKeys.value.delete(key), 2000);
+		const t1 = setTimeout(() => {
+			copyTimers.delete(t1);
+			copyFailedKeys.value.delete(key);
+		}, 2000);
+		copyTimers.add(t1);
 		return;
 	}
 	copyFailedKeys.value.delete(key);
 	copiedStates.value.add(key);
-	setTimeout(() => {
+	const t2 = setTimeout(() => {
+		copyTimers.delete(t2);
 		copiedStates.value.delete(key);
 	}, 2000);
+	copyTimers.add(t2);
 }
 
 // --- Mermaid rendering ---
