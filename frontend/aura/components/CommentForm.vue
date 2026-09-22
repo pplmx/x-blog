@@ -383,11 +383,16 @@ const previewHtml = computed(() => commentMarkdownToHtml(form.value.content));
 // ArrowLeft/Right/Home/End, not just Tab+Enter — the idiomatic keyboard
 // contract for role="tab". Focus moves with the active tab and follows.
 function onTablistKeydown(e: KeyboardEvent): void {
-	const tabs = Array.from(
-		document.querySelectorAll<HTMLButtonElement>(
-			`[role="tablist"][aria-label="Comment markdown preview"] [role="tab"]`,
-		),
-	);
+	// Scope to THIS tablist (audit finding): the post page mounts a bottom
+	// CommentForm AND CommentList mounts another inline on Reply — both share
+	// the same aria-label, so a document-wide query returned every form's tabs
+	// and ArrowKey roving could click/focus the OTHER form's tab, teleporting
+	// the reader's focus mid-comment (the roving handler uses the FIRST
+	// aria-selected tab, which typically belongs to the wrong instance).
+	const tablist = e.currentTarget instanceof Element ? e.currentTarget : null;
+	const tabs = tablist
+		? Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+		: [];
 	if (tabs.length === 0) return;
 	const current = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
 	const next =

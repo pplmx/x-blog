@@ -890,6 +890,14 @@ const editFeedback = ref<string | null>(null);
 const editTextarea = ref<HTMLTextAreaElement | null>(null);
 
 function startEdit(comment: Comment): void {
+	// Clicking Edit on the comment already being edited is a no-op, not a
+	// re-target — don't prompt to discard the draft the reader is working on.
+	if (editingId.value === comment.id) return;
+	// Re-targeting while another comment's edit box holds unsaved text would
+	// silently discard it (round-418 audit) — the same hole the reply-draft
+	// path closed (confirmDiscardReplyDraft): the sibling edit draft must get
+	// the same confirm before the editor is re-pointed at another comment.
+	if (!confirmDiscardEditDraft()) return;
 	editingId.value = comment.id;
 	editContent.value = comment.content;
 	editOriginal.value = comment.content;

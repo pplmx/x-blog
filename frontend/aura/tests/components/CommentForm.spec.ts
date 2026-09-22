@@ -599,6 +599,42 @@ describe("Markdown live preview (DEC-306/TASK-381)", () => {
 		wrapper.unmount();
 	});
 
+	it("arrow roving stays inside its OWN tablist when two CommentForms coexist (round 418 audit)", async () => {
+		// The post page mounts a bottom CommentForm AND CommentList mounts one
+		// inline on Reply — both carry aria-label "Comment markdown preview".
+		// The old roving handler queried the whole document (findIndex over ALL
+		// aria-selected tabs starting at the FIRST form's), so an ArrowRight
+		// typed in the REPLY form's tablist clicked + focused the BOTTOM form's
+		// Preview tab instead of its own. Roving must be scoped to the tablist
+		// that received the keydown.
+		mockCreateComment.mockReset().mockResolvedValue({});
+		const bottom = mount(CommentForm, { props: { postId: 1 }, attachTo: document.body });
+		const reply = mount(CommentForm, { props: { postId: 2 }, attachTo: document.body });
+		await flushPromises();
+
+		const bottomTabs = bottom.findAll('button[role="tab"]');
+		const replyTabs = reply.findAll('button[role="tab"]');
+		expect(bottomTabs[0].attributes("aria-selected")).toBe("true"); // both default to Write
+		expect(replyTabs[0].attributes("aria-selected")).toBe("true");
+
+		// ArrowRight in the REPLY (second, document-later) form's tablist…
+		await reply.find('[role="tablist"]').trigger("keydown", { key: "ArrowRight" });
+		await flushPromises();
+
+		// …must activate the REPLY form's Preview, leaving the BOTTOM (first)
+		// form untouched — the old document-wide handler would have switched
+		// the BOTTOM form to Preview (its tabs come first in the document
+		// query's findIndex) and teleported focus there.
+		expect(replyTabs[1].attributes("aria-selected")).toBe("true");
+		expect(reply.find(".comment-preview").exists()).toBe(true);
+		expect(bottomTabs[0].attributes("aria-selected")).toBe("true");
+		expect(bottomTabs[1].attributes("aria-selected")).toBe("false");
+		expect(bottom.find(".comment-preview").exists()).toBe(false);
+
+		bottom.unmount();
+		reply.unmount();
+	});
+
 	it("renders the draft as sanitized Markdown: bold, links and fenced code", async () => {
 		const wrapper = await mountCommentForm();
 		await (wrapper.find("textarea") as any).setValue(

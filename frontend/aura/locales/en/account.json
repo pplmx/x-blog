@@ -31,6 +31,7 @@
 			"nameRequired": "Display name can't be empty",
 			"avatarUpload": "Upload picture",
 			"avatarRemove": "Remove",
+			"avatarRemoveConfirm": "Remove your profile picture? This can't be undone.",
 			"avatarUploading": "Uploading…",
 			"avatarSaved": "Picture saved",
 			"avatarFailed": "Couldn't update picture — please try again",

@@ -120,6 +120,7 @@ onUnmounted(() => {
 	if (undoClearTimer) clearTimeout(undoClearTimer);
 	if (folderActionTimer) clearTimeout(folderActionTimer);
 	if (countRefreshTimer) clearTimeout(countRefreshTimer);
+	if (assignFailedTimer) clearTimeout(assignFailedTimer);
 });
 
 // When a signed-in reader opens the page, reconcile with the cloud: push any
@@ -235,6 +236,8 @@ function activeClass(active: boolean): string {
 }
 
 const assignFailed = ref(false);
+// The 4s auto-clear of assignFailed, tracked so onUnmounted can cancel it.
+let assignFailedTimer: ReturnType<typeof setTimeout> | undefined;
 // The rows whose folder select has an assignment in flight. Each row is tracked
 // INDEPENDENTLY in a Set so two different rows can be in flight at once without
 // clearing each other's guard — a single slot let the second row's finally wipe
@@ -281,7 +284,12 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
 				bookmark.folder_name = prevName;
 			}
 			assignFailed.value = true;
-			setTimeout(() => {
+			// Tracked like the sibling one-shot timers (round-418 audit): the
+			// bare setTimeout fired on a dead component after an SPA nav away,
+			// and a second failing assign within 4s stacked another timer.
+			if (assignFailedTimer) clearTimeout(assignFailedTimer);
+			assignFailedTimer = setTimeout(() => {
+				assignFailedTimer = undefined;
 				assignFailed.value = false;
 			}, 4000);
 		}

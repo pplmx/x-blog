@@ -31,6 +31,7 @@
 			"nameRequired": "显示名称不能为空",
 			"avatarUpload": "上传头像",
 			"avatarRemove": "移除",
+			"avatarRemoveConfirm": "确定移除您的头像吗？此操作无法撤销。",
 			"avatarUploading": "上传中…",
 			"avatarSaved": "头像已保存",
 			"avatarFailed": "头像更新失败，请稍后再试",

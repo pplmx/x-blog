@@ -143,6 +143,13 @@ function close(): void {
 }
 
 function onFocus(): void {
+	// A blur kicked off the 150ms close; re-focusing before it fires must
+	// cancel it, or the timer would close the just-reopened dropdown a beat
+	// later (round-418 audit finding).
+	if (blurTimer) {
+		clearTimeout(blurTimer);
+		blurTimer = null;
+	}
 	focused.value = true;
 	open.value = true;
 }

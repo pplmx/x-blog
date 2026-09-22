@@ -191,6 +191,12 @@ function previewAvatar(event: Event) {
 }
 
 async function uploadAvatar(file: File) {
+	// Handler-level re-entry guard (round-418 audit): the buttons are
+	// :disabled while busy, but a rapid second action queued in the same tick
+	// beats Vue patching disabled next render — two overlapping upload
+	// responses could then setProfile out of order (the older landing last
+	// shows the old avatar). Mirror the sibling mutation guards on this page.
+	if (avatarState.value === "busy") return;
 	avatarState.value = "busy";
 	try {
 		const updated = await uploadReaderAvatar(file);
@@ -209,6 +215,14 @@ async function uploadAvatar(file: File) {
 }
 
 async function removeAvatar() {
+	// Re-entry guard + confirm (round-418 audit): without the handler guard a
+	// fast double-click fired two DELETE /me/avatar requests (two responses,
+	// the last one wins, but the first could still error into "error" state on
+	// a 404); and unlike the other destructive actions on this page
+	// (revoke device / delete account / unfollow), removing the avatar is
+	// irreversible with no confirm.
+	if (avatarState.value === "busy") return;
+	if (!window.confirm(t("account.avatar.removeConfirm"))) return;
 	avatarState.value = "busy";
 	avatarMessage.value = false;
 	try {

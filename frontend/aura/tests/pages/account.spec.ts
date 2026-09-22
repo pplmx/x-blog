@@ -800,11 +800,18 @@ describe("Account settings page", () => {
 			});
 			const wrapper = await mountPage();
 
+			// Removing the avatar is irreversible — the action now confirms
+			// first (round-418 audit), so the test accepts it like the sibling
+			// revoke/delete confirm flows.
+			const confirmSpy = vi.fn(() => true);
+			vi.stubGlobal("confirm", confirmSpy);
+
 			const remove = wrapper.findAll("button").find((b) => b.text() === "移除");
 			expect(remove).toBeDefined();
 			await remove?.trigger("click");
 			await flushPromises();
 
+			expect(confirmSpy).toHaveBeenCalled();
 			expect(mockRemoveReaderAvatar).toHaveBeenCalled();
 			expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ avatar_url: null }));
 			expect(wrapper.find("img").exists()).toBe(false);
