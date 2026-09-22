@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 416,
+  "round": 418,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-21T10:28:59+00:00",
+  "updated_at": "2026-09-22T01:43:41+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 408,
+      "touched_round": 417,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 408,
+      "touched_round": 417,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31087,9 +31087,284 @@
       "version": 1,
       "created_at": "2026-09-21T10:28:52+00:00",
       "updated_at": "2026-09-21T10:28:52+00:00",
-      "touched_round": 416,
+      "touched_round": 417,
       "rationale": "Quality-convergence stop conditions met at round 416: (1) zero active tasks >= 3.0 (audit batch TASK-495 scored 2.5 and is resolved; the only stale tasks are the multi-worker infra deferrals ISS-242/243/244 accepted via DEC-004/DEC-214/DEC-433 for the single-instance dev topology); (2) only remaining active issues are those recorded deferrals, plus every issue/change from the round-415 nav/responsive audit is resolved (ISS-567/568/569, TASK-493/494/495, CHG-754/755/756, hero-strip wrap, mobile-nav clip, ARIA tab roving, 44px targets, sr-only verified badge); (3) VERIFY green: frontend 2466/2466, typecheck clean, lint clean (5 pre-existing e2e/2fa + discussion.vue template-import warnings), ril.py check consistent (2590 nodes/2517 edges); (4) audit subagent delivered 7 defects, all fixed and unit-tested.",
       "alternatives_rejected": "Carry the deferred multi-worker cache/rate-limit/XFF infra (ISS-242/243/244) now (needs Redis + deploy topology, re-verified vertical too large for polish mode); add more UI/UX refactors beyond the concrete audit defects (no net-new >= 3.0 task surfaced); keep emitting round-advance commits after all work delivered (violates non-spinning invariant)."
+    },
+    "DEC-472": {
+      "id": "DEC-472",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T16:34:27+00:00",
+      "updated_at": "2026-09-21T16:34:27+00:00",
+      "touched_round": 417,
+      "rationale": "Operator reactivated the graph-engineering loop under a fresh polish direction (细节优化/bug修复/打磨/交互性/实用性/易用性). Supersedes the round-416 converged-idle (DEC-471). Reactivation rule: first re-run VERIFY to confirm the real baseline is green before iterating.",
+      "alternatives_rejected": "Stay parked in QUIESCE (no fresh operator direction would leave the loop idle); start feature-evolution mode (bug-convergence not yet re-verified this round; polish/bug-fix is the requested mode)"
+    },
+    "ISS-570": {
+      "id": "ISS-570",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T16:57:30+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "low"
+    },
+    "EV-313": {
+      "id": "EV-313",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T16:57:30+00:00",
+      "updated_at": "2026-09-21T16:57:30+00:00",
+      "touched_round": 417,
+      "source": "frontend/aura/app/layouts/default.vue:221",
+      "detail": "Mobile menu toggle button aria-label always uses common.menu.open even when the panel is open and the button becomes a close (X) control; common.menu.close exists in both en (Close menu) and zh (关闭菜单) locales but is unused. Screen-reader users navigating the open panel are told \"Open menu\" on a control that closes it.",
+      "confidence": 1.0
+    },
+    "HYP-023": {
+      "id": "HYP-023",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-21T16:57:52+00:00",
+      "updated_at": "2026-09-21T16:57:52+00:00",
+      "touched_round": 417,
+      "confidence": 0.9,
+      "root_cause": "The toggle button hardcodes the open-state label instead of branching on mobileMenuOpen. Bug present since the aria-expanded/aria-controls wiring was added."
+    },
+    "TASK-496": {
+      "id": "TASK-496",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-21T16:58:43+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "maintainability",
+      "severity": "low",
+      "title": "Mobile menu toggle aria-label should switch between open/close by state"
+    },
+    "ISS-571": {
+      "id": "ISS-571",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:11+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "low",
+      "title": "Home feed ?page= / ?category_id / ?tag_id deep links can send invalid (negative/0/NaN) params to the API",
+      "description": "index.vue init parsed Number(route.query.page)||1 and parseInt without <1 clamp; negative deep link → page=-3 → FastAPI 422 → permanent dead Retry (sync with search.vue:35)."
+    },
+    "ISS-572": {
+      "id": "ISS-572",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:11+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "low",
+      "title": "Reader profile page: slow stale getReaderProfile response can overwrite newer data after quick page-click + tab switch",
+      "description": "No monotonic request guard; whichever request resolves last wins, and whichever finished first drops the spinner. Same family as ISS-128."
+    },
+    "ISS-573": {
+      "id": "ISS-573",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:11+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "low",
+      "title": "Date format inconsistent across pages: some use bare toLocaleDateString (ambiguous 9/22, zh/en diverging) vs long form used by PostCard/article/bookmarks",
+      "description": "Add formatPostDate to composables/apiDate and use it on every post/comment date render."
+    },
+    "ISS-574": {
+      "id": "ISS-574",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:11+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "high",
+      "title": "Reader like row + public counter bump in separate transactions (crash between them leaves durable like row with unbumped badge, no re-sync)",
+      "description": "add_reader_post_like/remove_reader_post_like committed the row, router bumped counter in a second commit. Merge into one transaction (comment ISS-560 pattern)."
+    },
+    "TASK-497": {
+      "id": "TASK-497",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:32+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Clamp home feed query params (page/category_id/tag_id) to positive integers"
+    },
+    "TASK-498": {
+      "id": "TASK-498",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:32+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "correctness",
+      "severity": "low",
+      "title": "Monotonic stale-response guard on reader profile load"
+    },
+    "TASK-499": {
+      "id": "TASK-499",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:32+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "maintainability",
+      "severity": "low",
+      "title": "Unify date formatting via formatPostDate across all pages + admin"
+    },
+    "TASK-500": {
+      "id": "TASK-500",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:39:32+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Make reader like row + badge counter commit atomic"
+    },
+    "ISS-575": {
+      "id": "ISS-575",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:18+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "severity": "medium",
+      "title": "Admin comments: paging/sort actions read live (uncommitted) filter inputs instead of the applied filter snapshot",
+      "description": "Typing a search term without Enter then clicking Prev/Next paged through the NEW term's set while the list still showed the old one — box and list silently disagree. Commit a filter snapshot on apply/clear; all list-traversal actions use it."
+    },
+    "ISS-576": {
+      "id": "ISS-576",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:18+00:00",
+      "updated_at": "2026-09-22T01:43:28+00:00",
+      "touched_round": 417,
+      "severity": "medium",
+      "title": "Admin newsletter: delete marks row busy AFTER await — double-click fires duplicate DELETE"
+    },
+    "ISS-577": {
+      "id": "ISS-577",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:18+00:00",
+      "updated_at": "2026-09-22T01:43:28+00:00",
+      "touched_round": 417,
+      "severity": "low",
+      "title": "Admin pages: failed list load is a dead end (no retry button, siblings all offer one)"
+    },
+    "ISS-578": {
+      "id": "ISS-578",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:18+00:00",
+      "updated_at": "2026-09-22T01:43:28+00:00",
+      "touched_round": 417,
+      "severity": "medium",
+      "title": "Admin post editor: notify flush awaits autosave — a double-click in that window broadcasts twice to every subscriber"
+    },
+    "TASK-501": {
+      "id": "TASK-501",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:18+00:00",
+      "updated_at": "2026-09-22T01:43:26+00:00",
+      "touched_round": 417,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Admin comments commit-filter snapshot for paging"
+    },
+    "TASK-502": {
+      "id": "TASK-502",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:19+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Newsletter delete: mark busy before await (single-flight)"
+    },
+    "TASK-503": {
+      "id": "TASK-503",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:19+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "category": "dx",
+      "severity": "low",
+      "title": "Admin pages: add retry button to load-failed state"
+    },
+    "TASK-504": {
+      "id": "TASK-504",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T01:40:19+00:00",
+      "updated_at": "2026-09-22T01:43:27+00:00",
+      "touched_round": 417,
+      "category": "stability",
+      "severity": "medium",
+      "title": "Post editor notify: single-flight guard"
+    },
+    "CHG-757": {
+      "id": "CHG-757",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T01:42:25+00:00",
+      "updated_at": "2026-09-22T01:42:25+00:00",
+      "touched_round": 417,
+      "commit": "de091fec"
+    },
+    "CHG-758": {
+      "id": "CHG-758",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T01:42:25+00:00",
+      "updated_at": "2026-09-22T01:42:25+00:00",
+      "touched_round": 417,
+      "commit": "ba86dd49"
+    },
+    "CHG-759": {
+      "id": "CHG-759",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T01:42:25+00:00",
+      "updated_at": "2026-09-22T01:42:25+00:00",
+      "touched_round": 417,
+      "commit": "87c7ffdf"
     }
   },
   "edges": [
@@ -46240,6 +46515,234 @@
       "to": "DEC-470",
       "type": "supersedes",
       "created_at": "2026-09-21T10:28:59+00:00"
+    },
+    {
+      "from": "DEC-472",
+      "to": "DEC-471",
+      "type": "supersedes",
+      "created_at": "2026-09-21T16:34:39+00:00"
+    },
+    {
+      "from": "EV-313",
+      "to": "HYP-023",
+      "type": "validates",
+      "created_at": "2026-09-21T16:58:42+00:00"
+    },
+    {
+      "from": "ISS-570",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-21T17:02:07+00:00"
+    },
+    {
+      "from": "TASK-496",
+      "to": "ISS-570",
+      "type": "addresses",
+      "created_at": "2026-09-21T17:02:07+00:00"
+    },
+    {
+      "from": "TASK-497",
+      "to": "ISS-571",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:39:32+00:00"
+    },
+    {
+      "from": "TASK-498",
+      "to": "ISS-572",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:39:32+00:00"
+    },
+    {
+      "from": "TASK-499",
+      "to": "ISS-573",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:39:32+00:00"
+    },
+    {
+      "from": "TASK-500",
+      "to": "ISS-574",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:39:32+00:00"
+    },
+    {
+      "from": "ISS-571",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:39:33+00:00"
+    },
+    {
+      "from": "ISS-572",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:39:33+00:00"
+    },
+    {
+      "from": "ISS-573",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:39:33+00:00"
+    },
+    {
+      "from": "ISS-574",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:39:33+00:00"
+    },
+    {
+      "from": "TASK-501",
+      "to": "ISS-575",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "TASK-502",
+      "to": "ISS-576",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "TASK-503",
+      "to": "ISS-577",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "TASK-504",
+      "to": "ISS-578",
+      "type": "addresses",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "ISS-575",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "ISS-576",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:40:19+00:00"
+    },
+    {
+      "from": "ISS-577",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:40:20+00:00"
+    },
+    {
+      "from": "ISS-578",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T01:40:20+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "ISS-571",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:42+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "ISS-572",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "ISS-570",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-758",
+      "to": "ISS-574",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "ISS-575",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "ISS-576",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "ISS-577",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "ISS-578",
+      "type": "resolves",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "TASK-497",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "TASK-498",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:43+00:00"
+    },
+    {
+      "from": "CHG-758",
+      "to": "TASK-500",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "TASK-501",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "TASK-502",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "TASK-503",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "TASK-504",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "TASK-499",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-759",
+      "to": "TASK-499",
+      "type": "implements",
+      "created_at": "2026-09-22T01:42:44+00:00"
+    },
+    {
+      "from": "CHG-757",
+      "to": "TASK-496",
+      "type": "implements",
+      "created_at": "2026-09-22T01:43:26+00:00"
     }
   ]
 }
