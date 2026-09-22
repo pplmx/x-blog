@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 424,
+  "round": 425,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T11:21:03+00:00",
+  "updated_at": "2026-09-22T11:31:12+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32043,6 +32043,92 @@
       "touched_round": 423,
       "commit": "29737a21",
       "title": "Bookmarks multi-undo stack + reader a11y/i18n cleanups (TASK-521..524, ISS-599..602)"
+    },
+    "ISS-603": {
+      "id": "ISS-603",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin dashboard pending-comments card header caps count at the 5-row slice",
+      "description": "The quick card's header used pendingComments.length (the capped newest-5 slice), so a blog with >5 pending showed ≤5 while the stat card showed the real total -- two contradicting moderation signals on one dashboard.",
+      "severity": "medium"
+    },
+    "ISS-604": {
+      "id": "ISS-604",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin search/create inputs missing accessible names (media, tags, categories)",
+      "description": "Media search box and tags/categories create-name inputs were placeholder-only with no aria-label; placeholder is not an accessible name.",
+      "severity": "low"
+    },
+    "ISS-605": {
+      "id": "ISS-605",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin comment reply textarea unlabeled and no focus-in on open",
+      "description": "Reply textarea had only a placeholder and openReply did not move keyboard/screen-reader focus into the box when it appeared.",
+      "severity": "low"
+    },
+    "TASK-525": {
+      "id": "TASK-525",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin: pending-comments card header uses authoritative pending_count",
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 1
+    },
+    "TASK-526": {
+      "id": "TASK-526",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin: add aria-labels to media search + tags/categories create inputs",
+      "category": "dx",
+      "severity": "low",
+      "confidence": 1
+    },
+    "TASK-527": {
+      "id": "TASK-527",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:01+00:00",
+      "updated_at": "2026-09-22T11:31:01+00:00",
+      "touched_round": 424,
+      "title": "Admin: comment reply textarea aria-label + focus-in on open",
+      "category": "dx",
+      "severity": "low",
+      "confidence": 1
+    },
+    "CHG-776": {
+      "id": "CHG-776",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T11:31:07+00:00",
+      "updated_at": "2026-09-22T11:31:07+00:00",
+      "touched_round": 424,
+      "commit": "8d88beb5",
+      "title": "Admin pending-comments count fix + a11y labels (TASK-525..527, ISS-603..605)"
     }
   },
   "edges": [
@@ -47937,6 +48023,60 @@
       "to": "ISS-602",
       "type": "addresses",
       "created_at": "2026-09-22T11:21:00+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "ISS-603",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:31:07+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "ISS-604",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:31:07+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "ISS-605",
+      "type": "resolves",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "TASK-525",
+      "type": "implements",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "TASK-526",
+      "type": "implements",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "CHG-776",
+      "to": "TASK-527",
+      "type": "implements",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "TASK-525",
+      "to": "ISS-603",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "TASK-526",
+      "to": "ISS-604",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "TASK-527",
+      "to": "ISS-605",
+      "type": "addresses",
+      "created_at": "2026-09-22T11:31:08+00:00"
     }
   ]
 }
