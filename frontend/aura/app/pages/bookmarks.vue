@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { parseApiDate } from "~~/composables/apiDate";
+import { formatPostDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
@@ -605,7 +605,7 @@ function handleToggleDone(bookmark: Bookmark) {
               </span>
               <span class="flex items-center gap-1">
                 <Icon icon="lucide:calendar" class="w-4 h-4" />
-                {{ parseApiDate(bookmark.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
+                {{ formatPostDate(bookmark.created_at, locale) }}
               </span>
             </div>
 

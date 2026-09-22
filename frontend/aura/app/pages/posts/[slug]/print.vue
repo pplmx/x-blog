@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { usePost } from "~~/api/public/posts";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { readingMinutes } from "~~/composables/useReadingTime";
 
 // Print / PDF view of a post (DEC-112, TASK-168).
@@ -84,7 +84,7 @@ function printPage() {
           <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
             <span class="inline-flex items-center gap-1.5">
               <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
+              {{ formatPostDate(effectivePublishTs(post), locale) }}
             </span>
             <span class="inline-flex items-center gap-1.5">
               <Icon icon="lucide:clock" class="w-3.5 h-3.5" />
