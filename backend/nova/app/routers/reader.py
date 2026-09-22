@@ -8,7 +8,7 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from secrets import token_urlsafe
 from typing import Annotated, Literal
@@ -714,7 +714,7 @@ def register(
         raise HTTPException(status_code=400, detail="Email already registered")
     db.refresh(reader)
 
-    reader.last_login_at = datetime.now(UTC)
+    reader.last_login_at = crud.utc_now_naive()
     db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -756,7 +756,7 @@ def login(
             "two_factor_required": True,
             "mfa_token": auth.create_reader_2fa_token(reader.id, token_version=reader.token_version or 0),
         }
-    reader.last_login_at = datetime.now(UTC)
+    reader.last_login_at = crud.utc_now_naive()
     db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -795,7 +795,7 @@ def login_2fa(
             detail="Invalid or expired login attempt",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    reader.last_login_at = datetime.now(UTC)
+    reader.last_login_at = crud.utc_now_naive()
     db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -1454,7 +1454,7 @@ def confirm_password_reset(
     reader.token_version = (reader.token_version or 0) + 1
     db.commit()
     db.refresh(reader)
-    reader.last_login_at = datetime.now(UTC)
+    reader.last_login_at = crud.utc_now_naive()
     db.commit()
 
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
@@ -1784,10 +1784,9 @@ def like_post(
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     like, created = crud.add_reader_post_like(db, current_reader.id, post.id)
-    if created:
-        # The durable per-reader row is the cross-device truth; the public
-        # counter is the aggregate badge. Bump it exactly once per NEW like.
-        crud.increment_likes(db, post.id)
+    # The counter bump is INSIDE add_reader_post_like's transaction (ISS-574):
+    # row + badge commit together, so a crash between them can't leave a liked
+    # post with an unbumped count. Do not bump again here — that would double it.
     response.status_code = 201 if created else 200
     return AddBookmarkResponse(post_id=like.post_id, already_existed=not created)
 
@@ -1804,9 +1803,10 @@ def unlike_post(
     but only decrements the public counter when a like was actually removed
     (an unlike of a never-liked post doesn't tear the count below its true
     aggregate)."""
-    removed = crud.remove_reader_post_like(db, current_reader.id, post_id)
-    if removed:
-        crud.decrement_likes(db, post_id)
+    # The counter decrement is INSIDE remove_reader_post_like's transaction
+    # (ISS-574): row delete + badge decrement commit together, so a crash can't
+    # leave an unliked post still counting the reader. Do not decrement here.
+    crud.remove_reader_post_like(db, current_reader.id, post_id)
     return None
 
 

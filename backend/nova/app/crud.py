@@ -1680,14 +1680,32 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     return post
 
 
+def _bump_post_likes(db: Session, post_id: int, delta: int) -> None:
+    """Atomic UPDATE of a post's like counter WITHOUT committing.
+
+    Shared by increment_likes/decrement_likes (standalone commits) and the
+    reader like-row paths (ISS-574: merged into the row's own transaction so a
+    crash between the two can never leave a durable like row with a counter
+    that was never bumped — the same atomicity fix comments got at ISS-560).
+    """
+    if delta < 0:
+        stmt = (
+            update(models.Post)
+            .where(models.Post.id == post_id, models.Post.likes > 0)
+            .values(likes=models.Post.likes + delta)
+        )
+    else:
+        stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + delta)
+    db.execute(stmt)
+
+
 def increment_likes(db: Session, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update.
 
     Invalidates the cached list payloads, which embed the like counter (ISS-141);
     feeds/series don't embed likes, so only the list cache is dropped.
     """
-    stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + 1)
-    db.execute(stmt)
+    _bump_post_likes(db, post_id, 1)
     try:
         db.commit()
     except Exception:
@@ -1709,10 +1727,7 @@ def decrement_likes(db: Session, post_id: int) -> models.Post | None:
     payloads). Used by the reader unlike path (round 359) when a durable like
     row is actually removed.
     """
-    stmt = (
-        update(models.Post).where(models.Post.id == post_id, models.Post.likes > 0).values(likes=models.Post.likes - 1)
-    )
-    db.execute(stmt)
+    _bump_post_likes(db, post_id, -1)
     try:
         db.commit()
     except Exception:
@@ -2357,28 +2372,57 @@ def add_reader_post_like(db: Session, reader_id: int, post_id: int) -> tuple[mod
     existing like returns the existing row with created=False (merge-friendly —
     the localStorage-first client re-sends the same set on login, mirroring
     add_reader_bookmark). The durable row is what makes a signed-in reader's
-    like cross-device; the public counter is bumped separately by the caller."""
+    like cross-device; the public counter is the aggregate badge.
+
+    Row + counter commit in ONE transaction (ISS-574, like_comment's ISS-560
+    pattern): the old two-commit path (row commit here, counter bump in the
+    router) could crash in between and leave a durable like row whose count
+    was never bumped, with no re-sync path. A concurrent duplicate
+    (IntegrityError at flush) stays an idempotent no-op; any other failure
+    rolls the whole like back."""
     existing = get_reader_post_like(db, reader_id, post_id)
     if existing:
         return existing, False
     like = models.ReaderPostLike(reader_id=reader_id, post_id=post_id)
     db.add(like)
-    if _commit_reader_upsert(db):
-        db.refresh(like)
-        return like, True
-    existing = get_reader_post_like(db, reader_id, post_id)
-    if existing:
-        return existing, False
-    raise RuntimeError("reader-post-like insert lost the unique-key race but no row was found")
+    try:
+        _bump_post_likes(db, post_id, 1)
+        db.commit()
+    except IntegrityError:
+        db.rollback()  # concurrent duplicate → idempotent no-op
+        existing = get_reader_post_like(db, reader_id, post_id)
+        if existing:
+            return existing, False
+        raise RuntimeError("reader-post-like insert lost the unique-key race but no row was found")
+    except Exception:
+        db.rollback()
+        raise
+    # The counter is embedded in the cached post-list payloads (ISS-141);
+    # a brand-new like changes it, so drop those caches exactly once per commit.
+    clear_counter_caches()
+    db.refresh(like)
+    return like, True
 
 
 def remove_reader_post_like(db: Session, reader_id: int, post_id: int) -> bool:
-    """Delete a like; returns True if one was removed. Idempotent."""
+    """Delete a like; returns True if one was removed. Idempotent.
+
+    Row + counter decrement commit in ONE transaction (ISS-574, mirroring
+    add_reader_post_like): the old two-commit path could crash between the
+    row delete and the counter bump, leaving a vanished like row whose badge
+    still counted it — permanently wrong, no re-sync path."""
     like = get_reader_post_like(db, reader_id, post_id)
     if not like:
         return False
     db.delete(like)
-    db.commit()
+    try:
+        _bump_post_likes(db, post_id, -1)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    # Counter embeds in cached post-list payloads (ISS-141); drop them once.
+    clear_counter_caches()
     return True
 
 
