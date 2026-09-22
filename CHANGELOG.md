@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Comment/account interaction fixes from the round-418/419 reader audit**: the
+  **Write/Preview tab arrows** stay inside the tablist you typed in (the post page's
+  bottom form and the inline reply form share a label, so roving used to hop focus
+  to the *other* form's tab); editing a comment then clicking **Edit** on a different
+  comment asks before discarding your unsaved draft; **removing your avatar** now
+  confirms (irreversible) and avatar upload/remove are single-flight against a
+  double-click; header search's **blur→refocus** no longer closes the just-reopened
+  dropdown; bookmarks' assign-failure notice + header-search timers are cleaned up
+  on navigation away. (TASK-509/510/511, ISS-585..589)
 - 🛠️ **Notification feed polish from the round-418 audit**: marking a notification
   read (or all) while an older "load more" page request was still in flight could
   let that stale response **resurrect the just-cleared unread count** until the
