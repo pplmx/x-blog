@@ -58,10 +58,18 @@ watch(queryParams, () => {
 function onSearchInput() {
 	if (debounceTimer.value) clearTimeout(debounceTimer.value);
 	debounceTimer.value = setTimeout(() => {
+		debounceTimer.value = null;
 		searchQuery.value = searchInput.value.trim();
 		currentPage.value = 0;
 	}, 300);
 }
+
+// Same timer-leak class the media page fixed (ISS-582): a 300ms debounce
+// armed right before SPA navigation away would otherwise fire on the
+// unmounted instance and issue a stray refetch.
+onBeforeUnmount(() => {
+	if (debounceTimer.value) clearTimeout(debounceTimer.value);
+});
 
 function onStatusChange() {
 	currentPage.value = 0;
