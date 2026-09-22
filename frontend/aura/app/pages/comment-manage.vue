@@ -47,7 +47,8 @@ const savedFlash = ref(false);
 const errorMsg = ref(false);
 // The 2.5s saved-flash auto-clear, tracked so unmount cancels it (round-420
 // sweep, same one-shot pattern the media/copyUrl + bookmarks fix tracked).
-let savedFlashTimer: ReturnType<typeof setTimeout> | undefined;
+// Client-side component: window.setTimeout returns a plain number.
+let savedFlashTimer: number | undefined;
 
 // A network failure (unreachable backend, 5xx) must not be a dead end: the
 // token may still be valid, and the page offers a Retry. A missing token or

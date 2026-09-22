@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Unmount-safety sweep (round 420)**: every one-shot / debounced timer across
+  the app now cancels on unmount — the admin media library's search debounce and
+  copy-flash, header search's debounce + blur-close, admin posts list search
+  debounce, bookmarks' assign-failure notice, the comment-manage saved flash, the
+  markdown copy buttons, and all nine follow/subscribe/bookmark/share/notification
+  buttons' error flashes. A timer armed right before an SPA navigation no longer
+  fires on a dead component (and leaked real timers no longer poison later
+  fake-timer tests). (TASK-512..515, ISS-590..593)
 - 🛠️ **Comment/account interaction fixes from the round-418/419 reader audit**: the
   **Write/Preview tab arrows** stay inside the tablist you typed in (the post page's
   bottom form and the inline reply form share a label, so roving used to hop focus
