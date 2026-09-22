@@ -165,7 +165,15 @@ function displayDate(post: AdminPost): string {
 		: post.published
 			? (post.publish_at ?? post.created_at)
 			: (post.updated_at ?? post.created_at);
-	return parseApiDate(target)?.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US") ?? "";
+	// Compact "short month" form — same as the sibling admin tables
+	// (newsletter/readers/comments), not the ambiguous bare 9/22/2026 default.
+	return (
+		parseApiDate(target)?.toLocaleDateString(locale.value === "zh" ? "zh-CN" : "en-US", {
+			year: "numeric",
+			month: "short",
+			day: "numeric",
+		}) ?? ""
+	);
 }
 </script>
 
