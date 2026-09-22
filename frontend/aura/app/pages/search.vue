@@ -9,7 +9,7 @@ import {
 	useCommentSearch,
 } from "~~/api/public/search";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
@@ -686,12 +686,12 @@ function goToPage(pg: number | string) {
 
       <div
         v-else-if="activeError"
+        role="alert"
         class="text-center py-12 text-gray-500"
       >
         <p class="mb-4">{{ t("search.error") }}</p>
         <button
           type="button"
-          role="alert"
           class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           @click="mode === 'comments' ? retryComments() : retrySearch()"
         >
@@ -800,7 +800,7 @@ function goToPage(pg: number | string) {
                 {{ post.category.name }}
               </span>
               <span>
-                {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ formatPostDate(effectivePublishTs(post), locale) }}
               </span>
               <span>{{ post.views }} {{ t("search.posts.views") }}</span>
             </div>
@@ -836,7 +836,7 @@ function goToPage(pg: number | string) {
                 {{ commentAuthorName(comment, t("components.commentList.readerNoName")) }}
               </span>
               <span>
-                {{ parseApiDate(comment.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+                {{ formatPostDate(comment.created_at, locale) }}
               </span>
               <span class="text-emerald-500 dark:text-emerald-400">
                 {{ t("search.comments.jumpTo") }}

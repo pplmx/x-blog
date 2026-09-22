@@ -649,6 +649,27 @@ describe("Index Page", () => {
 			expect(lastFetchUrl).not.toContain("tag_id=");
 		});
 
+		it("clamps a negative ?page= to page 1 at the request (ISS-571)", async () => {
+			// `Number("-3") || 1` is -3, so the home feed previously sent page=-3
+			// → FastAPI 422 → dead Retry that could never recover (a failed
+			// fetch has no pagination for the out-of-range watcher to clamp).
+			await mountIndexPage({ query: { page: "-3" } });
+			expect(lastFetchUrl).toContain("page=1");
+			expect(lastFetchUrl).not.toContain("page=-3");
+		});
+
+		it("clamps an invalid ?page=abc to page 1 at the request (ISS-571)", async () => {
+			await mountIndexPage({ query: { page: "abc" } });
+			expect(lastFetchUrl).toContain("page=1");
+		});
+
+		it("drops a negative ?category_id from the request (ISS-571)", async () => {
+			// Number("-1") is truthy, so ?category_id=-1 previously slithered
+			// into the URL and 422'd the feed; it must be treated as absent.
+			await mountIndexPage({ query: { category_id: "-1" } });
+			expect(lastFetchUrl).not.toContain("category_id=");
+		});
+
 		it("sidebar category/tag chips navigate to page 1, not a stale page (ISS-446)", async () => {
 			// From /?page=3 a category chip used to MERGE its query into the
 			// current one, producing ?category_id=1&page=3 while the watcher reset

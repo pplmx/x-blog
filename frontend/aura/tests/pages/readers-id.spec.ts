@@ -8,7 +8,7 @@
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { reactive, ref } from "vue";
 
 import ReaderProfilePage from "../../app/pages/readers/[id].vue";
 
@@ -34,11 +34,25 @@ let mockQuery: Record<string, string> = {};
 // TASK-478 / ISS-554: records the page arg each getReaderProfile call received
 // so a test can assert an invalid ?page= resolves to 1 on the wire.
 let mockProfilePages: unknown[] = [];
+// ISS-572: per-call behaviors for the profile mock, consumed FIFO. `deferred`
+// installs a manual-release promise so a test can hold one response open while
+// a newer load lands, then release the stale one.
+let mockProfileSteps: Array<{
+	payload?: unknown;
+	defer?: (release: (value: unknown) => void) => void;
+}> = [];
 
 vi.mock("~~/api/public/readers", () => ({
 	getReaderProfile: async (_id: number, page?: number) => {
 		mockProfilePages.push(page);
 		if (mockReject) throw mockReject;
+		const step = mockProfileSteps.shift();
+		if (step) {
+			if (step.defer) {
+				return new Promise<unknown>((resolve) => step.defer?.(resolve));
+			}
+			if ("payload" in step) return step.payload;
+		}
 		return mockPayload;
 	},
 	getReaderPublicLikes: async () => {
@@ -166,6 +180,7 @@ beforeEach(() => {
 	mockReaderId = "5";
 	mockQuery = {};
 	mockProfilePages = [];
+	mockProfileSteps = [];
 	mockFollowReader.mockClear();
 	mockUnfollowReader.mockClear();
 	mockBlockReader.mockClear();
@@ -190,6 +205,33 @@ async function mountPage() {
 	});
 	await flushPromises();
 	return wrapper;
+}
+
+/**
+ * Mount with a REACTIVE route query so a test can change ?page= / ?view= after
+ * mount and fire the load watcher, which the plain mountPage() (static query)
+ * cannot do — the reader load race test (ISS-572) needs that seam.
+ */
+async function mountPageReactiveQuery(initialQuery: Record<string, string>) {
+	// Deep-reactive route: the page computed reads route.query.page on every
+	// eval, so a later Object.assign into route.query must be observable —
+	// swapping the whole query object wouldn't be (setups captured the old
+	// reference). The initial pass must wait for pending to settle.
+	const route = reactive({ params: { id: mockReaderId }, query: { ...initialQuery } });
+	vi.stubGlobal("useRoute", () => route);
+	vi.stubGlobal("navigateTo", vi.fn());
+	const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
+	const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
+	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
+		global: { components: { ReaderFollowButton, ReaderBlockButton }, stubs },
+	});
+	await flushPromises();
+	return {
+		wrapper,
+		setQuery: (patch: Record<string, string>) => {
+			Object.assign(route.query, patch);
+		},
+	};
 }
 
 /** Sign in a reader (reader_token) with an optional stored profile. */
@@ -292,6 +334,49 @@ describe("Reader profile page", () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("readerProfile.notFoundTitle");
 		expect(wrapper.text()).not.toContain("readerProfile.loadFailed");
+	});
+
+	it("a slow stale profile response cannot overwrite a newer one (ISS-572)", async () => {
+		// Quick page-click + tab-switch fires overlapping load() calls. The
+		// older (stale) response must not clobber the newer data or flip the
+		// spinner off while the newer request is still in flight.
+		mockPayload = samplePage;
+		const { wrapper, setQuery } = await mountPageReactiveQuery({});
+		// First load settled: render the initial comment.
+		expect(wrapper.text()).toContain("a comment on a post");
+
+		// Trigger a second load that will HANG (deferred) — the "older, slower"
+		// request. Its response carries a DISTINCT marker (display_name) so the
+		// test can prove a stale overwrite never lands.
+		let releaseStale!: (value: unknown) => void;
+		mockProfileSteps.push({
+			defer: (release) => {
+				releaseStale = release;
+			},
+		});
+		setQuery({ page: "2" });
+		await flushPromises();
+
+		// Trigger a third load that resolves FIRST: a liker page. The newer
+		// data must win even though the older request is still pending.
+		mockProfileSteps.push({ payload: sampleLikerPage });
+		setQuery({ page: "3" });
+		await flushPromises();
+		// The newer liker page rendered, not the older comment page.
+		expect(wrapper.text()).toContain("readerProfile.likesTab");
+		expect(wrapper.text()).not.toContain("StaleReader");
+
+		// Now the stale response finally lands — it must be discarded, never
+		// replacing the liker page with its marker.
+		releaseStale({
+			...samplePage,
+			profile: { ...samplePage.profile, display_name: "StaleReader" },
+		});
+		await flushPromises();
+		expect(wrapper.text()).not.toContain("StaleReader");
+		// The newer profile is still intact (tab still offered, comment count
+		// list still the liker payload's).
+		expect(wrapper.text()).toContain("readerProfile.likesTab");
 	});
 
 	it("drops the page param when an empty profile is deep-linked out of range", async () => {

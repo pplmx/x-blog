@@ -218,7 +218,7 @@ onMounted(initTheme);
             ref="mobileMenuToggle"
             type="button"
             class="xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            :aria-label="t('common.menu.open')"
+            :aria-label="mobileMenuOpen ? t('common.menu.close') : t('common.menu.open')"
             :aria-expanded="mobileMenuOpen"
             aria-controls="mobile-nav"
             @click="toggleMobileMenu"

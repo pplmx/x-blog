@@ -202,6 +202,10 @@ describe("Default Layout", () => {
 
 			// The mobile nav panel should exist (desktop nav renders Home too)
 			expect(wrapper.find("#mobile-nav").exists()).toBe(true);
+			// The toggle flips its accessible name with its state (ISS-570): a
+			// screen-reader user must hear "close" while the panel is open,
+			// not "open" on a control that collapses the menu.
+			expect(wrapper.find('button[aria-label="关闭菜单"]').exists()).toBe(true);
 		});
 
 		it("closes the mobile menu on Escape (ISS-131)", async () => {

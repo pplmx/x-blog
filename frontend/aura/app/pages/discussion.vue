@@ -13,7 +13,7 @@ import { computed, onMounted } from "vue";
 import type { PaginationInfo } from "~~/api/contracts/shared";
 import { type DiscussionFeedItem, useDiscussionFeed } from "~~/api/public/comments";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { parseApiDate } from "~~/composables/apiDate";
+import { formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { paginationPages } from "~~/composables/usePagination";
@@ -198,7 +198,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 						{{ item.post.title }}
 					</span>
 					<span>
-						{{ parseApiDate(item.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+						{{ formatPostDate(item.created_at, locale) }}
 					</span>
 				</div>
 			</div>

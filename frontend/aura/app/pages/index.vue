@@ -20,17 +20,29 @@ const route = useRoute();
 
 // Plain ref for current page — gives us explicit control over re-fetching.
 // Synced from route.query.page on init and when browser back/forward runs.
-const page = ref(Number(route.query.page) || 1);
+// Clamp an invalid ?page= (non-numeric, zero, negative) to page 1 at source
+// (ISS-571, mirror of search.vue:35): `Number("-3") || 1` is -3, so a negative
+// deep link previously sent page=-3 to /api/posts → FastAPI 422 → permanent
+// dead Retry (the out-of-range watcher below never fires because a failed
+// fetch has no pagination). Number.parseInt keeps "3abc" honest too.
+const page = ref(
+	(() => {
+		const raw = route.query.page ? Number.parseInt(String(route.query.page), 10) : 1;
+		return Number.isNaN(raw) || raw < 1 ? 1 : raw;
+	})(),
+);
 
 // Category/tag filter refs, driven by the route query. The sitemap and shared
 // links use /?category_id=X and /?tag_id=X as deep-link browse URLs, so the
 // home feed must honour them (previously ignored → unfiltered feed).
-const categoryId = computed(() =>
-	route.query.category_id ? Number.parseInt(String(route.query.category_id), 10) : undefined,
-);
-const tagId = computed(() =>
-	route.query.tag_id ? Number.parseInt(String(route.query.tag_id), 10) : undefined,
-);
+const categoryId = computed(() => {
+	const raw = route.query.category_id ? Number.parseInt(String(route.query.category_id), 10) : NaN;
+	return Number.isNaN(raw) || raw < 1 ? undefined : raw;
+});
+const tagId = computed(() => {
+	const raw = route.query.tag_id ? Number.parseInt(String(route.query.tag_id), 10) : NaN;
+	return Number.isNaN(raw) || raw < 1 ? undefined : raw;
+});
 
 // Build the filter set from the page + filter refs. The reactive getter drives
 // useFetch, so a page/category/tag change re-fetches (the type-level comment

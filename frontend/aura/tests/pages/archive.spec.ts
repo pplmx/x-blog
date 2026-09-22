@@ -322,9 +322,10 @@ describe("Archive Page", () => {
 				posts: scheduled,
 				routeQuery: { year: "2024", month: "6" },
 			});
-			// Archive card dates use the compact locale format (2024/6/1).
-			expect(wrapper.text()).toContain("2024/6/1");
-			expect(wrapper.text()).not.toContain("2024/1/15");
+			// Archive card dates use the site-wide long format (2024年6月1日),
+			// matching PostCard and the article page (round 417, ISS-573).
+			expect(wrapper.text()).toContain("2024年6月1日");
+			expect(wrapper.text()).not.toContain("2024年1月15日");
 		});
 	});
 

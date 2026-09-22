@@ -9,7 +9,7 @@ import {
 	unfollowReaderCategory,
 } from "~~/api/reader/follows";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 import { paginationPages } from "~~/composables/usePagination";
@@ -452,6 +452,7 @@ watch(categoryId, () => {
             <button
               v-if="catSignedIn && !sessionExpired"
               type="button"
+              :aria-pressed="catFollowing"
               :disabled="catFollowBusy"
               :title="t(catFollowing ? 'categories.followingTitle' : 'categories.followTitle')"
               class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
@@ -463,6 +464,7 @@ watch(categoryId, () => {
             <button
               v-if="catFollowing"
               type="button"
+              :aria-pressed="catNotify"
               :disabled="catFollowBusy"
               :title="t('categories.notifyTitle')"
               class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
@@ -562,7 +564,7 @@ watch(categoryId, () => {
               {{ post.category.name }}
             </span>
             <span>
-              {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+              {{ formatPostDate(effectivePublishTs(post), locale) }}
             </span>
             <span>{{ t('categories.views', { count: post.views }) }}</span>
           </div>

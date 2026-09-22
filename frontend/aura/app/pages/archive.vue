@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -414,7 +414,7 @@ useSeo(() => ({
               {{ post.category.name }}
             </span>
             <span>
-              {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+              {{ formatPostDate(effectivePublishTs(post), locale) }}
             </span>
             <span>{{ t('archive.views', { count: post.views }) }}</span>
           </div>

@@ -33,3 +33,21 @@ export function effectivePublishTs(post: {
 }): string {
 	return post.publish_at ?? post.created_at;
 }
+
+/**
+ * The site's canonical full-date format (round-417 consistency, ISS-573):
+ * `September 22, 2026` / `2026年9月22日` — NOT the bare locale default
+ * ("9/22/2026"), which is ambiguous (m/d vs d/m) and differs from the rich
+ * form PostCard / the article page / bookmarks already used, so the same post
+ * read like a different date depending on the page. Accepts the app locale
+ * code ("zh" | "en") like the callers already pass to toLocaleDateString.
+ */
+export function formatPostDate(value: string | number | null | undefined, locale: string): string {
+	return (
+		parseApiDate(value)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		}) ?? ""
+	);
+}

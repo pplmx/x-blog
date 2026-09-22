@@ -20,7 +20,7 @@ import {
 	getReaderPublicLikes,
 } from "~~/api/public/readers";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { parseApiDate } from "~~/composables/apiDate";
+import { formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";
 import { useSeo } from "~~/composables/useSeo";
@@ -118,7 +118,16 @@ async function loadSaved() {
 	}
 }
 
+// Monotonic request sequence so a slow earlier response cannot overwrite a
+// newer one after a quick page-click + tab switch (ISS-572, the home/reader
+// pagination race): without it a stale getReaderProfile resolving last could
+// swap in old tabs/content, and whichever request finished first dropped the
+// spinner while the newer one was still in flight. Same guard as the like
+// button and useReadingHistory.load (ISS-128).
+let loadSeq = 0;
+
 async function load() {
+	const seq = ++loadSeq; // invalidate any in-flight older request
 	loading.value = true;
 	loadFailed.value = false;
 	notFound.value = false;
@@ -126,18 +135,22 @@ async function load() {
 	// problem — rendering "not found" beats showing a retry for a 422 from
 	// `Path(ge=1)`.
 	if (Number.isNaN(readerId.value)) {
-		notFound.value = true;
-		loading.value = false;
+		if (seq === loadSeq) {
+			notFound.value = true;
+			loading.value = false;
+		}
 		return;
 	}
 	try {
 		const res = await getReaderProfile(readerId.value, page.value);
+		if (seq !== loadSeq) return; // stale response — a newer load is in flight
 		data.value = res;
 		// Refresh the active discovery tab when it is active (its paging rides
 		// the same ?page= parameter the comments tab pages).
 		if (view.value === "likes") await loadLikes();
 		if (view.value === "saved") await loadSaved();
 	} catch (cause) {
+		if (seq !== loadSeq) return; // stale response — ignore its failure verdict too
 		// 404 from the API → the reader doesn't exist (or never had a public
 		// identity); render the not-found state, not a "couldn't load" retry.
 		const status = (cause as { response?: { status?: number } } | undefined)?.response?.status;
@@ -147,7 +160,7 @@ async function load() {
 			loadFailed.value = true;
 		}
 	} finally {
-		loading.value = false;
+		if (seq === loadSeq) loading.value = false;
 	}
 }
 
@@ -285,7 +298,7 @@ const pageAnnouncement = computed(() =>
 						</span>
 					</h1>
 					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-						{{ t("readerProfile.joined", { date: parseApiDate(data.profile.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }) }}
+						{{ t("readerProfile.joined", { date: formatPostDate(data.profile.created_at, locale) }) }}
 					</p>
 					<!-- Reader-written "about me" (round 352): plain text under the
 						 name when the reader wrote one. -->
@@ -401,7 +414,7 @@ const pageAnnouncement = computed(() =>
 								<Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
 								{{ comment.post.title }}
 							</NuxtLink>
-							<span>{{ parseApiDate(comment.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}</span>
+							<span>{{ formatPostDate(comment.created_at, locale) }}</span>
 						</div>
 						<!-- Plain-text (escaped) rendering, deliberately NOT the markdown
 							 pipeline the post page uses: this is a compact comment-history

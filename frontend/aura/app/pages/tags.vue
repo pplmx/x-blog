@@ -9,7 +9,7 @@ import {
 	unfollowReaderTag,
 } from "~~/api/reader/follows";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
-import { effectivePublishTs, parseApiDate } from "~~/composables/apiDate";
+import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 import { paginationPages } from "~~/composables/usePagination";
@@ -396,6 +396,7 @@ watch(
             <button
               v-if="tagSignedIn && !sessionExpired"
               type="button"
+              :aria-pressed="tagFollowing"
               :disabled="tagFollowBusy"
               :title="t(tagFollowing ? 'tags.followingTitle' : 'tags.followTitle')"
               class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
@@ -407,6 +408,7 @@ watch(
             <button
               v-if="tagFollowing"
               type="button"
+              :aria-pressed="tagNotify"
               :disabled="tagFollowBusy"
               :title="t('tags.notifyTitle')"
               class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
@@ -494,7 +496,7 @@ watch(
               {{ post.category.name }}
             </span>
             <span>
-              {{ parseApiDate(effectivePublishTs(post))?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US") ?? "" }}
+              {{ formatPostDate(effectivePublishTs(post), locale) }}
             </span>
             <span>{{ t('tags.views', { count: post.views }) }}</span>
           </div>
