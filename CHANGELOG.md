@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Round-422 audit fixes — three stale-response / timer races**:
+  **resume-reading** no longer applies an old post's saved offset after an SPA
+  post switch: an in-flight restore for the article you just left could resolve
+  against the NEW article's (different) scroll height, teleporting you down the
+  wrong post and lighting a lying "resume at ~N%" chip — quick hops between
+  long posts (including A→B→A round-trips) are now generation-guarded. The
+  **reader profile's Liked/Saved tabs** gained the same monotonic guard the
+  comment list already had: a fast page-click can't let an older page paint
+  under the newer page's pagination. And the post page's like-failure banner
+  timer is now cleared on unmount like every other timer in the file.
+  (TASK-518/519/520, ISS-596/597/598)
 - 🛠️ **Unmount-safety sweep (round 420)**: every one-shot / debounced timer across
   the app now cancels on unmount — the admin media library's search debounce and
   copy-flash, header search's debounce + blur-close, admin posts list search
