@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 421,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T07:42:25+00:00",
+  "updated_at": "2026-09-22T07:53:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31810,6 +31810,39 @@
       "updated_at": "2026-09-22T07:42:25+00:00",
       "touched_round": 421,
       "commit": "91ce8ef3"
+    },
+    "ISS-595": {
+      "id": "ISS-595",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:53:12+00:00",
+      "updated_at": "2026-09-22T07:53:13+00:00",
+      "touched_round": 421,
+      "severity": "low",
+      "title": "Admin layout password-success flash timer not cleared on unmount (sweep completion)"
+    },
+    "TASK-517": {
+      "id": "TASK-517",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:53:12+00:00",
+      "updated_at": "2026-09-22T07:53:13+00:00",
+      "touched_round": 421,
+      "category": "stability",
+      "severity": "low",
+      "title": "Clear admin layout password flash timer"
+    },
+    "CHG-772": {
+      "id": "CHG-772",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T07:53:13+00:00",
+      "updated_at": "2026-09-22T07:53:13+00:00",
+      "touched_round": 421,
+      "commit": "2b263f84"
     }
   },
   "edges": [
@@ -47518,6 +47551,30 @@
       "to": "TASK-516",
       "type": "implements",
       "created_at": "2026-09-22T07:42:25+00:00"
+    },
+    {
+      "from": "TASK-517",
+      "to": "ISS-595",
+      "type": "addresses",
+      "created_at": "2026-09-22T07:53:13+00:00"
+    },
+    {
+      "from": "ISS-595",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T07:53:13+00:00"
+    },
+    {
+      "from": "CHG-772",
+      "to": "ISS-595",
+      "type": "resolves",
+      "created_at": "2026-09-22T07:53:13+00:00"
+    },
+    {
+      "from": "CHG-772",
+      "to": "TASK-517",
+      "type": "implements",
+      "created_at": "2026-09-22T07:53:13+00:00"
     }
   ]
 }
