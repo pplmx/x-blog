@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛠️ **Notification feed polish from the round-418 audit**: marking a notification
+  read (or all) while an older "load more" page request was still in flight could
+  let that stale response **resurrect the just-cleared unread count** until the
+  next poll — the page now drops any load-more unread snapshot superseded by a
+  read/delete. The media picker, reopened after its library shrank, used to
+  **remember the old page** and land on an impossible one (e.g. "3 / 2") — it now
+  resets to page 1 on every open, the admin media library's pager gained the same
+  single-flight guard as its picker sibling (a rapid double-click can't skip two
+  pages), and the search-debounce + copy-flash timers are cleaned up on
+  navigation away. (TASK-505/506/507, ISS-580..583)
 - 🛠️ **Reader like count can no longer drift from the durable like rows (round 417/418)**: a like/unlike on the post page committed the per-reader row and the public badge counter in **two separate transactions** — a crash between them could leave a liked post with an unbumped count (or a vanished row still counted) and no re-sync path. Both paths now bump the counter inside the same transaction (the comment-like fix pattern), so the badge always matches the rows. (TASK-500, ISS-574)
 - 🛠️ **Bashed/empty deep links no longer break the home feed or reader profile (round 417)**: a `?page=-3` / `?page=abc` home URL previously parsed to a negative page → API 422 → permanent dead retry; now invalid page/filter params clamp to a clean first page. A quick page-click + tab-switch on a reader profile could also let a slow stale response overwrite newer tabs — the load now ignores superseded responses. (TASK-497/498, ISS-571/572)
 - 🛠️ **Consistent long-form dates site-wide (round 417)**: the same post's date showed as bare `9/22/2026` on some (ambiguous) pages and `September 22, 2026` on others; every public page, search result, reader profile, and the admin dashboard now render the canonical long form through one `formatPostDate` helper. (TASK-499, ISS-573)
