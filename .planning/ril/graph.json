@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 421,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T07:28:08+00:00",
+  "updated_at": "2026-09-22T07:42:25+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 420,
+      "touched_round": 421,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -31777,6 +31777,39 @@
       "updated_at": "2026-09-22T07:17:04+00:00",
       "touched_round": 420,
       "commit": "a73aa212"
+    },
+    "ISS-594": {
+      "id": "ISS-594",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:42:24+00:00",
+      "updated_at": "2026-09-22T07:42:25+00:00",
+      "touched_round": 421,
+      "severity": "low",
+      "title": "categories/tags/series follow-error flash + admin-readers search debounce never cleared on unmount (sweep completion)"
+    },
+    "TASK-516": {
+      "id": "TASK-516",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T07:42:24+00:00",
+      "updated_at": "2026-09-22T07:42:25+00:00",
+      "touched_round": 421,
+      "category": "stability",
+      "severity": "low",
+      "title": "Clear the last four untracked page timers on unmount"
+    },
+    "CHG-771": {
+      "id": "CHG-771",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T07:42:25+00:00",
+      "updated_at": "2026-09-22T07:42:25+00:00",
+      "touched_round": 421,
+      "commit": "91ce8ef3"
     }
   },
   "edges": [
@@ -47461,6 +47494,30 @@
       "to": "TASK-515",
       "type": "implements",
       "created_at": "2026-09-22T07:17:04+00:00"
+    },
+    {
+      "from": "TASK-516",
+      "to": "ISS-594",
+      "type": "addresses",
+      "created_at": "2026-09-22T07:42:24+00:00"
+    },
+    {
+      "from": "ISS-594",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T07:42:24+00:00"
+    },
+    {
+      "from": "CHG-771",
+      "to": "ISS-594",
+      "type": "resolves",
+      "created_at": "2026-09-22T07:42:25+00:00"
+    },
+    {
+      "from": "CHG-771",
+      "to": "TASK-516",
+      "type": "implements",
+      "created_at": "2026-09-22T07:42:25+00:00"
     }
   ]
 }
