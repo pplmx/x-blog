@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 420,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T06:38:25+00:00",
+  "updated_at": "2026-09-22T06:51:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31677,6 +31677,39 @@
       "updated_at": "2026-09-22T06:38:24+00:00",
       "touched_round": 420,
       "commit": "dbb9bfaf"
+    },
+    "ISS-591": {
+      "id": "ISS-591",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:51:25+00:00",
+      "updated_at": "2026-09-22T06:51:26+00:00",
+      "touched_round": 420,
+      "severity": "low",
+      "title": "comment-manage saved-flash one-shot timer never cleared on unmount"
+    },
+    "TASK-513": {
+      "id": "TASK-513",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-22T06:51:25+00:00",
+      "updated_at": "2026-09-22T06:51:26+00:00",
+      "touched_round": 420,
+      "category": "stability",
+      "severity": "low",
+      "title": "Track + clear comment-manage savedFlash timer"
+    },
+    "CHG-768": {
+      "id": "CHG-768",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-22T06:51:25+00:00",
+      "updated_at": "2026-09-22T06:51:25+00:00",
+      "touched_round": 420,
+      "commit": "24536b8d"
     }
   },
   "edges": [
@@ -47289,6 +47322,30 @@
       "to": "TASK-512",
       "type": "implements",
       "created_at": "2026-09-22T06:38:25+00:00"
+    },
+    {
+      "from": "TASK-513",
+      "to": "ISS-591",
+      "type": "addresses",
+      "created_at": "2026-09-22T06:51:25+00:00"
+    },
+    {
+      "from": "ISS-591",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-22T06:51:25+00:00"
+    },
+    {
+      "from": "CHG-768",
+      "to": "ISS-591",
+      "type": "resolves",
+      "created_at": "2026-09-22T06:51:26+00:00"
+    },
+    {
+      "from": "CHG-768",
+      "to": "TASK-513",
+      "type": "implements",
+      "created_at": "2026-09-22T06:51:26+00:00"
     }
   ]
 }
