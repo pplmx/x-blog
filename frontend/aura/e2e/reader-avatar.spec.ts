@@ -114,10 +114,17 @@ test.describe("Reader avatar (DEC-299)", () => {
 
 		// The public profile page for this reader shows the same picture.
 		await page.goto(`/readers/${readerId}`);
-		await expect(page.locator('img[src^="/static/avatars/"]')).toBeVisible({ timeout: 10000 });
+		// The profile header avatar is the first /static/avatars/ <img> on the
+		// page; the reader's comment avatars (same URL) render below it.
+		await expect(page.locator('img[src^="/static/avatars/"]').first()).toBeVisible({
+			timeout: 10000,
+		});
 
 		// Removal clears the picture; the placeholder returns.
 		await page.goto("/account");
+		// Removal is guarded by a window.confirm (round-418 audit); Playwright
+		// auto-dismisses dialogs, so accept it or the avatar is never removed.
+		page.once("dialog", (dialog) => dialog.accept());
 		await page.getByRole("button", { name: "移除" }).click();
 		await expect(page.locator("img").first()).not.toBeVisible({ timeout: 10000 });
 	});

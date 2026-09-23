@@ -88,9 +88,19 @@ test.describe("Public saved-posts profile tab (DEC-399)", () => {
 		await expect(page.getByText("已保存")).toBeVisible({ timeout: 5000 });
 
 		// Server agrees: the flag is on and the public bookmarks endpoint lists it.
-		const profile = await request.get(`/api/readers/${reader_id}`);
-		expect(profile.status()).toBe(200);
-		expect((await profile.json()).profile.public_bookmarks).toBe(true);
+		// Poll rather than a one-shot GET: under the full serial suite the PATCH
+		// commit can race the immediate read (bookmarks seen red at round-424/PR
+		// #50; passes in isolation), and a single-shot assert is timing-luck.
+		await expect
+			.poll(
+				async () => {
+					const profile = await request.get(`/api/readers/${reader_id}`);
+					if (profile.status() !== 200) return null;
+					return (await profile.json()).profile.public_bookmarks;
+				},
+				{ timeout: 5000 },
+			)
+			.toBe(true);
 		const publicBookmarks = await request.get(`/api/readers/${reader_id}/bookmarks`);
 		expect(publicBookmarks.status()).toBe(200);
 		const listBody = (await publicBookmarks.json()) as { items: { slug: string }[] };
