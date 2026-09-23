@@ -26,8 +26,6 @@ def upgrade() -> None:
         sa.Column("digest_weekly", sa.Boolean(), server_default=sa.text("false"), nullable=False),
     )
     op.add_column("guest_comment_subscriptions", sa.Column("digest_sent_at", sa.DateTime(), nullable=True))
-    # ix_reader_post_likes_id is an alembic autogen false positive on an old
-    # table; the index already exists (see prior migrations).
     # ### end Alembic commands ###
 
 
