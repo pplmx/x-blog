@@ -101,9 +101,12 @@ test.describe("Comment live preview (DEC-306)", () => {
 
 		// Anonymous submit (moderation path).
 		await page.locator('input[autocomplete="nickname"]').fill("ModGuest");
-		await page.locator('input[type="email"]').fill("modguest@example.com");
+		await page.locator("[id^='comment-email']").fill("modguest@example.com");
 		await contentInput.fill("posting through the moderation queue");
-		await page.locator('button[type="submit"]').first().click();
+		// Target the comment form's own submit — the discussion-subscribe form
+		// sits earlier in the DOM, so a bare `button[type="submit"] .first()`
+		// clicks its "订阅" button instead and no comment is ever created.
+		await page.getByRole("button", { name: "提交评论" }).click();
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 		await page.waitForTimeout(700);
 
