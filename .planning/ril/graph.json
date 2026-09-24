@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 427,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T11:37:29+00:00",
+  "updated_at": "2026-09-24T12:27:56+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32157,10 +32157,10 @@
     "ISS-606": {
       "id": "ISS-606",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:28+00:00",
-      "updated_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "Reader email leaks as public comment nickname",
       "content": "create_comment (crud.py:1075) uses  for the public nickname column; a reader registered with only {email,password} (display_name optional → None) has their account email published on every comment surface (post discussion, comment feeds, search, reader profile, RSS/Atom). Never rewritten even if display_name is later set. Fix: generated handle (reader-{id} or 'Anonymous') instead of email."
@@ -32168,10 +32168,10 @@
     "ISS-607": {
       "id": "ISS-607",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:28+00:00",
-      "updated_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "Author-identity writes skip public cache invalidation",
       "content": "admin.py update_user (229)/upload_user_avatar (293)/remove_user_avatar (350) change AuthorBrief.display_name/avatar_url (rendered from cached objects in post lists, series detail, RSS/Atom posts feed, author feed) but none call clear_posts_list_cache()/clear_series_cache()/clear_feeds_cache(); sibling post/category/tag/batch routes all clear. Stale pen-name/avatar up to 5-min TTL."
@@ -32179,10 +32179,10 @@
     "ISS-608": {
       "id": "ISS-608",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:28+00:00",
-      "updated_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "update_reader_comment skips cache clear when approved comment leaves surface",
       "content": "crud.py:1260-1297: update_reader_comment resets is_approved=False, reviewed_at=None (comment drops off public surface, comment_count drops) but never calls clear_posts_list_cache(); create_comment/approve_comment/guest-edit path all do. Stale higher comment_count in lists/feeds up to 5 min when auto-approve disabled."
@@ -32190,10 +32190,10 @@
     "ISS-609": {
       "id": "ISS-609",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:52+00:00",
-      "updated_at": "2026-09-24T10:26:52+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "account.vue line 225 uses nonexistent i18n key",
       "content": "account.vue:225 calls t('account.avatar.removeConfirm') — absent from BOTH en/zh account.json; correct key account.profile.avatarRemoveConfirm. Native confirm() dialog shows the raw key string 'account.avatar.removeConfirm' before destructive avatar removal. All sibling buttons use account.profile.avatar* keys."
@@ -32201,10 +32201,10 @@
     "ISS-610": {
       "id": "ISS-610",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:53+00:00",
-      "updated_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "history/liked/bookmarks informative text fails WCAG AA contrast",
       "content": "text-gray-400 (#9ca3af, ~2.5:1) and dark:text-gray-500 on dark (~3.0-3.7:1) below the 4.5:1 AA threshold for small informative labels: history.vue section headers (374,378,382,386,402,441,448), :456 counts, :584 meta; liked.vue :328 pagination summary, :349 meta. Fix: bump light gray-400→gray-500, dark gray-500→gray-400 for informative text (keep gray-400 for icons)."
@@ -32212,10 +32212,10 @@
     "ISS-611": {
       "id": "ISS-611",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:53+00:00",
-      "updated_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "Notifications page one generic banner for three failed actions",
       "content": "notifications.vue:438-439 collapses initial-load error, markActionFailed (mark read/all read), and deleteFailed into one identical 'common.errors.network' line; a failed mark-all-read or single delete shows the same wording as a full load failure — reader cannot tell whether their delete/update landed. Fix: distinct copy per action with targeted retry."
@@ -32223,10 +32223,10 @@
     "ISS-612": {
       "id": "ISS-612",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:26:53+00:00",
-      "updated_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "title": "Zero-hit comment search lacks suggestion/recovery path",
       "content": "search.vue:250 shouldSuggest hard-requires mode==='posts'; the identical zero-hit query in comments mode falls through to a shared empty state with no did-you-mean and no route back to the same term in posts mode, even though backend suggests from the same corpus. Dead end for comment searches."
@@ -32249,10 +32249,10 @@
     "TASK-529": {
       "id": "TASK-529",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:27:17+00:00",
-      "updated_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "category": "correctness",
       "severity": "medium",
@@ -32264,10 +32264,10 @@
     "TASK-530": {
       "id": "TASK-530",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:27:17+00:00",
-      "updated_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T12:26:22+00:00",
       "touched_round": 427,
       "category": "ux",
       "severity": "high",
@@ -32279,10 +32279,10 @@
     "TASK-531": {
       "id": "TASK-531",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:27:17+00:00",
-      "updated_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T12:26:23+00:00",
       "touched_round": 427,
       "category": "ux",
       "severity": "medium",
@@ -32294,10 +32294,10 @@
     "TASK-532": {
       "id": "TASK-532",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T10:27:37+00:00",
-      "updated_at": "2026-09-24T10:27:37+00:00",
+      "updated_at": "2026-09-24T12:26:23+00:00",
       "touched_round": 427,
       "category": "correctness",
       "severity": "high",
@@ -32309,10 +32309,10 @@
     "TASK-533": {
       "id": "TASK-533",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T11:36:31+00:00",
-      "updated_at": "2026-09-24T11:36:31+00:00",
+      "updated_at": "2026-09-24T12:26:23+00:00",
       "touched_round": 427,
       "category": "ux",
       "severity": "medium",
@@ -32320,6 +32320,41 @@
       "effort": "small",
       "title": "Zero-hit comment search gains a recovery path",
       "content": "search.vue:250 shouldSuggest gated on mode==='posts', so a zero-hit query in comments mode shows only the shared empty state with no did-you-mean and no one-click route to the same term in posts mode. Fix: compute suggestions regardless of mode and/or add a Search-in-posts link on the comments-mode empty state."
+    },
+    "CHG-777": {
+      "id": "CHG-777",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T12:21:11+00:00",
+      "updated_at": "2026-09-24T12:21:11+00:00",
+      "touched_round": 427,
+      "commit": "988e691478e4febb7d861c2c69c691335a6238ea",
+      "title": "reader email never public nickname + cache/UX polish"
+    },
+    "EV-316": {
+      "id": "EV-316",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T12:27:56+00:00",
+      "updated_at": "2026-09-24T12:27:56+00:00",
+      "touched_round": 427,
+      "source": "full suites after round-427 changes",
+      "content": "VERIFY green: backend SQLite 1903 passed/93.54% cov; PG parity 1913 passed/93.82% (PostgreSQL 18.4); ruff+pyright+alembic clean; frontend 2485 passed, typecheck exit 0, lint only 4 known e2e/2fa warnings",
+      "confidence": 1.0
+    },
+    "DEC-473": {
+      "id": "DEC-473",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T12:27:56+00:00",
+      "updated_at": "2026-09-24T12:27:56+00:00",
+      "touched_round": 427,
+      "title": "close round 427 (TASK-529..533, ISS-606..612, CHG-777)",
+      "rationale": "Round-427 delivery: 7 audit findings fixed and verified — (1) reader email as public comment nickname eliminated at write (reader-{id} handle), read (schema guard normalizes legacy rows), and feed (RSS/Atom label fallback) layers (HIGH PII); (2/3) two public-cache invalidation gaps closed on author-identity writes and reader comment edits; (4) account avatar-remove confirm shows real copy instead of the raw i18n key; (5) notification failures get per-action copy + targeted retry; (6) history/liked informative text hits WCAG AA; (7) zero-hit comment search gains did-you-mean + a hop back to posts mode. Full VERIFY green on SQLite and PG parity.",
+      "alternatives_rejected": "Leave the email fallback (PII leak on comment surfaces); keep the 5-min stale author identity/comment counts (caching philosophy is writes-invalidate-explicitly); continue the pre-existing cross-locale admin key asymmetry (separate concern, pre-dates this round)"
     }
   },
   "edges": [
@@ -48358,6 +48393,72 @@
       "to": "ISS-612",
       "type": "addresses",
       "created_at": "2026-09-24T11:37:29+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-606",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-607",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-608",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-609",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-610",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-611",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:40+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "ISS-612",
+      "type": "resolves",
+      "created_at": "2026-09-24T12:23:41+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "TASK-532",
+      "type": "implements",
+      "created_at": "2026-09-24T12:23:41+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "TASK-529",
+      "type": "implements",
+      "created_at": "2026-09-24T12:23:41+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "TASK-531",
+      "type": "implements",
+      "created_at": "2026-09-24T12:23:41+00:00"
+    },
+    {
+      "from": "CHG-777",
+      "to": "TASK-533",
+      "type": "implements",
+      "created_at": "2026-09-24T12:23:41+00:00"
     }
   ]
 }
