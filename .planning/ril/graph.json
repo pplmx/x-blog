@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 428,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T20:02:12+00:00",
+  "updated_at": "2026-09-24T20:20:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32724,6 +32724,32 @@
       "touched_round": 428,
       "commit": "3fea6adb",
       "title": "round-428 polish wave: numeric slugs, NULL counters, feed cache, clientIp parity, a11y/i18n"
+    },
+    "ISS-624": {
+      "id": "ISS-624",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T20:19:27+00:00",
+      "updated_at": "2026-09-24T20:20:13+00:00",
+      "touched_round": 428,
+      "title": "Latent admin/admin.pages locale namespace collision (flatten merge order overrides)",
+      "severity": "low"
+    },
+    "TASK-547": {
+      "id": "TASK-547",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T20:19:27+00:00",
+      "updated_at": "2026-09-24T20:20:13+00:00",
+      "touched_round": 428,
+      "category": "maintainability",
+      "category_weight": 3,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "Merge admin.pages.json into admin.json (one namespace per file)"
     }
   },
   "edges": [
@@ -49098,6 +49124,18 @@
       "to": "ISS-623",
       "type": "resolves",
       "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "TASK-547",
+      "to": "ISS-624",
+      "type": "addresses",
+      "created_at": "2026-09-24T20:20:13+00:00"
+    },
+    {
+      "from": "ISS-624",
+      "to": "COMP-012",
+      "type": "located_in",
+      "created_at": "2026-09-24T20:20:13+00:00"
     }
   ]
 }

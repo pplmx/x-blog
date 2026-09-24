@@ -127,6 +127,33 @@
 				"locked": "Another digest job is running — this run sent nothing.",
 				"noRecipients": "No eligible recipients in the current window."
 			}
+		},
+		"pages": {
+			"seoTitle": "Pages",
+			"title": "Static pages",
+			"summary": "{n} page(s)",
+			"createTitle": "New page",
+			"titleLabel": "Title",
+			"titlePlaceholder": "Privacy policy",
+			"slugLabel": "Slug",
+			"slugPlaceholder": "privacy",
+			"contentLabel": "Content (Markdown)",
+			"contentPlaceholder": "## What data we collect\n\nWe only store...",
+			"publishLabel": "Published (visible at /pages/{slug})",
+			"create": "Create page",
+			"published": "Published",
+			"draft": "Draft",
+			"publish": "Publish",
+			"unpublish": "Unpublish",
+			"edit": "Edit",
+			"save": "Save",
+			"cancel": "Cancel",
+			"delete": "Delete",
+			"confirmDelete": "Delete this page? The public URL stops working.",
+			"loading": "Loading pages…",
+			"loadFailed": "Failed to load pages",
+			"empty": "No pages yet — create one above",
+			"operationFailed": "Operation failed. Please try again."
 		}
 	}
 }
