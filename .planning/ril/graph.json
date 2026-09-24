@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 431,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T23:25:33+00:00",
+  "updated_at": "2026-09-24T23:59:35+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32507,7 +32507,7 @@
       "version": 1,
       "created_at": "2026-09-24T19:25:07+00:00",
       "updated_at": "2026-09-24T19:25:07+00:00",
-      "touched_round": 429,
+      "touched_round": 431,
       "title": "fastapi reader/post schemas (articles)"
     },
     "COMP-012": {
@@ -32815,7 +32815,7 @@
       "version": 2,
       "created_at": "2026-09-24T23:12:16+00:00",
       "updated_at": "2026-09-24T23:19:18+00:00",
-      "touched_round": 429,
+      "touched_round": 431,
       "title": "Raw-import NULL views/likes/pinned rows 500 the whole public feed; pinned ORDER BY not coalesced across dialects (TASK-535 continuation, earlier test was vacuous)",
       "severity": "high"
     },
@@ -32870,7 +32870,7 @@
       "version": 2,
       "created_at": "2026-09-24T23:12:42+00:00",
       "updated_at": "2026-09-24T23:18:41+00:00",
-      "touched_round": 429,
+      "touched_round": 431,
       "title": "Coalesce read-side NULL counters (views/likes/pinned) in Post/PostList/PostRevisionDetail schemas + pinned ORDER BY in crud/admin",
       "category": "correctness",
       "severity": "high"
@@ -32968,6 +32968,41 @@
       "title": "Defer push broadcast batching (round-431 backend-sweep residual)",
       "rationale": "POST /notify is superuser-only + rate-limited (RATE_LIMIT_WRITE), subscriptions are bounded (MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10 per reader/IP) and dead endpoints are retired during dispatch (built-in GC), so a real install stays naturally bounded; batching/paging adds complexity for a fully-trusted endpoint with no current trigger. Parked as LOW for a future pass alongside ISS-625/626 (DEC-476).",
       "alternatives_rejected": "Page the subscription query / chunk the dispatch now (churn against a trusted, rate-limited endpoint with no measured trigger)."
+    },
+    "CHG-782": {
+      "id": "CHG-782",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:59:06+00:00",
+      "updated_at": "2026-09-24T23:59:06+00:00",
+      "touched_round": 431,
+      "commit": "1c872850",
+      "title": "round-432: admin list/detail coalesce raw-import NULL counters (review follow-up to CHG-781)"
+    },
+    "EV-317": {
+      "id": "EV-317",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:59:07+00:00",
+      "updated_at": "2026-09-24T23:59:07+00:00",
+      "touched_round": 431,
+      "source": "code-reviewer (a65b8dd84fe4aa67e) post-merge review of f89e1c20",
+      "title": "APPROVE on f89e1c20 — two LOWs folded into 1c872850, no critical/high; BeforeValidator+from_attributes and Core-update NULL tests verified sound",
+      "confidence": 0.95
+    },
+    "DEC-479": {
+      "id": "DEC-479",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:59:35+00:00",
+      "updated_at": "2026-09-24T23:59:35+00:00",
+      "touched_round": 431,
+      "title": "Close round 432 (post-merge review follow-ups)",
+      "rationale": "Independent code-review of round-431 commit f89e1c20 returned APPROVE (no critical/high). Two LOWs folded into this round: (1) admin list/detail now coalesce raw-import NULL pinned/views to false/0, matching every public surface (TASK-548 scope completion, ISS-627); (2) _coalesce_null_false docstring corrected (pinned only, likes is numeric). A regression test plants the NULL via Core update and asserts both admin surfaces read false/0. Full VERIFY green: backend 1910 (SQLite) / 241 targeted (PG), frontend untouched this round.",
+      "alternatives_rejected": "None"
     }
   },
   "edges": [
@@ -49522,6 +49557,24 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-24T23:22:15+00:00"
+    },
+    {
+      "from": "CHG-782",
+      "to": "TASK-548",
+      "type": "implements",
+      "created_at": "2026-09-24T23:59:06+00:00"
+    },
+    {
+      "from": "CHG-782",
+      "to": "ISS-627",
+      "type": "resolves",
+      "created_at": "2026-09-24T23:59:06+00:00"
+    },
+    {
+      "from": "DEC-479",
+      "to": "COMP-011",
+      "type": "governs",
+      "created_at": "2026-09-24T23:59:35+00:00"
     }
   ]
 }
