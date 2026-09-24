@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 428,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T20:20:13+00:00",
+  "updated_at": "2026-09-24T20:24:07+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32750,6 +32750,29 @@
       "confidence": 0.9,
       "effort": 1,
       "title": "Merge admin.pages.json into admin.json (one namespace per file)"
+    },
+    "CHG-780": {
+      "id": "CHG-780",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T20:22:50+00:00",
+      "updated_at": "2026-09-24T20:22:50+00:00",
+      "touched_round": 428,
+      "commit": "7420f8ed",
+      "title": "merge admin.pages.json into admin.json"
+    },
+    "DEC-475": {
+      "id": "DEC-475",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T20:22:50+00:00",
+      "updated_at": "2026-09-24T20:22:50+00:00",
+      "touched_round": 428,
+      "title": "close round 429 (TASK-547, ISS-624)",
+      "rationale": "Merged the split admin.pages.json locale file into admin.json — the latent double-file 'admin' namespace collision (flatten() merges by namespace, so overlap would silently override by glob order) is eliminated with identical key paths. Verified: useLang parity 21 tests, admin pages specs 16 tests, lint at baseline.",
+      "alternatives_rejected": "Rename the secondary namespace (churns every admin.pages.* reference); leave the latent collision (recorded as accepted risk)."
     }
   },
   "edges": [
@@ -49136,6 +49159,18 @@
       "to": "COMP-012",
       "type": "located_in",
       "created_at": "2026-09-24T20:20:13+00:00"
+    },
+    {
+      "from": "CHG-780",
+      "to": "TASK-547",
+      "type": "implements",
+      "created_at": "2026-09-24T20:24:07+00:00"
+    },
+    {
+      "from": "CHG-780",
+      "to": "ISS-624",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:24:07+00:00"
     }
   ]
 }
