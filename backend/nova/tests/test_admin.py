@@ -120,6 +120,42 @@ class TestAdminPosts:
         assert titles[0] == "Pinned Post"
         assert "Regular Post" in titles
 
+    def test_admin_list_and_detail_coalesce_raw_import_nulls(self, client, auth_headers, db_session):
+        """Admin rows for a raw-import NULL pinned/views must read false/0, not null.
+
+        Review follow-up to TASK-548/ISS-627: the public API coalesces a NULL
+        to false/0, so the admin list and detail must not show null for the
+        same rows (the editor would misread a pinned state that the site
+        treats as unpinned). The NULL is planted via Core update — an ORM
+        pinned=None stores 0, never a real NULL (the TASK-535 trigger).
+        """
+        post = models.Post(
+            title="Null Import",
+            slug="null-import",
+            content="Content",
+            published=True,
+            pinned=False,
+        )
+        db_session.add(post)
+        db_session.commit()
+        db_session.execute(
+            models.Post.__table__.update()
+            .where(models.Post.__table__.c.slug == "null-import")
+            .values(pinned=None, views=None)
+        )
+        db_session.commit()
+
+        listed = client.get("/api/admin/posts", headers=auth_headers)
+        assert listed.status_code == 200, listed.text
+        row = next(p for p in listed.json()["items"] if p["slug"] == "null-import")
+        assert row["pinned"] is False, row
+        assert row["views"] == 0, row
+
+        detail = client.get(f"/api/admin/posts/{post.id}", headers=auth_headers)
+        assert detail.status_code == 200, detail.text
+        body = detail.json()
+        assert body["pinned"] is False, body
+
     def test_create_post(self, client, auth_headers):
         response = client.post(
             "/api/admin/posts",

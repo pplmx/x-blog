@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Admin surfaces read raw-import NULL counters as false/0 too (round 432)**
+  — review follow-up to round 431: the admin posts list and editor detail
+  emitted a raw-import `pinned`/`views` NULL as `null` while every public page
+  read the same row as `false`/`0`, so an editor could misread pin state from
+  its own management page. The admin emissions now coalesce to the same
+  documented defaults (post-merge review finding). (TASK-548, ISS-627)
 - 🐛 **A raw-import NULL counter no longer 500s the whole public feed (round
   431)** — `Post.views`/`likes`/`pinned` are nullable with only Python-side
   defaults, so a row imported by raw SQL/COPY can carry NULL. Round 428

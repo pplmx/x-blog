@@ -510,9 +510,12 @@ def admin_list_posts(
                 "title": p.title,
                 "slug": p.slug,
                 "published": p.published,
-                "pinned": p.pinned,
+                # Coalesce raw-import NULLs (TASK-535/ISS-627 parity): the
+                # public API reads these as false/0, so the admin list must not
+                # show null for the same rows.
+                "pinned": bool(p.pinned or False),
                 "publish_at": p.publish_at.isoformat() if p.publish_at else None,
-                "views": p.views,
+                "views": p.views or 0,
                 "cover_image": p.cover_image,
                 "category": p.category.name if p.category else None,
                 "category_id": p.category_id,
@@ -651,7 +654,10 @@ def admin_get_post(
         "content": post.content,
         "excerpt": post.excerpt,
         "published": post.published,
-        "pinned": post.pinned,
+        # Coalesce raw-import NULLs (TASK-535/ISS-627 parity): a pinned/views
+        # NULL row is a real edge on import; the editor must see false/0 like
+        # the public page, not null.
+        "pinned": bool(post.pinned or False),
         "comments_enabled": post.comments_enabled,
         "publish_at": post.publish_at.isoformat() if post.publish_at else None,
         "cover_image": post.cover_image,

@@ -418,12 +418,14 @@ def _coalesce_null_zero(value: object) -> object:
 
 
 def _coalesce_null_false(value: object) -> object:
-    """Map a stray NULL to False for a read-side `pinned`/`likes` field.
+    """Map a stray NULL to False for a read-side `pinned` field.
 
     Same raw-import NULL-parity discipline as ``_coalesce_null_zero`` (and the
     ORDER BY COALESCE in crud.get_posts/get_adjacent_posts/admin list —
     TASK-535). Post.pinned is nullable with only a Python-side default, so a
     NULL-pinned row must read back as ``false``, never a validation 500.
+    (``likes`` is numeric — though also nullable — and is handled by
+    ``_coalesce_null_zero``.)
     """
     return False if value is None else value
 

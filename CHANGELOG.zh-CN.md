@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+- 🐛 **管理端界面也已把原始导入的 NULL 计数读为 false/0（round 432）**——
+  round 431 的审查跟进：管理员文章列表和编辑器详情页之前会把原始导入的
+  `pinned`/`views` NULL 显示成 `null`，而公开页面对同一行都读成
+  `false`/`0`，编辑可能在自己的管理页误读固定状态。管理端输出现在与文档默认值
+  归一一致（合并后审查发现）。（TASK-548, ISS-627）
 - 🐛 **原始导入的 NULL 计数不再让整个公开列表 500（round 431）**——
   `Post.views`/`likes`/`pinned` 可空且只有 Python 侧默认值，因此 raw
   SQL/COPY 导入的行可能携带 NULL。round 428 让此类计数器在增量时自愈、并对
