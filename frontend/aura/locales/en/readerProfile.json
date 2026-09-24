@@ -5,6 +5,7 @@
 		"anonymousName": "Reader",
 		"joined": "Joined {date}",
 		"commentsTitle": "Comments",
+		"tablistAria": "Blog profile sections",
 		"countLabel": "( {count} )",
 		"empty": "This reader hasn't commented publicly yet.",
 		"postLink": "Post",

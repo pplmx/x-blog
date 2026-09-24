@@ -34,6 +34,18 @@ describe("translate", () => {
 		expect(translate("en", "no.such.key")).toBe("no.such.key");
 	});
 
+	it("renders authors.postCountOne/Many in en without leaking ICU plural syntax", () => {
+		// Regression: authors.postCount previously used `{count, plural, one
+		// {post} other {posts}}` — ICU syntax the custom engine (no plural
+		// support, only {name} interpolation) passes through verbatim, so an
+		// English reader saw `3 {count, plural, one {post} other {posts}}`.
+		// Split into One/Many like readerProfile.followerCount* (round 428).
+		expect(translate("en", "authors.postCountOne", { count: 1 })).toBe("1 post");
+		expect(translate("en", "authors.postCountMany", { count: 3 })).toBe("3 posts");
+		expect(translate("zh", "authors.postCountOne", { count: 1 })).toBe("1 篇文章");
+		expect(translate("zh", "authors.postCountMany", { count: 3 })).toBe("3 篇文章");
+	});
+
 	it("returns the default locale constant", () => {
 		expect(DEFAULT_LOCALE).toBe("zh");
 	});

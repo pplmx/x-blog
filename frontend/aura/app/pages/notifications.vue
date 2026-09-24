@@ -623,7 +623,7 @@ function kindIcon(kind: string): string {
               </div>
               <p class="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
               <p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ item.body }}</p>
-              <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ timeLabel(item) }}</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ timeLabel(item) }}</p>
             </div>
           </component>
           <button
@@ -647,7 +647,7 @@ function kindIcon(kind: string): string {
             type="button"
             :disabled="deletingIds.has(item.id)"
             :aria-label="t('notifications.deleteRow')"
-            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             @click.stop="deleteRow(item)"
           >
             <Icon

@@ -482,6 +482,65 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).not.toContain("a comment on a post");
 	});
 
+	it("roves the tablist with Arrow keys (round 428 a11y audit)", async () => {
+		// The profile tablist follows the role="tab" keyboard contract
+		// (ArrowLeft/Right/Home/End) that search.vue and CommentForm already
+		// implement — previously only click moved tabs, so a keyboard user
+		// could only ever reach the comments tab. setView routes through the
+		// URL, so drive the reactive-query mount and let the stubbed navigateTo
+		// apply the ?view= change (as the router would in production).
+		const route = reactive({ params: { id: mockReaderId }, query: {} });
+		vi.stubGlobal("useRoute", () => route);
+		vi.stubGlobal(
+			"navigateTo",
+			vi.fn((opts: { query: Record<string, string | undefined> }) => {
+				route.query = Object.fromEntries(
+					Object.entries(opts.query).filter(([, v]) => v !== undefined),
+				) as Record<string, string>;
+			}),
+		);
+		const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
+		const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
+		mockPayload = sampleLikerPage;
+		mockLikesPayload = sampleLikes;
+		const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
+			global: { components: { ReaderFollowButton, ReaderBlockButton }, stubs },
+		});
+		await flushPromises();
+
+		// Re-query tablist + tabs after EACH key: a tab switch refetches the
+		// list (load() → loading skeleton → full re-render), destroying and
+		// recreating the DOM, so a wrapper captured earlier points at a
+		// detached node whose roving would operate on stale buttons.
+		const tablist = () => wrapper.get('[role="tablist"]');
+		const tabButtons = () => wrapper.findAll('[role="tab"]');
+		expect(tabButtons().length).toBe(2); // Comments + Liked posts
+		expect(tabButtons()[0]?.attributes("aria-selected")).toBe("true");
+
+		// ArrowRight moves selection to the next tab (comments → likes). The
+		// refetch also drops focus to the re-rendered list (a mouse click does
+		// the same), so assert the roving SELECTION contract + the route change
+		// (setView navigates the URL), not the transient focus node.
+		await tablist().trigger("keydown", { key: "ArrowRight" });
+		await flushPromises();
+		expect(tabButtons()[1]?.attributes("aria-selected")).toBe("true");
+		expect(route.query.view).toBe("likes");
+
+		// ArrowRight wraps to the first tab.
+		await tablist().trigger("keydown", { key: "ArrowRight" });
+		await flushPromises();
+		expect(tabButtons()[0]?.attributes("aria-selected")).toBe("true");
+		expect(route.query.view).toBeUndefined();
+
+		// End jumps to the last tab; Home back to the first.
+		await tablist().trigger("keydown", { key: "End" });
+		await flushPromises();
+		expect(tabButtons()[1]?.attributes("aria-selected")).toBe("true");
+		await tablist().trigger("keydown", { key: "Home" });
+		await flushPromises();
+		expect(tabButtons()[0]?.attributes("aria-selected")).toBe("true");
+	});
+
 	it("hides the Saved tab unless the reader opted in (public_bookmarks false)", async () => {
 		mockPayload = samplePage;
 		// A ?view=saved deep link on a private reader falls back to comments —

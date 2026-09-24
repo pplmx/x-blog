@@ -439,7 +439,7 @@ const stats = computed(() => {
         </h2>
         <NuxtLink
           to="/history"
-          class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-violet-500 transition-colors"
+          class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-violet-500 transition-colors"
         >
           {{ t("reader.nav.history") }}
           <Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
@@ -484,7 +484,7 @@ const stats = computed(() => {
           <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
             {{ post.title }}
           </h3>
-          <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+          <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
             <span v-if="post.category" class="inline-flex items-center gap-1">
               <Icon icon="lucide:folder" class="w-3 h-3" />
               {{ post.category.name }}
@@ -520,7 +520,7 @@ const stats = computed(() => {
             {{ sf.title }}
           </NuxtLink>
           <div v-if="followedProgress[sf.slug]" class="mt-3">
-            <div class="flex items-center justify-between gap-2 text-xs text-gray-400">
+            <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
               <span>
                 {{ t('series.readCountLabel', { read: followedProgress[sf.slug]!.read_count, total: followedProgress[sf.slug]!.total }) }}
               </span>
@@ -575,7 +575,7 @@ const stats = computed(() => {
           <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
             {{ post.title }}
           </h3>
-          <div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+          <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
             <span v-if="post.author" class="inline-flex items-center gap-1">
               <Icon icon="lucide:user" class="w-3 h-3" />
               {{ post.author.display_name }}
@@ -617,7 +617,7 @@ const stats = computed(() => {
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-2">
                     {{ post.title }}
                   </h3>
-                  <p class="text-xs text-gray-400 mt-1">
+                  <p class="text-xs text-gray-500 mt-1">
                     {{ t("home.posts.readsThisWeek", { count: post.views_window }) }}
                   </p>
                 </div>
@@ -647,7 +647,7 @@ const stats = computed(() => {
                   <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors line-clamp-2">
                     {{ post.title }}
                   </h3>
-                  <p class="text-xs text-gray-400 mt-1">{{ post.views }} {{ t("home.posts.views") }}</p>
+                  <p class="text-xs text-gray-500 mt-1">{{ post.views }} {{ t("home.posts.views") }}</p>
                 </div>
               </div>
             </NuxtLink>

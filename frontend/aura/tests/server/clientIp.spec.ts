@@ -34,6 +34,37 @@ describe("resolveClientIp (pure core)", () => {
 	it("falls back to the peer when X-Forwarded-For is blank", () => {
 		expect(resolveClientIp("172.30.0.5", "", "*")).toBe("172.30.0.5");
 	});
+
+	// IP-literal hardening, mirroring the backend's _xff_client (TASK-351):
+	// the leftmost XFF node is client-supplied even behind a trusted proxy, so
+	// a forged/port-carrying entry must not mint an attacker-chosen bucket
+	// (which would rotate past the per-IP image-endpoint limits).
+	it("strips a port from a port-carrying v4 XFF entry (backend parity)", () => {
+		expect(resolveClientIp("10.0.0.1", "203.0.113.9:8080", "10.0.0.1")).toBe("203.0.113.9");
+	});
+
+	it("strips a port from a bracketed v6 XFF entry (backend parity)", () => {
+		expect(resolveClientIp("10.0.0.1", "[2001:db8::1]:443", "10.0.0.1")).toBe("2001:db8::1");
+	});
+
+	it("falls back to the peer when the leftmost XFF entry is not an IP literal", () => {
+		expect(resolveClientIp("10.0.0.1", "garbage", "10.0.0.1")).toBe("10.0.0.1");
+	});
+
+	it("falls back to the peer for an overlong forged XFF entry (no storage blowup)", () => {
+		expect(resolveClientIp("10.0.0.1", "garbage".repeat(1000), "10.0.0.1")).toBe("10.0.0.1");
+	});
+
+	it("falls back to the peer for a forged comma-chain", () => {
+		expect(resolveClientIp("10.0.0.1", "spam,spam,spam", "10.0.0.1")).toBe("10.0.0.1");
+	});
+
+	it("falls back to the peer for a leading-zero IPv4 (node:net rejects it — strictly safer divergence)", () => {
+		// Backend's ipaddress canonicalizes 203.0.113.001 → 203.0.113.1; node's
+		// isIP rejects leading-zero octets, so we fall back to the peer. That is
+		// a stricter-but-safe difference: it can never mint a fresh bucket.
+		expect(resolveClientIp("10.0.0.1", "203.0.113.001", "10.0.0.1")).toBe("10.0.0.1");
+	});
 });
 
 describe("clientRateIp (H3 adapter)", () => {

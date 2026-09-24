@@ -255,6 +255,77 @@ def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
     assert past_get.json()["title"] == "Past Post"
 
 
+def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
+    """A NULL view/like counter (raw-SQL/COPY/legacy row) must not stay NULL.
+
+    Regression for TASK-535/ISS-614: Post.views/likes are nullable with only a
+    Python-side default, so a non-ORM insert can land a NULL. An unconditional
+    ``Post.views + 1`` then yields NULL on both SQLite and Postgres — the view
+    counter stays null forever, POST /view returns ``views: null``, and the
+    popular ranking puts the row FIRST on Postgres (NULLS FIRST on DESC) while
+    SQLite put it LAST (dialect divergence, DEC-071). COALESCE in the increment
+    makes the counter self-heal and the ranking dialect-parity.
+    """
+    from app import models
+
+    post = models.Post(
+        title="Null Counters",
+        slug="null-counters",
+        content="Content",
+        published=True,
+        views=None,
+        likes=None,
+    )
+    db_session.add(post)
+    db_session.commit()
+    post_id = post.id
+
+    # Increment the view — the NULL must become 1, not stay NULL.
+    view_response = client.post(f"/api/posts/{post_id}/view")
+    assert view_response.status_code == 200
+    assert view_response.json()["views"] == 1, view_response.json()
+
+    recovered = db_session.get(models.Post, post_id)
+    assert recovered.views == 1
+    # The first like also self-heals from NULL to 1.
+    like_response = client.post(f"/api/posts/{post_id}/like")
+    assert like_response.status_code == 200
+    db_session.refresh(recovered)
+    assert recovered.likes == 1
+
+
+def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
+    """A still-NULL view counter must rank as 0, not first.
+
+    Regression continuation of TASK-535: until the first pageview lands, a
+    raw/legacy NULL-views row would top `/popular/list` on PostgreSQL
+    (default NULLS FIRST for DESC) while SQLite ranked it last. COALESCE in the
+    ORDER BY makes both dialects agree.
+    """
+    from app import models
+
+    db_session.add_all(
+        [
+            models.Post(title="Null Views", slug="null-views", content="C", published=True, views=None),
+            models.Post(title="Ten Views", slug="ten-views", content="C", published=True, views=10),
+        ]
+    )
+    db_session.commit()
+
+    pop = client.get("/api/posts/popular/list")
+    assert pop.status_code == 200, pop.text
+    items = pop.json()
+    titles = [i["title"] for i in items]
+    assert titles.index("Ten Views") < titles.index("Null Views"), titles
+
+    # Same ordering when sorting by views explicitly.
+    listed = client.get("/api/posts?sort=views")
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    arranged = [i["title"] for i in body["items"]]
+    assert arranged.index("Ten Views") < arranged.index("Null Views"), arranged
+
+
 def test_update_post(client, auth_headers):
     create_response = client.post(
         "/api/posts",

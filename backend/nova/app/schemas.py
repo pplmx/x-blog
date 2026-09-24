@@ -54,6 +54,34 @@ NonNulStr = Annotated[str, AfterValidator(_reject_nul)]
 # be matched by the public /posts/{slug_or_id} route.
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+
+def _reject_numeric_slug(value: str | None) -> str | None:
+    """Reject an all-digit post slug (e.g. ``"123"``) at create/update.
+
+    The public post route resolves a segment by ID first when it is a plain
+    ASCII digits string (posts.py: ``is_numeric_id``), so an all-digit slug is
+    shadowed: its canonical URL (RSS/Atom/sitemap emit ``/posts/{slug}``)
+    serves whichever post owns that numeric id instead, and deleting that post
+    silently flips the URL to a different article. SLUG_PATTERN already admits
+    all-digit slugs, so the schema must refuse them for posts — a numeric slug
+    can never be reached as written (TASK-534, ISS-613).
+    """
+    # PostUpdate.slug is Optional: None means "don't change the field" and
+    # must pass through untouched (test_post_update_slug_none_means_no_update).
+    if value is None:
+        return value
+    if value.isdigit() and value.isascii():
+        raise ValueError("slug must contain at least one non-digit character")
+    return value
+
+
+# A post slug: base shape (NonNulStr) plus the numeric-slug refusal. The
+# AfterValidator lives INSIDE the alias (like NonNulStr's own NUL check) so
+# ``PostSlug | None`` short-circuits None before it — an Outer Annotated
+# AfterValidator would run on None and break PostUpdate(slug=None) (the
+# ``| None`` "don't touch this field" contract, test_post_update_slug_none).
+PostSlug = Annotated[NonNulStr, AfterValidator(_reject_numeric_slug)]
+
 # Shared email shape for every address the API accepts (reader registration and
 # anonymous comment submission) so a malformed "email" can't be persisted and
 # shown in the moderation queue (ISS-145). ReaderRegister used a module-local
@@ -277,7 +305,7 @@ class PostBase(BaseModel):
     # stripping) rejects a blank title that would render a blank card and an
     # empty RSS/Atom channel title (round 276 deep-dive).
     title: Annotated[NonNulStr, Field(min_length=1, max_length=200)]
-    slug: Annotated[NonNulStr, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
+    slug: Annotated[PostSlug, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
     content: Annotated[NonNulStr, Field(...)]  # required markdown body
     excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool = False
@@ -328,7 +356,7 @@ class PostUpdate(BaseModel):
     title: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=200)]
     # Same pattern as PostBase.slug so updates can't introduce broken
     # feed/sitemap URLs (issue debt #7). None = "don't update the field".
-    slug: Annotated[NonNulStr | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
+    slug: Annotated[PostSlug | None, Field(default=None, max_length=200, pattern=SLUG_PATTERN.pattern)]
     content: NonNulStr | None = None
     excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool | None = None

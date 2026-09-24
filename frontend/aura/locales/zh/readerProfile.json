@@ -5,6 +5,7 @@
 		"anonymousName": "读者",
 		"joined": "加入于 {date}",
 		"commentsTitle": "评论",
+		"tablistAria": "读者主页分区",
 		"countLabel": "（ {count} ）",
 		"empty": "这位读者还没有公开的评论。",
 		"postLink": "文章",

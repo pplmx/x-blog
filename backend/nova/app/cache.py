@@ -52,8 +52,14 @@ series_cache: TTLCache[str, dict, float] = TTLCache(  # type: ignore[reportAssig
 # a safety net (same refresh window as the posts list). Sitemap also depends on
 # categories/tags, which changes on those writes via their own clears, but a
 # stale sitemap for up to 5 min is acceptable.
+# maxsize 64: the distinct key shapes are already ~8 ("feed"/"atom" × (full,
+# category, tag), "rss-category"/"atom-category", "rss-tag", "rss-series",
+# "rss-author", "sitemap", comment feeds), and multiple categories/tags spread
+# them further — a maxsize of 8 evicted everything but the single busiest feed
+# under a modest crawl (sitemap + a couple of subscriptions), forcing a DB
+# re-query + full markdown re-render per poll (TASK-536, ISS-615).
 feed_cache: TTLCache[tuple | str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
-    maxsize=8, ttl=300
+    maxsize=64, ttl=300
 )
 # Media-library reference map (TASK-333/ISS-432): the per-upload
 # "which posts reference me" map built by uploading posts' stored markdown.

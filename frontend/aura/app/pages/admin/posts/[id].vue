@@ -1089,7 +1089,7 @@ function handleFileInput(e: Event) {
             >
               <div class="min-w-0">
                 <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ rev.title }}</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatRevisionTime(rev.created_at) }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatRevisionTime(rev.created_at) }}</p>
               </div>
               <button
                 type="button"
@@ -1147,7 +1147,7 @@ function handleFileInput(e: Event) {
             placeholder="article-slug"
             class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
             {{ t("admin.postEdit.urlPreview", { slug: formData.slug || 'slug' }) }}
           </p>
         </div>
@@ -1193,7 +1193,7 @@ function handleFileInput(e: Event) {
           >
             {{ t("admin.postEdit.authorLoadFailed") }}
           </button>
-          <p v-else class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+          <p v-else class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
             {{ t("admin.postEdit.authorHint") }}
           </p>
         </div>
@@ -1256,7 +1256,7 @@ function handleFileInput(e: Event) {
               </label>
             </div>
           </div>
-          <p v-else class="text-sm text-gray-400 dark:text-gray-500">{{ t("admin.postEdit.noTags") }}</p>
+          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t("admin.postEdit.noTags") }}</p>
         </div>
 
         <div class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/20 to-white dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-5">

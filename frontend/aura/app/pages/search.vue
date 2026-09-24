@@ -134,9 +134,16 @@ function setMode(next: SearchMode): void {
 // ArrowLeft/Right/Home/End, matching the idiomatic role="tab" contract the
 // CommentForm preview tabs follow. Focus rides the active tab.
 function onTablistKeydown(e: KeyboardEvent): void {
-	const tabs = Array.from(
-		document.querySelectorAll<HTMLButtonElement>(`[role="tablist"] [role="tab"]`),
-	);
+	// Scope to THIS tablist (CommentForm audit finding, round 428): a
+	// document-wide `[role="tablist"] [role="tab"]` query would capture tabs
+	// from any other tablist mounted on the page (e.g. a CommentForm in the
+	// results), so ArrowKey roving could click/focus the other instance's tab
+	// and teleport the reader's focus. The page hosts one tablist today, but
+	// the unscoped anti-pattern is the exact one CommentForm already fixed.
+	const tablist = e.currentTarget instanceof Element ? e.currentTarget : null;
+	const tabs = tablist
+		? Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+		: [];
 	if (tabs.length === 0) return;
 	const current = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
 	const next =

@@ -322,11 +322,11 @@ function goToPage(page: number) {
 
         <div class="p-3 flex-1 flex flex-col gap-1">
           <div class="text-xs text-gray-600 dark:text-gray-300 truncate" :title="item.filename">{{ item.filename }}</div>
-          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+          <div class="text-[11px] text-gray-500 dark:text-gray-400">
             {{ item.width && item.height ? t("admin.media.dimensions", { width: item.width, height: item.height }) + " · " : "" }}
             {{ formatSize(item.size) }}
           </div>
-          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+          <div class="text-[11px] text-gray-500 dark:text-gray-400">
             {{ t("admin.media.uploadedAt", { date: formatDate(item.uploaded_at) }) }}
           </div>
 

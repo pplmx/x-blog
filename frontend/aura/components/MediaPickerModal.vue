@@ -39,12 +39,20 @@ const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 const closeButtonRef = ref<HTMLButtonElement | null>(null);
 const panelRef = ref<HTMLDivElement | null>(null);
 const previouslyFocused = ref<HTMLElement | null>(null);
+// Body-scroll lock while the picker is open (a11y audit, round 428): the
+// modal is aria-modal and page-sized (max-h-[80vh] inner scroller), so the
+// page behind must not wheel/PageUp-Down while it is up — MarkdownLightbox
+// treats this as a hard contract (and its spec asserts it), but the picker
+// never locked background scroll, so the editor scrolled behind the overlay.
+let prevOverflow = "";
 
 watch(
 	() => props.open,
 	async (open) => {
 		if (open) {
 			previouslyFocused.value = document.activeElement as HTMLElement | null;
+			prevOverflow = document.body.style.overflow;
+			document.body.style.overflow = "hidden";
 			// Reset to page 1 on every open (round-418 audit): currentPage is a
 			// module-persistent ref, so a picker reopened after the library
 			// shrank (uploads/deletes between opens) used to re-fetch a
@@ -64,9 +72,12 @@ watch(
 			// container until the next flush. Focus lands after that.
 			await nextTick();
 			closeButtonRef.value?.focus({ preventScroll: true });
-		} else if (previouslyFocused.value) {
-			previouslyFocused.value.focus({ preventScroll: true });
-			previouslyFocused.value = null;
+		} else {
+			document.body.style.overflow = prevOverflow;
+			if (previouslyFocused.value) {
+				previouslyFocused.value.focus({ preventScroll: true });
+				previouslyFocused.value = null;
+			}
 		}
 	},
 	// immediate: the initial fetch is suppressed (immediate:false above), so a

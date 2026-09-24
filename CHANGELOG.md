@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **All-digit post slugs are now rejected (round 428)** — the public post
+  route resolves a plain-digit segment as a post ID first, so a post slugged
+  `"1"` was shadowed: its canonical URL (`/posts/1`, emitted by RSS/Atom/
+  sitemap) served whichever post owned that numeric id, and deleting that row
+  silently flipped the article at the URL. Slugs must now contain a non-digit,
+  at create and update, so a numeric slug can never be reachable as written.
+  (TASK-534, ISS-613)
+- 🐛 **NULL view/like counters now self-heal and rank at 0 (round 428)** —
+  `Post.views`/`likes` carry a Python-side default only, so a raw-SQL/COPY row
+  can land a NULL; the counter then stayed NULL forever (NULL+1=NULL) and
+  ranked FIRST on PostgreSQL's popular list while LAST on SQLite. Increments
+  and rankings now COALESCE the NULL to 0, making the counter self-heal and
+  the ordering dialect-parity. (TASK-535, ISS-614)
+- 🚀 **Feed cache resized 8 → 64 entries (round 428)** — the RSS/Atom/sitemap
+  cache had fewer slots than the distinct key shapes (full + every category/
+  tag/author/series scope), so a modest crawl (sitemap + a couple of feed
+  subscriptions) evicted everything and forced a DB re-query + full markdown
+  re-render on every poll. (TASK-536, ISS-615)
+- 🔒 **Frontend image endpoints harden their rate-limit client IP (round
+  428)** — the resolver behind the CPU-heavy cover/OG generators validated the
+  X-Forwarded-For leftmost node far less strictly than the backend: a
+  port-carrying or forged entry became a fresh rate-limit bucket, so a caller
+  behind the trusted proxy could rotate the header and bypass the per-IP
+  limit. It now mirrors the backend `_xff_client` (IP-literal validation +
+  port strip + fallback to peer), closing the exact hole the backend closed in
+  its own limiter. (TASK-537, ISS-616)
+- 💬 **English author post-count no longer leaks ICU plural syntax (round
+  428)** — the en `authors.postCount` key used `{count, plural, one {post}
+  other {posts}}`, which the custom translate engine cannot render; English
+  readers saw the raw syntax (`3 {count, plural, one {post} other {posts}}`).
+  Split into `postCountOne`/`postCountMany` like the follower count.
+  (TASK-540, ISS-617)
+- ♿ **Reader profile tabs are keyboard-navigable; informative text hits AA
+  contrast (round 428)** — the profile tablist now roves on Arrow/Home/End
+  like the search page and comment editor (before, only click moved tabs and
+  a keyboard user could only ever reach the Comments tab), and the systemic
+  gray-400/500 informative text across home/post/notifications/admin pages
+  plus the liked-page heart control were bumped to WCAG AA. (TASK-541/542,
+  ISS-618/619)
+- ♿ **Media picker and the admin password modal lock background scroll (round
+  428)** — both dialogs claimed aria-modal but never pinned `body.overflow`,
+  so the page wheeled/scroll behind the overlay; they now lock on open and
+  restore on close (the contract MarkdownLightbox already followed).
+  (TASK-543, ISS-620)
+- ♿ **Admin off-canvas sidebar links drop out of the Tab order when closed
+  (round 428)** — on mobile with the drawer shut, its links were translated
+  off-canvas but still focusable, so Tab landed on invisible Dashboard/Posts
+  links; the closed drawer is now `inert`. (TASK-544, ISS-621)
+- 🐛 **Admin writer-bio Save honors the shared single-flight flag (round
+  428)** — `saveBio` set the shared `penBusy` guard without checking it (its
+  pen-name sibling did), so both inline editors could fire PATCHes in the same
+  tick; both now consult the guard. (TASK-545, ISS-622)
+- 🐛 **Search tab roving scoped to its own tablist (round 428)** — the
+  Arrow-key handler used a document-wide tab selector (the exact anti-pattern
+  CommentForm already fixed: multi-tablist pages teleport focus between
+  forms); it now scopes to the fired tablist. (TASK-546, ISS-623)
 - 🔒 **A reader's account email can no longer become their public comment
   nickname (round 427, audit finding)** — `create_comment` stamped
   `display_name or email` into the comment's nickname column, so a reader who

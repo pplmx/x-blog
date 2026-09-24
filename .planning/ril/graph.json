@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 427,
+  "round": 428,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T13:37:09+00:00",
+  "updated_at": "2026-09-24T19:34:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -31127,10 +31127,10 @@
     "HYP-023": {
       "id": "HYP-023",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "stale",
+      "version": 2,
       "created_at": "2026-09-21T16:57:52+00:00",
-      "updated_at": "2026-09-21T16:57:52+00:00",
+      "updated_at": "2026-09-24T15:03:52+00:00",
       "touched_round": 417,
       "confidence": 0.9,
       "root_cause": "The toggle button hardcodes the open-state label instead of branching on mobileMenuOpen. Bug present since the aria-expanded/aria-controls wiring was added."
@@ -32366,6 +32366,353 @@
       "touched_round": 427,
       "commit": "033e291c4f1d3b9d01d620fa0f8c1f610357a5e7",
       "title": "admin-only reader_email restores moderator account identity"
+    },
+    "ISS-613": {
+      "id": "ISS-613",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:16:39+00:00",
+      "updated_at": "2026-09-24T19:26:18+00:00",
+      "touched_round": 428,
+      "title": "All-digit post slug shadowed by id-first public route",
+      "severity": "medium"
+    },
+    "ISS-614": {
+      "id": "ISS-614",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:16:39+00:00",
+      "updated_at": "2026-09-24T19:26:18+00:00",
+      "touched_round": 428,
+      "title": "NULL Post.views/likes counters never self-heal on PG (dialect divergence)",
+      "severity": "low-medium"
+    },
+    "ISS-615": {
+      "id": "ISS-615",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:16:39+00:00",
+      "updated_at": "2026-09-24T19:26:19+00:00",
+      "touched_round": 428,
+      "title": "feed_cache maxsize=8 smaller than the distinct feed key shapes",
+      "severity": "low"
+    },
+    "ISS-616": {
+      "id": "ISS-616",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:16:39+00:00",
+      "updated_at": "2026-09-24T19:26:19+00:00",
+      "touched_round": 428,
+      "title": "Frontend clientIp resolver skips XFF IP-literal validation/port strip (backend parity gap)",
+      "severity": "high"
+    },
+    "TASK-534": {
+      "id": "TASK-534",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2,
+      "title": "Reject all-digit post slugs at create/update (numeric id shadowing)"
+    },
+    "TASK-535": {
+      "id": "TASK-535",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "category_weight": 10,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "Coalesce NULL Post.views/likes in increments and rankings"
+    },
+    "TASK-536": {
+      "id": "TASK-536",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "performance",
+      "category_weight": 5,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "Raise feed_cache maxsize to cover distinct feed key shapes"
+    },
+    "TASK-537": {
+      "id": "TASK-537",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "security",
+      "category_weight": 10,
+      "severity": "high",
+      "confidence": 0.9,
+      "effort": 2,
+      "title": "Harden frontend clientIp XFF resolver to backend parity (IP-literal validation + port strip)"
+    },
+    "TASK-538": {
+      "id": "TASK-538",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "core-feature",
+      "category_weight": 6,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "i18n authors.postCount fix (en ICU plural unsupported by translate)"
+    },
+    "TASK-539": {
+      "id": "TASK-539",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:17:35+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "maintainability",
+      "category_weight": 3,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 2,
+      "title": "Reader profile tablist keyboard roving nav + a11y contrast pass"
+    },
+    "COMP-011": {
+      "id": "COMP-011",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T19:25:07+00:00",
+      "updated_at": "2026-09-24T19:25:07+00:00",
+      "touched_round": 428,
+      "title": "fastapi reader/post schemas (articles)"
+    },
+    "COMP-012": {
+      "id": "COMP-012",
+      "type": "component",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T19:25:07+00:00",
+      "updated_at": "2026-09-24T19:25:07+00:00",
+      "touched_round": 428,
+      "title": "frontend server utils (rate limit client IP)"
+    },
+    "ISS-617": {
+      "id": "ISS-617",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:08+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "title": "en authors.postCount uses unsupported ICU plural syntax (raw leak)",
+      "severity": "high"
+    },
+    "ISS-618": {
+      "id": "ISS-618",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "title": "Systemic gray-400/500 informative-text contrast below WCAG AA",
+      "severity": "medium"
+    },
+    "ISS-619": {
+      "id": "ISS-619",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:31+00:00",
+      "touched_round": 428,
+      "title": "Reader profile tablist lacks roving keyboard navigation",
+      "severity": "medium"
+    },
+    "ISS-620": {
+      "id": "ISS-620",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:31+00:00",
+      "touched_round": 428,
+      "title": "Media picker + password modal do not lock background scroll",
+      "severity": "low"
+    },
+    "ISS-621": {
+      "id": "ISS-621",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:31+00:00",
+      "touched_round": 428,
+      "title": "Admin mobile sidebar off-canvas links stay in tab order when closed",
+      "severity": "low"
+    },
+    "ISS-622": {
+      "id": "ISS-622",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:31+00:00",
+      "touched_round": 428,
+      "title": "saveBio races the shared penBusy single-flight flag",
+      "severity": "low"
+    },
+    "ISS-623": {
+      "id": "ISS-623",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:27:09+00:00",
+      "updated_at": "2026-09-24T19:29:31+00:00",
+      "touched_round": 428,
+      "title": "search.vue tab roving uses document-global selector (CommentForm anti-pattern)",
+      "severity": "low"
+    },
+    "TASK-540": {
+      "id": "TASK-540",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:10+00:00",
+      "updated_at": "2026-09-24T19:29:29+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "category_weight": 6,
+      "severity": "high",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "i18n: fix en authors.postCount ICU syntax (split One/Many)"
+    },
+    "TASK-541": {
+      "id": "TASK-541",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:10+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "maintainability",
+      "category_weight": 3,
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2,
+      "title": "WCAG AA contrast pass on informative grays + liked heart button"
+    },
+    "TASK-542": {
+      "id": "TASK-542",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:11+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "core-feature",
+      "category_weight": 6,
+      "severity": "medium",
+      "confidence": 0.9,
+      "effort": 2,
+      "title": "Reader profile tablist keyboard roving (search.vue parity)"
+    },
+    "TASK-543": {
+      "id": "TASK-543",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:11+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "maintainability",
+      "category_weight": 3,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "Media picker + password modal body scroll-lock"
+    },
+    "TASK-544": {
+      "id": "TASK-544",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:11+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "category_weight": 6,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "Admin mobile sidebar inert when closed (tab-order leak)"
+    },
+    "TASK-545": {
+      "id": "TASK-545",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:11+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "category_weight": 6,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "saveBio honors shared penBusy single-flight guard"
+    },
+    "TASK-546": {
+      "id": "TASK-546",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-24T19:28:11+00:00",
+      "updated_at": "2026-09-24T19:29:30+00:00",
+      "touched_round": 428,
+      "category": "correctness",
+      "category_weight": 6,
+      "severity": "low",
+      "confidence": 0.9,
+      "effort": 1,
+      "title": "search.vue tab roving scoped to currentTarget"
+    },
+    "DEC-474": {
+      "id": "DEC-474",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T19:31:12+00:00",
+      "updated_at": "2026-09-24T19:31:12+00:00",
+      "touched_round": 428,
+      "title": "close round 428 (TASK-534..546, ISS-613..623, a11y/i18n/security polish wave)",
+      "rationale": "Round-428 polish/bug-fix wave under the operator's detail-optimization directive. Backend: (1) all-digit post slugs rejected at create/update — a numeric slug was shadowed by the id-first public route, its canonical URL serving a different article (HIGH-impact MEDIUM); (2) NULL Post.views/likes coalesced in increments + rankings so PG and SQLite agree (NULLS-FIRST divergence); (3) feed_cache maxsize raised 8->64 (eviction thrash under modest crawl). Frontend: (4) clientIp XFF resolver hardened to backend _xff_client parity (IP-literal validation + port strip — forged/port-carrying XFF could mint fresh rate-limit buckets on the CPU-heavy cover/og endpoints, HIGH); (5) en authors.postCount ICU plural syntax removed (raw syntax leaked to English readers); (6) WCAG AA contrast pass on informative grays + the liked heart control; (7) reader-profile tablist gains Arrow/Home/End roving (search.vue parity) + localized aria-label; (8) media-picker/password-modal body scroll-lock; (9) admin mobile sidebar inert-when-closed; (10) saveBio honors the shared penBusy single-flight guard; (11) search.vue tab roving scoped to currentTarget (CommentForm anti-pattern). Covered by new regression tests (backend + frontend); verified full-suite green on SQLite, targeted green on PostgreSQL 18 parity.",
+      "alternatives_rejected": "DDL migration for the NULL-counter columns (breaks DEC-009 additive-DDL constraint + alembic drift gate — coalesce achieves the same dialect parity code-level); total_pages==0 normalization on empty paginated results (LOW, interacts with frontend out-of-range clamping — recorded for a later round)."
     }
   },
   "edges": [
@@ -48482,6 +48829,132 @@
       "to": "TASK-532",
       "type": "implements",
       "created_at": "2026-09-24T13:37:09+00:00"
+    },
+    {
+      "from": "TASK-534",
+      "to": "ISS-613",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:25:06+00:00"
+    },
+    {
+      "from": "TASK-535",
+      "to": "ISS-614",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:25:06+00:00"
+    },
+    {
+      "from": "TASK-536",
+      "to": "ISS-615",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:25:06+00:00"
+    },
+    {
+      "from": "TASK-537",
+      "to": "ISS-616",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:25:07+00:00"
+    },
+    {
+      "from": "ISS-613",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T19:26:18+00:00"
+    },
+    {
+      "from": "ISS-614",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T19:26:18+00:00"
+    },
+    {
+      "from": "ISS-615",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T19:26:18+00:00"
+    },
+    {
+      "from": "ISS-616",
+      "to": "COMP-012",
+      "type": "located_in",
+      "created_at": "2026-09-24T19:26:18+00:00"
+    },
+    {
+      "from": "TASK-540",
+      "to": "ISS-617",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:28+00:00"
+    },
+    {
+      "from": "TASK-541",
+      "to": "ISS-618",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:28+00:00"
+    },
+    {
+      "from": "TASK-542",
+      "to": "ISS-619",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:28+00:00"
+    },
+    {
+      "from": "TASK-543",
+      "to": "ISS-620",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:28+00:00"
+    },
+    {
+      "from": "TASK-544",
+      "to": "ISS-621",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:28+00:00"
+    },
+    {
+      "from": "TASK-545",
+      "to": "ISS-622",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:29+00:00"
+    },
+    {
+      "from": "TASK-546",
+      "to": "ISS-623",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:29:29+00:00"
+    },
+    {
+      "from": "TASK-538",
+      "to": "ISS-617",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:34:31+00:00"
+    },
+    {
+      "from": "TASK-539",
+      "to": "ISS-618",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:34:31+00:00"
+    },
+    {
+      "from": "TASK-539",
+      "to": "ISS-619",
+      "type": "addresses",
+      "created_at": "2026-09-24T19:34:31+00:00"
+    },
+    {
+      "from": "TASK-540",
+      "to": "TASK-538",
+      "type": "depends_on",
+      "created_at": "2026-09-24T19:34:31+00:00"
+    },
+    {
+      "from": "TASK-541",
+      "to": "TASK-539",
+      "type": "depends_on",
+      "created_at": "2026-09-24T19:34:31+00:00"
+    },
+    {
+      "from": "TASK-542",
+      "to": "TASK-539",
+      "type": "depends_on",
+      "created_at": "2026-09-24T19:34:32+00:00"
     }
   ]
 }

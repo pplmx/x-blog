@@ -564,7 +564,7 @@ function heatMapSummary(): string {
       <template v-if="loading && !history.length">
         <div v-for="i in 4" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-20 rounded-2xl" />
       </template>
-      <p v-else-if="loading" class="flex items-center justify-center gap-2 py-4 text-sm text-gray-400" role="status">
+      <p v-else-if="loading" class="flex items-center justify-center gap-2 py-4 text-sm text-gray-500" role="status">
         <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
         {{ t('history.loading') }}
       </p>

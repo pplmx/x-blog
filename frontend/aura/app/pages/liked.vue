@@ -373,7 +373,7 @@ async function handleUnlike(post: PostList) {
 						:aria-busy="unlikingIds.has(post.id)"
 						:title="t('liked.unlike')"
 						:aria-label="t('liked.unlike')"
-						class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-300 dark:text-gray-600 hover:text-pink-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-default"
+						class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-pink-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-default"
 						@click="handleUnlike(post)"
 					>
 						<Icon

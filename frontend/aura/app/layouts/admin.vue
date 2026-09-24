@@ -23,6 +23,26 @@ onMounted(initTheme);
 // neither branch, leaving a blank page (e2e: homepage "admin page loads").
 const isLoginPage = computed(() => route.path === "/admin/login");
 const sidebarOpen = ref(false);
+// Mobile drawer closed ⇒ the off-canvas aside is translated out of view but
+// its links stay in the keyboard tab order — Tab lands on invisible
+// Dashboard/Posts/... and Enter navigates blindly (a11y audit, round 428).
+// Mark it inert on mobile while closed so those links drop out of the tab
+// order; on lg+ the aside is a permanent static column, so inert never binds.
+// Draggable resize handles are not React-compatible with a ref, so a change
+// listener is the established pattern (same as useTheme's matchMedia).
+const isMobileSidebar = ref(false);
+let mobileMedia: MediaQueryList | null = null;
+function syncMobileSidebar() {
+	isMobileSidebar.value = mobileMedia?.matches ?? false;
+}
+onMounted(() => {
+	mobileMedia = window.matchMedia("(max-width: 1023px)");
+	syncMobileSidebar();
+	mobileMedia?.addEventListener("change", syncMobileSidebar);
+});
+onBeforeUnmount(() => {
+	mobileMedia?.removeEventListener("change", syncMobileSidebar);
+});
 // Mobile drawer focus management (mirrors the password modal's pattern): move
 // focus into the drawer on open, trap Tab while it is open, and return focus
 // to the opening trigger on close. Desktop is unaffected — the sidebar is a
@@ -308,11 +328,16 @@ onBeforeUnmount(() => {
         aria-hidden="true"
       />
 
-      <!-- Sidebar (mobile drawer focus + Tab trap via onSidebarKeydown) -->
+      <!-- Sidebar (mobile drawer focus + Tab trap via onSidebarKeydown).
+           `inert` drops the closed mobile drawer's links from the tab order
+           (they are translated off-canvas but were still focusable) while
+           leaving the desktop static column fully interactive; the open-mobile
+           drawer clears it (tracked by isMobileSidebar). -->
       <aside
         ref="sidebarAsideRef"
         class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen transform transition-transform duration-200"
         :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+        :inert="isMobileSidebar && !sidebarOpen"
         @keydown="onSidebarKeydown"
       >
         <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">

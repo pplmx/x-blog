@@ -162,7 +162,7 @@ function cancelEditBio() {
 }
 
 async function saveBio(userId: number) {
-	if (editingBioId.value !== userId) return; // single-flight
+	if (penBusy.value || editingBioId.value !== userId) return; // single-flight
 	penBusy.value = true;
 	actionError.value = null;
 	actionSuccess.value = null;

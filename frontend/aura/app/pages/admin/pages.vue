@@ -281,7 +281,7 @@ async function handleDelete(id: number) {
                 {{ p.published ? t("admin.pages.published") : t("admin.pages.draft") }}
               </span>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">/pages/{{ p.slug }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">/pages/{{ p.slug }}</p>
           </div>
           <div class="flex items-center gap-2 shrink-0">
             <button

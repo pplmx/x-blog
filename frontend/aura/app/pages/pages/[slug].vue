@@ -84,7 +84,7 @@ useSeo(() => ({
       >
         {{ page?.title }}
       </h1>
-      <p v-if="updatedLabel" class="text-sm text-gray-400 dark:text-gray-500 mb-8">
+      <p v-if="updatedLabel" class="text-sm text-gray-500 dark:text-gray-400 mb-8">
         {{ t("pages.updatedAt", { date: updatedLabel }) }}
       </p>
       <!-- Page bodies go through the same markdown pipeline as posts, so

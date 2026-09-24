@@ -160,6 +160,44 @@ class TestAdminPosts:
         )
         assert too_long.status_code == 422, too_long.text
 
+    def test_create_post_rejects_all_digit_slug(self, client, auth_headers):
+        # An all-digit slug (e.g. "1") is shadowed by the id-first public post
+        # route: /api/posts/{segment} resolves a plain-digits segment as a post
+        # ID, so the post's canonical /posts/1 URL (RSS/Atom/sitemap emit it)
+        # would serve whichever post owns that numeric id — and deleting that
+        # row silently flips the article at that URL. The schema rejects
+        # numeric slugs at create/update so this can never be reachable
+        # (TASK-534, ISS-613).
+        response = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "Numeric", "slug": "1", "content": "body", "published": True},
+        )
+        assert response.status_code == 422, response.text
+
+        # A hyphen-bearing slug still passes (it contains non-digits).
+        ok = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "Hyphen", "slug": "123-abc", "content": "body", "published": True},
+        )
+        assert ok.status_code == 201, ok.text
+
+    def test_update_post_rejects_all_digit_slug(self, client, auth_headers):
+        created = client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"title": "Retarget", "slug": "retarget", "content": "c", "published": True},
+        )
+        assert created.status_code == 201, created.text
+        pid = created.json()["id"]
+        bad = client.put(
+            f"/api/admin/posts/{pid}",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={"slug": "42"},
+        )
+        assert bad.status_code == 422, bad.text
+
     def test_update_post_rejects_too_many_tag_ids(self, client, auth_headers):
         created = client.post(
             "/api/admin/posts",

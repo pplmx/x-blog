@@ -1544,7 +1544,9 @@ def search_posts(
         if sort == "oldest":
             return (_effective_publish_col().asc(), models.Post.id.asc())
         if sort == "views":
-            return (models.Post.views.desc(), models.Post.id.desc())
+            # COALESCE NULL views (TASK-535) — same PG/SQLite parity as the
+            # popular-posts ranking; a raw/legacy NULL row must rank as 0.
+            return (func.coalesce(models.Post.views, 0).desc(), models.Post.id.desc())
         if sort == "relevance" and ts_vector is not None:
             return (func.ts_rank(ts_vector, ts_query).desc(), models.Post.id.desc())
         return (_effective_publish_col().desc(), models.Post.id.desc())
@@ -1636,7 +1638,12 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     coalescing these writes is tracked separately (TASK-026). The cached list
     payloads embed the view counter, so a pageview invalidates them (ISS-141).
     """
-    stmt = update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1)
+    # COALESCE the NULL out of the increment: Post.views is nullable with only
+    # a Python-side default (a raw-SQL/COPY/legacy insert can land a NULL), and
+    # NULL+1 is NULL on both SQLite and Postgres — the counter would stay null
+    # forever and rank FIRST on Postgres (NULLS FIRST default for DESC) in the
+    # popular list. Coalescing makes the increment dialect-parity (TASK-535).
+    stmt = update(models.Post).where(models.Post.id == post_id).values(views=func.coalesce(models.Post.views, 0) + 1)
     db.execute(stmt)
     # Atomic daily-row increment (round 276 deep-dive): the previous
     # SELECT-then-assign (`daily.views = (daily.views or 0) + 1`) raced — two
@@ -1671,7 +1678,9 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
         # the now-visible rows, so the view is still counted and this request
         # does not 500 on the public view endpoint.
         db.rollback()
-        db.execute(update(models.Post).where(models.Post.id == post_id).values(views=models.Post.views + 1))
+        db.execute(
+            update(models.Post).where(models.Post.id == post_id).values(views=func.coalesce(models.Post.views, 0) + 1)
+        )
         db.execute(
             update(models.PostViewsDaily)
             .where(
@@ -1704,13 +1713,22 @@ def _bump_post_likes(db: Session, post_id: int, delta: int) -> None:
     that was never bumped — the same atomicity fix comments got at ISS-560).
     """
     if delta < 0:
+        # ``likes > 0`` never matches a NULL row (comparisons with NULL are
+        # UNKNOWN), but coalescing keeps the arithmetic honest on the decrement
+        # floor: NULL+(-1) via the negative branch is impossible here because
+        # the predicate excludes it; the else-branch below must coalesce to
+        # make NULL likes incrementable like views above (TASK-535).
         stmt = (
             update(models.Post)
             .where(models.Post.id == post_id, models.Post.likes > 0)
             .values(likes=models.Post.likes + delta)
         )
     else:
-        stmt = update(models.Post).where(models.Post.id == post_id).values(likes=models.Post.likes + delta)
+        stmt = (
+            update(models.Post)
+            .where(models.Post.id == post_id)
+            .values(likes=func.coalesce(models.Post.likes, 0) + delta)
+        )
     db.execute(stmt)
 
 
@@ -1874,7 +1892,12 @@ def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
             joinedload(models.Post.tags),
             joinedload(models.Post.series),
         )
-        .order_by(models.Post.views.desc(), models.Post.id.desc())
+        # COALESCE NULL views to 0 in the ORDER BY: Post.views is nullable
+        # (Python-side default only), and Postgres ranks NULLs FIRST on DESC by
+        # default — a raw/legacy NULL-counter row would top the popular list on
+        # PG while SQLite (NULLS LAST) put it bottom. Coalescing makes the
+        # ranking dialect-parity (TASK-535, mirrors increment_views).
+        .order_by(func.coalesce(models.Post.views, 0).desc(), models.Post.id.desc())
         .limit(limit)
         .all()
     )

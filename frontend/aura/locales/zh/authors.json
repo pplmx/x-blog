@@ -10,7 +10,8 @@
 		"indexTitle": "作者",
 		"indexDesc": "浏览 X-Blog 的所有撰稿作者",
 		"indexEmpty": "还没有作者设置公开笔名",
-		"postCount": "{count} 篇文章",
+		"postCountOne": "{count} 篇文章",
+		"postCountMany": "{count} 篇文章",
 		"backToIndex": "全部作者"
 	}
 }

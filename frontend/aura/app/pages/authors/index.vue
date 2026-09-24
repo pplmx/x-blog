@@ -79,14 +79,14 @@ function retry() {
             {{ a.display_name }}
           </span>
           <span class="block text-sm text-gray-500 dark:text-gray-400">
-            {{ t("authors.postCount", { count: a.post_count }) }}
+            {{ t(a.post_count === 1 ? "authors.postCountOne" : "authors.postCountMany", { count: a.post_count }) }}
           </span>
           <!-- Public "about this writer" (round 357): a one-line window into
                the writer's bio so the index card says who they are, not just
                how many posts they have. -->
           <span
             v-if="a.bio"
-            class="block text-xs text-gray-400 dark:text-gray-500 truncate mt-1"
+            class="block text-xs text-gray-500 dark:text-gray-400 truncate mt-1"
             :title="a.bio"
           >
             {{ a.bio }}

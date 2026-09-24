@@ -210,6 +210,37 @@ watch(activePagination, (p) => {
 	}
 });
 
+// ARIA tabs roving (audit, round 428): the profile tablist must cycle on
+// ArrowLeft/Right/Home/End, not just click — the same idiomatic role="tab"
+// keyboard contract the search page and CommentForm tablists follow (which
+// the reader-profile page previously lacked; a keyboard user could only ever
+// Tab to the comments tab). Scoped to THIS tablist via e.currentTarget (the
+// CommentForm anti-pattern fix): the page's tabs are the only tablist here
+// today, but the unscoped document-query anti-pattern is the exact one the
+// comment editor already fixed.
+function onTablistKeydown(e: KeyboardEvent): void {
+	const tablist = e.currentTarget instanceof Element ? e.currentTarget : null;
+	const tabs = tablist
+		? Array.from(tablist.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+		: [];
+	if (tabs.length === 0) return;
+	const current = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+	const next =
+		e.key === "Home"
+			? 0
+			: e.key === "End"
+				? tabs.length - 1
+				: e.key === "ArrowRight"
+					? (current + 1) % tabs.length
+					: e.key === "ArrowLeft"
+						? (current - 1 + tabs.length) % tabs.length
+						: null;
+	if (next === null) return;
+	e.preventDefault();
+	tabs[next]?.click();
+	tabs[next]?.focus();
+}
+
 /** Switch tabs through the URL so the tab AND the page stay deep-linkable
  *  (a shared ?view=likes / ?view=saved link lands straight on that tab). */
 function setView(next: ProfileView) {
@@ -356,10 +387,11 @@ const pageAnnouncement = computed(() =>
 			<div
 				class="mb-6 flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl w-fit"
 				role="tablist"
+				:aria-label="t('readerProfile.tablistAria')"
+				@keydown="onTablistKeydown"
 			>
 				<button
 					type="button"
-					:aria-pressed="view === 'comments'"
 					role="tab"
 					:aria-selected="view === 'comments'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
@@ -374,7 +406,6 @@ const pageAnnouncement = computed(() =>
 				<button
 					v-if="data.profile.public_likes"
 					type="button"
-					:aria-pressed="view === 'likes'"
 					role="tab"
 					:aria-selected="view === 'likes'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
@@ -389,7 +420,6 @@ const pageAnnouncement = computed(() =>
 				<button
 					v-if="data.profile.public_bookmarks"
 					type="button"
-					:aria-pressed="view === 'saved'"
 					role="tab"
 					:aria-selected="view === 'saved'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"

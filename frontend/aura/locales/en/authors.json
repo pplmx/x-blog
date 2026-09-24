@@ -10,7 +10,8 @@
 		"indexTitle": "Authors",
 		"indexDesc": "Browse every writer contributing to X-Blog",
 		"indexEmpty": "No author has a public pen name yet",
-		"postCount": "{count} {count, plural, one {post} other {posts}}",
+		"postCountOne": "{count} post",
+		"postCountMany": "{count} posts",
 		"backToIndex": "All writers"
 	}
 }
