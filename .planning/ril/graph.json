@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 429,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T23:19:44+00:00",
+  "updated_at": "2026-09-24T23:22:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 427,
+      "touched_round": 429,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -32945,6 +32945,29 @@
       "title": "Close round 431 (NULL-parity serialization + SEO UTC + a11y/contrast polish)",
       "rationale": "RIL deep-dive resumed (round-431). Backend sweep flagged NULL-pinned ORDER BY parity; probing uncovered the larger defect: read schemas declare views/likes/pinned non-NULL so a raw-import NULL row 500s the whole public feed/list/series/search on BOTH dialects (the TASK-535 test was vacuous - ORM views=None stores 0, only raw SQL lands NULL). Fixed with read-side BeforeValidator coalesce (Post/PostList/PostRevisionDetail) + pinned ORDER BY coalesce in list/adjacent/admin; regression tests plant real NULLs via Core update and were verified RED pre-fix on PG. Frontend sweep: 4 low/medium findings -> toIsoUtc for JSON-LD/OG dates, MediaPickerModal onBeforeUnmount overflow restore, search.vue aria-pressed removal, gray-500 contrast bumps. Full VERIFY green: backend 1909 (SQLite) / 1919 (PG), frontend 2498, typecheck, lint at baseline.\n",
       "alternatives_rejected": "Leave NULL counters uncoalesced at the boundary (feeds keep 500ing on raw imports); keep TASK-535 ORDER BY fixes only (does not fix the serialization 500); make views/likes/pinned DB server_default NOT NULL via migration (DEC-009 forbids ALTER on existing columns)."
+    },
+    "ISS-632": {
+      "id": "ISS-632",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:21:48+00:00",
+      "updated_at": "2026-09-24T23:21:48+00:00",
+      "touched_round": 429,
+      "title": "push broadcast loads all PushSubscription rows then serial-dispatches (O(n) memory/loop in request)",
+      "severity": "low"
+    },
+    "DEC-478": {
+      "id": "DEC-478",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:21:48+00:00",
+      "updated_at": "2026-09-24T23:21:48+00:00",
+      "touched_round": 429,
+      "title": "Defer push broadcast batching (round-431 backend-sweep residual)",
+      "rationale": "POST /notify is superuser-only + rate-limited (RATE_LIMIT_WRITE), subscriptions are bounded (MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10 per reader/IP) and dead endpoints are retired during dispatch (built-in GC), so a real install stays naturally bounded; batching/paging adds complexity for a fully-trusted endpoint with no current trigger. Parked as LOW for a future pass alongside ISS-625/626 (DEC-476).",
+      "alternatives_rejected": "Page the subscription query / chunk the dispatch now (churn against a trusted, rate-limited endpoint with no measured trigger)."
     }
   },
   "edges": [
@@ -49487,6 +49510,18 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-24T23:19:44+00:00"
+    },
+    {
+      "from": "ISS-632",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:22:14+00:00"
+    },
+    {
+      "from": "DEC-478",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-24T23:22:15+00:00"
     }
   ]
 }
