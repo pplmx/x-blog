@@ -1072,7 +1072,14 @@ def create_comment(
     # comment row; we store the reader_id only and keep the account email on
     # reader_accounts. Anonymous comments keep their free-text nickname/email.
     if reader is not None:
-        comment_nickname = reader.display_name or reader.email
+        # The public nickname for a verified reader is their display_name;
+        # a reader who never set one gets a deterministic non-PII handle
+        # instead of their account email (ISS-606/TASK-532) — the email was
+        # the old fallback, which published the address on every comment
+        # surface (thread, feeds, comment search, RSS/Atom) for readers who
+        # registered with only {email, password}. `reader-{id}` is stable per
+        # account (threads group by it) without being identity data.
+        comment_nickname = reader.display_name or f"reader-{reader.id}"
         comment_email: str | None = None
         reader_id: int | None = reader.id
     else:
@@ -1294,6 +1301,14 @@ def update_reader_comment(
     comment.reviewed_at = None
     db.commit()
     db.refresh(comment)
+    # The public posts list / feeds serialize approved comment_count; an edit
+    # that resets an approved comment (comment drops off the public surface,
+    # count falls) must invalidate the cached list immediately — create and
+    # approve already clear, edit was the gap (ISS-608/TASK-529). The caller
+    # re-applies the verified-reader auto-approve tier after this returns; if
+    # it re-approves, the following approve_comment clears again (harmless
+    # double-clear, keeps the invariant "writes invalidate explicitly").
+    clear_posts_list_cache()
     return comment, was_public
 
 

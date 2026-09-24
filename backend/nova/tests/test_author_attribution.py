@@ -172,6 +172,31 @@ def _set_bio(client, headers, user_id: int, bio: str | None) -> None:
     assert r.status_code == 200, r.text
 
 
+def test_admin_user_patch_invalidates_public_caches(client, admin_token, admin_user, monkeypatch):
+    """The pen-name/bio PATCH changes AuthorBrief fields rendered from cached
+    objects (post lists, series detail, RSS/Atom posts feed) — the write must
+    invalidate those caches, not wait out the TTL (ISS-607/TASK-529)."""
+    from app.routers import admin as admin_module
+
+    calls = []
+    monkeypatch.setattr(admin_module, "clear_posts_list_cache", lambda: calls.append(1))
+    # Seed the caches so "was invalidated" is observable post-write.
+    from app.cache import posts_list_cache, series_cache
+
+    posts_list_cache[("seed",)] = {"items": []}
+    series_cache["seed"] = {"posts": []}
+
+    headers = _admin_headers(admin_token)
+    _set_pen_name(client, headers, admin_user.id, "Cache-Clear Name")
+    assert calls, "pen-name PATCH must clear the posts-list/series/feeds caches"
+    removed = len(calls)
+    posts_list_cache.clear()
+    series_cache.clear()
+
+    _set_bio(client, headers, admin_user.id, "A bio.")
+    assert len(calls) > removed, "bio PATCH must clear the public caches too"
+
+
 def test_admin_user_patch_sets_and_clears_bio(client, admin_token, admin_user):
     headers = _admin_headers(admin_token)
     _set_pen_name(client, headers, admin_user.id, "Byline Here")

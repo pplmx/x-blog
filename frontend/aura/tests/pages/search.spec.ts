@@ -1122,6 +1122,39 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.findAll("button").some((b) => b.text() === "清除筛选")).toBe(false);
 	});
 
+	it("offers a route back to article search on a zero-hit comments search (ISS-612)", async () => {
+		// A dead-end comment search used to leave the reader with only the
+		// shared empty state — no way back to the same term in posts mode even
+		// though the term might match article titles/bodies.
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "zzz", type: "comments" },
+			commentResult: {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 0 },
+			},
+		});
+		expect(wrapper.text()).toContain("没有匹配的评论");
+	});
+
+	it("recovery link switches a zero-hit comments search back to posts mode (ISS-612)", async () => {
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "zzz", type: "comments" },
+			commentResult: {
+				items: [],
+				pagination: { total: 0, page: 1, limit: 10, total_pages: 0 },
+			},
+		});
+		await flushPromises();
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		const hop = wrapper.findAll("button").find((b) => b.text().includes("试试在文章中搜索"));
+		expect(hop).toBeDefined();
+		await hop?.trigger("click");
+		await flushPromises();
+		// Posts mode: drop ?type=comments, keep the term.
+		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "zzz", page: "1" } });
+	});
+
 	it("switching to the comments tab navigates to the comments-mode URL", async () => {
 		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" } });
 		const navigateSpy = vi.fn();

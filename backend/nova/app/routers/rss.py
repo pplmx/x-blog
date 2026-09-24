@@ -307,9 +307,16 @@ def _comment_permalink(site_url: str, comment: models.Comment) -> str:
 def _comment_display_name(comment: models.Comment) -> str:
     """The commenter label for a feed item: the verified display name when the
     comment is reader-attributed, else the stored nickname (same fallback as
-    the discussion page)."""
-    if comment.reader is not None and comment.reader.display_name:
-        return comment.reader.display_name
+    the discussion page).
+
+    A verified reader WITHOUT a display_name must never fall back to the
+    stored nickname — for legacy rows that value is the account email (the
+    pre-ISS-606 fallback stamped ``display_name or email``). Use a generic
+    non-PII label instead (the thread renders the same generic identity for
+    nameless readers), so RSS never publishes an email even for old rows.
+    """
+    if comment.reader is not None:
+        return comment.reader.display_name or "reader"
     return comment.nickname or "commenter"
 
 

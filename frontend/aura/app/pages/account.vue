@@ -222,7 +222,7 @@ async function removeAvatar() {
 	// (revoke device / delete account / unfollow), removing the avatar is
 	// irreversible with no confirm.
 	if (avatarState.value === "busy") return;
-	if (!window.confirm(t("account.avatar.removeConfirm"))) return;
+	if (!window.confirm(t("account.profile.avatarRemoveConfirm"))) return;
 	avatarState.value = "busy";
 	avatarMessage.value = false;
 	try {

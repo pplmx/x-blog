@@ -101,6 +101,35 @@ class TestSignedInIdentity:
         assert resp.json()["nickname"] == "Guest"
         assert resp.json().get("reader") is None
 
+    def test_reader_without_display_name_never_uses_email_as_nickname(self, client, db_session):
+        """A reader registered with only {email, password} (display_name is
+        optional) must not get their account email published as the public
+        comment nickname — the email column is already suppressed for
+        reader-attributed comments, so this must not reappear through the
+        nickname fallback (audit finding, ISS-606/TASK-532).
+
+        The nickname must be a generated non-PII handle instead, and the
+        account email must never ride the response body.
+        """
+        post = _create_post(db_session)
+        email = "no-display@example.com"
+        token = _token(client, email=email, display_name=None)
+        resp = _post_comment(
+            client,
+            post.id,
+            {"nickname": "Whatever", "email": "ignored@example.com", "content": "hi"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        # The account email (nor the forged client one) must not leak anywhere.
+        assert email.lower() not in resp.text
+        assert "ignored@example.com" not in resp.text
+        # A non-empty public handle exists and is not an email address.
+        assert data["nickname"]
+        assert "@" not in data["nickname"]
+        assert data.get("reader") is not None
+
 
 class TestCommentHistory:
     def test_list_own_approved_comment(self, client, db_session):
@@ -305,6 +334,27 @@ class TestEditOwnComment:
         assert data["is_approved"] is False
         listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
         assert [c["id"] for c in listed if c["id"] == comment_id] == []
+
+    def test_edit_taking_approved_comment_public_surface_clears_posts_cache(self, client, db_session, monkeypatch):
+        """Editing an APPROVED comment drops it off the public surface (its
+        comment_count falls on the cached posts list) — the write must clear
+        the posts-list cache, not leave a stale higher count for the TTL
+        (ISS-608/TASK-529)."""
+        from app import crud as crud_module
+
+        calls = []
+        monkeypatch.setattr(crud_module, "clear_posts_list_cache", lambda: calls.append(1))
+        post, comment_id, token = self._own_approved(client, db_session)  # auto-approve OFF
+        # The seed's approve_comment clears by contract; reset so we only count
+        # clears attributable to THIS edit.
+        calls.clear()
+        resp = client.patch(
+            f"/api/reader/me/comments/{comment_id}",
+            json={"content": "edited body taking it off the surface"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert calls, "edit of an approved comment must clear the posts-list cache"
 
     def test_edit_with_blank_content_is_422(self, client, db_session):
         # A whitespace-only edit used to store a blank body (re-entering

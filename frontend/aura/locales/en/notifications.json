@@ -70,6 +70,9 @@
 		},
 		"loadMore": "Load more",
 		"loadingMore": "Loading…",
-		"deleteConfirm": "Delete this notification?"
+		"deleteConfirm": "Delete this notification?",
+		"markReadFailed": "Couldn't mark as read — please try again.",
+		"deleteFailed": "Couldn't delete this notification — please try again.",
+		"loadFailed": "Couldn't load your notifications — please try again."
 	}
 }

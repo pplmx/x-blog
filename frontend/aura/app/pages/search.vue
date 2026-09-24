@@ -235,9 +235,13 @@ const activeError = computed(() => (mode.value === "comments" ? commentsError.va
 // substring + tsvector, so a zero-hit page is a dead end with no recovery path.
 // The suggest endpoint scores a bounded vocabulary (tag/category names +
 // recent public post titles) with client-agnostic edit distance; it shares the
-// search rate-limit bucket, so it must NEVER fire unless a POST search already
-// returned zero hits — `shouldSuggest` is that exact gate (posts mode, a real
-// term, the posts query has landed, and its total is 0).
+// search rate-limit bucket, so it must NEVER fire unless a search already
+// returned zero hits — `shouldSuggest` is that exact gate (a real term, the
+// ACTIVE mode's query has landed, and its total is 0). The zero-hit total now
+// routes through `activeResult` so a comments-mode zero-hit gets the same
+// "Did you mean" recovery the posts mode always had — the suggestion corpus
+// is mode-agnostic, so a dead-end comment search is no longer special-cased
+// into a bare "No results" (ISS-612/TASK-533).
 //
 // The fetch is deliberately an IMPERATIVE $fetch driven by the watch, not a
 // `useSearchSuggest` composable: Nuxt refuses to re-fire useFetch when its
@@ -247,7 +251,6 @@ const activeError = computed(() => (mode.value === "comments" ? commentsError.va
 const SUGGEST_LIMIT = 4;
 const shouldSuggest = computed(
 	() =>
-		mode.value === "posts" &&
 		!!query.value.trim() &&
 		// `!error` not `=== null`: Nuxt's useFetch `error` ref is `undefined`
 		// until a failure happens (round-390 debug: the SSR-rendered empty
@@ -257,7 +260,7 @@ const shouldSuggest = computed(
 		// No data yet → treat as non-zero (a zero-hit page is the ONLY trigger:
 		// suggestions share the search rate-limit bucket, so they must never
 		// fire for a search that actually returned hits).
-		(searchResult.value?.pagination.total ?? 1) === 0,
+		(activeResult.value?.pagination.total ?? 1) === 0,
 );
 const suggestions = ref<SearchSuggestion[]>([]);
 let suggestSeq = 0;
@@ -764,6 +767,22 @@ function goToPage(pg: number | string) {
             </button>
           </div>
         </div>
+
+        <!-- Comments-mode recovery (ISS-612/TASK-533): a zero-hit COMMENT
+             search had no route out — the term still might match article
+             titles/bodies, and the sibling Posts mode is one click away. Offer
+             that hop even when there are no suggestions to correct to (they
+             come from the same corpus, but a valid phrase can still miss the
+             comments only). -->
+        <button
+          v-if="mode === 'comments'"
+          type="button"
+          class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+          @click="setMode('posts')"
+        >
+          <Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
+          {{ t("search.noResults.searchPostsInstead") }}
+        </button>
       </div>
 
       <!-- Results list -->

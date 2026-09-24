@@ -70,6 +70,9 @@
 		},
 		"loadMore": "加载更多",
 		"loadingMore": "加载中…",
-		"deleteConfirm": "确定删除这条通知？"
+		"deleteConfirm": "确定删除这条通知？",
+		"markReadFailed": "标记已读失败，请重试。",
+		"deleteFailed": "删除这条通知失败，请重试。",
+		"loadFailed": "加载通知失败，请重试。"
 	}
 }

@@ -113,6 +113,42 @@ class TestRssFeed:
         assert "sub@example.com" not in body
         assert "127.0.0.1" not in body
 
+    def test_nameless_reader_email_never_in_commenter_label(self, client, db_session, admin_token, auth_headers):
+        """A reader registered without a display_name must not have their
+        ACCOUNT EMAIL in the feed's commenter label (ISS-606/TASK-532).
+
+        The write path stores a ``reader-{id}`` handle, and the feed's
+        display-name fallback (rss._comment_display_name) independently
+        refuses to echo the stored nickname for a nameless reader — so even a
+        legacy row that still holds the email renders as a generic label.
+        """
+        from app.crud import approve_comment
+
+        post = _create_post(client, auth_headers)
+        email = "nameless-reader@example.com"
+        registered = client.post(
+            "/api/reader/register",
+            json={"email": email, "password": "readerpass123", "display_name": None},
+        )
+        assert registered.status_code == 201, registered.text
+        token = registered.json()["access_token"]
+        created = client.post(
+            f"/api/comments/post/{post['id']}",
+            json={"content": "from a nameless reader", "nickname": "ignored", "email": "forged@example.com"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert created.status_code == 201, created.text
+        approve_comment(db_session, created.json()["id"], approved=True)
+
+        for path in (RSS, ATOM):
+            body = client.get(path).text
+            assert email not in body
+            assert "forged@example.com" not in body
+            # The reader's identity renders as the deterministic non-PII handle
+            # (or the generic label fallback), never an @-address.
+            reader_id = created.json()["reader"]["id"]
+            assert f"reader-{reader_id}" in body or "reader" in body.lower()
+
 
 class TestAtomFeed:
     def test_returns_newest_approved_comments_as_atom_entries(self, client, auth_headers, admin_token):

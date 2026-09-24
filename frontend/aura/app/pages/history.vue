@@ -371,24 +371,24 @@ function heatMapSummary(): string {
     >
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
         </div>
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
         </div>
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
           <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">{{ lastActivityLabel() }}</p>
         </div>
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.currentStreak') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.currentStreak') }}</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {{ stats.currentStreak ?? 0 }}
-            <span class="text-base font-medium text-gray-400 dark:text-gray-500 ml-1">{{ t('history.days') }}</span>
+            <span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{ t('history.days') }}</span>
           </p>
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 mt-1">
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
             {{ t('history.longestStreak', { count: stats.longestStreak ?? 0 }) }}
           </p>
         </div>
@@ -399,7 +399,7 @@ function heatMapSummary(): string {
         v-if="heatmapWeeks.length"
         class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-900/15"
       >
-        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">{{ t('history.activityTitle') }}</p>
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{{ t('history.activityTitle') }}</p>
         <div class="overflow-x-auto pb-1">
           <div
             role="img"
@@ -419,7 +419,7 @@ function heatMapSummary(): string {
             </template>
           </div>
         </div>
-        <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+        <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           <span class="mr-1">{{ t('history.less') }}</span>
           <span class="h-[11px] w-[11px] rounded-[2px] bg-gray-100 dark:bg-gray-800" />
           <span class="h-[11px] w-[11px] rounded-[2px] bg-blue-200 dark:bg-blue-900" />
@@ -438,14 +438,14 @@ function heatMapSummary(): string {
         class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
       >
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.readLast30d') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.readLast30d') }}</p>
           <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {{ insights.last_30_days }}
-            <span class="text-base font-medium text-gray-400 dark:text-gray-500 ml-1">{{ t('history.posts') }}</span>
+            <span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{ t('history.posts') }}</span>
           </p>
         </div>
         <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-fuchsia-50 to-transparent dark:from-fuchsia-900/20">
-          <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">{{ t('history.topCategories') }}</p>
+          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.topCategories') }}</p>
           <div v-if="insights.top_categories.length" class="flex flex-wrap gap-2 mt-1">
             <span
               v-for="c in insights.top_categories"
@@ -453,10 +453,10 @@ function heatMapSummary(): string {
               class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300"
             >
               {{ c.name }}
-              <span class="text-gray-400 dark:text-gray-500">{{ c.count }}</span>
+              <span class="text-gray-500 dark:text-gray-400">{{ c.count }}</span>
             </span>
           </div>
-          <p v-else class="mt-2 text-sm text-gray-400 dark:text-gray-500">{{ t('history.noTopCategories') }}</p>
+          <p v-else class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('history.noTopCategories') }}</p>
         </div>
       </div>
     </div>
@@ -581,7 +581,7 @@ function heatMapSummary(): string {
           <p class="truncate font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
             {{ item.title }}
           </p>
-          <p class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+          <p class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
             <Icon icon="lucide:clock" class="w-3.5 h-3.5" />
             <span class="inline-flex items-center gap-1">
               {{ viewedLabel(item) }}

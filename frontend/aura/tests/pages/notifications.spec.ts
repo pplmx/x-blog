@@ -305,8 +305,11 @@ describe("Notifications page (TASK-192)", () => {
 		await markAll?.trigger("click");
 		await flushPromises();
 
-		// Failure is surfaced instead of failing silently (ISS-133)...
-		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		// Failure is surfaced instead of failing silently (ISS-133) — and with
+		// its own copy (ISS-611: a failed mark-all must not read as a failed
+		// inbox load), plus a targeted Retry.
+		expect(wrapper.text()).toContain("标记已读失败，请重试。");
+		expect(wrapper.text()).toContain("重试");
 		// ...unread count is untouched, rows stay unread, and the button is
 		// enabled again so the reader can retry.
 		expect(badge.unreadCount.value).toBe(2);
@@ -318,9 +321,10 @@ describe("Notifications page (TASK-192)", () => {
 	it("renders a localized network error when the inbox fetch fails (ISS-110)", async () => {
 		mockFetch.mockRejectedValue(new Error("boom"));
 		const wrapper = await mountPage();
-		// The orphaned common.errors.network key is now defined in zh locale,
-		// so the page shows a real message instead of the raw key.
-		expect(wrapper.text()).toContain("网络错误，请稍后重试");
+		// The failure copy is a distinct notifications.loadFailed line (ISS-611),
+		// not the generic common.errors.network — an inbox-load failure is not
+		// the same as a failed mark-read/delete.
+		expect(wrapper.text()).toContain("加载通知失败，请重试。");
 		expect(mockLogout).not.toHaveBeenCalled();
 		expect(mockReplace).not.toHaveBeenCalled();
 		// A failed load must never masquerade as an empty inbox: the "no
@@ -762,8 +766,10 @@ describe("Notifications page (TASK-192)", () => {
 			await del?.trigger("click");
 			await flushPromises();
 
-			// Failure is surfaced, row stays, button is enabled again for retry.
-			expect(wrapper.text()).toContain("网络错误");
+			// Failure is surfaced with its own delete-specific copy (ISS-611) +
+			// a targeted Retry; the row stays, and the delete button is enabled
+			// again for retry.
+			expect(wrapper.text()).toContain("删除这条通知失败，请重试。");
 			expect(wrapper.text()).toContain("第七条通知");
 			expect(del?.attributes("disabled")).toBeUndefined();
 		} finally {

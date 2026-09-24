@@ -3,7 +3,15 @@ from datetime import UTC, datetime
 from typing import Annotated
 from urllib.parse import urlparse
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 # Bounded integer alias for path/query id + pagination params (deep-dive,
 # round 276). Post/Comment id columns are 32-bit autoincrement integers;
@@ -714,6 +722,22 @@ class Comment(CommentBase):
     def _map_reader(cls, reader):
         return comment_reader_profile(reader)
 
+    @model_validator(mode="after")
+    def _redact_reader_nickname(self):
+        """Never expose a reader's account email as the public nickname.
+
+        Round-427 audit (ISS-606/TASK-532): create_comment used to stamp
+        ``display_name or email`` into the nickname column, so a reader who
+        registered without a display_name had their address published on every
+        comment surface. The write path now stores a ``reader-{id}`` handle,
+        but this read-time guard also normalizes legacy rows uniformly: a
+        reader-attributed comment without a display_name always serializes the
+        deterministic non-PII handle, never whatever old value the row holds.
+        """
+        if self.reader is not None and not self.reader.display_name:
+            self.nickname = f"reader-{self.reader.id}"
+        return self
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -796,5 +820,18 @@ class CommentPublic(CommentBase):
     @classmethod
     def _map_reader(cls, reader):
         return comment_reader_profile(reader)
+
+    @model_validator(mode="after")
+    def _redact_reader_nickname(self):
+        """Never expose a reader's account email as the public nickname.
+
+        Same guard as Comment._redact_reader_nickname (ISS-606/TASK-532): a
+        reader-attributed comment without a display_name always serializes the
+        deterministic non-PII handle, protecting legacy rows that stored the
+        account email in the nickname column.
+        """
+        if self.reader is not None and not self.reader.display_name:
+            self.nickname = f"reader-{self.reader.id}"
+        return self
 
     model_config = ConfigDict(from_attributes=True)

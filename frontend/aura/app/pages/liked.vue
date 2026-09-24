@@ -325,7 +325,7 @@ async function handleUnlike(post: PostList) {
 				</button>
 			</div>
 
-			<p v-if="pagination" class="text-sm text-gray-400 mb-4">
+			<p v-if="pagination" class="text-sm text-gray-500 mb-4">
 				{{ t("liked.countLabel", { count: pagination.total }) }}
 			</p>
 
@@ -346,7 +346,7 @@ async function handleUnlike(post: PostList) {
 						<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
 							{{ post.title }}
 						</h2>
-						<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
+						<div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
 							<span v-if="post.author" class="inline-flex items-center gap-1">
 								<img
 									v-if="post.author.avatar_url"

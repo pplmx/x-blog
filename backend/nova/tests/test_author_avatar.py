@@ -139,6 +139,30 @@ def test_remove_clears_avatar_and_deletes_file(client, admin_token, admin_user, 
     assert r.status_code == 200
 
 
+def test_avatar_writes_invalidate_public_caches(client, admin_token, admin_user, monkeypatch):
+    """Avatar upload/remove changes AuthorBrief.avatar_url rendered from cached
+    objects (post bylines, series detail, feeds) — both writes must clear the
+    public caches, not wait out the TTL (ISS-607/TASK-529)."""
+    from app.cache import posts_list_cache
+
+    calls = []
+    monkeypatch.setattr(admin_module, "clear_posts_list_cache", lambda: calls.append(1))
+    token = _admin_headers(admin_token)
+    posts_list_cache[("seed",)] = {"items": []}
+
+    r = client.post(
+        AVATAR_API.format(user_id=admin_user.id),
+        headers=token,
+        files={"file": ("a.png", PNG_BYTES, "image/png")},
+    )
+    assert r.status_code == 200, r.text
+    assert calls, "avatar upload must clear the posts-list/feeds caches"
+
+    r = client.delete(AVATAR_API.format(user_id=admin_user.id), headers=token)
+    assert r.status_code == 200, r.text
+    assert len(calls) >= 2, "avatar remove must clear the public caches too"
+
+
 def test_avatar_endpoints_superuser_only_and_404_unknown(
     client, db_session, admin_token, isolated_admin_avatar_dir: Path
 ):

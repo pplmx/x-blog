@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **A reader's account email can no longer become their public comment
+  nickname (round 427, audit finding)** — `create_comment` stamped
+  `display_name or email` into the comment's nickname column, so a reader who
+  registered without a display name had their address published on every
+  comment surface (thread, comment feeds, search, reader profile, RSS/Atom).
+  New comments store a deterministic non-PII `reader-{id}` handle instead, a
+  read-time schema guard also normalizes legacy rows that still hold an email,
+  and the RSS/Atom comment-label fallback refuses to echo a stored nickname for
+  a nameless reader. (TASK-532, ISS-606)
+- 🐛 **Author-identity writes now invalidate the public caches (round 427)** —
+  renaming a writer's pen name or changing/removing their avatar left the old
+  name/face rendered from cached post lists, series detail and feeds for up to
+  5 minutes; those writes now clear like every other post/taxonomy write.
+  (TASK-529, ISS-607)
+- 🐛 **Editing your own approved comment no longer leaves a stale comment
+  count (round 427)** — the edit resets the comment to pending (it drops off
+  the public surface), but the cached posts list kept the old higher approved
+  count until the TTL. The edit now invalidates the cache like create/approve
+  do. (TASK-529, ISS-608)
+- 🐛 **Account: the avatar-removal confirm dialog shows real copy, not a key
+  (round 427)** — it used the nonexistent `account.avatar.removeConfirm` key,
+  so before destructive avatar removal the browser's native confirm showed the
+  raw string `account.avatar.removeConfirm`. Now uses the existing localized
+  `account.profile.avatarRemoveConfirm`. (TASK-530, ISS-609)
+- 🐛 **Notifications: each failed action has its own error message and retry
+  (round 427)** — a failed mark-read / mark-all / delete collapsed into the
+  same generic "network error" as a failed initial load, so a reader couldn't
+  tell whether their action landed. Each failure now names itself and retries
+  its exact target. (TASK-530, ISS-611)
+- ♿ **History/Liked informative labels now meet WCAG AA contrast (round
+  427)** — section headers, counts and per-entry metadata used `text-gray-400`
+  (~2.5:1) / dark `text-gray-500`; bumped to AA-compliant shades for
+  informative text (decorative icons keep the lighter gray). (TASK-531, ISS-610)
+- 🧭 **A zero-hit comment search now offers a way out (round 427)** — posts
+  mode got "Did you mean" suggestions for a typo'd term but comment mode
+  dead-ended in a bare "No results". Comment-mode zero hits now get the same
+  suggestions (the corpus is mode-agnostic) plus a one-click "search these in
+  articles" hop back to posts mode. (TASK-533, ISS-612)
 - 🐛 **Admin dashboard: the Pending-comments card's header now shows the real
   backlog, not a capped slice (round 424, audit finding)** — the quick card's
   header counted `pendingComments.length`, the length of the newest pending

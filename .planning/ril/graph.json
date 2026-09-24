@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 425,
+  "round": 427,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-22T11:31:12+00:00",
+  "updated_at": "2026-09-24T11:37:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 417,
+      "touched_round": 427,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 422,
+      "touched_round": 427,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -32129,6 +32129,197 @@
       "touched_round": 424,
       "commit": "8d88beb5",
       "title": "Admin pending-comments count fix + a11y labels (TASK-525..527, ISS-603..605)"
+    },
+    "EV-314": {
+      "id": "EV-314",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T09:29:39+00:00",
+      "updated_at": "2026-09-24T09:29:39+00:00",
+      "touched_round": 426,
+      "source": "pytest -n auto --cov=app full suite",
+      "content": "round-426 baseline green: backend 1898 passed/10 skipped @93.52% cov; ruff format+check clean; frontend typecheck exit 0; lint only 4 known e2e/2fa warnings",
+      "confidence": 1.0
+    },
+    "EV-315": {
+      "id": "EV-315",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T09:35:27+00:00",
+      "updated_at": "2026-09-24T09:35:27+00:00",
+      "touched_round": 426,
+      "source": "TEST_DATABASE_URL=postgresql://10.112.9.49:13310 pytest -n 6",
+      "content": "round-426 PG parity green: 1908 passed / 0 skipped @ 93.80% vs PostgreSQL 18.4 — no dialect divergence on the deployment DB (matches EV-312 baseline)",
+      "confidence": 1.0
+    },
+    "ISS-606": {
+      "id": "ISS-606",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T10:26:28+00:00",
+      "touched_round": 427,
+      "title": "Reader email leaks as public comment nickname",
+      "content": "create_comment (crud.py:1075) uses  for the public nickname column; a reader registered with only {email,password} (display_name optional → None) has their account email published on every comment surface (post discussion, comment feeds, search, reader profile, RSS/Atom). Never rewritten even if display_name is later set. Fix: generated handle (reader-{id} or 'Anonymous') instead of email."
+    },
+    "ISS-607": {
+      "id": "ISS-607",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T10:26:28+00:00",
+      "touched_round": 427,
+      "title": "Author-identity writes skip public cache invalidation",
+      "content": "admin.py update_user (229)/upload_user_avatar (293)/remove_user_avatar (350) change AuthorBrief.display_name/avatar_url (rendered from cached objects in post lists, series detail, RSS/Atom posts feed, author feed) but none call clear_posts_list_cache()/clear_series_cache()/clear_feeds_cache(); sibling post/category/tag/batch routes all clear. Stale pen-name/avatar up to 5-min TTL."
+    },
+    "ISS-608": {
+      "id": "ISS-608",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:28+00:00",
+      "updated_at": "2026-09-24T10:26:28+00:00",
+      "touched_round": 427,
+      "title": "update_reader_comment skips cache clear when approved comment leaves surface",
+      "content": "crud.py:1260-1297: update_reader_comment resets is_approved=False, reviewed_at=None (comment drops off public surface, comment_count drops) but never calls clear_posts_list_cache(); create_comment/approve_comment/guest-edit path all do. Stale higher comment_count in lists/feeds up to 5 min when auto-approve disabled."
+    },
+    "ISS-609": {
+      "id": "ISS-609",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:52+00:00",
+      "updated_at": "2026-09-24T10:26:52+00:00",
+      "touched_round": 427,
+      "title": "account.vue line 225 uses nonexistent i18n key",
+      "content": "account.vue:225 calls t('account.avatar.removeConfirm') — absent from BOTH en/zh account.json; correct key account.profile.avatarRemoveConfirm. Native confirm() dialog shows the raw key string 'account.avatar.removeConfirm' before destructive avatar removal. All sibling buttons use account.profile.avatar* keys."
+    },
+    "ISS-610": {
+      "id": "ISS-610",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T10:26:53+00:00",
+      "touched_round": 427,
+      "title": "history/liked/bookmarks informative text fails WCAG AA contrast",
+      "content": "text-gray-400 (#9ca3af, ~2.5:1) and dark:text-gray-500 on dark (~3.0-3.7:1) below the 4.5:1 AA threshold for small informative labels: history.vue section headers (374,378,382,386,402,441,448), :456 counts, :584 meta; liked.vue :328 pagination summary, :349 meta. Fix: bump light gray-400→gray-500, dark gray-500→gray-400 for informative text (keep gray-400 for icons)."
+    },
+    "ISS-611": {
+      "id": "ISS-611",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T10:26:53+00:00",
+      "touched_round": 427,
+      "title": "Notifications page one generic banner for three failed actions",
+      "content": "notifications.vue:438-439 collapses initial-load error, markActionFailed (mark read/all read), and deleteFailed into one identical 'common.errors.network' line; a failed mark-all-read or single delete shows the same wording as a full load failure — reader cannot tell whether their delete/update landed. Fix: distinct copy per action with targeted retry."
+    },
+    "ISS-612": {
+      "id": "ISS-612",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:26:53+00:00",
+      "updated_at": "2026-09-24T10:26:53+00:00",
+      "touched_round": 427,
+      "title": "Zero-hit comment search lacks suggestion/recovery path",
+      "content": "search.vue:250 shouldSuggest hard-requires mode==='posts'; the identical zero-hit query in comments mode falls through to a shared empty state with no did-you-mean and no route back to the same term in posts mode, even though backend suggests from the same corpus. Dead end for comment searches."
+    },
+    "TASK-528": {
+      "id": "TASK-528",
+      "type": "task",
+      "status": "abandoned",
+      "version": 2,
+      "created_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T10:29:11+00:00",
+      "touched_round": 427,
+      "category": "correctness",
+      "severity": "high",
+      "confidence": 1.0,
+      "effort": "small",
+      "title": "Never use reader email as public comment nickname",
+      "content": "duplicate of TASK-532; aborted shell command left a truncated stub"
+    },
+    "TASK-529": {
+      "id": "TASK-529",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T10:27:17+00:00",
+      "touched_round": 427,
+      "category": "correctness",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": "small",
+      "title": "Clear public caches on author-identity writes and reader-comment edits",
+      "content": "admin.py update_user/upload_user_avatar/remove_user_avatar must call clear_posts_list_cache()+clear_series_cache(); docstring the superset (also feeds). update_reader_comment must clear_posts_list_cache when was_public wore approved and not auto-reapproved. Add tests asserting cache cleared."
+    },
+    "TASK-530": {
+      "id": "TASK-530",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T10:27:17+00:00",
+      "touched_round": 427,
+      "category": "ux",
+      "severity": "high",
+      "confidence": 1.0,
+      "effort": "small",
+      "title": "Fix account.vue avatar i18n key + notifications distinct errors",
+      "content": "account.vue:225 use t('account.profile.avatarRemoveConfirm'). notifications.vue:438 separate copy+retry for markActionFailed/deleteFailed vs load error."
+    },
+    "TASK-531": {
+      "id": "TASK-531",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:27:17+00:00",
+      "updated_at": "2026-09-24T10:27:17+00:00",
+      "touched_round": 427,
+      "category": "ux",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": "medium",
+      "title": "Bump low-contrast informative text to WCAG AA in history/liked",
+      "content": "history.vue/liked.vue: change text-gray-400→text-gray-500 (light) and dark:text-gray-500→dark:text-gray-400 for informative labels/headers/meta; leave decorative icons gray-400. Verify with a computed contrast check."
+    },
+    "TASK-532": {
+      "id": "TASK-532",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T10:27:37+00:00",
+      "updated_at": "2026-09-24T10:27:37+00:00",
+      "touched_round": 427,
+      "category": "correctness",
+      "severity": "high",
+      "confidence": 1.0,
+      "effort": "small",
+      "title": "Never use reader email as public comment nickname",
+      "content": "crud.create_comment reader branch: replace the display_name-or-email fallback with a generated handle (reader-{id} or Anonymous). Add regression test that a reader without display_name gets a non-email nickname on the wire."
+    },
+    "TASK-533": {
+      "id": "TASK-533",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T11:36:31+00:00",
+      "updated_at": "2026-09-24T11:36:31+00:00",
+      "touched_round": 427,
+      "category": "ux",
+      "severity": "medium",
+      "confidence": 1.0,
+      "effort": "small",
+      "title": "Zero-hit comment search gains a recovery path",
+      "content": "search.vue:250 shouldSuggest gated on mode==='posts', so a zero-hit query in comments mode shows only the shared empty state with no did-you-mean and no one-click route to the same term in posts mode. Fix: compute suggestions regardless of mode and/or add a Search-in-posts link on the comments-mode empty state."
     }
   },
   "edges": [
@@ -48077,6 +48268,96 @@
       "to": "ISS-605",
       "type": "addresses",
       "created_at": "2026-09-22T11:31:08+00:00"
+    },
+    {
+      "from": "TASK-532",
+      "to": "ISS-606",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:00+00:00"
+    },
+    {
+      "from": "TASK-529",
+      "to": "ISS-607",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:00+00:00"
+    },
+    {
+      "from": "TASK-529",
+      "to": "ISS-608",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:00+00:00"
+    },
+    {
+      "from": "TASK-530",
+      "to": "ISS-609",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:00+00:00"
+    },
+    {
+      "from": "TASK-530",
+      "to": "ISS-611",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "TASK-531",
+      "to": "ISS-610",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-606",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-607",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-608",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-609",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-610",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-611",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:01+00:00"
+    },
+    {
+      "from": "ISS-612",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T10:28:19+00:00"
+    },
+    {
+      "from": "TASK-528",
+      "to": "ISS-606",
+      "type": "addresses",
+      "created_at": "2026-09-24T10:31:26+00:00"
+    },
+    {
+      "from": "TASK-533",
+      "to": "ISS-612",
+      "type": "addresses",
+      "created_at": "2026-09-24T11:37:29+00:00"
     }
   ]
 }

@@ -250,6 +250,10 @@ def update_user(
         user.bio = updates["bio"]
     db.commit()
     db.refresh(user)
+    # The pen name/bio render on post bylines, series details and the RSS/Atom
+    # posts feed (AuthorBrief from cached objects) — a rename must not linger
+    # as the old name in lists/feeds for the cache TTL (ISS-607/TASK-529).
+    clear_posts_list_cache()
     return user
 
 
@@ -342,6 +346,10 @@ async def upload_user_avatar(
     db.commit()
     db.refresh(user)
     _delete_author_avatar_file(previous)
+    # Avatar swaps are visible on cached post bylines / series details / feeds
+    # (AuthorBrief.avatar_url) — clear so the new face appears immediately
+    # (same cache contract as the other author-identity writes, ISS-607).
+    clear_posts_list_cache()
     return user
 
 
@@ -363,6 +371,9 @@ def remove_user_avatar(
         db.commit()
         db.refresh(user)
         _delete_author_avatar_file(previous)
+        # Removing the face changes every byline that showed it; clear so the
+        # cached post lists / series / feeds drop the deleted avatar (ISS-607).
+        clear_posts_list_cache()
     return user
 
 

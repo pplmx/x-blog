@@ -30,7 +30,8 @@
 		"noResults": {
 			"title": "No matching articles found",
 			"hint": "Try different keywords",
-			"tryAdjustFilters": "No articles match these filters — try adjusting or clearing them"
+			"tryAdjustFilters": "No articles match these filters — try adjusting or clearing them",
+			"searchPostsInstead": "No matching comments — try these in articles"
 		},
 		"posts": {
 			"views": "reads"

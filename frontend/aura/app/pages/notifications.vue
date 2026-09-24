@@ -305,14 +305,22 @@ watch(isAuthenticated, (authed) => {
 
 // In-flight + failure state for the mark-read actions so the buttons disable
 // while running and surface a failure instead of failing silently (ISS-133).
+// The failed action's target is tracked separately from the generic flag so
+// the banner can say WHICH action failed and offer a targeted retry — a
+// failed "mark all read" must not read as a failed inbox load (ISS-611
+// deep-dive: three unrelated failures collapsed into one "network error").
 const markingIds = ref<Set<number>>(new Set());
 const markingAll = ref(false);
 const markActionFailed = ref(false);
+// null = no failed mark-read to retry; "all" = the mark-all action failed;
+// a number = the single row whose mark-read failed.
+const markFailedTarget = ref<number | "all" | null>(null);
 
 async function markRead(item: ReaderNotification) {
 	if (item.read || markingIds.value.has(item.id)) return;
 	markingIds.value = new Set(markingIds.value).add(item.id);
 	markActionFailed.value = false;
+	markFailedTarget.value = null;
 	try {
 		const updated = await markReaderNotificationRead(item.id);
 		item.read = updated.read;
@@ -321,6 +329,7 @@ async function markRead(item: ReaderNotification) {
 		void refreshBadge();
 	} catch {
 		markActionFailed.value = true;
+		markFailedTarget.value = item.id;
 	} finally {
 		const s = new Set(markingIds.value);
 		s.delete(item.id);
@@ -332,6 +341,7 @@ async function markAllRead() {
 	if (unread.value === 0 || markingAll.value) return;
 	markingAll.value = true;
 	markActionFailed.value = false;
+	markFailedTarget.value = null;
 	try {
 		await markAllReaderNotificationsRead();
 		unread.value = 0;
@@ -342,9 +352,21 @@ async function markAllRead() {
 		});
 	} catch {
 		markActionFailed.value = true;
+		markFailedTarget.value = "all";
 	} finally {
 		markingAll.value = false;
 	}
+}
+
+/** Retry the last failed mark-read action (its target is still tracked). */
+function retryMarkRead() {
+	if (markFailedTarget.value === "all") {
+		void markAllRead();
+	} else if (typeof markFailedTarget.value === "number") {
+		const item = items.value.find((i) => i.id === markFailedTarget.value);
+		if (item) void markRead(item);
+	}
+	markFailedTarget.value = null;
 }
 
 // Deleting an inbox row (DEC-312/TASK-384): the durable inbox had no prune
@@ -355,6 +377,9 @@ async function markAllRead() {
 // a failure is surfaced, never silent.
 const deletingIds = ref<Set<number>>(new Set());
 const deleteFailed = ref(false);
+// Which row's delete failed (for the targeted retry + distinct copy); null
+// clears the failure banner (ISS-611).
+const deleteFailedId = ref<number | null>(null);
 
 async function deleteRow(item: ReaderNotification) {
 	if (deletingIds.value.has(item.id)) return;
@@ -373,11 +398,19 @@ async function deleteRow(item: ReaderNotification) {
 		void refreshBadge();
 	} catch {
 		deleteFailed.value = true;
+		deleteFailedId.value = item.id;
 	} finally {
 		const s = new Set(deletingIds.value);
 		s.delete(item.id);
 		deletingIds.value = s;
 	}
+}
+
+/** Retry the last failed row delete (its id is still tracked). */
+function retryDelete() {
+	const item = items.value.find((i) => i.id === deleteFailedId.value);
+	deleteFailedId.value = null;
+	if (item) void deleteRow(item);
 }
 
 function kindLabel(item: ReaderNotification): string {
@@ -435,13 +468,33 @@ function kindIcon(kind: string): string {
       </button>
     </div>
 
+    <!-- Each failure carries its own copy + a targeted retry (ISS-611): a
+         failed mark-read or delete must not read as a failed inbox load. -->
     <div v-if="error || markActionFailed || deleteFailed" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
-      <p>{{ t('common.errors.network') }}</p>
+      <p v-if="error">{{ t('notifications.loadFailed') }}</p>
+      <p v-else-if="markActionFailed">{{ t('notifications.markReadFailed') }}</p>
+      <p v-else-if="deleteFailed">{{ t('notifications.deleteFailed') }}</p>
       <button
         v-if="error"
         type="button"
         class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
         @click="load"
+      >
+        {{ t('common.action.retry') }}
+      </button>
+      <button
+        v-else-if="markActionFailed"
+        type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+        @click="retryMarkRead"
+      >
+        {{ t('common.action.retry') }}
+      </button>
+      <button
+        v-else-if="deleteFailed"
+        type="button"
+        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+        @click="retryDelete"
       >
         {{ t('common.action.retry') }}
       </button>
