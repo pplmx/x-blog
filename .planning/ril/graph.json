@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 428,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T20:24:07+00:00",
+  "updated_at": "2026-09-24T20:50:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32773,6 +32773,40 @@
       "title": "close round 429 (TASK-547, ISS-624)",
       "rationale": "Merged the split admin.pages.json locale file into admin.json — the latent double-file 'admin' namespace collision (flatten() merges by namespace, so overlap would silently override by glob order) is eliminated with identical key paths. Verified: useLang parity 21 tests, admin pages specs 16 tests, lint at baseline.",
       "alternatives_rejected": "Rename the secondary namespace (churns every admin.pages.* reference); leave the latent collision (recorded as accepted risk)."
+    },
+    "ISS-625": {
+      "id": "ISS-625",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T20:48:01+00:00",
+      "updated_at": "2026-09-24T20:48:01+00:00",
+      "touched_round": 428,
+      "title": "Empty paginated result sets return total_pages=0 across public endpoints",
+      "severity": "low"
+    },
+    "ISS-626": {
+      "id": "ISS-626",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T20:48:02+00:00",
+      "updated_at": "2026-09-24T20:48:02+00:00",
+      "touched_round": 428,
+      "title": "backup restore accepts unbounded comments-per-post array in a single post body",
+      "severity": "low"
+    },
+    "DEC-476": {
+      "id": "DEC-476",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T20:49:03+00:00",
+      "updated_at": "2026-09-24T20:49:03+00:00",
+      "touched_round": 428,
+      "title": "Defer total_pages==0 and backup comment-cap LOW items (round 428 deep-dive residuals)",
+      "rationale": "ISS-625 (total_pages=0 on empty paginated sets): the frontend derives no live 'has-next' from it — paginationPages() returns [] for total_pages <= 1 and every page view clamps out-of-range via watch(total_pages): a uniform max(1, ...) normalization would touch 5+ endpoints and interact with the frontend's clamp watchers for zero user-visible benefit today; record as accepted convention. ISS-626 (unbounded comments-per-post in restore): the endpoint is superuser-only + rate-limited and the posts list is already capped at MAX_RESTORE_POSTS=20000, so a real blog snapshot is naturally bounded; a per-post comment cap would only matter for a hostile superuser, which is outside the trust model. Both parked as LOW for a future pass.",
+      "alternatives_rejected": "Normalize total_pages now across posts/search/comments/readers (churn + clamp-watcher interaction, no visible win); add a comment-cap constant + validation to restore (defends only against a trusted superuser)."
     }
   },
   "edges": [
@@ -49171,6 +49205,18 @@
       "to": "ISS-624",
       "type": "resolves",
       "created_at": "2026-09-24T20:24:07+00:00"
+    },
+    {
+      "from": "ISS-625",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T20:50:59+00:00"
+    },
+    {
+      "from": "ISS-626",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T20:50:59+00:00"
     }
   ]
 }
