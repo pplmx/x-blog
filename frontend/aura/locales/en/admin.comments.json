@@ -17,7 +17,6 @@
 		"selectAll": "Select all",
 		"selectRow": "Select {nickname}'s comment",
 		"confirmDiscardReply": "You have an unsent reply draft — discard it and switch?",
-
 		"empty": {
 			"title": "No comments",
 			"subtitle": "There are no comments yet"
@@ -51,6 +50,7 @@
 			"next": "Next",
 			"page": "Page {current} / {total}"
 		},
-		"loading": "Loading..."
+		"loading": "Loading...",
+		"readerEmailTitle": "Account email of the comment's reader"
 	}
 }

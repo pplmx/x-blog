@@ -16,6 +16,14 @@ export interface AdminComment {
 	created_at: string;
 	/** Distinct reader flags (DEC-108, TASK-166). */
 	flag_count?: number;
+	/**
+	 * Admin-only moderation identity (ISS-606/TASK-532): the comment author's
+	 * READER ACCOUNT email when the comment is reader-attributed. The public
+	 * nickname for a nameless reader is a non-PII handle (never the email), but
+	 * the trusted admin queue still surfaces the account email explicitly.
+	 * null / absent for anonymous commenters (comment.email stays the guest's).
+	 */
+	reader_email?: string | null;
 }
 
 export interface AdminCommentListResponse {

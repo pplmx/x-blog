@@ -631,8 +631,11 @@ async function submitReply(id: number) {
               >
                 {{ t("admin.comments.authorReply") }}
               </span>
-              <span class="text-sm text-gray-500 dark:text-gray-400">
-                {{ comment.email }}
+              <span
+                class="text-sm text-gray-500 dark:text-gray-400"
+                :title="comment.reader_email ? t('admin.comments.readerEmailTitle') : undefined"
+              >
+                {{ comment.reader_email ?? comment.email }}
               </span>
               <span
                 :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', comment.is_approved

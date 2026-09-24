@@ -856,6 +856,42 @@ class TestAdminComments:
         assert comments[0]["post_title"] == post.title
         assert data["pagination"]["total"] == 1
 
+    def test_list_comments_exposes_reader_account_email_admin_only(self, client, auth_headers, db_session):
+        """A reader-attributed comment's ACCOUNT email is moderation identity:
+        the admin queue must expose it via the explicit reader_email field
+        (it used to ride the nickname fallback, which round-427 removed from
+        PUBLIC surfaces — the moderator still needs to identify the account).
+        An anonymous comment keeps reader_email null (comment.email stays its
+        own). Same admin-only trust tier as ip_address. (ISS-606/TASK-532)"""
+        post = models.Post(title="Reader Post", slug="reader-post", content="Content", published=True)
+        db_session.add(post)
+        db_session.commit()
+
+        registered = client.post(
+            "/api/reader/register",
+            json={"email": "moderated-reader@example.com", "password": "readerpass123", "display_name": None},
+        )
+        assert registered.status_code == 201, registered.text
+        token = registered.json()["access_token"]
+        created = client.post(
+            f"/api/comments/post/{post.id}",
+            json={"content": "moderate me", "nickname": "ignored", "email": "forged@example.com"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert created.status_code == 201, created.text
+
+        items = client.get("/api/admin/comments", headers=auth_headers).json()["items"]
+        row = next(i for i in items if i["id"] == created.json()["id"])
+        # Moderator sees the ACCOUNT email (never the forged client one).
+        assert row["reader_email"] == "moderated-reader@example.com"
+        assert "forged@example.com" not in row["reader_email"]
+        # The public nickname stays the non-PII handle, not the email.
+        assert row["nickname"] != "moderated-reader@example.com"
+
+        # Public comment list must NOT carry the account email anywhere.
+        public = client.get(f"/api/comments/post/{post.id}").text
+        assert "moderated-reader@example.com" not in public
+
     def test_list_comments_filtered_by_post_id(self, client, auth_headers, db_session):
         """Test listing comments filtered by post_id."""
         post1 = models.Post(title="Post One", slug="post-one", content="Content", published=True)

@@ -50,6 +50,7 @@
 			"next": "下一页",
 			"page": "第 {current} / {total} 页"
 		},
-		"loading": "加载中..."
+		"loading": "加载中...",
+		"readerEmailTitle": "评论者的账号邮箱"
 	}
 }

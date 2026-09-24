@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   New comments store a deterministic non-PII `reader-{id}` handle instead, a
   read-time schema guard also normalizes legacy rows that still hold an email,
   and the RSS/Atom comment-label fallback refuses to echo a stored nickname for
-  a nameless reader. (TASK-532, ISS-606)
+  a nameless reader. The admin moderation queue still shows the real account
+  email via an explicit admin-only `reader_email` field (batched, no N+1) — a
+  moderator's ability to identify the account survives the public-surface fix.
+  (TASK-532, ISS-606)
 - 🐛 **Author-identity writes now invalidate the public caches (round 427)** —
   renaming a writer's pen name or changing/removing their avatar left the old
   name/face rendered from cached post lists, series detail and feeds for up to

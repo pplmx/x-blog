@@ -1160,6 +1160,25 @@ def admin_list_comments(
     )
     page_ids = [c.id for c, _ in comment_rows]
     flag_counts = crud.flag_counts_for_comments(db, page_ids)
+    # Reader account identity for the MODERATION queue (admin-only signal).
+    # reader-attributed comments never put the account email in comment.email
+    # (DEC-062), and round-427 stopped the old nickname fallback from leaking
+    # it publicly (ISS-606) — but a moderator still needs to identify the
+    # account behind a comment. Expose reader_email explicitly, on this trusted
+    # admin surface only (alongside ip_address), never on a public schema.
+    # Batched: one IN() lookup for the whole page, no per-row lazy load (N+1).
+    reader_id_to_email: dict[int, str | None] = {}
+    reader_ids = [c.reader_id for c, _ in comment_rows if c.reader_id is not None]
+    if reader_ids:
+        reader_rows = (
+            db.query(auth.ReaderAccount.id, auth.ReaderAccount.email)
+            .filter(auth.ReaderAccount.id.in_(reader_ids))
+            .all()
+        )
+        # C416: ruff prefers `dict(reader_rows)`, but pyright cannot type a
+        # SQLAlchemy Row list into dict(); the explicit comprehension keeps
+        # both green (`dict` on rows mis-infers bytes keys).
+        reader_id_to_email = {rid: email for rid, email in reader_rows}  # noqa: C416
     result = []
     for c, post_title in comment_rows:
         result.append(
@@ -1169,6 +1188,10 @@ def admin_list_comments(
                 "post_title": post_title,
                 "nickname": c.nickname,
                 "email": c.email,
+                # Admin-only: the comment author's ACCOUNT email when the
+                # comment is reader-attributed (None for anonymous commenters,
+                # mirroring comment.email). Never present on public schemas.
+                "reader_email": reader_id_to_email.get(c.reader_id),
                 "content": c.content,
                 "ip_address": c.ip_address,
                 "is_approved": c.is_approved,
