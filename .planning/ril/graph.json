@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 428,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T19:34:32+00:00",
+  "updated_at": "2026-09-24T20:02:12+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -32713,6 +32713,17 @@
       "title": "close round 428 (TASK-534..546, ISS-613..623, a11y/i18n/security polish wave)",
       "rationale": "Round-428 polish/bug-fix wave under the operator's detail-optimization directive. Backend: (1) all-digit post slugs rejected at create/update — a numeric slug was shadowed by the id-first public route, its canonical URL serving a different article (HIGH-impact MEDIUM); (2) NULL Post.views/likes coalesced in increments + rankings so PG and SQLite agree (NULLS-FIRST divergence); (3) feed_cache maxsize raised 8->64 (eviction thrash under modest crawl). Frontend: (4) clientIp XFF resolver hardened to backend _xff_client parity (IP-literal validation + port strip — forged/port-carrying XFF could mint fresh rate-limit buckets on the CPU-heavy cover/og endpoints, HIGH); (5) en authors.postCount ICU plural syntax removed (raw syntax leaked to English readers); (6) WCAG AA contrast pass on informative grays + the liked heart control; (7) reader-profile tablist gains Arrow/Home/End roving (search.vue parity) + localized aria-label; (8) media-picker/password-modal body scroll-lock; (9) admin mobile sidebar inert-when-closed; (10) saveBio honors the shared penBusy single-flight guard; (11) search.vue tab roving scoped to currentTarget (CommentForm anti-pattern). Covered by new regression tests (backend + frontend); verified full-suite green on SQLite, targeted green on PostgreSQL 18 parity.",
       "alternatives_rejected": "DDL migration for the NULL-counter columns (breaks DEC-009 additive-DDL constraint + alembic drift gate — coalesce achieves the same dialect parity code-level); total_pages==0 normalization on empty paginated results (LOW, interacts with frontend out-of-range clamping — recorded for a later round)."
+    },
+    "CHG-779": {
+      "id": "CHG-779",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T19:59:12+00:00",
+      "updated_at": "2026-09-24T19:59:12+00:00",
+      "touched_round": 428,
+      "commit": "3fea6adb",
+      "title": "round-428 polish wave: numeric slugs, NULL counters, feed cache, clientIp parity, a11y/i18n"
     }
   },
   "edges": [
@@ -48955,6 +48966,138 @@
       "to": "TASK-539",
       "type": "depends_on",
       "created_at": "2026-09-24T19:34:32+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-534",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-535",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-536",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-537",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-540",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-541",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-542",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:10+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-543",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-544",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-545",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "TASK-546",
+      "type": "implements",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-613",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-614",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-615",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-616",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:11+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-617",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-618",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-619",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-620",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-621",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-622",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
+    },
+    {
+      "from": "CHG-779",
+      "to": "ISS-623",
+      "type": "resolves",
+      "created_at": "2026-09-24T20:02:12+00:00"
     }
   ]
 }
