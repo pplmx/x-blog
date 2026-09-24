@@ -476,7 +476,13 @@ def admin_list_posts(
         # id tiebreak: imported/bulk-restored rows share created_at; without a
         # unique final sort key, offset pages can skip/duplicate across page
         # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
-        .order_by(models.Post.pinned.desc(), models.Post.created_at.desc(), models.Post.id.desc())
+        # COALESCE pinned like crud.get_posts (TASK-535 parity): a raw-import
+        # NULL-pinned row must sort with the unpinned group, not first.
+        .order_by(
+            func.coalesce(models.Post.pinned, False).desc(),
+            models.Post.created_at.desc(),
+            models.Post.id.desc(),
+        )
         .offset(skip)
         .limit(limit)
         .all()

@@ -549,7 +549,6 @@ function goToPage(pg: number | string) {
           type="button"
           role="tab"
           :aria-selected="mode === 'posts'"
-          :aria-pressed="mode === 'posts'"
           class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
           :class="mode === 'posts'
             ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
@@ -563,7 +562,6 @@ function goToPage(pg: number | string) {
           type="button"
           role="tab"
           :aria-selected="mode === 'comments'"
-          :aria-pressed="mode === 'comments'"
           class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
           :class="mode === 'comments'
             ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'

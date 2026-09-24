@@ -218,7 +218,16 @@ def get_posts(
     # channels (RSS/Atom/sitemap): an old pinned post must not float to item 0
     # and fake a freshly-updated feed when a poller keys off the first entry
     # (RIL ISS-474).
-    order_cols = [models.Post.pinned.desc(), _effective_publish_col().desc(), models.Post.id.desc()]
+    # COALESCE pinned to False in the DESC sort: Post.pinned is nullable with
+    # only a Python-side default, so a raw-SQL/COPY row can land a NULL, and
+    # ORDER BY col DESC then puts NULLs FIRST on PostgreSQL but LAST on
+    # SQLite — a NULL-pinned row would jump to the top of the public feed on
+    # prod (same dialect-parity discipline as views/likes, TASK-535/ISS-614).
+    order_cols = [
+        func.coalesce(models.Post.pinned, False).desc(),
+        _effective_publish_col().desc(),
+        models.Post.id.desc(),
+    ]
     if not pinned_first:
         order_cols = [_effective_publish_col().desc(), models.Post.id.desc()]
     posts = query.order_by(*order_cols).offset(skip).limit(limit).all()
@@ -2090,7 +2099,10 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
             func.row_number()
             .over(
                 order_by=(
-                    models.Post.pinned.desc(),
+                    # COALESCE pinned like get_posts (TASK-535 parity): a
+                    # NULL-pinned row must rank with the unpinned group, not
+                    # leap to rank 1 on PostgreSQL's NULLS-FIRST.
+                    func.coalesce(models.Post.pinned, False).desc(),
                     _effective_publish_col().desc(),
                     models.Post.id.desc(),
                 )

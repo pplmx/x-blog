@@ -441,7 +441,7 @@ const pageAnnouncement = computed(() =>
 			<template v-if="view === 'comments'">
 				<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
 					{{ t("readerProfile.commentsTitle") }}
-					<span v-if="data.pagination" class="text-sm font-normal text-gray-400">
+					<span v-if="data.pagination" class="text-sm font-normal text-gray-500 dark:text-gray-400">
 						{{ t("readerProfile.countLabel", { count: data.pagination.total }) }}
 					</span>
 				</h2>
@@ -452,7 +452,7 @@ const pageAnnouncement = computed(() =>
 						:key="comment.id"
 						class="border border-gray-100 dark:border-gray-800 rounded-xl p-4"
 					>
-						<div class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+						<div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
 							<NuxtLink
 								v-if="comment.post"
 								:to="`/posts/${comment.post.slug}#comment-${comment.id}`"
@@ -494,7 +494,7 @@ const pageAnnouncement = computed(() =>
 				</p>
 
 				<template v-else>
-					<p v-if="likedPagination" class="text-sm text-gray-400 mb-4">
+					<p v-if="likedPagination" class="text-sm text-gray-500 dark:text-gray-400 mb-4">
 						{{ t("readerProfile.likesCountLabel", { count: likedPagination.total }) }}
 					</p>
 

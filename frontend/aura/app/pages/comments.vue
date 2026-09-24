@@ -415,7 +415,7 @@ function formatDate(dateStr: string): string {
           >
             {{ t('myComments.onPost', { title: comment.post.title }) }}
           </NuxtLink>
-          <span v-else class="text-xs text-gray-400">{{ t('myComments.onPost', { title: '—' }) }}</span>
+          <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ t('myComments.onPost', { title: '—' }) }}</span>
 
           <button
             type="button"

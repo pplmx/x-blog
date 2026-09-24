@@ -220,6 +220,19 @@ describe("buildArticleJsonLd", () => {
 		expect(jsonLd.datePublished).toBe(mockPost.created_at);
 	});
 
+	it("appends Z to naive-UTC dates (schema.org needs an explicit instant)", () => {
+		// The backend serializes naive UTC bare (DEC-213); without the suffix a
+		// crawler in UTC+8 would render a late-UTC-day post a full day early.
+		const naive = {
+			...mockPost,
+			created_at: "2024-01-15T23:30:00",
+			updated_at: "2024-01-16T00:10:00",
+		};
+		const jsonLd = buildArticleJsonLd(naive, options);
+		expect(jsonLd.datePublished).toBe("2024-01-15T23:30:00Z");
+		expect(jsonLd.dateModified).toBe("2024-01-16T00:10:00Z");
+	});
+
 	it("handles null cover_image (image is undefined)", () => {
 		const jsonLd = buildArticleJsonLd(mockPostNoCover, options);
 		expect(jsonLd.image).toBeUndefined();

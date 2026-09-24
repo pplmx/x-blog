@@ -1,3 +1,6 @@
+from datetime import UTC
+
+
 def test_create_post(client, auth_headers):
     response = client.post(
         "/api/posts",
@@ -295,20 +298,29 @@ def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
 
 
 def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
-    """A still-NULL view counter must rank as 0, not first.
+    """A still-NULL view counter must rank as 0, not first — and not 500.
 
     Regression continuation of TASK-535: until the first pageview lands, a
     raw/legacy NULL-views row would top `/popular/list` on PostgreSQL
     (default NULLS FIRST for DESC) while SQLite ranked it last. COALESCE in the
-    ORDER BY makes both dialects agree.
+    ORDER BY makes both dialects agree. A real NULL must also survive
+    serialization (PostList.views is `int = 0`): without the read-side
+    BeforeValidator coalesce, the whole feed 500s on such a row.
     """
     from app import models
 
     db_session.add_all(
         [
-            models.Post(title="Null Views", slug="null-views", content="C", published=True, views=None),
+            models.Post(title="Null Views", slug="null-views", content="C", published=True, views=0),
             models.Post(title="Ten Views", slug="ten-views", content="C", published=True, views=10),
         ]
+    )
+    db_session.commit()
+    # Plant a real NULL like a raw-SQL/COPY import would (an ORM `views=None`
+    # instead fires the Python-side default and stores 0 — never a NULL, which
+    # is why the pre-fix version of this test was vacuous).
+    db_session.execute(
+        models.Post.__table__.update().where(models.Post.__table__.c.slug == "null-views").values(views=None)
     )
     db_session.commit()
 
@@ -318,12 +330,76 @@ def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
     titles = [i["title"] for i in items]
     assert titles.index("Ten Views") < titles.index("Null Views"), titles
 
-    # Same ordering when sorting by views explicitly.
+    # Same ordering when sorting by views explicitly; the NULL row must also
+    # serialize as views=0 instead of failing the whole list's validation.
     listed = client.get("/api/posts?sort=views")
     assert listed.status_code == 200, listed.text
     body = listed.json()
     arranged = [i["title"] for i in body["items"]]
     assert arranged.index("Ten Views") < arranged.index("Null Views"), arranged
+    null_row = next(i for i in body["items"] if i["title"] == "Null Views")
+    assert null_row["views"] == 0, null_row
+
+
+def test_null_pinned_ranks_with_unpinned_group(client, db_session):
+    """A raw/legacy NULL-pinned row must sort with the unpinned group.
+
+    Regression continuation of the TASK-535 NULL-parity discipline, applied to
+    Post.pinned (also nullable with only a Python-side default): ORDER BY
+    pinned DESC puts NULLs FIRST on PostgreSQL (NULLS FIRST) but LAST on
+    SQLite, so a NULL-pinned post would jump to the top of the public feed —
+    even above pinned=True rows — on prod while ranking last in dev/test.
+    COALESCE(pinned, False) in both the list feed and the adjacent window rank
+    makes the dialects agree and prev/next match the feed the reader scans.
+
+    The NULL is planted with a Core UPDATE (`.values(pinned=None)`), the same
+    route a raw-SQL/COPY import takes: setting ``pinned=None`` through the ORM
+    constructor instead fires the Python-side ``default=False`` (TASK-535's
+    NULL trigger), so it would never produce the row this test needs.
+    """
+    from app import models
+
+    posts = [
+        models.Post(title="Pinned", slug="pinned", content="C", published=True, pinned=True, created_at=_dt(2024, 2)),
+        models.Post(
+            title="Null Pinned", slug="null-pinned", content="C", published=True, pinned=False, created_at=_dt(2024, 3)
+        ),
+        models.Post(
+            title="Unpinned", slug="unpinned", content="C", published=True, pinned=False, created_at=_dt(2024, 1)
+        ),
+    ]
+    db_session.add_all(posts)
+    db_session.commit()
+    # Plant a real NULL like a raw import would (bypasses the ORM default).
+    db_session.execute(
+        models.Post.__table__.update().where(models.Post.__table__.c.slug == "null-pinned").values(pinned=None)
+    )
+    db_session.commit()
+
+    feed = client.get("/api/posts")
+    assert feed.status_code == 200, feed.text
+    items = feed.json()["items"]
+    titles = [i["title"] for i in items]
+    # Pinned sorts first; NULL-pinned must NOT leap above it, and ranks with
+    # the unpinned group (newest of the two via created_at desc).
+    assert titles.index("Pinned") < titles.index("Null Pinned") < titles.index("Unpinned"), titles
+    # And the NULL must serialize as `pinned: false` (read-side coalesce), not
+    # fail the whole feed's validation with a 500.
+    null_row = next(i for i in items if i["title"] == "Null Pinned")
+    assert null_row["pinned"] is False, null_row
+
+    # The adjacent rank must agree with the feed (same window order_by): the
+    # NULL-pinned post's previous is the pinned head, not "no previous".
+    adj = client.get(f"/api/posts/{null_row['id']}/adjacent")
+    assert adj.status_code == 200, adj.text
+    assert adj.json()["previous"]["title"] == "Pinned", adj.json()
+
+
+def _dt(year: int, month: int):
+    """Naive-UTC datetime helper so feed order is deterministic within a test."""
+    from datetime import datetime
+
+    return datetime(year, month, 1, 12, 0, 0, tzinfo=UTC).replace(tzinfo=None)
 
 
 def test_update_post(client, auth_headers):

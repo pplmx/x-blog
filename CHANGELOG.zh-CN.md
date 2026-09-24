@@ -9,6 +9,32 @@
 
 ## [Unreleased]
 
+- 🐛 **原始导入的 NULL 计数不再让整个公开列表 500（round 431）**——
+  `Post.views`/`likes`/`pinned` 可空且只有 Python 侧默认值，因此 raw
+  SQL/COPY 导入的行可能携带 NULL。round 428 让此类计数器在增量时自愈、并对
+  排序做了 COALESCE，但读取 schema 仍声明为非空——于是单个 NULL 行会让
+  `GET /api/posts`、`/popular/list`、`/trending`、`/related`、`/adjacent`、
+  系列详情和搜索全部返回 500（Pydantic 拒绝 `None`）。读取侧序列化现在把
+  NULL 归一为文档默认值（0 / false），并在列表、相邻窗口和管理员列表的
+  `pinned` ORDER BY 中也做了 COALESCE（旧版测试是空转的：ORM 传
+  `pinned=None` 会存 0，永远不是 NULL——只有原始导入才会落 NULL）。
+  （TASK-548, ISS-627）
+- 🔒 **JSON-LD/OpenGraph 文章日期现在带明确的 UTC 标记（round 431）**——
+  `effectivePublishAt`/`updated_at` 曾被不加 "Z" 就写进
+  `datePublished`/`dateModified` 与 `og:article:published_time`/
+  `modified_time`（其他所有消费者都会补 "Z"，DEC-213）：UTC+8 的爬虫会把
+  UTC 一天末尾发布的文章在分享卡片 / 富结果上显示成提前一整天。SEO 路径现在
+  幂等地补上时区标记。（TASK-549, ISS-628）
+- ♿ **媒体选择器在编辑器带着它离开页面时释放背景滚动（round 431）**——背景
+  滚动锁定只在关闭时释放；若管理员在弹窗打开时按返回键，下一页会一直无法滚动
+  直到刷新。现在开着就卸载会恢复（与 MarkdownLightbox 一致）。（TASK-550,
+  ISS-629）
+- ♿ **搜索标签页移除 `aria-pressed`（round 431）**——`role="tab"` 的状态
+  属性是 `aria-selected`；之前还冗余/不兼容地绑定了 `aria-pressed`，读屏器会
+  得到矛盾的开关状态。（TASK-551, ISS-630）
+- ♿ **更多说明性小字达到 WCAG AA（round 431）**——我的评论、系列、读者主页
+  页面上剩余的 `gray-400` 元数据行在浅色主题下提升到 `gray-500`。（TASK-552,
+  ISS-631）
 - 🔒 **纯数字文章 slug 现在会被拒绝（round 428）**——公开文章路由会先把纯数字
   路径段当作文章 ID 解析，所以 slug 为 `"1"` 的文章会被遮蔽：其规范 URL
   （`/posts/1`，由 RSS/Atom/sitemap 发出）实际返回的是拥有该数字 ID 的那篇文章；

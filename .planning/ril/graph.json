@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 428,
+  "round": 429,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T20:50:59+00:00",
+  "updated_at": "2026-09-24T23:13:09+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 427,
+      "touched_round": 429,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -32507,7 +32507,7 @@
       "version": 1,
       "created_at": "2026-09-24T19:25:07+00:00",
       "updated_at": "2026-09-24T19:25:07+00:00",
-      "touched_round": 428,
+      "touched_round": 429,
       "title": "fastapi reader/post schemas (articles)"
     },
     "COMP-012": {
@@ -32807,6 +32807,121 @@
       "title": "Defer total_pages==0 and backup comment-cap LOW items (round 428 deep-dive residuals)",
       "rationale": "ISS-625 (total_pages=0 on empty paginated sets): the frontend derives no live 'has-next' from it — paginationPages() returns [] for total_pages <= 1 and every page view clamps out-of-range via watch(total_pages): a uniform max(1, ...) normalization would touch 5+ endpoints and interact with the frontend's clamp watchers for zero user-visible benefit today; record as accepted convention. ISS-626 (unbounded comments-per-post in restore): the endpoint is superuser-only + rate-limited and the posts list is already capped at MAX_RESTORE_POSTS=20000, so a real blog snapshot is naturally bounded; a per-post comment cap would only matter for a hostile superuser, which is outside the trust model. Both parked as LOW for a future pass.",
       "alternatives_rejected": "Normalize total_pages now across posts/search/comments/readers (churn + clamp-watcher interaction, no visible win); add a comment-cap constant + validation to restore (defends only against a trusted superuser)."
+    },
+    "ISS-627": {
+      "id": "ISS-627",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:16+00:00",
+      "updated_at": "2026-09-24T23:12:16+00:00",
+      "touched_round": 429,
+      "title": "Raw-import NULL views/likes/pinned rows 500 the whole public feed; pinned ORDER BY not coalesced across dialects (TASK-535 continuation, earlier test was vacuous)",
+      "severity": "high"
+    },
+    "ISS-628": {
+      "id": "ISS-628",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:16+00:00",
+      "updated_at": "2026-09-24T23:12:16+00:00",
+      "touched_round": 429,
+      "title": "JSON-LD/OG article dates lack explicit UTC marker (naive-UTC wire strings into schema.org/OpenGraph)",
+      "severity": "medium"
+    },
+    "ISS-629": {
+      "id": "ISS-629",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:16+00:00",
+      "updated_at": "2026-09-24T23:12:16+00:00",
+      "touched_round": 429,
+      "title": "MediaPickerModal strands body scroll lock on unmount-while-open",
+      "severity": "low"
+    },
+    "ISS-630": {
+      "id": "ISS-630",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:16+00:00",
+      "updated_at": "2026-09-24T23:12:16+00:00",
+      "touched_round": 429,
+      "title": "search.vue role=tab buttons carry aria-pressed (toggle-state attr on a tab)",
+      "severity": "low"
+    },
+    "ISS-631": {
+      "id": "ISS-631",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:16+00:00",
+      "updated_at": "2026-09-24T23:12:16+00:00",
+      "touched_round": 429,
+      "title": "Remaining gray-400 small-text metadata rows fail WCAG AA on light theme",
+      "severity": "low"
+    },
+    "TASK-548": {
+      "id": "TASK-548",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:42+00:00",
+      "updated_at": "2026-09-24T23:12:42+00:00",
+      "touched_round": 429,
+      "title": "Coalesce read-side NULL counters (views/likes/pinned) in Post/PostList/PostRevisionDetail schemas + pinned ORDER BY in crud/admin",
+      "category": "correctness",
+      "severity": "high"
+    },
+    "TASK-549": {
+      "id": "TASK-549",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:42+00:00",
+      "updated_at": "2026-09-24T23:12:42+00:00",
+      "touched_round": 429,
+      "title": "Append explicit UTC marker to JSON-LD/OG article dates (toIsoUtc in apiDate + useSeo sinks)",
+      "category": "correctness",
+      "severity": "medium"
+    },
+    "TASK-550": {
+      "id": "TASK-550",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:42+00:00",
+      "updated_at": "2026-09-24T23:12:42+00:00",
+      "touched_round": 429,
+      "title": "Restore body overflow on MediaPickerModal unmount-while-open",
+      "category": "stability",
+      "severity": "low"
+    },
+    "TASK-551": {
+      "id": "TASK-551",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:43+00:00",
+      "updated_at": "2026-09-24T23:12:43+00:00",
+      "touched_round": 429,
+      "title": "Remove aria-pressed from search.vue role=tab buttons (keep aria-selected)",
+      "category": "maintainability",
+      "severity": "low"
+    },
+    "TASK-552": {
+      "id": "TASK-552",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-24T23:12:43+00:00",
+      "updated_at": "2026-09-24T23:12:43+00:00",
+      "touched_round": 429,
+      "title": "Bump remaining gray-400 small-text metadata rows to gray-500 on light theme",
+      "category": "maintainability",
+      "severity": "low"
     }
   },
   "edges": [
@@ -49217,6 +49332,66 @@
       "to": "COMP-011",
       "type": "located_in",
       "created_at": "2026-09-24T20:50:59+00:00"
+    },
+    {
+      "from": "TASK-548",
+      "to": "ISS-627",
+      "type": "addresses",
+      "created_at": "2026-09-24T23:13:08+00:00"
+    },
+    {
+      "from": "TASK-549",
+      "to": "ISS-628",
+      "type": "addresses",
+      "created_at": "2026-09-24T23:13:08+00:00"
+    },
+    {
+      "from": "TASK-550",
+      "to": "ISS-629",
+      "type": "addresses",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "TASK-551",
+      "to": "ISS-630",
+      "type": "addresses",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "TASK-552",
+      "to": "ISS-631",
+      "type": "addresses",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "ISS-627",
+      "to": "COMP-011",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "ISS-628",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "ISS-629",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "ISS-630",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:13:09+00:00"
+    },
+    {
+      "from": "ISS-631",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-24T23:13:09+00:00"
     }
   ]
 }

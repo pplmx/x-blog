@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **A raw-import NULL counter no longer 500s the whole public feed (round
+  431)** — `Post.views`/`likes`/`pinned` are nullable with only Python-side
+  defaults, so a row imported by raw SQL/COPY can carry NULL. Round 428
+  self-healed such counters on increment and coalesced their sort order, but
+  the read schemas still declared them non-NULL — so a single NULL row made
+  `GET /api/posts`, `/popular/list`, `/trending`, `/related`, `/adjacent`,
+  series details and search all reply 500 (Pydantic rejected `None`). Read-side
+  serialization now coalesces to the documented default (0 / false), and the
+  `pinned` ORDER BY coalesces in the list, adjacent window and admin list too
+  (earlier version of this test was vacuous: an ORM `pinned=None` stores 0,
+  never NULL — only a raw import lands one). (TASK-548, ISS-627)
+- 🔒 **JSON-LD/OpenGraph article dates now carry an explicit UTC marker (round
+  431)** — `effectivePublishAt`/`updated_at` were emitted into
+  `datePublished`/`dateModified` and `og:article:published_time`/
+  `modified_time` without the "Z" that every other consumer appends (DEC-213):
+  a crawler in UTC+8 rendered a late-UTC-day post a full calendar day early on
+  share cards / Rich Results. The SEO path now appends the zone marker
+  idempotently. (TASK-549, ISS-628)
+- ♿ **The media picker releases background scroll when the editor navigates
+  away with it open (round 431)** — the body-scroll lock was only released on
+  close; if the admin pressed Back while the picker was up, the next page stayed
+  unscrollable until a reload. Unmounting while open now restores it (mirrors
+  MarkdownLightbox). (TASK-550, ISS-629)
+- ♿ **Search mode tabs drop `aria-pressed` (round 431)** — `role="tab"` state
+  is `aria-selected`; the redundant/supported-incompatible `aria-pressed` was
+  also bound, so screen readers got a contradictory toggle state. (TASK-551,
+  ISS-630)
+- ♿ **More informative small text reaches WCAG AA (round 431)** — remaining
+  `gray-400` metadata rows on the my-comments, series and reader-profile pages
+  bumped to `gray-500` on the light theme. (TASK-552, ISS-631)
 - 🔒 **All-digit post slugs are now rejected (round 428)** — the public post
   route resolves a plain-digit segment as a post ID first, so a post slugged
   `"1"` was shadowed: its canonical URL (`/posts/1`, emitted by RSS/Atom/

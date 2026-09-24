@@ -111,6 +111,13 @@ onMounted(() => {
 	};
 	window.addEventListener("keydown", onKeydown);
 	onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+	// Restore background scroll even if the component unmounts while still
+	// open (e.g. the editor navigates away with the picker up — the open
+	// watcher's else branch never runs then). Mirror of MarkdownLightbox's
+	// onBeforeUnmount restore, and likewise tested by the admin editor spec.
+	onBeforeUnmount(() => {
+		if (props.open) document.body.style.overflow = prevOverflow;
+	});
 });
 
 function imageUrl(item: UploadFileInfo): string {

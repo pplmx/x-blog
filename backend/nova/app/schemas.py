@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from pydantic import (
     AfterValidator,
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     StringConstraints,
@@ -403,12 +404,46 @@ class PostUpdate(BaseModel):
         return _normalize_naive_utc(value)
 
 
+def _coalesce_null_zero(value: object) -> object:
+    """Map a stray NULL to 0 for a read-side counter that declares `= 0`.
+
+    Post.views/likes are nullable in the DB with only a Python-side default,
+    so a raw-SQL/COPY import (the TASK-535 trigger) can land a genuine NULL
+    row. The read schemas declare these non-NULL with a default, and FastAPI
+    validates them on the way out, so such a row would 500 the whole feed
+    (PostListResponse validation) instead of being readable. Coalescing at the
+    boundary makes a stray NULL serialize as the documented default.
+    """
+    return 0 if value is None else value
+
+
+def _coalesce_null_false(value: object) -> object:
+    """Map a stray NULL to False for a read-side `pinned`/`likes` field.
+
+    Same raw-import NULL-parity discipline as ``_coalesce_null_zero`` (and the
+    ORDER BY COALESCE in crud.get_posts/get_adjacent_posts/admin list —
+    TASK-535). Post.pinned is nullable with only a Python-side default, so a
+    NULL-pinned row must read back as ``false``, never a validation 500.
+    """
+    return False if value is None else value
+
+
+# Read-side counters: declare the documented non-NULL contract for the JSON
+# API while absorbing the stray NULL a raw import can plant (see helpers).
+CounterInt = Annotated[int, BeforeValidator(_coalesce_null_zero)]
+PinnedFlag = Annotated[bool, BeforeValidator(_coalesce_null_false)]
+
+
 class Post(PostBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    views: int = 0
-    likes: int = 0
+    # pinned: override PostBase.pinned (bool = False) — PostBase also backs the
+    # create/update *input* schemas where a NULL must stay rejected; the read
+    # side coalesces a raw-import NULL to False instead (TASK-535 parity).
+    pinned: PinnedFlag = False
+    views: CounterInt = 0
+    likes: CounterInt = 0
     category: Category | None = None
     tags: list[Tag] = []
     series: SeriesBrief | None = None
@@ -528,13 +563,16 @@ class PostList(BaseModel):
     excerpt: str | None
     snippet: str | None = None
     published: bool
-    pinned: bool = False
+    # Read-side NULL coalescing (TASK-535 raw-import parity): Post.pinned is
+    # nullable with only a Python-side default, so a raw-import NULL row must
+    # read back as False — never fail this feed's serialization as a 500.
+    pinned: PinnedFlag = False
     # Scheduled publication time: lets list cards date a post by when it went
     # live (publish_at ?? created_at) instead of its draft time (RIL ISS-265).
     publish_at: datetime | None = None
     created_at: datetime
-    views: int = 0
-    likes: int = 0
+    views: CounterInt = 0
+    likes: CounterInt = 0
     comment_count: int = 0
     reading_time: int = 1
     cover_image: str | None = None
@@ -637,7 +675,7 @@ class PostRevisionDetail(BaseModel):
     series_id: int | None = None
     series_order: int = 0
     publish_at: datetime | None = None
-    pinned: bool = False
+    pinned: PinnedFlag = False  # read-side raw-import NULL coalesce (TASK-535)
     published: bool = False
     model_config = ConfigDict(from_attributes=True)
 

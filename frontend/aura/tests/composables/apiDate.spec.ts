@@ -10,7 +10,7 @@
  * pass through untouched.
  */
 import { describe, expect, it } from "vitest";
-import { parseApiDate } from "~~/composables/apiDate";
+import { parseApiDate, toIsoUtc } from "~~/composables/apiDate";
 
 const NAIVE = "2026-08-31T13:52:19";
 
@@ -49,5 +49,23 @@ describe("parseApiDate", () => {
 		expect(parseApiDate(epoch)?.getTime()).toBe(epoch);
 		// A numeric timestamp that cannot be a real Date → null.
 		expect(parseApiDate(NaN)).toBeNull();
+	});
+});
+
+describe("toIsoUtc", () => {
+	it("appends Z to a zone-less naive-UTC value", () => {
+		expect(toIsoUtc("2026-09-20T23:30:00")).toBe("2026-09-20T23:30:00Z");
+	});
+
+	it("passes an already-zone-marked value through untouched", () => {
+		expect(toIsoUtc("2026-09-20T23:30:00Z")).toBe("2026-09-20T23:30:00Z");
+		expect(toIsoUtc("2026-09-21T07:30:00+08:00")).toBe("2026-09-21T07:30:00+08:00");
+		expect(toIsoUtc("2026-09-21T07:30:00+0800")).toBe("2026-09-21T07:30:00+0800");
+	});
+
+	it("returns undefined for empty input", () => {
+		expect(toIsoUtc(undefined)).toBeUndefined();
+		expect(toIsoUtc(null)).toBeUndefined();
+		expect(toIsoUtc("")).toBeUndefined();
 	});
 });

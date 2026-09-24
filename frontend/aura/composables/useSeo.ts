@@ -30,7 +30,7 @@
  *   usePostSeo(post);
  */
 
-import { effectivePublishTs } from "./apiDate";
+import { effectivePublishTs, toIsoUtc } from "./apiDate";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -217,8 +217,10 @@ export function buildArticleJsonLd(
 				url: buildAbsoluteImageUrl(siteConfig.image),
 			},
 		},
-		datePublished: effectivePublishAt(post),
-		dateModified: post.updated_at,
+		// schema.org needs an explicit-zone instant; naive-UTC wire timestamps
+		// get a "Z" suffix here (toIsoUtc), not in display code (round-429).
+		datePublished: toIsoUtc(effectivePublishAt(post)),
+		dateModified: toIsoUtc(post.updated_at),
 		mainEntityOfPage: {
 			"@type": "WebPage",
 			"@id": options.url,
@@ -323,13 +325,13 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		if (options.article.datePublished) {
 			meta.push({
 				property: "article:published_time",
-				content: String(options.article.datePublished),
+				content: String(toIsoUtc(options.article.datePublished)),
 			});
 		}
 		if (options.article.dateModified) {
 			meta.push({
 				property: "article:modified_time",
-				content: String(options.article.dateModified),
+				content: String(toIsoUtc(options.article.dateModified)),
 			});
 		}
 		for (const tag of options.article.tags ?? []) {

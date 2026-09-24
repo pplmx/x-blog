@@ -35,6 +35,22 @@ export function effectivePublishTs(post: {
 }
 
 /**
+ * Normalize a naive-UTC wire timestamp to an explicit-UTC ISO 8601 string by
+ * appending "Z" when the value carries no zone marker (the DEC-213 contract:
+ * the backend serializes naive UTC bare). `parseApiDate` asserts "Z" before
+ * `new Date(...)` so *display* is correct, but machine consumers — JSON-LD
+ * schema.org dates and OpenGraph `article:published_time`/`modified_time` —
+ * read the raw string: a zone-less "2026-09-20T23:30:00" is interpreted as
+ * *local* time by crawlers, so a UTC+8 audience renders such a post a whole
+ * day early on share cards / Rich Results. Appending the marker makes the
+ * instant unambiguous without touching local display (round-429 deep dive).
+ */
+export function toIsoUtc(value: string | undefined | null): string | undefined {
+	if (!value) return undefined;
+	return /(Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
+}
+
+/**
  * The site's canonical full-date format (round-417 consistency, ISS-573):
  * `September 22, 2026` / `2026年9月22日` — NOT the bare locale default
  * ("9/22/2026"), which is ambiguous (m/d vs d/m) and differs from the rich

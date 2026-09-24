@@ -313,4 +313,21 @@ describe("MediaPickerModal", () => {
 		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
 		expect(document.activeElement).toBe(panelButtons[panelButtons.length - 1]);
 	});
+
+	it("restores body overflow when unmounted while still open (round-429 audit)", async () => {
+		// A picker mounted open locks background scroll (a11y, round 428). If
+		// the editor navigates away before the modal is closed, the open-watcher
+		// else-branch never runs and the lock would stick on the next page —
+		// the same stranded-scroll class MarkdownLightbox guards with its own
+		// onBeforeUnmount restore. Unmounting while open must release it.
+		listMock.mockReturnValue(fakeQuery([image]));
+		document.body.style.overflow = "";
+		const wrapper = mountPicker(true);
+		await vi.waitFor(() => {
+			expect(document.body.style.overflow).toBe("hidden");
+		});
+		wrapper.unmount();
+		await wrapper.vm.$nextTick();
+		expect(document.body.style.overflow).toBe("");
+	});
 });
