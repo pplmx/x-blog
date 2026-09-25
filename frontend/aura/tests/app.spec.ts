@@ -12,6 +12,13 @@ import App from "../app/app.vue";
 // app.vue syncs <html lang> via useHead; stub it so mounting doesn't throw.
 beforeEach(() => {
 	vi.stubGlobal("useHead", vi.fn());
+	// app.vue resolves the site-default og/WebSite tags from the runtime site
+	// URL (TASK-557) — pin a deterministic value for the assertion below.
+	vi.stubGlobal("useRuntimeConfig", () => ({ public: { siteUrl: "https://share.test" } }));
+});
+
+afterEach(() => {
+	vi.unstubAllGlobals();
 });
 
 function mountApp() {
@@ -64,6 +71,64 @@ describe("App Root", () => {
 			expect(rss?.rel).toBe("alternate");
 			expect(atom).toBeTruthy();
 			expect(atom?.type).toBe("application/atom+xml");
+		});
+	});
+
+	describe("Site-default URL-dependent head (TASK-557)", () => {
+		it("resolves og:url / og:image / twitter:image and WebSite JSON-LD from the runtime site URL", () => {
+			mountApp();
+			// The site-default head is built from a siteUrl resolved EAGERLY in
+			// app.vue setup (useHead args must not call useRuntimeConfig — unhead
+			// resolves them outside the Nuxt context), so the useHead argument is
+			// a plain object; find it by its URL-dependent meta.
+			const calls = vi.mocked(useHead).mock.calls;
+			const resolved = calls
+				.map(([arg]) => arg as Record<string, unknown> | undefined)
+				.find(
+					(arg) =>
+						arg &&
+						Array.isArray(arg.meta) &&
+						(arg.meta as Array<Record<string, string>>).some((m) => m.property === "og:url"),
+				) as {
+				meta: Array<Record<string, string>>;
+				script?: Array<Record<string, unknown>>;
+			};
+			expect(resolved).toBeTruthy();
+			expect(resolved.meta.find((m) => m.property === "og:url")?.content).toBe(
+				"https://share.test",
+			);
+			// The og image resolves siteConfig.image against the runtime site URL.
+			expect(resolved.meta.find((m) => m.property === "og:image")?.content).toBe(
+				"https://share.test/api/og?title=X-Blog",
+			);
+			expect(resolved.meta.find((m) => m.name === "twitter:image")?.content).toBe(
+				"https://share.test/api/og?title=X-Blog",
+			);
+			const ldScript = resolved.script?.find((s) => s.type === "application/ld+json");
+			expect(ldScript).toBeTruthy();
+			const parsed = JSON.parse(
+				String((ldScript as Record<string, unknown>).textContent),
+			) as Record<string, unknown>;
+			expect(parsed["@type"]).toBe("WebSite");
+			expect(parsed.name).toBe("X-Blog");
+			expect(parsed.url).toBe("https://share.test");
+		});
+
+		it("falls back to the default localhost site URL when runtime config is empty", () => {
+			vi.stubGlobal("useRuntimeConfig", () => ({ public: { siteUrl: "" } }));
+			mountApp();
+			const calls = vi.mocked(useHead).mock.calls;
+			const resolved = calls
+				.map(([arg]) => arg as Record<string, unknown> | undefined)
+				.find(
+					(arg) =>
+						arg &&
+						Array.isArray(arg.meta) &&
+						(arg.meta as Array<Record<string, string>>).some((m) => m.property === "og:url"),
+				) as { meta: Array<Record<string, string>> };
+			expect(resolved.meta.find((m) => m.property === "og:url")?.content).toBe(
+				"http://localhost:3000",
+			);
 		});
 	});
 });

@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+- 🔒 **站点默认分享元数据在运行时解析站点 URL，而不是在镜像构建时（round
+  434）**——`og:url` / `og:image` / `twitter:image` 与 WebSite JSON-LD 之前在
+  nuxt.config 的全局 head 里，而该配置是在镜像 *构建* 时求值的。`NUXT_SITE_URL`
+  只在容器运行时设置，因此没有在构建时提供 URL 的部署会让每页分享标签都指向
+  `http://localhost:3000`。这些标签现在由应用根部在运行时提供
+  （`useSiteUrl` → `runtimeConfig.public.siteUrl`），已构建的镜像会遵循运行时的
+  `NUXT_PUBLIC_SITE_URL`（compose 已改为设置它——构建产物里裸的 `NUXT_SITE_URL`
+  环境变量无效；Nuxt 只在运行时通过 `NUXT_PUBLIC_<key>` 惯例覆盖
+  runtimeConfig）。已在线上验证：SSR HTML 按运行时 URL 渲染 `og:url`。
+  （TASK-557, ISS-638）
 - 🐛 **访客主题订阅邮件现在在单个 SMTP 会话内投递（round 433）**——批准一篇带 N
   个已确认匿名订阅者的文章评论时，之前会对每个地址逐个建立新的 SMTP 连接串行发送，
   热门文章因此在一次批准请求里阻塞 N 次连接——不受任何上限约束（推送订阅有上限），

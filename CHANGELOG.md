@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **Site-default share metadata resolves the site URL at runtime, not at
+  image build (round 434)** — `og:url` / `og:image` / `twitter:image` and the
+  WebSite JSON-LD lived in the nuxt.config global head, which is evaluated when
+  the image is *built*. `NUXT_SITE_URL` is set only at container runtime, so a
+  deployment without a build-time URL served every page's share tags pointing
+  at `http://localhost:3000`. These tags now come from the app root at
+  runtime (`useSiteUrl` → `runtimeConfig.public.siteUrl`), so a deployed image
+  honors the runtime `NUXT_PUBLIC_SITE_URL` (compose updated to set it — the
+  plain `NUXT_SITE_URL` env is inert in a built image; Nuxt only overrides
+  runtimeConfig at runtime via the `NUXT_PUBLIC_<key>` convention). Verified
+  live: SSR HTML renders `og:url` from the runtime URL. (TASK-557, ISS-638)
 - 🐛 **Guest thread-subscriber mail is delivered over a single SMTP session
   (round 433)** — approving a comment on a post with N confirmed anonymous
   subscribers opened a fresh SMTP connection per address in a serial loop, so a

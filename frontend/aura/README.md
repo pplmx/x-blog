@@ -28,10 +28,11 @@ echo "NUXT_PROXY_TARGET=http://<后端IP>:18888" > .env
 
 ## Environment Variables
 
-| Variable            | Default                  | Description                                   |
-| ------------------- | ------------------------ | --------------------------------------------- |
-| `NUXT_PROXY_TARGET` | `http://localhost:18888` | Nuxt 服务端代理转发的后端地址（不注入浏览器） |
-| `NUXT_SITE_URL`     | `http://localhost:3000`  | 站点 URL（SEO/OG 等）                         |
+| Variable               | Default                  | Description                                                                                    |
+| ---------------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `NUXT_PROXY_TARGET`    | `http://localhost:18888` | Nuxt 服务端代理转发的后端地址（不注入浏览器）                                                  |
+| `NUXT_SITE_URL`        | `http://localhost:3000`  | 站点 URL（SEO/OG 等）；仅在 `nuxt build`/`nuxt dev` 启动时生效                                 |
+| `NUXT_PUBLIC_SITE_URL` | 同 `NUXT_SITE_URL`       | 运行时覆盖 `runtimeConfig.public.siteUrl`（构建产物里生效，用于已构建镜像 / compose 生产环境） |
 
 ## Build
 

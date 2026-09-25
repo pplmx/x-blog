@@ -76,7 +76,13 @@ services:
       # and browsers cannot resolve the docker-internal `backend` hostname,
       # which broke every search/API call with a wrong URL.
       NUXT_PROXY_TARGET: http://backend:18888
-      NUXT_SITE_URL: http://localhost:34567
+      # Site URL for SEO/OG. MUST be NUXT_PUBLIC_SITE_URL (not NUXT_SITE_URL)
+      # here: the composed image runs `nuxt build` without NUXT_SITE_URL set, so
+      # the config-time default gets baked as localhost:3000 and the container's
+      # NUXT_SITE_URL env is inert at runtime — Nuxt only overrides runtimeConfig
+      # at runtime via the NUXT_PUBLIC_<key> convention. The URL-dependent head
+      # tags (og:url / og:image / WebSite JSON-LD, app.vue TASK-557) read this.
+      NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:-http://localhost:34567}
       # Set only when the frontend sits BEHIND a trusted proxy (e.g. nginx) so
       # its own rate limiters (public og/cover image endpoints) key on the real
       # client IP via X-Forwarded-For rather than collapsing every user into one

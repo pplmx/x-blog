@@ -3,23 +3,20 @@
 import { resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { buildSiteJsonLd } from "./composables/seo-jsonld";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
-// Site-wide constants used in both the global head and runtime config.
-// Default must match useSeo.DEFAULT_SITE_URL and runtimeConfig.public.siteUrl
-// below — the old "http://localhost:3001" was an orphaned port (survived only
-// here and the backend dev ALLOWED_ORIGINS) that got baked into the global
-// og:url / WebSite JSON-LD url whenever NUXT_SITE_URL was unset at build time
-// (docker-compose sets it at runtime only). NUXT_SITE_URL still overrides.
-const siteUrl = process.env.NUXT_SITE_URL || "http://localhost:3000";
+// Site-wide constants used in the global head. NOTE: siteName/siteDescription
+// are build-time constants (fine in a head), but the URL-dependent tags
+// (og:url / og:image / twitter:image / WebSite JSON-LD url) are applied at
+// RUNTIME in app.vue via useSiteUrl() (TASK-557): this config is evaluated at
+// image BUILD time, where NUXT_SITE_URL is unset (docker-compose sets it at
+// runtime only) — baking the fallback here baked "http://localhost:3000" into
+// every deployed page's share metadata. Keep the default for
+// runtimeConfig.public.siteUrl below; the head reads it per request.
 const siteName = "X-Blog";
 const siteDescription =
 	"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。";
-
-// Dynamic OG image URL for global default (generates PNG with Chinese font support)
-const ogImageUrl = `${siteUrl}/api/og?title=${encodeURIComponent(siteName)}&type=website`;
 
 // NUXT_API_URL leaks into the browser bundle (runtimeConfig.public.apiUrl) and
 // makes the browser call the backend cross-origin, bypassing the same-origin
@@ -64,8 +61,10 @@ export default defineNuxtConfig({
 					content: "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统。",
 				},
 				{ property: "og:type", content: "website" },
-				{ property: "og:image", content: ogImageUrl },
-				{ property: "og:url", content: siteUrl },
+				// og:url / og:image / twitter:image must NOT be baked here — they
+				// carry the site URL, which is only known at runtime
+				// (runtimeConfig.public.siteUrl). app.vue applies them per request
+				// so a deployed image honors the runtime NUXT_SITE_URL (TASK-557).
 				{ property: "og:locale", content: "zh_CN" },
 				{ name: "twitter:card", content: "summary_large_image" },
 				{ name: "twitter:title", content: "X-Blog — 一个现代化的技术博客系统" },
@@ -73,7 +72,6 @@ export default defineNuxtConfig({
 					name: "twitter:description",
 					content: "X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统。",
 				},
-				{ name: "twitter:image", content: ogImageUrl },
 				{
 					name: "twitter:image:alt",
 					content: "X-Blog — 一个现代化的技术博客系统",
@@ -81,16 +79,6 @@ export default defineNuxtConfig({
 				{ name: "twitter:site", content: "@x_blog" },
 			],
 			script: [
-				{
-					type: "application/ld+json",
-					textContent: JSON.stringify(
-						buildSiteJsonLd({
-							url: siteUrl,
-							siteName: siteName,
-							description: siteDescription,
-						}),
-					),
-				},
 				// Pre-paint theme bootstrap — apply the saved/system dark mode to
 				// <html> before the Vue app mounts so there is no light-mode FOUC
 				// flash on load (the layout only applies it in onMounted).
