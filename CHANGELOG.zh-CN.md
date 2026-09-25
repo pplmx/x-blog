@@ -9,6 +9,16 @@
 
 ## [Unreleased]
 
+- 🔒 **后端 feed/sitemap/邮件链接在生产环境不再静默指向回环地址（round 436）**——
+  RSS/Atom item 的 `<link>`、sitemap 的 `<loc>` 和邮件里的 URL 全部由后端的
+  `settings.site_url`（routers/rss.py、emailer.py）生成，而默认值是
+  `http://localhost:3000`。compose 部署从未设置 `SITE_URL`，于是每条 feed 和
+  sitemap 都带着只有服务器自己能打开的环回链接——这正是 round-434 og:url
+  origin 问题的后端一侧。现在 compose 把后端 `SITE_URL` 接到与前
+  端（`NUXT_PUBLIC_SITE_URL` 默认值）相同的公共 origin，部署文档把两者并列说明，
+  且非 development 后端若仍带着环回默认值会在启动时打印醒目的告警，而不是静默
+  出错。已在线上验证：`SITE_URL=https://feed.test` 时 feed `<link>` 与 sitemap
+  `<loc>` 解析到该 origin。（TASK-558, ISS-639）
 - 🔒 **站点默认分享元数据在运行时解析站点 URL，而不是在镜像构建时（round
   434）**——`og:url` / `og:image` / `twitter:image` 与 WebSite JSON-LD 之前在
   nuxt.config 的全局 head 里，而该配置是在镜像 *构建* 时求值的。`NUXT_SITE_URL`

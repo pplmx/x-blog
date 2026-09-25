@@ -51,6 +51,15 @@ services:
       # from the internet) to restore per-client buckets for reader auth.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       GZIP_MINIMUM_SIZE: "500"
+      # Public site URL the BACKEND must publish in absolute links — RSS/Atom
+      # item <link>s, sitemap <loc>s and email links are all built from this
+      # (routers/rss.py, emailer.py). Without it the backend defaults to
+      # http://localhost:3000, so composed feeds/sitemap/emails would point at
+      # a loopback nobody else can reach — same root cause as the frontend's
+      # runtime og:url fix (round-434/TASK-557). Default follows the frontend's
+      # NUXT_PUBLIC_SITE_URL so both tiers always agree on the origin; set one
+      # variable to configure the whole stack.
+      SITE_URL: ${SITE_URL:-${NUXT_PUBLIC_SITE_URL:-http://localhost:34567}}
     volumes:
       - uploads:/app/static/uploads
     restart: unless-stopped

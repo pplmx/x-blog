@@ -14,6 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
 from app.cache import cache_clear
+from app.config import is_dev_default_site_url, is_development, settings
 from app.database import engine
 from app.limiter import limiter
 from app.middleware import RequestLoggingMiddleware, get_logger, setup_logging
@@ -58,6 +59,20 @@ async def lifespan(_app: FastAPI):
     setup_logging()
     setup_sentry()
     logger.info("app_startup", extra={"version": "0.1.0"})
+
+    # Fail-loud guardrail (round 436): feeds, sitemap and email links are built
+    # from settings.site_url, which defaults to http://localhost:3000 — a
+    # production container that forgets SITE_URL silently publishes loopback
+    # absolute URLs to every feed reader / crawler / mail recipient (same
+    # root-cause class as the frontend og:url bake, TASK-557). Warn loudly
+    # instead of letting the deployment discover it via broken links.
+    if not is_development() and is_dev_default_site_url(settings.site_url):
+        logger.warning(
+            "site_url is the loopback dev default (%s) in a non-development APP_ENV: "
+            "RSS/Atom/sitemap links and email URLs will publish this origin. "
+            "Set SITE_URL to the public site URL (see docs/deployment.md).",
+            settings.site_url,
+        )
 
     # Bring the schema to head via Alembic — the single authoritative schema
     # path for both dev and prod (completes DEC-011). The baseline migration is

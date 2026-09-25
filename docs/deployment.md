@@ -102,6 +102,20 @@ export POSTGRES_PASSWORD=your-strong-password
 # 前端配置 (可选) - Nuxt 使用 Docker 环境变量
 ```
 
+**站点公开 URL（必配）**：后端用它生成 RSS/Atom item 的 `<link>`、sitemap 的
+`<loc>` 以及邮件里的链接（`routers/rss.py`、`emailer.py`）。不设置时默认
+`http://localhost:3000`，feed/sitemap/邮件里的所有绝对链接都会指向一个谁也访问
+不到的本地回环地址；后端在非 development 环境启动时也会打印一条醒目告警提示。
+compose 的默认值跟随前端的 `NUXT_PUBLIC_SITE_URL`，两个服务的 origin 保持一致：
+
+```bash
+# backend/nova/.env（或 compose 环境变量）
+SITE_URL=https://your.blog.example
+
+# 前端（构建产物里生效，运行时覆盖 runtimeConfig.public.siteUrl）——两个值必须指向同一 origin
+# NUXT_PUBLIC_SITE_URL=https://your.blog.example
+```
+
 ### 登录会话有效期（session expiry）
 
 后台 JWT 自带到期时间（`exp` claim），到期后前端自动登出并把受保护页面（如 `/admin` 仪表盘）重定向到登录页：

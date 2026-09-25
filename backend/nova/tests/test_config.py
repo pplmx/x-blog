@@ -316,3 +316,35 @@ class TestSettingsEdgeCases:
         with patch.dict(os.environ, {"DATABASE_URL": mysql_url}):
             settings = Settings()
             assert settings.database_url == mysql_url
+
+
+class TestDevDefaultSiteUrl:
+    """Regression (round 436): the loopback site_url guard that fails loud at
+    startup is a safety net for a deployment that forgets SITE_URL. Feeds,
+    sitemap and email links are built from settings.site_url, so a production
+    container without it silently publishes http://localhost:3000 absolute
+    links (same root cause class as the frontend og:url bake, TASK-557).
+    """
+
+    def test_loopback_and_localhost_are_dev_default(self):
+        from app.config import is_dev_default_site_url
+
+        assert is_dev_default_site_url("http://localhost:3000")
+        assert is_dev_default_site_url("https://localhost:8080")
+        assert is_dev_default_site_url("http://127.0.0.1:3000")
+
+    def test_real_domains_and_ips_are_not_dev_default(self):
+        from app.config import is_dev_default_site_url
+
+        assert not is_dev_default_site_url("https://your.blog.example")
+        assert not is_dev_default_site_url("http://10.0.0.5:18888")
+        assert not is_dev_default_site_url("http://frontend:3000")
+
+    def test_default_settings_url_is_dev_default(self):
+        """The unconfigured Settings() site_url must trip the guard — that is
+        exactly the silent-misconfiguration case it exists to catch."""
+        from app.config import Settings, is_dev_default_site_url
+
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+        assert is_dev_default_site_url(settings.site_url)

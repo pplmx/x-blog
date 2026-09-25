@@ -28,6 +28,21 @@ def is_development() -> bool:
     return os.getenv("APP_ENV", "production").lower() in ("development", "dev")
 
 
+def is_dev_default_site_url(url: str) -> bool:
+    """True when ``url`` is still the anonymous localhost development default.
+
+    Feed items, sitemap <loc>s and email links are all built from
+    settings.site_url (routers/rss.py, emailer.py) — a production deployment
+    that forgets SITE_URL silently publishes ``http://localhost:3000`` as every
+    absolute link, the same root-cause class as the frontend og:url build-time
+    bake (TASK-557). main.py warns loudly at startup when a non-development run
+    has a loopback origin (round 436).
+    """
+    host = url.split("://", 1)[-1] if "://" in url else url
+    host = host.partition(":")[0]
+    return host in ("localhost", "127.0.0.1")
+
+
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./aurora.db"
     pool_size: int = 10

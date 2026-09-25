@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **Backend feed/sitemap/email links no longer silently default to a
+  loopback origin in production (round 436)** — RSS/Atom item `<link>`s,
+  sitemap `<loc>`s and email URLs are all built from the backend's
+  `settings.site_url` (routers/rss.py, emailer.py), which defaults to
+  `http://localhost:3000`. The compose deployment never set `SITE_URL`, so
+  every feed item and sitemap entry shipped with a loopback link only the
+  server itself could open — the backend side of the round-434 og:url origin
+  bug. Compose now wires the backend `SITE_URL` to the same public origin as
+  the frontend (`NUXT_PUBLIC_SITE_URL` default), the deployment doc documents
+  both together, and a non-development backend that still has the loopback
+  default logs a loud startup warning instead of failing silently. Verified
+  live: with `SITE_URL=https://feed.test` the served feed `<link>` and sitemap
+  `<loc>`s resolve to that origin. (TASK-558, ISS-639)
 - 🔒 **Site-default share metadata resolves the site URL at runtime, not at
   image build (round 434)** — `og:url` / `og:image` / `twitter:image` and the
   WebSite JSON-LD lived in the nuxt.config global head, which is evaluated when
