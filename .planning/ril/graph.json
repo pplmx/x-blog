@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 436,
+  "round": 437,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T12:55:46+00:00",
+  "updated_at": "2026-09-25T13:14:31+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 433,
+      "touched_round": 436,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33233,6 +33233,52 @@
       "touched_round": 434,
       "title": "round-436: backend SITE_URL compose wiring + loopback site_url startup guard + docs",
       "commit": "2a0a5f2f"
+    },
+    "ISS-640": {
+      "id": "ISS-640",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T13:14:29+00:00",
+      "updated_at": "2026-09-25T13:14:30+00:00",
+      "touched_round": 436,
+      "title": "Reader auth pages and admin tree are indexable (no robots noindex except search/print)",
+      "severity": "medium"
+    },
+    "TASK-559": {
+      "id": "TASK-559",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T13:14:29+00:00",
+      "updated_at": "2026-09-25T13:14:30+00:00",
+      "touched_round": 436,
+      "category": "security",
+      "severity": "medium",
+      "title": "Exclude reader auth + account pages and the /admin/* tree from search indexes (noindex)"
+    },
+    "DEC-484": {
+      "id": "DEC-484",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T13:14:30+00:00",
+      "updated_at": "2026-09-25T13:14:30+00:00",
+      "touched_round": 436,
+      "title": "Close round 437 (noindex for auth/admin surfaces)",
+      "rationale": "SEO-health / privacy hardening: only search.vue and print.vue excluded themselves from indexes; the reader login/register (login.vue), forgot-password, reset-password, email-change and account pages plus the whole /admin/* tree were crawlable, letting search engines collect login shells and admin URLs for credential probing. Reader auth pages now pass useSeo({ noindex: true }) through the established robots 'noindex, follow' path (already unit-tested); the admin layout emits one robots meta so every /admin/* page (incl. /admin/login) is covered at the layout level - the layout is applied to all admin pages, so no per-page edits and no drift risk when pages are added. VERIFY: new layout test asserts the robots meta reaches useHead; full frontend suite 2503 green; typecheck + lint clean (only pre-existing e2e warnings). Continuation of the reactivated loop after DEC-482 (ordinator requested more polish); rounds 436-437 addressed backend feed/sitemap/email origin defaulting and index hygiene respectively. Graph consistent.",
+      "alternatives_rejected": "Per-page noindex across each admin page (N edits maintained by hand - drift risk when pages are added, the layout covers it in one place); adding a robots.txt with Disallow for /admin/* (robots.txt is advisory only and does not stop an indexed-but-later-blocked page from showing a title/snippet - the meta tag is the reliable mechanism)"
+    },
+    "CHG-786": {
+      "id": "CHG-786",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T13:14:30+00:00",
+      "updated_at": "2026-09-25T13:14:30+00:00",
+      "touched_round": 436,
+      "title": "round-437: noindex for reader auth/account + whole admin tree",
+      "commit": "3a8ceb66"
     }
   },
   "edges": [
@@ -49979,6 +50025,36 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-25T12:55:05+00:00"
+    },
+    {
+      "from": "ISS-640",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-25T13:14:30+00:00"
+    },
+    {
+      "from": "TASK-559",
+      "to": "ISS-640",
+      "type": "addresses",
+      "created_at": "2026-09-25T13:14:30+00:00"
+    },
+    {
+      "from": "CHG-786",
+      "to": "ISS-640",
+      "type": "resolves",
+      "created_at": "2026-09-25T13:14:30+00:00"
+    },
+    {
+      "from": "CHG-786",
+      "to": "TASK-559",
+      "type": "implements",
+      "created_at": "2026-09-25T13:14:30+00:00"
+    },
+    {
+      "from": "DEC-484",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-25T13:14:31+00:00"
     }
   ]
 }
