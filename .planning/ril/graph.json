@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 437,
+  "round": 438,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T13:14:31+00:00",
+  "updated_at": "2026-09-25T13:25:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 434,
+      "touched_round": 437,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -33279,6 +33279,52 @@
       "touched_round": 436,
       "title": "round-437: noindex for reader auth/account + whole admin tree",
       "commit": "3a8ceb66"
+    },
+    "ISS-641": {
+      "id": "ISS-641",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T13:25:46+00:00",
+      "updated_at": "2026-09-25T13:25:47+00:00",
+      "touched_round": 437,
+      "title": "robots.txt is Allow-everything: crawlers still fetch private/auth/API paths (crawl budget)",
+      "severity": "medium"
+    },
+    "TASK-560": {
+      "id": "TASK-560",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T13:25:47+00:00",
+      "updated_at": "2026-09-25T13:25:47+00:00",
+      "touched_round": 437,
+      "category": "security",
+      "severity": "medium",
+      "title": "Disallow private/auth/API paths in robots.txt (mirror the round-437 noindex set)"
+    },
+    "DEC-485": {
+      "id": "DEC-485",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T13:25:47+00:00",
+      "updated_at": "2026-09-25T13:25:47+00:00",
+      "touched_round": 437,
+      "title": "Close round 438 (robots.txt crawl-budget hygiene)",
+      "rationale": "The served robots.txt was functionally Allow-everything: 'User-agent: * / Allow: /' with no Disallow rules. The round-437 noindex meta stops private pages being INDEXED, but crawlers ground-truth the robots policy at fetch time - they still download /api/*, /admin/*, reader auth/account, email-token and newsletter pages, and noindex still implies one crawl per page. Added Disallow rules mirroring the round-437 noindex page set (login/forgot/reset/email/account/notifications/follows/liked/bookmarks/history/preview/comment-manage/comment-subscribe/comment-reply-unsubscribe/newsletter/api/admin), keeping sitemap.xml, /rss/*, /posts and /discussion crawlable - the Sitemap: line already resolves from settings.site_url (round 436 wired SITE_URL in compose). Served through the existing frontend server/routes/robots.txt.ts proxy and backend /robots.txt endpoint unchanged. VERIFY: 1 new regression test asserts every Disallow path and that crawlable content is NOT disallowed (and the RSS: absence guard remains); live smoke shows the Disallow set + Sitemap=https://robots.test/sitemap.xml; full backend suite 1917 green, ruff clean. Continuation of the reactivated quality-polish loop (rounds 436-438: backend origin defaulting, noindex, robots crawl hygiene).",
+      "alternatives_rejected": "A static public/robots.txt on the frontend: cannot interpolate the public origin for the Sitemap directive and would bypass the backend's settings-driven site_url - the proxied backend robots.txt already has it; adding nginx try_files: the Nuxt route + backend proxy path is already wired and byte-exact."
+    },
+    "CHG-787": {
+      "id": "CHG-787",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T13:25:47+00:00",
+      "updated_at": "2026-09-25T13:25:47+00:00",
+      "touched_round": 437,
+      "title": "round-438: robots.txt Disallow rules for private/auth/API paths",
+      "commit": "2cc3e86a"
     }
   },
   "edges": [
@@ -50055,6 +50101,36 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-25T13:14:31+00:00"
+    },
+    {
+      "from": "ISS-641",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T13:25:47+00:00"
+    },
+    {
+      "from": "TASK-560",
+      "to": "ISS-641",
+      "type": "addresses",
+      "created_at": "2026-09-25T13:25:47+00:00"
+    },
+    {
+      "from": "CHG-787",
+      "to": "ISS-641",
+      "type": "resolves",
+      "created_at": "2026-09-25T13:25:47+00:00"
+    },
+    {
+      "from": "CHG-787",
+      "to": "TASK-560",
+      "type": "implements",
+      "created_at": "2026-09-25T13:25:48+00:00"
+    },
+    {
+      "from": "DEC-485",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-25T13:25:48+00:00"
     }
   ]
 }
