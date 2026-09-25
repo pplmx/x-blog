@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 434,
+  "round": 436,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T08:50:11+00:00",
+  "updated_at": "2026-09-25T12:55:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 431,
+      "touched_round": 434,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -33187,6 +33187,52 @@
       "title": "converged-idle: quality-convergence stop (round 435)",
       "rationale": "Stop-condition evaluation per skill section 10 all pass: (1) graph has 0 active tasks (no priority_score above the 3.0 threshold); (2) the only open HIGH (ISS-242 multi-worker cache staleness) is explicitly accepted by DEC-004 with rejected alternatives (Redis / single worker / versioned keys); all other open items are LOW-to-MEDIUM and deployment-bound or decisioned (ISS-243 per-process rate buckets / DEC-004, ISS-244 TRUSTED_PROXIES / DEC-014, ISS-625 total_pages=0 — frontend already guards everywhere via paginationPages<=1 -> [] and total_pages||1 fallbacks, ISS-632 push broadcast O(n) deferred by DEC-478, ISS-637 export RAM, ISS-626 admin-only restore validation). (3) Last full VERIFY genuinely green: backend 1913 passed (93.55% cov, SQLite) and changed files green on PG, frontend 2502 passed, nuxt typecheck green, biome/ruff gates green, production build clean, live SSR smoke verified round-434's runtime og:url change. (4) round-435's deep-dive produced 0 new tasks >= 3.0 — the usability scan (frontend button/in-flight/empty-state sweep) ran dry: the comment form already guards re-entry (submitting || disabled in handleSubmit + button disabled + localized 429/403), newsletter subscribe already guards with a submit sequence token, form buttons all carry explicit types; the two new candidates examined (ISS-625, ISS-637) are below-threshold by design, not defects. (5) graph consistent (ril.py check). This session delivered genuine fixes in rounds 433 (SMTP single-session batching, pending-unsubscribe revocation, proxy XFF trust model, env-config drill) and 434 (runtime site-default share metadata + NUXT_PUBLIC_SITE_URL deployment knob, fixing a real SSR NUXT_E1001 found en route). No change delivered this round; no new >=3.0 task created; entering quiesce — no further round-tick chore commits until a new operator direction, a real user-reported issue, or a substantive repo change reactivates the loop (first round after reactivation must re-run VERIFY).",
       "alternatives_rejected": "Fixing ISS-625 (total_pages=0 on empty results -> max(1,...)) as a round filler: the frontend already treats <=1 as no pager everywhere, and switching the API contract risks third-party consumers built against total_pages=0; below-threshold score-chasing. Doing the same untrusted-subagent usability scan again: both spawned review/scan subagents stalled 25-37min on this CPU-contended box and returned nothing; the manual probes above covered the top two patterns. Adding a Redis shared cache for ISS-242: rejected by DEC-004 and unjustified at this scale."
+    },
+    "ISS-639": {
+      "id": "ISS-639",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T12:54:22+00:00",
+      "updated_at": "2026-09-25T12:55:05+00:00",
+      "touched_round": 434,
+      "title": "Backend feed/sitemap/email links use settings.site_url default localhost:3000 in deployments that forget SITE_URL (compose never set it)",
+      "severity": "high"
+    },
+    "TASK-558": {
+      "id": "TASK-558",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T12:54:22+00:00",
+      "updated_at": "2026-09-25T12:55:05+00:00",
+      "touched_round": 434,
+      "category": "correctness",
+      "severity": "high",
+      "title": "Configure backend SITE_URL per deployment + fail-loud startup guard for the loopback default"
+    },
+    "DEC-483": {
+      "id": "DEC-483",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T12:55:04+00:00",
+      "updated_at": "2026-09-25T12:55:04+00:00",
+      "touched_round": 434,
+      "title": "Close round 436 (backend SITE_URL deployment fix + loopback guard)",
+      "rationale": "The backend half of the deployment-origin bug fixed in round-434 for the frontend: RSS/Atom item <link>s, atom:link self URLs, sitemap <loc>s and email links are all built from settings.site_url (routers/rss.py lines 260/284/289/304, emailer.py letter base_url), default http://localhost:3000 — and docker-compose never set SITE_URL, so composed feeds/sitemaps/emails advertised a loopback origin only the server itself could open. Fix: compose backend env now sets SITE_URL = http://localhost:34567 so the whole stack shares one origin variable; a pure is_dev_default_site_url() predicate + main.py lifespan warning fails loud when a non-development backend still has a loopback site_url; docs/deployment.md documents the two knobs in one place. VERIFY: 3 new unit tests (loopback origins trip the guard; real domains, non-localhost private IPs, and docker-internal names like http://frontend:3000 do not; the unconfigured Settings() default trips it), full backend suite 1916 green (93.53%), ruff clean, compose YAML parses, and live smoke proved the warning fires with SITE_URL unset and is silent when set, with served feed <link> + sitemap <loc>s resolving to the configured origin. Note: production without JWT_SECRET_KEY still fails closed at startup BEFORE this warning (by design), so the SITE_URL warning only appears once the fatal guards pass — acceptable, it is a non-fatal warning.",
+      "alternatives_rejected": "Rewriting feed/sitemap links at the frontend proxy (fragile XML body rewriting, still needs the public URL configured at the proxy, and breaks the byte-exact conditional-GET contract); deriving site_url from the request Host/X-Forwarded-Host (the API/feed proxies strip and do not forward the host, and the cached feed/sitemap bodies would need per-host cache keys — disproportionate for single-origin deployments); failing outright instead of warning on the loopback default (would break legitimate localhost-only single-machine production installs)."
+    },
+    "CHG-785": {
+      "id": "CHG-785",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T12:55:04+00:00",
+      "updated_at": "2026-09-25T12:55:04+00:00",
+      "touched_round": 434,
+      "title": "round-436: backend SITE_URL compose wiring + loopback site_url startup guard + docs",
+      "commit": "2a0a5f2f"
     }
   },
   "edges": [
@@ -49903,6 +49949,36 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-25T07:46:36+00:00"
+    },
+    {
+      "from": "ISS-639",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T12:54:22+00:00"
+    },
+    {
+      "from": "TASK-558",
+      "to": "ISS-639",
+      "type": "addresses",
+      "created_at": "2026-09-25T12:54:22+00:00"
+    },
+    {
+      "from": "CHG-785",
+      "to": "ISS-639",
+      "type": "resolves",
+      "created_at": "2026-09-25T12:55:05+00:00"
+    },
+    {
+      "from": "CHG-785",
+      "to": "TASK-558",
+      "type": "implements",
+      "created_at": "2026-09-25T12:55:05+00:00"
+    },
+    {
+      "from": "DEC-483",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-25T12:55:05+00:00"
     }
   ]
 }
