@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+- 🤖 **robots.txt 现在 Disallow 私有/认证/API 路径，爬虫不再抓取（round 438）**——
+  之前提供的 robots.txt 实际上等于“全放行”（只有 `Allow: /`、没有任何
+  Disallow）。round-437 的 `noindex` meta 只阻止私有页被*收录*，但爬虫仍会下载
+  `/api/*`、`/admin/*`、登录/重置/账户、邮件 token、newsletter 等页面——对永远
+  无法排名的表面白耗抓取预算。现在 robots.txt 对上述路径 Disallow（
+  sitemap/RSS/posts/discussion 保持可抓取），且 `Sitemap:` 行继续由配置的站点
+  URL 解析。（TASK-560, ISS-641）
 - 🔒 **读者认证页与全部管理页现在发送 robots `noindex`（round 437）**——之前
   只有 search/print 页被排除出搜索引擎索引；读者登录/注册、忘记密码、重置密码、
   改邮箱、账户设置页（公开认证面）以及整个 `/admin/*` 树（登录、仪表盘、编辑器、

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🤖 **robots.txt now Disallows private/auth/API paths so crawlers stop
+  fetching them (round 438)** — the served robots.txt was effectively “crawl
+  everything” (`Allow: /` with no Disallow). The round-437 `noindex` meta
+  stops private pages being *indexed*, but crawlers still download
+  `/api/*`, `/admin/*`, login/reset/account, email-token and newsletter pages
+  — wasted crawl budget against surfaces that can never rank. robots.txt now
+  Disallows those paths (the sitemap/RSS/posts/discussion stay crawlable) and
+  the `Sitemap:` line continues to resolve from the configured site URL.
+  (TASK-560, ISS-641)
 - 🔒 **Reader auth and all admin pages now send robots `noindex` (round 437)** —
   only search/print pages were excluded from search indexes; the reader
   login/register, forgot-password, reset-password, email-change and account

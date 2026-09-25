@@ -907,7 +907,31 @@ def get_robots_txt():
     """Get robots.txt file."""
     site_url = getattr(settings, "site_url", "http://localhost:3000")
 
+    # Private / auth surfaces must not just be un-indexed, they must not be
+    # FETCHED: robots.txt Disallow rules mirror the page-level noindex meta
+    # (round 437) and save the crawl budget — noindex alone still makes a
+    # crawler download /admin/*, /login, /api/*, email-token pages, etc.
+    # Anything not listed stays crawlable by default. Comments are public
+    # content-bearing pages, so /discussion and the RSS/sitemap endpoints are
+    # deliberately left allowed.
     robots = f"""User-agent: *
+Disallow: /api/
+Disallow: /admin
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /email-change
+Disallow: /account
+Disallow: /notifications
+Disallow: /follows
+Disallow: /liked
+Disallow: /bookmarks
+Disallow: /history
+Disallow: /preview
+Disallow: /comment-manage
+Disallow: /comment-subscribe
+Disallow: /comment-reply-unsubscribe
+Disallow: /newsletter
 Allow: /
 
 Sitemap: {site_url}/sitemap.xml

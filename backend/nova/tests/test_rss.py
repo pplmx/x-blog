@@ -564,6 +564,31 @@ def test_robots_txt(client):
     assert "RSS:" not in content
 
 
+def test_robots_txt_disallows_private_and_auth_surfaces(client):
+    """round 438: private/auth/admin/API paths must be Disallowed so crawlers
+    do not FETCH them (the page-level noindex only stops them being indexed;
+    Disallow saves the crawl budget). Actual feed/sitemap endpoints stay
+    crawlable."""
+    response = client.get("/robots.txt")
+    content = response.text
+    for path in (
+        "/api/",
+        "/admin",
+        "/login",
+        "/forgot-password",
+        "/reset-password",
+        "/account",
+        "/newsletter",
+        "/comment-manage",
+    ):
+        assert f"Disallow: {path}" in content, f"missing Disallow: {path}"
+    # Crawlable content must NOT be disallowed.
+    assert "Disallow: /sitemap.xml" not in content
+    assert "Disallow: /rss" not in content
+    assert "Disallow: /posts" not in content
+    assert "Disallow: /discussion" not in content
+
+
 def test_rss_feed_empty_database(client):
     """RSS feed should return valid XML even with no posts."""
     response = client.get("/rss/feed.xml")
