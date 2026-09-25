@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 431,
+  "round": 433,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-24T23:59:35+00:00",
+  "updated_at": "2026-09-25T06:54:18+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 429,
+      "touched_round": 431,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 429,
+      "touched_round": 431,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33003,6 +33003,155 @@
       "title": "Close round 432 (post-merge review follow-ups)",
       "rationale": "Independent code-review of round-431 commit f89e1c20 returned APPROVE (no critical/high). Two LOWs folded into this round: (1) admin list/detail now coalesce raw-import NULL pinned/views to false/0, matching every public surface (TASK-548 scope completion, ISS-627); (2) _coalesce_null_false docstring corrected (pinned only, likes is numeric). A regression test plants the NULL via Core update and asserts both admin surfaces read false/0. Full VERIFY green: backend 1910 (SQLite) / 241 targeted (PG), frontend untouched this round.",
       "alternatives_rejected": "None"
+    },
+    "ISS-633": {
+      "id": "ISS-633",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:35+00:00",
+      "updated_at": "2026-09-25T06:52:44+00:00",
+      "touched_round": 431,
+      "title": "Guest thread fan-out opens N SMTP sessions per approval (unbounded, uninterruptible)",
+      "severity": "medium"
+    },
+    "ISS-634": {
+      "id": "ISS-634",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:35+00:00",
+      "updated_at": "2026-09-25T06:52:44+00:00",
+      "touched_round": 431,
+      "title": "Newsletter unsubscribe on a pending row is a silent no-op that reports success",
+      "severity": "medium"
+    },
+    "ISS-635": {
+      "id": "ISS-635",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:35+00:00",
+      "updated_at": "2026-09-25T06:52:44+00:00",
+      "touched_round": 431,
+      "title": "Nuxt API proxy forwards socket peer only, collapsing nginx-topology clients into one rate-limit bucket",
+      "severity": "high"
+    },
+    "ISS-636": {
+      "id": "ISS-636",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:36+00:00",
+      "updated_at": "2026-09-25T06:52:44+00:00",
+      "touched_round": 431,
+      "title": "Backend .env values invisible to os.getenv readers; undeclared keys crash Settings() (extra=forbid)",
+      "severity": "medium"
+    },
+    "TASK-553": {
+      "id": "TASK-553",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:36+00:00",
+      "updated_at": "2026-09-25T06:50:52+00:00",
+      "touched_round": 431,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Batch guest thread fan-out emails over a single SMTP session"
+    },
+    "TASK-554": {
+      "id": "TASK-554",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:36+00:00",
+      "updated_at": "2026-09-25T06:50:52+00:00",
+      "touched_round": 431,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Stamp newsletter unsubscribed_at for pending (never-confirmed) rows"
+    },
+    "TASK-555": {
+      "id": "TASK-555",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:36+00:00",
+      "updated_at": "2026-09-25T06:50:52+00:00",
+      "touched_round": 431,
+      "category": "security",
+      "severity": "high",
+      "title": "Forward real client IP through Nuxt API proxy via FRONTEND_TRUSTED_PROXIES trust model"
+    },
+    "TASK-556": {
+      "id": "TASK-556",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-25T06:24:36+00:00",
+      "updated_at": "2026-09-25T06:50:52+00:00",
+      "touched_round": 431,
+      "category": "maintainability",
+      "severity": "medium",
+      "title": "Load .env into process env and tolerate undeclared settings keys"
+    },
+    "ISS-637": {
+      "id": "ISS-637",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T06:28:34+00:00",
+      "updated_at": "2026-09-25T06:28:34+00:00",
+      "touched_round": 431,
+      "title": "Admin CSV/backup exports materialize all rows in RAM (ORM .all() + full StringIO before streaming)",
+      "severity": "low"
+    },
+    "TASK-557": {
+      "id": "TASK-557",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T06:30:43+00:00",
+      "updated_at": "2026-09-25T06:30:43+00:00",
+      "touched_round": 431,
+      "category": "correctness",
+      "severity": "medium",
+      "title": "Global og:url/og:image/WebSite JSON-LD baked at build with NUXT_SITE_URL unset; resolve from runtime siteUrl (page-level useSeo already correct)"
+    },
+    "ISS-638": {
+      "id": "ISS-638",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T06:30:43+00:00",
+      "updated_at": "2026-09-25T06:30:43+00:00",
+      "touched_round": 431,
+      "title": "Global head og:url/og:image/WebSite JSON-LD use build-time NUXT_SITE_URL (localhost:3000 when unset at image build)",
+      "severity": "low"
+    },
+    "DEC-480": {
+      "id": "DEC-480",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T06:50:51+00:00",
+      "updated_at": "2026-09-25T06:50:51+00:00",
+      "touched_round": 431,
+      "title": "Close round 433 (review findings round)",
+      "rationale": "Independent code review of the round-433 working set returned APPROVE (0 critical/high); four backend/frontend findings closed: (1) guest thread fan-out now batches ALL recipients over a single SMTP session (was N unwrapped connects per approval, unbounded and uninterruptible — the request-timeout middleware cannot break sync SMTP I/O), per-message refusal still isolated, unused single-recipient wrapper removed (0 call sites); (2) newsletter unsubscribe stamps unsubscribed_at for pending rows so a stale confirm link cannot activate an 'unsubscribed' address (round-393 gate covers both states); (3) Nuxt API proxy resolves the edge IP via resolveClientIp + FRONTEND_TRUSTED_PROXIES (same trust model as the frontend limiters, TASK-101/ISS-081) instead of forwarding the raw socket peer — which collapsed every nginx-topology client into one loopback bucket; proxy spec stubs corrected to h3's 2-arg getRequestHeader(event, name) signature (1-arg stubs made every XFF read fall back to the content-type default, so the topology tests were arguably vacuous before); (4) config: load_dotenv() exports .env to os.environ so os.getenv readers agree with pydantic, extra=ignore prevents undeclared .env keys crashing Settings(). VERIFY: backend affected files 75 passed SQLite + PG; frontend full 2500 passed, typecheck green, ruff/biome gates green. Review LOWs dispositioned: LOW1 stale socket-peer comment rewritten, LOW2 dead wrapper removed, LOW3 single-session OSError fan-out data-loss tradeoff accepted (matches reader fan-out + weekly digest), LOW4 extra=ignore typo blind spot accepted, LOW5 refresh-unsubscribe-timestamp accepted (latest-revoke is the correct audit value). Deferred (not this round): TASK-557 built-time og:url/WebSite JSON-LD bake, ISS-637 export RAM materialization.",
+      "alternatives_rejected": "per-recipient SMTP retry loop (restores per-address isolation but reopens unbounded serial connects — the exact defect being fixed); build-ARG-only NUXT_SITE_URL fix for the og:url bake (binds the URL to image build, breaks runtime-configurable deployments; runtime head resolution is the correct general fix, deferred to TASK-557)"
+    },
+    "CHG-783": {
+      "id": "CHG-783",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T06:50:52+00:00",
+      "updated_at": "2026-09-25T06:50:52+00:00",
+      "touched_round": 431,
+      "title": "round-433: SMTP batch, newsletter revocation, proxy XFF trust model, env-config drill",
+      "commit": "bb664889"
     }
   },
   "edges": [
@@ -49575,6 +49724,132 @@
       "to": "COMP-011",
       "type": "governs",
       "created_at": "2026-09-24T23:59:35+00:00"
+    },
+    {
+      "from": "ISS-633",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:24:49+00:00"
+    },
+    {
+      "from": "ISS-634",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:24:49+00:00"
+    },
+    {
+      "from": "ISS-635",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:24:49+00:00"
+    },
+    {
+      "from": "ISS-636",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:24:49+00:00"
+    },
+    {
+      "from": "TASK-553",
+      "to": "ISS-633",
+      "type": "addresses",
+      "created_at": "2026-09-25T06:24:50+00:00"
+    },
+    {
+      "from": "TASK-554",
+      "to": "ISS-634",
+      "type": "addresses",
+      "created_at": "2026-09-25T06:24:50+00:00"
+    },
+    {
+      "from": "TASK-555",
+      "to": "ISS-635",
+      "type": "addresses",
+      "created_at": "2026-09-25T06:24:50+00:00"
+    },
+    {
+      "from": "TASK-556",
+      "to": "ISS-636",
+      "type": "addresses",
+      "created_at": "2026-09-25T06:24:50+00:00"
+    },
+    {
+      "from": "ISS-637",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:28:34+00:00"
+    },
+    {
+      "from": "ISS-638",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-25T06:30:54+00:00"
+    },
+    {
+      "from": "TASK-557",
+      "to": "ISS-638",
+      "type": "addresses",
+      "created_at": "2026-09-25T06:30:55+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "ISS-633",
+      "type": "resolves",
+      "created_at": "2026-09-25T06:51:27+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "ISS-634",
+      "type": "resolves",
+      "created_at": "2026-09-25T06:51:27+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "ISS-635",
+      "type": "resolves",
+      "created_at": "2026-09-25T06:51:27+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "ISS-636",
+      "type": "resolves",
+      "created_at": "2026-09-25T06:51:27+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "TASK-553",
+      "type": "implements",
+      "created_at": "2026-09-25T06:51:27+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "TASK-554",
+      "type": "implements",
+      "created_at": "2026-09-25T06:51:28+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "TASK-555",
+      "type": "implements",
+      "created_at": "2026-09-25T06:51:28+00:00"
+    },
+    {
+      "from": "CHG-783",
+      "to": "TASK-556",
+      "type": "implements",
+      "created_at": "2026-09-25T06:51:28+00:00"
+    },
+    {
+      "from": "DEC-480",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-25T06:51:28+00:00"
+    },
+    {
+      "from": "DEC-480",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-25T06:51:28+00:00"
     }
   ]
 }
