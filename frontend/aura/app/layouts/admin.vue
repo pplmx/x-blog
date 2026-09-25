@@ -13,6 +13,13 @@ import { useTheme } from "~~/composables/useTheme";
 const { isAuthenticated, logout, handleAdminUnauthorized } = useAdminAuth();
 const { t } = useLang();
 const route = useRoute();
+// The whole /admin/* tree (incl. the login page) must never be indexed: admin
+// sessions and the editor are private surfaces that crawlers have no business
+// ranking, and a stale indexed login shell just attracts credential probes.
+// One robots meta here covers every admin page (round 437).
+useHead({
+	meta: [{ name: "robots", content: "noindex, follow" }],
+});
 // Theme is a shared singleton (useTheme) so the admin UI applies the reader's
 // persisted dark-mode preference and the public toggle affects /admin/* too.
 const { isDark, initTheme, toggleTheme } = useTheme();

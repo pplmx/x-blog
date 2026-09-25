@@ -22,6 +22,8 @@ useSeo(() => ({
 	title: t("reader.login.seoTitle"),
 	description: t("reader.login.seoDesc"),
 	path: "/login",
+	// Reader auth flows are private surfaces — never index them (round 437).
+	noindex: true,
 }));
 
 const { mergeLocalToCloud } = useBookmarkSync();

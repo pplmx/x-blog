@@ -83,6 +83,8 @@ useSeo(() => ({
 	title: t("account.seoTitle"),
 	description: t("account.seoDesc"),
 	path: "/account",
+	// Account settings are private — never index them (round 437).
+	noindex: true,
 }));
 
 /* Profile --------------------------------------------------------------- */

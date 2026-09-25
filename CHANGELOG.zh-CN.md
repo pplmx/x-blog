@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+- 🔒 **读者认证页与全部管理页现在发送 robots `noindex`（round 437）**——之前
+  只有 search/print 页被排除出搜索引擎索引；读者登录/注册、忘记密码、重置密码、
+  改邮箱、账户设置页（公开认证面）以及整个 `/admin/*` 树（登录、仪表盘、编辑器、
+  用户、媒体……）都可被收录，爬虫能收集登录壳与后台页 URL 用于撞库探测。读者
+  认证页现在通过 `useSeo({ noindex: true })` 退出索引（既有的 robots
+  `noindex, follow` 路径），管理后台在 layout 层发出一条 robots meta，一处覆盖
+  全部 `/admin/*` 页，无需逐页修改。（TASK-559, ISS-640）
 - 🔒 **后端 feed/sitemap/邮件链接在生产环境不再静默指向回环地址（round 436）**——
   RSS/Atom item 的 `<link>`、sitemap 的 `<loc>` 和邮件里的 URL 全部由后端的
   `settings.site_url`（routers/rss.py、emailer.py）生成，而默认值是

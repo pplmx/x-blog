@@ -15,6 +15,8 @@ useSeo(() => ({
 	title: t("reader.forgotPassword.seoTitle"),
 	description: t("reader.forgotPassword.seoDesc"),
 	path: "/forgot-password",
+	// Reader auth flows are private surfaces — never index them (round 437).
+	noindex: true,
 }));
 
 const email = ref("");

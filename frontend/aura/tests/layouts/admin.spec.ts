@@ -873,3 +873,22 @@ describe("Admin Layout route-reactive behavior", () => {
 		wrapper.unmount();
 	});
 });
+
+describe("Admin Layout noindex (round 437)", () => {
+	it("emits robots noindex so the whole /admin/* tree stays out of search indexes", () => {
+		mockIsAuthenticated.value = true;
+		mockRoutePath.value = "/admin";
+		mountWithBody({ global: { stubs, slots: { default: "<div>Content</div>" } } });
+
+		const metas = vi
+			.mocked(useHead)
+			.mock.calls.flatMap(([arg]) =>
+				arg && Array.isArray((arg as Record<string, unknown>).meta)
+					? ((arg as Record<string, unknown>).meta as Array<Record<string, string>>)
+					: [],
+			);
+		const robots = metas.find((m) => m.name === "robots");
+		expect(robots).toBeTruthy();
+		expect(robots?.content).toBe("noindex, follow");
+	});
+});

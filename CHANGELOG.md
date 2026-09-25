@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **Reader auth and all admin pages now send robots `noindex` (round 437)** —
+  only search/print pages were excluded from search indexes; the reader
+  login/register, forgot-password, reset-password, email-change and account
+  pages (public auth surfaces) and the whole `/admin/*` tree (login, dashboard,
+  editor, users, media…) were indexable, so crawlers could collect login
+  shells and admin page URLs for credential probing. Reader auth pages now opt
+  out via `useSeo({ noindex: true })` (the established robots `noindex, follow`
+  path), and the admin layout emits one robots meta at the layout level so
+  every `/admin/*` page is covered without per-page edits. (TASK-559, ISS-640)
 - 🔒 **Backend feed/sitemap/email links no longer silently default to a
   loopback origin in production (round 436)** — RSS/Atom item `<link>`s,
   sitemap `<loc>`s and email URLs are all built from the backend's
