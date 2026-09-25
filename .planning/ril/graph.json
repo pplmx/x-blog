@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 433,
+  "round": 434,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T06:54:18+00:00",
+  "updated_at": "2026-09-25T07:46:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 431,
+      "touched_round": 433,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33110,11 +33110,11 @@
     "TASK-557": {
       "id": "TASK-557",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-25T06:30:43+00:00",
-      "updated_at": "2026-09-25T06:30:43+00:00",
-      "touched_round": 431,
+      "updated_at": "2026-09-25T07:46:35+00:00",
+      "touched_round": 433,
       "category": "correctness",
       "severity": "medium",
       "title": "Global og:url/og:image/WebSite JSON-LD baked at build with NUXT_SITE_URL unset; resolve from runtime siteUrl (page-level useSeo already correct)"
@@ -33122,11 +33122,11 @@
     "ISS-638": {
       "id": "ISS-638",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-25T06:30:43+00:00",
-      "updated_at": "2026-09-25T06:30:43+00:00",
-      "touched_round": 431,
+      "updated_at": "2026-09-25T07:46:36+00:00",
+      "touched_round": 433,
       "title": "Global head og:url/og:image/WebSite JSON-LD use build-time NUXT_SITE_URL (localhost:3000 when unset at image build)",
       "severity": "low"
     },
@@ -33152,6 +33152,29 @@
       "touched_round": 431,
       "title": "round-433: SMTP batch, newsletter revocation, proxy XFF trust model, env-config drill",
       "commit": "bb664889"
+    },
+    "DEC-481": {
+      "id": "DEC-481",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T07:46:35+00:00",
+      "updated_at": "2026-09-25T07:46:35+00:00",
+      "touched_round": 433,
+      "title": "Close round 434 (TASK-557: runtime site-default share metadata)",
+      "rationale": "Completed TASK-557: the nuxt.config global head is evaluated at image BUILD time, and NUXT_SITE_URL is set only at container runtime, so deployments baked http://localhost:3000 into every page's og:url/og:image/twitter:image and WebSite JSON-LD. Moved these URL-dependent tags to app.vue, resolved at runtime from useSiteUrl() (runtimeConfig.public.siteUrl). Discovered and fixed a real SSR pitfall en route: unhead resolves useHead args lazily during renderSSRHead OUTSIDE the Nuxt context, so a getter calling useRuntimeConfig threw NUXT_E1001 (500 on every route) — the site URL must be captured EAGERLY in setup (the same constraint useSeo.ts already documents for its own useHead call). Also fixed the deployment knob: compose set NUXT_SITE_URL, which is inert in a built image (Nuxt runtime overrides runtimeConfig only via NUXT_PUBLIC_<key>), so it never reached the head; compose + README now use NUXT_PUBLIC_SITE_URL. VERIFY: 2 new unit tests (runtime resolve + localhost fallback), full frontend suite 2502 green, typecheck/lint green, pnpm build clean, and a live smoke test of .output/server renders og:url from the runtime URL (200 with NUXT_PUBLIC_SITE_URL); without it falls back to localhost:3000. Round-433's preceding commits (bb664889 fix, a07be2fc ril) already closed the four SMTP/newsletter/proxy/config findings; this round is a single-thread feature round with no backlog regression.",
+      "alternatives_rejected": "Dockerfile build ARG for NUXT_SITE_URL (binds the URL to image build, so one image cannot serve multiple hostnames and operators must know the URL at build; runtime resolution is strictly more flexible); keeping the bake + runtime merge (two og:url entries with different content and no guaranteed dedupe key — risk of duplicate share tags)"
+    },
+    "CHG-784": {
+      "id": "CHG-784",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T07:46:35+00:00",
+      "updated_at": "2026-09-25T07:46:35+00:00",
+      "touched_round": 433,
+      "title": "round-434: runtime site-default share metadata (og:url/og:image/WebSite JSON-LD) + NUXT_PUBLIC_SITE_URL deployment knob",
+      "commit": "f40da364"
     }
   },
   "edges": [
@@ -49850,6 +49873,24 @@
       "to": "COMP-002",
       "type": "governs",
       "created_at": "2026-09-25T06:51:28+00:00"
+    },
+    {
+      "from": "CHG-784",
+      "to": "ISS-638",
+      "type": "resolves",
+      "created_at": "2026-09-25T07:46:36+00:00"
+    },
+    {
+      "from": "CHG-784",
+      "to": "TASK-557",
+      "type": "implements",
+      "created_at": "2026-09-25T07:46:36+00:00"
+    },
+    {
+      "from": "DEC-481",
+      "to": "COMP-002",
+      "type": "governs",
+      "created_at": "2026-09-25T07:46:36+00:00"
     }
   ]
 }
