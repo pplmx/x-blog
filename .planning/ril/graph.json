@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 434,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T07:46:36+00:00",
+  "updated_at": "2026-09-25T08:50:11+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33175,6 +33175,18 @@
       "touched_round": 433,
       "title": "round-434: runtime site-default share metadata (og:url/og:image/WebSite JSON-LD) + NUXT_PUBLIC_SITE_URL deployment knob",
       "commit": "f40da364"
+    },
+    "DEC-482": {
+      "id": "DEC-482",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-25T08:50:11+00:00",
+      "updated_at": "2026-09-25T08:50:11+00:00",
+      "touched_round": 434,
+      "title": "converged-idle: quality-convergence stop (round 435)",
+      "rationale": "Stop-condition evaluation per skill section 10 all pass: (1) graph has 0 active tasks (no priority_score above the 3.0 threshold); (2) the only open HIGH (ISS-242 multi-worker cache staleness) is explicitly accepted by DEC-004 with rejected alternatives (Redis / single worker / versioned keys); all other open items are LOW-to-MEDIUM and deployment-bound or decisioned (ISS-243 per-process rate buckets / DEC-004, ISS-244 TRUSTED_PROXIES / DEC-014, ISS-625 total_pages=0 — frontend already guards everywhere via paginationPages<=1 -> [] and total_pages||1 fallbacks, ISS-632 push broadcast O(n) deferred by DEC-478, ISS-637 export RAM, ISS-626 admin-only restore validation). (3) Last full VERIFY genuinely green: backend 1913 passed (93.55% cov, SQLite) and changed files green on PG, frontend 2502 passed, nuxt typecheck green, biome/ruff gates green, production build clean, live SSR smoke verified round-434's runtime og:url change. (4) round-435's deep-dive produced 0 new tasks >= 3.0 — the usability scan (frontend button/in-flight/empty-state sweep) ran dry: the comment form already guards re-entry (submitting || disabled in handleSubmit + button disabled + localized 429/403), newsletter subscribe already guards with a submit sequence token, form buttons all carry explicit types; the two new candidates examined (ISS-625, ISS-637) are below-threshold by design, not defects. (5) graph consistent (ril.py check). This session delivered genuine fixes in rounds 433 (SMTP single-session batching, pending-unsubscribe revocation, proxy XFF trust model, env-config drill) and 434 (runtime site-default share metadata + NUXT_PUBLIC_SITE_URL deployment knob, fixing a real SSR NUXT_E1001 found en route). No change delivered this round; no new >=3.0 task created; entering quiesce — no further round-tick chore commits until a new operator direction, a real user-reported issue, or a substantive repo change reactivates the loop (first round after reactivation must re-run VERIFY).",
+      "alternatives_rejected": "Fixing ISS-625 (total_pages=0 on empty results -> max(1,...)) as a round filler: the frontend already treats <=1 as no pager everywhere, and switching the API contract risks third-party consumers built against total_pages=0; below-threshold score-chasing. Doing the same untrusted-subagent usability scan again: both spawned review/scan subagents stalled 25-37min on this CPU-contended box and returned nothing; the manual probes above covered the top two patterns. Adding a Redis shared cache for ISS-242: rejected by DEC-004 and unjustified at this scale."
     }
   },
   "edges": [
