@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Guest thread-subscriber mail is delivered over a single SMTP session
+  (round 433)** — approving a comment on a post with N confirmed anonymous
+  subscribers opened a fresh SMTP connection per address in a serial loop, so a
+  popular thread blocked the approval request for N sequential connects —
+  unbounded by any cap (unlike push subscriptions) and uninterruptible by the
+  request-timeout middleware. The fan-out now builds every recipient and sends
+  them in one session; any per-message refusal is best-effort isolated.
+  (TASK-553, ISS-633)
+- 🔒 **Unsubscribing a never-confirmed newsletter address now really revokes it
+  (round 433)** — clicking "unsubscribe" in a double-opt-in confirmation email
+  BEFORE confirming reported `{"unsubscribed": true}` but changed nothing, so
+  the same email's confirm link could still flip the address to subscribed —
+  the exact opposite of the message the user saw. Revocation is now stamped
+  even while pending, so the round-393 confirm gate (re-activation needs a
+  fresh subscribe) covers both states. (TASK-554, ISS-634)
+- 🔒 **The Nuxt API proxy forwards the real client IP through a trusted proxy
+  (round 433)** — behind nginx the socket peer is nginx itself, so forwarding
+  the peer alone collapsed every visitor into one loopback IP and the backend's
+  per-IP rate-limit buckets all shared a single slot. The proxy now resolves
+  the client IP through the same trust model the frontend's own limiters use
+  (`FRONTEND_TRUSTED_PROXIES`): a trusted peer's XFF yields the real client; a
+  bare/compose peer still discards client-forged XFF. (TASK-555, ISS-635)
+- 🛠 **Backend env loading is now the single, consistent point (round 433)** —
+  pydantic-settings reads `.env` but never exports those values to
+  `os.environ`, so `is_development()` (APP_ENV) and the emailer's language
+  switch (SITE_LANGUAGE) silently read nothing when a value lived only in
+  `.env` — crashing dev startup (no JWT fallback key) and mixing English RSS
+  with Chinese email copy (or vice versa). `load_dotenv()` now populates the
+  process env (without clobbering set vars), and undeclared `.env` keys are
+  ignored instead of crashing `Settings()` with `extra="forbid"`.
+  (TASK-556, ISS-636)
 - 🐛 **Admin surfaces read raw-import NULL counters as false/0 too (round 432)**
   — review follow-up to round 431: the admin posts list and editor detail
   emitted a raw-import `pinned`/`views` NULL as `null` while every public page

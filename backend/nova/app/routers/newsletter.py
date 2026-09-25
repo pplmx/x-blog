@@ -206,11 +206,15 @@ def newsletter_unsubscribe(
     if row.is_confirmed:
         row.is_confirmed = False
         row.confirmed_at = None
-        # Round 393: record the cancellation so replaying the OLD confirmation
-        # link cannot silently re-activate the address (re-activation requires a
-        # fresh subscribe + fresh double-opt-in email).
-        row.unsubscribed_at = utc_now_naive()
-        db.commit()
+    # Round 433: stamp the revocation on EVERY unsubscribe, pending or not.
+    # A never-confirmed row carries a live confirmation token; without the
+    # stamp, clicking unsubscribe before confirming was a silent no-op that
+    # still reported success, and the address's OLD confirm link could then
+    # activate it — directly contradicting the "unsubscribed" the user saw.
+    # With the stamp, the round-393 confirm gate (re-activation requires a
+    # fresh subscribe + fresh double-opt-in email) covers both states.
+    row.unsubscribed_at = utc_now_naive()
+    db.commit()
     return {"unsubscribed": True}
 
 

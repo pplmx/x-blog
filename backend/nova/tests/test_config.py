@@ -1,6 +1,7 @@
 """Tests for configuration module."""
 
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 
@@ -187,6 +188,73 @@ class TestSettingsTypeAnnotations:
 
         settings = Settings()
         assert settings.sentry_dsn is None or isinstance(settings.sentry_dsn, str)
+
+
+class TestEnvFileVisibility:
+    """Regression (round 433, ISS-636): values read ONLY from .env must reach
+    the direct os.getenv readers, not just pydantic-settings.
+
+    pydantic-settings reads .env but does NOT export those values into
+    os.environ, while is_development() (APP_ENV) and emailer._is_en_site()
+    (SITE_LANGUAGE) read os.getenv directly. Without load_dotenv(), an
+    APP_ENV/SITE_LANGUAGE set only in .env was invisible to them: dev startup
+    crashed with no dev JWT key, and RSS/Atom feeds (settings.site_language)
+    disagreed with English/Chinese email copy (_is_en_site).
+    """
+
+    _ENV_CONTENT = "APP_ENV=development\nSITE_LANGUAGE=en-US\n"
+
+    def _run_in_isolated_cwd(self, tmp_path, env_content: str, code: str):
+        """Run ``code`` with a temp cwd holding a real .env, so pydantic's
+        env_file and load_dotenv() both resolve it — WITHOUT touching the
+        shared backend dir (xdist workers share that cwd; a stray .env there
+        would leak into every parallel worker's Settings())."""
+        import os
+        import subprocess
+        import sys
+
+        backend_dir = str(Path(__file__).resolve().parent.parent)
+        (tmp_path / ".env").write_text(env_content, encoding="utf-8")
+        env = dict(os.environ)
+        existing = [k for k in ("PYTHONPATH",) if k in env]
+        env["PYTHONPATH"] = backend_dir + (os.pathsep + env["PYTHONPATH"] if existing else "")
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            cwd=tmp_path,
+            env=env,
+        )
+
+    def test_dotenv_values_visible_to_os_getenv_readers(self, tmp_path, monkeypatch):
+        """A .env-only APP_ENV/SITE_LANGUAGE must flip is_development and
+        _is_en_site the same way a process-env value would."""
+        code = (
+            "import os;"
+            "os.environ.pop('JWT_SECRET_KEY', None);"
+            "os.environ.pop('APP_ENV', None);"
+            "os.environ.pop('SITE_LANGUAGE', None);"
+            "from app.config import is_development;"
+            "from app.emailer import _is_en_site;"
+            "print(is_development(), _is_en_site())"
+        )
+        result = self._run_in_isolated_cwd(tmp_path, self._ENV_CONTENT, code)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.split() == ["True", "True"], result.stdout
+
+    def test_process_env_still_wins_over_dotenv(self, tmp_path, monkeypatch):
+        """load_dotenv(override=False) must not clobber an already-set process
+        var — a production deployment that exports APP_ENV=production must stay
+        production even if a stray .env says otherwise."""
+        code = (
+            "import os;"
+            "os.environ['APP_ENV'] = 'production';"
+            "from app.config import is_development;"
+            "print(is_development())"
+        )
+        result = self._run_in_isolated_cwd(tmp_path, "APP_ENV=development\n", code)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.split() == ["False"], result.stdout
 
 
 class TestSettingsEdgeCases:

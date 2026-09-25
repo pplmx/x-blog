@@ -453,7 +453,7 @@ class TestThreadFanOut:
 
         post = _create_post(db_session)
         _sink(monkeypatch)
-        for email in ("one@example.com", "two@example.com"):
+        for email in ("one@example.com", "two@example.com", "three@example.com"):
             _subscribe(client, post.id, email)
             row = (
                 db_session.query(models.GuestCommentSubscription)
@@ -461,10 +461,20 @@ class TestThreadFanOut:
                 .one()
             )
             _confirm(client, row.token)
+        # Reset the instance counter so the count below isolates the approval's
+        # fan-out from the 3 per-confirmation sessions above.
+        FakeSMTP.instances = []
         created = _comment(client, post.id, "broadcast", email="other@example.com")
         _approve(client, auth_headers, created.json()["id"])
         assert len(_fanout_to(FakeSMTP, "one@example.com")) == 1
         assert len(_fanout_to(FakeSMTP, "two@example.com")) == 1
+        assert len(_fanout_to(FakeSMTP, "three@example.com")) == 1
+        # Round-433 capacity regression: every recipient must be delivered over
+        # ONE SMTP session. The old per-subscriber send opened a fresh
+        # connection per address in a serial loop (3 subscribers = 3 SMTP
+        # connects inside one approval request); the batched fan-out must spin
+        # up exactly one.
+        assert len(FakeSMTP.instances) == 1, FakeSMTP.instances
 
     def test_reader_comment_also_fans_out(self, client, db_session, monkeypatch, auth_headers):
         from uuid import uuid4 as _u4

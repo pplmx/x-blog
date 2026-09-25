@@ -39,8 +39,18 @@ beforeEach(() => {
 	vi.stubGlobal("getQuery", () => ({}));
 	vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
 	vi.stubGlobal("readRawBody", vi.fn().mockResolvedValue("raw-body"));
-	vi.stubGlobal("getRequestHeader", () => "application/json");
+	// Header lookup: h3's signature is getRequestHeader(event, name) — the
+	// FIRST argument is the event object, so stubs must key on the second
+	// argument or the route always sees the fallback (h3 globals avoid an
+	// import indirection here because vitest resolves the bare server-utils
+	// names to these globals). XFF-specific override is set per-test; the
+	// default returns the JSON content type so body-handling tests keep
+	// working.
+	vi.stubGlobal("getRequestHeader", (_event: any, name: string) =>
+		name === "x-forwarded-for" ? undefined : "application/json",
+	);
 	vi.stubGlobal("getRequestIP", () => "203.0.113.9");
+	vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "");
 
 	vi.stubGlobal("createError", (opts: Record<string, unknown>) => {
 		const err = new Error(opts.statusMessage as string);
@@ -61,19 +71,20 @@ const { loadHandler } = vi.hoisted(() => ({
 		vi.stubGlobal("getQuery", () => ({}));
 		vi.stubGlobal("getHeaders", () => ({ host: "localhost" }));
 		vi.stubGlobal("getRequestIP", () => "203.0.113.9");
-		// Resolve the route file relative to this spec, so the tests work from
-		// any checkout location (the previous absolute path only existed on the
-		// dev machine and broke CI with MODULE_NOT_FOUND).
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const path = require("node:path");
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		return require(path.resolve(__dirname, "../../server/routes/api/[...path].ts")).default;
+		vi.stubGlobal("getRequestHeader", (_event: any, name: string) =>
+			name === "x-forwarded-for" ? undefined : "application/json",
+		);
+		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "");
+		// Dynamic import (not require): the route now imports clientIp.ts, whose
+		// Vite alias the CJS require() cannot resolve (module-not-found under
+		// vitest). import() is transformed by Vite so aliases/TS resolve.
+		return import("~~/server/routes/api/[...path].ts").then((m) => m.default);
 	},
 }));
 
 describe("API proxy", () => {
 	it("forwards requests to the backend with correct URL", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		await handler({});
 
 		expect(mockFetchRaw).toHaveBeenCalledTimes(1);
@@ -82,7 +93,7 @@ describe("API proxy", () => {
 	});
 
 	it("forwards the query string to the backend", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getQuery", () => ({ page: "2", limit: "2", q: "hello world" }));
 		await handler({});
 
@@ -91,14 +102,14 @@ describe("API proxy", () => {
 	});
 
 	it("returns the backend response data", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		const result = await handler({});
 
 		expect(result).toEqual({ ok: true });
 	});
 
 	it("forwards the real client IP to the backend (x-real-ip / x-forwarded-for)", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getRequestIP", () => "198.51.100.7");
 		await handler({});
 
@@ -108,14 +119,57 @@ describe("API proxy", () => {
 	});
 
 	it("overwrites a client-forged X-Forwarded-For with the edge peer IP", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		// A client claims a spoofed IP in its request headers; the proxy must
 		// discard it and set the value from the trusted socket peer so a caller
 		// cannot mint a fresh rate-limit bucket.
-		vi.stubGlobal("getHeaders", () => ({
-			host: "localhost",
-			"x-forwarded-for": "1.2.3.4",
-		}));
+		vi.stubGlobal("getRequestHeader", (_event: any, name: string) =>
+			name === "x-forwarded-for" ? "1.2.3.4" : "application/json",
+		);
+		vi.stubGlobal("getRequestIP", () => "203.0.113.9");
+		await handler({});
+
+		const [, options] = mockFetchRaw.mock.calls[0] as [string, { headers: Record<string, string> }];
+		expect(options.headers["x-forwarded-for"]).toBe("203.0.113.9");
+		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
+	});
+
+	it("forwards the REAL client through a trusted proxy (nginx topology, round 433)", async () => {
+		// deploy/nginx.conf proxies location / → the Nuxt container, so the
+		// socket peer is nginx (loopback) and the original client rides in
+		// X-Forwarded-For. Forwarding only the peer would collapse every user
+		// into that one loopback IP and the backend's per-IP rate-limit buckets
+		// all shared one slot. With the peer listed as a trusted proxy
+		// (FRONTEND_TRUSTED_PROXIES, same trust model as the frontend's own
+		// limiters — RIL TASK-101/ISS-081), the proxy must forward the leftmost
+		// XFF entry — the REAL client — not the nginx peer.
+		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "127.0.0.1");
+		// loadHandler re-stubs FRONTEND_TRUSTED_PROXIES to "" — set the trust
+		// var AFTER loading so it isn't wiped.
+		const handler = await loadHandler();
+		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "127.0.0.1");
+		vi.stubGlobal("getRequestHeader", (_event: any, name: string) =>
+			name === "x-forwarded-for" ? "203.0.113.9, 127.0.0.1" : "application/json",
+		);
+		vi.stubGlobal("getRequestIP", () => "127.0.0.1");
+		await handler({});
+
+		const [, options] = mockFetchRaw.mock.calls[0] as [string, { headers: Record<string, string> }];
+		expect(options.headers["x-forwarded-for"]).toBe("203.0.113.9");
+		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
+	});
+
+	it("does not trust XFF from an untrusted peer (bare compose topology, round 433)", async () => {
+		// Browser → Nuxt directly, no proxy in between: the peer is the true
+		// client and any client-supplied XFF is a spoof — it must be discarded
+		// even though a FRONTEND_TRUSTED_PROXIES value is configured for a
+		// different deployment, because the peer itself is NOT the trusted one.
+		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "198.51.100.10");
+		const handler = await loadHandler();
+		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "198.51.100.10");
+		vi.stubGlobal("getRequestHeader", (_event: any, name: string) =>
+			name === "x-forwarded-for" ? "1.2.3.4" : "application/json",
+		);
 		vi.stubGlobal("getRequestIP", () => "203.0.113.9");
 		await handler({});
 
@@ -131,7 +185,7 @@ describe("API proxy", () => {
 			_data: { id: 1 },
 		});
 
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		await handler({});
 
 		expect(mockSetResponseStatus).toHaveBeenCalledWith({}, 201);
@@ -142,7 +196,7 @@ describe("API proxy", () => {
 			response: { status: 422, _data: { error: "validation failed" } },
 		});
 
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		const result = await handler({});
 
 		expect(mockSetResponseStatus).toHaveBeenCalledWith({}, 422);
@@ -161,7 +215,7 @@ describe("API proxy", () => {
 			},
 		});
 
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		const result = await handler({});
 
 		expect(mockSetResponseStatus).toHaveBeenCalledWith({}, 404);
@@ -176,14 +230,14 @@ describe("API proxy", () => {
 	it("returns 502 when the backend is unreachable", async () => {
 		mockFetchRaw.mockRejectedValue(new Error("ECONNREFUSED"));
 
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		await expect(handler({})).rejects.toThrow("Backend unavailable");
 	});
 });
 
 describe("API proxy request bodies", () => {
 	it("passes form-urlencoded bodies through raw (regression: null-prototype objects)", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		// loadHandler re-stubs the route params; override after loading
 		vi.stubGlobal("getRouterParam", (_event: any, param: string) =>
 			param === "path" ? "admin/login" : "",
@@ -202,7 +256,7 @@ describe("API proxy request bodies", () => {
 	});
 
 	it("does not read a body for GET requests", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getMethod", () => "GET");
 		const readRawBodyMock = vi.fn();
 		vi.stubGlobal("readRawBody", readRawBodyMock);
@@ -212,7 +266,7 @@ describe("API proxy request bodies", () => {
 	});
 
 	it("rejects oversized request bodies with 413 before reading them", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getMethod", () => "POST");
 		// content-length > MAX_PROXY_BODY (6MB), as a browser would send for a
 		// huge upload; the proxy must refuse without buffering the body.
@@ -226,7 +280,7 @@ describe("API proxy request bodies", () => {
 	});
 
 	it("allow a ≤6MB upload body through to the backend", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getMethod", () => "POST");
 		// multipart upload under the cap: content-length ~3MB, content-type
 		// multipart/form-data
@@ -240,7 +294,7 @@ describe("API proxy request bodies", () => {
 	});
 
 	it("rejects chunked request bodies without content-length", async () => {
-		const handler = loadHandler();
+		const handler = await loadHandler();
 		vi.stubGlobal("getMethod", () => "POST");
 		vi.stubGlobal("getRequestHeader", () => "application/octet-stream");
 		const readRawBodyMock = vi.fn();

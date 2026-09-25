@@ -374,6 +374,39 @@ def test_confirm_replay_after_unsubscribe_does_not_reactivate(client, db_session
     assert sub.unsubscribed_at is not None
 
 
+def test_unsubscribe_before_confirm_is_a_real_revocation(client, db_session, smtp_sink):
+    """Round-433: unsubscribing a PENDING (never-confirmed) address must record
+    the revocation, so its still-live confirmation link cannot then activate it.
+
+    Before this fix the handler only stamped ``unsubscribed_at`` for confirmed
+    rows: a fresh address that clicked unsubscribe in its confirmation email
+    BEFORE confirming got 200 {"unsubscribed": True} but no state change, and
+    the same email's confirm link then flipped it to subscribed — the exact
+    opposite of the message the user saw. The round-393 confirm gate is what
+    makes a stamped revocation permanent, so the stamp must apply to both
+    states.
+    """
+    client.post("/api/newsletter/subscribe", json={"email": "coldfeet@example.com"})
+    token = _confirm_token(smtp_sink, "coldfeet@example.com")
+    # Never confirmed: unsubscribe from the confirmation email itself.
+    assert client.post("/api/newsletter/unsubscribe", json={"token": token}).status_code == 200
+
+    sub = (
+        db_session.query(models.NewsletterSubscriber)
+        .filter(models.NewsletterSubscriber.email == "coldfeet@example.com")
+        .first()
+    )
+    assert sub.is_confirmed is False
+    assert sub.unsubscribed_at is not None
+
+    # The SAME confirmation link must be gated by the round-393 revocation.
+    r = client.post("/api/newsletter/confirm", json={"token": token})
+    assert r.status_code == 400
+    # And no new-post mail may ever go to the address.
+    _create_post(db_session)
+    assert _new_post_messages(smtp_sink, "coldfeet@example.com") == []
+
+
 def test_resubscribe_after_unsubscribe_restarts_double_opt_in(client, db_session, smtp_sink):
     """A cancelled address that subscribes again starts over properly: the token
     rotates, a FRESH confirmation email is sent, and the address stays

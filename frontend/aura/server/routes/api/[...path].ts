@@ -1,4 +1,5 @@
 import type { H3Event } from "h3";
+import { resolveClientIp } from "~~/server/utils/clientIp";
 
 // Server-side backend target. NUXT_PROXY_TARGET is the server-only variable;
 // NUXT_API_URL is kept as a fallback but is ALSO injected into the client
@@ -49,19 +50,34 @@ export default defineEventHandler(async (event) => {
 	const queryString = qs.toString();
 	const url = `${BACKEND_URL}/api/${path}${queryString ? `?${queryString}` : ""}`;
 
-	// The Nuxt proxy is the API edge in the compose/nginx topology: the browser
-	// talks to Nuxt, and the backend sees the Nuxt container as its peer. Without
-	// forwarding the real client IP here, every user collapses into one backend
-	// rate-limit bucket. Overwrite (not append) x-forwarded-for/x-real-ip from
-	// the socket peer — client-supplied values are discarded so a caller cannot
-	// forge a fresh bucket (the backend only trusts XFF when the *peer* is in
-	// TRUSTED_PROXIES, which gates this edge).
 	const headers: Record<string, string> = {};
 	for (const [key, value] of Object.entries(getHeaders(event))) {
 		if (["host", "connection", "content-length"].includes(key)) continue;
 		headers[key] = value as string;
 	}
-	const edgeIp = getRequestIP(event, { xForwardedFor: false }) || "unknown";
+	// The Nuxt proxy is the API edge in the compose/nginx topology: the browser
+	// talks to Nuxt, and the backend sees the Nuxt container as its peer. We
+	// OVERWRITE (never append) x-forwarded-for/x-real-ip from the resolved edge
+	// IP below so a caller cannot chain a forged entry into the backend's trust
+	// chain; how that edge IP is resolved (real client through a trusted proxy,
+	// else the socket peer) follows the trust model, not a raw header.
+	//
+	// The browser talks to Nuxt, and the backend sees the Nuxt container as its
+	// peer. In the nginx topology (deploy/nginx.conf), nginx sits in front with
+	// the real client in X-Forwarded-For and the socket peer is nginx itself —
+	// forwarding the peer alone (getRequestIP with xForwardedFor:false) would
+	// collapse EVERY client into that one loopback IP, so the backend's per-IP
+	// registrations/rates all shared a single bucket. resolveClientIp applies
+	// the same trust model the frontend's own limiters use (RIL TASK-101,
+	// ISS-081): only when the peer is a trusted proxy (FRONTEND_TRUSTED_PROXIES)
+	// does it take the REAL client from XFF; otherwise it returns the peer
+	// (compose/bare topology, client-supplied XFF discarded — no spoofed
+	// bucket). The backend then re-validates against ITS TRUSTED_PROXIES.
+	const edgeIp = resolveClientIp(
+		getRequestIP(event, { xForwardedFor: false }) || "unknown",
+		getRequestHeader(event, "x-forwarded-for"),
+		process.env.FRONTEND_TRUSTED_PROXIES,
+	);
 	headers["x-forwarded-for"] = edgeIp;
 	headers["x-real-ip"] = edgeIp;
 

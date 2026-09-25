@@ -23,7 +23,7 @@ from app.emailer import (
     is_email_configured,
     send_guest_comment_manage_email,
     send_guest_reply_email,
-    send_guest_thread_email,
+    send_guest_thread_emails,
 )
 from app.limiter import RATE_LIMIT_COMMENT, RATE_LIMIT_READ, client_rate_key, limiter
 from app.middleware import get_logger
@@ -169,7 +169,7 @@ def _notify_guest_thread_subscribers(
 
     The anonymous counterpart of ``_notify_thread_subscribers`` — a guest
     subscription is keyed by (email, post) with no account, so this goes
-    straight through the SMTP path (``send_guest_thread_email``, like the guest
+    straight through the SMTP path (``send_guest_thread_emails``, like the guest
     reply-email, DEC-332) with a one-click unsubscribe token. Fires only for
     APPROVED comments (every comment is moderated, so subscribers hear about
     comments they can actually see — same rule as the reader fan-out).
@@ -190,18 +190,23 @@ def _notify_guest_thread_subscribers(
         if account is not None and account.email:
             commenter_email = account.email.strip().casefold()
     url = f"/posts/{post.slug}#comment-{comment.id}"
-    for sub in subscribers:
-        if commenter_email and sub.email.strip().casefold() == commenter_email:
-            continue
-        try:
-            send_guest_thread_email(
-                sub.email,
-                post_title=post.title or "",
-                comment_url=url,
-                unsubscribe_url=f"/comment-subscribe/unsubscribe?token={sub.token}",
-            )
-        except Exception:  # noqa: BLE001 — best effort, never fail the approval
-            logger.exception("guest thread fan-out email failed for %s", sub.email)
+    # Build the recipient list, then deliver ALL messages in ONE SMTP session
+    # (round-433): the old per-subscriber send opened a fresh connection per
+    # address in a serial loop — unbounded by any cap and uninterruptible by
+    # the request-timeout middleware, so a popular thread stalled the approval.
+    recipients = [
+        (sub.email, f"/comment-subscribe/unsubscribe?token={sub.token}")
+        for sub in subscribers
+        if not (commenter_email and sub.email.strip().casefold() == commenter_email)
+    ]
+    try:
+        send_guest_thread_emails(
+            recipients,
+            post_title=post.title or "",
+            comment_url=url,
+        )
+    except Exception:  # noqa: BLE001 — best effort, never fail the approval
+        logger.exception("guest thread fan-out email failed for %d recipients", len(recipients))
 
 
 def _notify_replied_to(

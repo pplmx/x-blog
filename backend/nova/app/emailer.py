@@ -572,26 +572,14 @@ def send_guest_thread_confirm_email(to_addr: str, token: str, post_title: str) -
     return bool(flags and flags[0])
 
 
-def send_guest_thread_email(
+def _build_guest_thread_message(
     to_addr: str,
     *,
     post_title: str,
     comment_url: str,
     unsubscribe_url: str,
-) -> bool:
-    """Notify an anonymous thread subscriber that a new comment is live (DEC-427).
-
-    The guest counterpart of the reader thread-comment fan-out: a confirmed
-    guest subscription to a post gets one email per APPROVED comment (moderation
-    gate — only visible comments are mailed, same rule as the reader push),
-    deep-linking to the comment and carrying a one-click unsubscribe token so
-    the consent stays revocable without an account (mirrors
-    ``send_guest_reply_email``). Direct SMTP send, gated on
-    ``is_email_configured()`` and best-effort (a failure never breaks the
-    approval). Site-language copy (DEC-342); the post title is escaped in HTML.
-    Returns whether SMTP accepted it; connection errors raise for the caller
-    to swallow.
-    """
+) -> EmailMessage:
+    """Compose one anonymous thread-follow notice (site-language copy, DEC-342)."""
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     base_url = _env("SITE_URL") or "http://localhost:3000"
     link = f"{base_url.rstrip('/')}{comment_url}"
@@ -626,8 +614,39 @@ def send_guest_thread_email(
     msg["Subject"] = subject
     msg.set_content(text)
     msg.add_alternative(html_body, subtype="html")
-    flags = send_messages_flags([msg])
-    return bool(flags and flags[0])
+    return msg
+
+
+def send_guest_thread_emails(
+    recipients: list[tuple[str, str]],
+    *,
+    post_title: str,
+    comment_url: str,
+) -> list[bool]:
+    """Fan out thread-follow notices to many confirmed guest subscribers.
+
+    The anonymous counterpart of the reader thread-comment fan-out (DEC-427) —
+    one email per APPROVED comment (moderation gate — only visible comments are
+    mailed, same rule as the reader push), deep-linking to the comment and
+    carrying a one-click unsubscribe token per recipient so each consent stays
+    revocable without an account (mirrors ``send_guest_reply_email``).
+
+    Delivers EVERY recipient over a SINGLE SMTP session (round-433 capacity
+    fix): the previous per-subscriber ``send_guest_thread_email`` opened a fresh
+    SMTP connection per recipient in a serial loop, so a thread with N confirmed
+    guest subscribers blocked the request for N connects — unbounded by any cap
+    (unlike push subscriptions), and the sync SMTP I/O cannot be interrupted by
+    the request-timeout middleware (main.py). Best effort per message (a
+    recipient-level refusal drops just that one); connection errors raise for
+    the caller to swallow so moderation never fails on mail.
+    """
+    if not recipients:
+        return []
+    messages = [
+        _build_guest_thread_message(email, post_title=post_title, comment_url=comment_url, unsubscribe_url=unsub)
+        for email, unsub in recipients
+    ]
+    return send_messages_flags(messages)
 
 
 def _header_safe_title(title: str | None) -> str:

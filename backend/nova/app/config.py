@@ -1,6 +1,22 @@
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Single env-config point (round 433, ISS-636): load .env INTO the process
+# environment so the direct os.getenv readers agree with pydantic-settings.
+# Settings reads .env itself, but pydantic-settings does NOT export those
+# values to os.environ — so is_development() (APP_ENV) and emailer._is_en_site()
+# (SITE_LANGUAGE) silently read nothing when a value lives only in .env,
+# crashing dev startup (no JWT fallback key) and producing English RSS/Atom
+# but Chinese email copy (or vice versa). load_dotenv() with its default
+# override=False imports .env values and never clobbers an already-set process
+# var, so process-env deployments and monkeypatch.setenv tests are unchanged.
+# The explicit path mirrors pydantic's env_file=".env" (CWD-relative); the
+# bare no-arg form would call find_dotenv(), which walks the call stack and
+# asserts when spawned from stdin/without a file frame (round 433 probe).
+load_dotenv(Path.cwd() / ".env")
 
 
 def is_development() -> bool:
@@ -23,7 +39,14 @@ class Settings(BaseSettings):
     # long-standing default; an English-configured site can set SITE_LANGUAGE.
     site_language: str = "zh-CN"
     sentry_dsn: str | None = None
-    model_config = SettingsConfigDict(env_file=".env")
+    # extra="ignore" (round 433, ISS-636): BaseSettings otherwise defaults to
+    # extra="forbid", so ANY undeclared key in .env (SMTP_HOST, APP_ENV,
+    # JWT_SECRET_KEY, SITE_URL, ...) made Settings() itself raise at import —
+    # a developer copying .env.example would find the backend refusing to
+    # start. With ignore, undeclared keys pass through untouched; they are
+    # still visible to the direct readers via load_dotenv() above (emailer
+    # SMTP/SITE_LANGUAGE, auth JWT, is_development APP_ENV).
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()
