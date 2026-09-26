@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 438,
+  "round": 439,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-25T13:25:48+00:00",
+  "updated_at": "2026-09-26T06:37:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 437,
+      "touched_round": 438,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -33099,11 +33099,11 @@
     "ISS-637": {
       "id": "ISS-637",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-25T06:28:34+00:00",
-      "updated_at": "2026-09-25T06:28:34+00:00",
-      "touched_round": 431,
+      "updated_at": "2026-09-26T06:37:00+00:00",
+      "touched_round": 438,
       "title": "Admin CSV/backup exports materialize all rows in RAM (ORM .all() + full StringIO before streaming)",
       "severity": "low"
     },
@@ -33325,6 +33325,41 @@
       "touched_round": 437,
       "title": "round-438: robots.txt Disallow rules for private/auth/API paths",
       "commit": "2cc3e86a"
+    },
+    "TASK-561": {
+      "id": "TASK-561",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T06:36:59+00:00",
+      "updated_at": "2026-09-26T06:37:00+00:00",
+      "touched_round": 438,
+      "category": "performance",
+      "severity": "medium",
+      "title": "Stream admin CSV exports (id-keyset for posts, yield_per for comments) instead of .all()+full-StringIO"
+    },
+    "DEC-486": {
+      "id": "DEC-486",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T06:36:59+00:00",
+      "updated_at": "2026-09-26T06:36:59+00:00",
+      "touched_round": 438,
+      "title": "Close round 439 (streaming CSV exports, ISS-637 satisfied)",
+      "rationale": "Completed the deferred backlog item ISS-637 (recorded round-433, rated LOW): both admin CSV exports materialized every ORM row via .all() (up to 100k) and the whole CSV in one StringIO before streaming a single chunk - O(n) memory and no bytes until the tail was serialized, so an early-closing client still paid the whole cost. Now the posts export keysets by id (WHERE id<last ORDER BY id DESC LIMIT 500) because its tags joinedload is a joined collection that Query.yield_per refuses; comments export iterates its scalar query with Query.yield_per(500) in the same created_at-desc order. Both stream via a shared _csv_chunks helper emitting one csv.writer row per chunk, byte-identical to the old single pass (the existing contract tests still read identical .text bodies, now via a generator-backed StreamingResponse). Liveness is safe: FastAPI defers get_db teardown until a streaming response finishes, so per-page re-queries inside the generator keep a live session (verified by the passing tests). VERIFY: 2 new regression tests seed 503 rows (crossing the 500-row page boundary) asserting order, no drops and no duplicates; all 17 export tests pass on SQLite and PG; full backend suite 1919 green (93.54%); ruff clean. Continuation of the reactivated quality loop (rounds 436-439).",
+      "alternatives_rejected": "SQLAlchemy Query.yield_per for the posts export too (the joined tags collection makes yield_per raise - keyset paging is the compatible deterministic choice); a single save-to-tempfile then stream (no first-byte latency gain and disk I/O, and still a full serialization before streaming); leaving ISS-637 as a documented no-op (the item was rated LOW but the fix is small, fully testable and removes a real O(n) spike on an admin endpoint)."
+    },
+    "CHG-788": {
+      "id": "CHG-788",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T06:36:59+00:00",
+      "updated_at": "2026-09-26T06:36:59+00:00",
+      "touched_round": 438,
+      "title": "round-439: streaming CSV exports (id-keyset posts, yield_per comments)",
+      "commit": "65295b63"
     }
   },
   "edges": [
@@ -50131,6 +50166,30 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-25T13:25:48+00:00"
+    },
+    {
+      "from": "TASK-561",
+      "to": "ISS-637",
+      "type": "addresses",
+      "created_at": "2026-09-26T06:36:59+00:00"
+    },
+    {
+      "from": "CHG-788",
+      "to": "ISS-637",
+      "type": "resolves",
+      "created_at": "2026-09-26T06:37:00+00:00"
+    },
+    {
+      "from": "CHG-788",
+      "to": "TASK-561",
+      "type": "implements",
+      "created_at": "2026-09-26T06:37:00+00:00"
+    },
+    {
+      "from": "DEC-486",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-26T06:37:00+00:00"
     }
   ]
 }
