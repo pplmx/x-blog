@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 441,
+  "round": 442,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T07:33:46+00:00",
+  "updated_at": "2026-09-26T07:58:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 440,
+      "touched_round": 441,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33438,6 +33438,49 @@
       "touched_round": 440,
       "commit": "bdef560e",
       "summary": "reader login surfaces localized error messages instead of the raw ofetch string"
+    },
+    "ISS-643": {
+      "id": "ISS-643",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T07:58:26+00:00",
+      "updated_at": "2026-09-26T07:58:50+00:00",
+      "touched_round": 441,
+      "description": "Reader login/2FA/register failures all read as a generic network error: useReaderAuth rethrows every failure as a bare Error(apiErrorMessage(...)) that drops the HTTP status, so the login page (which localizes on statusCode) can never tell a credential rejection from a network failure"
+    },
+    "TASK-564": {
+      "id": "TASK-564",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T07:58:26+00:00",
+      "updated_at": "2026-09-26T07:58:50+00:00",
+      "touched_round": 441,
+      "category": "correctness",
+      "severity": "high"
+    },
+    "DEC-489": {
+      "id": "DEC-489",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T07:58:49+00:00",
+      "updated_at": "2026-09-26T07:58:49+00:00",
+      "touched_round": 441,
+      "rationale": "Reader-auth failures must carry their HTTP status so the login page can localize the known business rejections. Wrong email/password and a bad authenticator code are one indistinguishable 401 (anti-oracle, DEC-401); duplicate registration is the one 400. A toAuthError helper (mirroring the existing resetPassword pattern) keeps the apiErrorMessage human text AND attaches statusCode; the page maps 401/400 to localized lines, then falls back to the backend's human envelope, then any non-technical message, then the generic network line — the raw ofetch technical string is never shown.",
+      "alternatives_rejected": "Showing the backend's English envelope text for everything (unlocalized, backend-dependent); showing the raw ofetch technical string (anti-pattern, round-433); localizing purely on the message content (fragile against backend wording changes)"
+    },
+    "CHG-791": {
+      "id": "CHG-791",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T07:58:49+00:00",
+      "updated_at": "2026-09-26T07:58:49+00:00",
+      "touched_round": 441,
+      "commit": "1a6bb4df",
+      "summary": "useReaderAuth preserves HTTP status on thrown errors so login/2FA/register map to localized lines"
     }
   },
   "edges": [
@@ -50322,6 +50365,36 @@
       "to": "TASK-563",
       "type": "governs",
       "created_at": "2026-09-26T07:33:46+00:00"
+    },
+    {
+      "from": "ISS-643",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-26T07:58:26+00:00"
+    },
+    {
+      "from": "TASK-564",
+      "to": "ISS-643",
+      "type": "addresses",
+      "created_at": "2026-09-26T07:58:26+00:00"
+    },
+    {
+      "from": "CHG-791",
+      "to": "ISS-643",
+      "type": "resolves",
+      "created_at": "2026-09-26T07:58:49+00:00"
+    },
+    {
+      "from": "CHG-791",
+      "to": "TASK-564",
+      "type": "implements",
+      "created_at": "2026-09-26T07:58:49+00:00"
+    },
+    {
+      "from": "DEC-489",
+      "to": "TASK-564",
+      "type": "governs",
+      "created_at": "2026-09-26T07:58:50+00:00"
     }
   ]
 }
