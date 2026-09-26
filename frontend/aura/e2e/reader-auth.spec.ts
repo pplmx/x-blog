@@ -85,6 +85,31 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		await expect(page.locator("h1")).toContainText("喜欢的文章");
 	});
 
+	test("a wrong password shows the localized error, never the raw ofetch string", async ({
+		page,
+		request,
+	}) => {
+		// Wrong email/password is a deliberate single 401 on the backend
+		// ("Incorrect email or password", anti-oracle, DEC-401); the frontend maps
+		// it to the localized zh line (rounds 441/442) — and must never surface
+		// the ofetch technical string or a misleading generic network error, or
+		// navigate away from the form.
+		const email = freshEmail();
+		await registerReader(request, email);
+
+		await page.goto("/login");
+		await page.locator("main input[type='email']").fill(email);
+		await page.locator('input[type="password"]').fill("definitely-wrong-pass");
+		await page.locator("main form").press("Enter");
+
+		const alert = page.locator('[role="alert"]');
+		await expect(alert).toContainText("邮箱或密码不正确");
+		await expect(alert).not.toContainText("[POST]");
+		await expect(alert).not.toContainText("网络错误");
+		// No navigation on a failed sign-in; the form stays for another try.
+		expect(page.url()).toContain("/login");
+	});
+
 	test("reader token cannot access admin API (audience separation)", async ({ request }) => {
 		const email = freshEmail();
 		const { access_token } = await registerReader(request, email);
