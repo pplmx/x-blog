@@ -42,6 +42,26 @@ const twoFactorStep = ref(false);
 const mfaToken = ref("");
 const totpCode = ref("");
 
+/**
+ * Turn a failed reader-auth call into a reader-presentable message. The api
+ * layer (`command`) rethrows ofetch errors whose `.message` is the technical
+ * "[POST] \"…\": 400 …" string — never show that (same rule as the comment
+ * form, round-433). Map the known 400s to localized lines, then fall back to
+ * the backend's human envelope message, then to a generic network line.
+ */
+function readerAuthErrorMessage(e: unknown): string {
+	const status = (e as { statusCode?: number })?.statusCode ?? (e as { status?: number })?.status;
+	if (status === 400) {
+		if (mode.value === "register") return t("reader.login.errors.emailRegistered");
+		return twoFactorStep.value
+			? t("reader.login.errors.twoFactorCode")
+			: t("reader.login.errors.invalidCredentials");
+	}
+	const envelope = (e as { data?: { error?: { message?: string } } })?.data?.error?.message;
+	if (typeof envelope === "string" && envelope.length > 0) return envelope;
+	return t("reader.login.errors.network");
+}
+
 // Mode toggle announced to AT (aria-pressed) and, on switching to register,
 // focus moves into the newly revealed display-name field so keyboard/AT users
 // aren't left wondering where the extra input appeared.
@@ -103,7 +123,7 @@ async function handleSubmit() {
 		await useLikeSync().mergeLocalToCloud();
 		navigateTo(redirectTarget.value, { replace: true });
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");
+		error.value = readerAuthErrorMessage(e);
 	} finally {
 		isPending.value = false;
 	}
@@ -121,7 +141,7 @@ async function handle2faSubmit() {
 		await useLikeSync().mergeLocalToCloud();
 		navigateTo(redirectTarget.value, { replace: true });
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t("reader.login.errors.network");
+		error.value = readerAuthErrorMessage(e);
 	} finally {
 		isPending.value = false;
 	}

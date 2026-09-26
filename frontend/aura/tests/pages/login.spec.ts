@@ -87,6 +87,26 @@ describe("login page", () => {
 		expect(loginMock).toHaveBeenCalledWith("r@example.com", "secret123");
 	});
 
+	it("shows the localized error for a wrong-password 400 instead of the raw ofetch string", async () => {
+		// The api layer rethrows ofetch errors whose `.message` is the technical
+		// "[POST] \"...\": 400 ..." string; the friendly envelope lives at
+		// `data.error.message` (round-441, same rule as the comment form).
+		loginMock.mockRejectedValue({
+			statusCode: 400,
+			data: { error: { message: "Incorrect email or password" } },
+		});
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("wrong");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		// The mapped 400 line wins over the envelope message.
+		expect(wrapper.text()).toContain("邮箱或密码不正确");
+		expect(wrapper.text()).not.toContain("Incorrect email or password");
+		expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+	});
+
 	it("ignores a redundant submit while a login is in flight (deep-dive finding)", async () => {
 		// A never-resolving login keeps isPending true across a double submit, so
 		// the second event (Enter then click, or a pre-paint double-fire) must be
@@ -249,6 +269,34 @@ describe("two-factor login step (round 364, DEC-401)", () => {
 		expect(navMock).not.toHaveBeenCalled();
 		// Still on the step so a fresh code can be tried.
 		expect(wrapper.find('input[autocomplete="one-time-code"]').exists()).toBe(true);
+		vi.unstubAllGlobals();
+	});
+
+	it("maps a 2FA 400 to the localized code-error line, not the raw envelope", async () => {
+		vi.stubGlobal("useRoute", () => ({ query: {} }));
+		loginMock.mockResolvedValue(challenge);
+		// Backend envelope: {"error": {"message": "Invalid or expired login attempt"}}.
+		login2FAMock.mockRejectedValue({
+			statusCode: 400,
+			data: { error: { message: "Invalid or expired login attempt" } },
+		});
+		const navMock = vi.fn();
+		vi.stubGlobal("navigateTo", navMock);
+		const wrapper = mountLogin();
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		await wrapper.find('input[autocomplete="one-time-code"]').setValue("000000");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		// A wrong code must never surface the technical "[POST] ..." string or the
+		// backend's English envelope — the localized line wins (round-441).
+		expect(wrapper.text()).toContain("验证码错误");
+		expect(wrapper.text()).not.toContain("Invalid or expired login attempt");
+		expect(navMock).not.toHaveBeenCalled();
 		vi.unstubAllGlobals();
 	});
 });

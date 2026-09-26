@@ -21,7 +21,10 @@
 			"registerAction": "创建账号",
 			"backToBookmarks": "返回收藏",
 			"errors": {
-				"network": "网络错误，请重试。"
+				"network": "网络错误，请重试。",
+				"invalidCredentials": "邮箱或密码不正确。",
+				"twoFactorCode": "验证码错误，请重试。",
+				"emailRegistered": "该邮箱已注册。"
 			},
 			"twoFactorTitle": "输入你的验证码",
 			"twoFactorSubtitle": "是你本人，{email}——请输入身份验证器 App 中的验证码以确认。",

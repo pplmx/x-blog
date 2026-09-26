@@ -21,7 +21,10 @@
 			"registerAction": "Create account",
 			"backToBookmarks": "Back to bookmarks",
 			"errors": {
-				"network": "A network error occurred. Please try again."
+				"network": "A network error occurred. Please try again.",
+				"invalidCredentials": "Incorrect email or password.",
+				"twoFactorCode": "Invalid authenticator code. Please try again.",
+				"emailRegistered": "This email is already registered."
 			},
 			"twoFactorTitle": "Enter your authentication code",
 			"twoFactorSubtitle": "It's you, {email} — now prove it with a code from your authenticator app.",

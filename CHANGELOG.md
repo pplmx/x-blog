@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🗣️ **Reader login/code-step now show localized messages instead of the raw
+  ofetch error string (round 441)** — when the backend rejected credentials the
+  login page surfaced `e.message`, the api layer's rethrown ofetch technical
+  string (e.g. `[POST] "...": 400 ...`), to the user — the exact anti-pattern
+  the comment form fixed in round 433. Wrong email/password, an invalid 2FA
+  code, and an already-registered email are now mapped to localized lines;
+  rarer errors fall back to the backend's human envelope message, then to a
+  generic network line. The raw technical string is never shown. (TASK-563,
+  ISS-642)
 - 🐛 **Backup restore now rejects unbounded comment arrays (round 440)** — the
   restore guard capped the post count but a single post's `comments` array was
   otherwise unbounded, so one crafted snapshot could smuggle an arbitrary
