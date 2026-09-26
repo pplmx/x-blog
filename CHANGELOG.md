@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ♿ **Auth a11y + link contrast + live counts + modal focus traps (round 448)** —
+  a reader/auth-focused a11y pass fixed four concrete gaps. (1) The auth
+  inputs (login/register, 2FA code, forgot/reset-password, admin login) had
+  sibling labels with no `for`/`id` binding, so a screen reader announced bare
+  "edit text" for every field — the least-accessible surface of the product
+  is now the most-tested one. (2) Back-home / print-PDF / footer / discussion
+  links rendered `text-gray-400` (~2.5:1) on white — below the 3:1 floor for
+  interactive text — and visually read as disabled; bumped to AA gray-500.
+  (3) Like/follower counts mutate after a server round-trip but nobody heard
+  them: added persistent `sr-only role=status` live regions that re-announce
+  the settled count (post likes, comment/reply likes, follower count), and the
+  search page's live region now announces the settled result count and the
+  empty state, not just the pagination page. (4) The markdown lightbox and the
+  mobile TOC sheet leaked focus on the very first Shift+Tab: focus lands on
+  the `tabindex="-1"` dialog root, which the trap did not treat as a wrap
+  boundary, so a keyboard user fell out behind the `aria-modal` overlay on the
+  first keypress. (ISS-650)
 - 🔠 **KaTeX webfonts now actually ship in the production build (round 445)** —
   main.css's `@import "katex/dist/katex.min.css"` was inlined by the repo's
   postcss-import, which copied the stylesheet's relative `url(fonts/…)`
@@ -17,14 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and every math block 404'd its webfonts (rendering with broken fallback
   glyphs; the math e2e only asserted `.katex` elements exist, so it never
   caught it). The stylesheet is now a direct Vite `css` entry, which resolves
-  and emits all 59 font assets with hashed names. (TASK-565, ISS-647)
+  and emits all 59 font assets with hashed names. (ISS-647)
 - 🖼️ **Shared `ReaderAvatar` component with broken-image fallback (round 447)**
   — the img-if-set-else-initial-letter avatar pattern was copy-pasted across
   the header menu, comment thread and reader profile, and every copy rendered
   a broken-image icon when the referenced static file was gone (out-of-band
   deletion or a DB restore without its static dir). The new component
   consolidates the pattern and swaps to the letter glyph on `@error`, with the
-  size/glyph tuned per site. (TASK-566, ISS-649)
+  size/glyph tuned per site. (ISS-649)
 - 🧭 **Admin surfaces: expired-session 401 routing + localized error messages
   (round 446)** — the dashboard's analytics loaders, CSV/backup download,
   restore and pending-comments refresh called raw `$fetch` with `authHeaders()`,
@@ -37,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   readers/newsletter/dashboard/media route through `apiErrorMessage`. The post
   editor's slug/cover placeholders are localized, calendar chips use NuxtLink
   (SPA nav instead of a full reload), and taxonomy create buttons show a busy
-  spinner while in flight. (TASK-567, ISS-648)
+  spinner while in flight. (ISS-648)
 - 🐛 **e2e: /discussion no longer 500s in production, stale prefs schema
   corrected, delete-confirm dialog accepted (round 445)** — (1) the
   /discussion page returned a fixed 500 in the production build ("Cannot access
@@ -48,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authoritative prefs have 10 fields — updated with the mention/reader_comment
   kinds documented. (3) The inbox delete e2e never deleted its row because
   `window.confirm` was auto-dismissed (a cancel) — the click now accepts the
-  dialog. (TASK-564, ISS-644/645/646; GH #52/#53/#55)
+  dialog. (ISS-644/645/646; GH #52/#53/#55)
 - 🗣️ **Reader login, 2FA code-step and registration now surface localized
   error messages with a correct fallback chain (rounds 441/442)** — a failed
   sign-in showed the backend's raw English envelope text to the reader (e.g.
