@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+- 🖼️ **超宽的 mermaid 图在手机上不再裁掉左边缘（round 448）**——图表容器此前是
+  `flex justify-center overflow-x-auto`：比视口宽的图会向两侧溢出，而
+  `scrollLeft` 不能为负，于是宽流程图的起点在小屏上永远滚不到（flex 溢出裁剪
+  陷阱）。现改为 `[&>svg]:ml-auto`——能放下时靠 auto margin 居中，溢出时塌缩到
+  可到达的左边缘。（ISS-652）
 - 🔒 **读者自助写接口补上限流；统计路径参数加界限（round 448）**——后端边界审查发现
   四个认证写路由悄悄漏掉了同侪写接口都有的 `@limiter.limit`：`PUT/DELETE
   /posts/{id}/subscription`（每次切换都写一条 `CommentSubscription`，之后每个

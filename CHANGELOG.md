@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🖼️ **Wide mermaid diagrams no longer clip their left edge on mobile (round 448)** —
+  the diagram container was `flex justify-center overflow-x-auto`: a diagram
+  wider than the viewport overflows to *both* sides and `scrollLeft` can't go
+  negative, so the start of a wide flowchart was permanently unreachable on
+  small screens (the flex-overflow clip trap). Now `[&>svg]:ml-auto` — fitting
+  diagrams stay centered by the auto margin, and an overflowing one collapses
+  to a reachable left edge. (ISS-652)
 - 🔒 **Reader self-service writes throttled; analytics path param bounded (round 448)** —
   a backend edge-case audit found four authenticated write routes silently
   missing the `@limiter.limit` their sibling writes carry: PUT/DELETE

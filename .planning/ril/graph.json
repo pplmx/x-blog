@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 447,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T16:02:11+00:00",
+  "updated_at": "2026-09-26T16:30:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -19305,7 +19305,7 @@
       "version": 2,
       "created_at": "2026-09-07T05:59:20+00:00",
       "updated_at": "2026-09-07T06:01:14+00:00",
-      "touched_round": 397,
+      "touched_round": 447,
       "title": "frontend-aura",
       "description": "Nuxt 4 frontend at frontend/aura (Vue 3 pages, components, composables)"
     },
@@ -33694,6 +33694,28 @@
       "updated_at": "2026-09-26T16:01:47+00:00",
       "touched_round": 447,
       "commit": "01feffb10af1b2e81b8438afe391d5163f6368af"
+    },
+    "ISS-652": {
+      "id": "ISS-652",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T16:29:14+00:00",
+      "updated_at": "2026-09-26T16:30:05+00:00",
+      "touched_round": 447,
+      "title": "Wide mermaid diagrams clip their left edge on mobile (justify-center + overflow-x-auto)",
+      "severity": "medium",
+      "summary": "MarkdownContent renders mermaid with flex justify-center + overflow-x-auto: a diagram wider than the viewport splits its overhang to both sides and scrollLeft cannot go negative, so the diagram start is permanently unreachable on small screens. Fixed with [&>svg]:ml-auto (centers fitting diagrams, collapses to reachable left edge on overflow)."
+    },
+    "CHG-799": {
+      "id": "CHG-799",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T16:29:40+00:00",
+      "updated_at": "2026-09-26T16:29:40+00:00",
+      "touched_round": 447,
+      "commit": "949e3fb20a752b1d993c3b2e63e50d6a766bf8c5"
     }
   },
   "edges": [
@@ -50692,6 +50714,18 @@
       "to": "TASK-566",
       "type": "implements",
       "created_at": "2026-09-26T16:02:10+00:00"
+    },
+    {
+      "from": "CHG-799",
+      "to": "ISS-652",
+      "type": "resolves",
+      "created_at": "2026-09-26T16:29:40+00:00"
+    },
+    {
+      "from": "ISS-652",
+      "to": "COMP-008",
+      "type": "located_in",
+      "created_at": "2026-09-26T16:29:40+00:00"
     }
   ]
 }
