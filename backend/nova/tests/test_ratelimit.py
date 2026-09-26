@@ -147,3 +147,57 @@ class TestAdminWriteEndpointsRateLimited:
             "admin_batch_approve_comments",
         ):
             assert f"app.routers.admin.{fn_name}" in registered
+
+
+class TestReaderWriteEndpointsRateLimited:
+    """Reader self-service writes must carry the WRITE rate limit.
+
+    Regression guard mirroring the admin write-endpoint guard (TASK-034):
+    slowapi registers each decorated route in ``limiter._route_limits`` at
+    import time, so registry presence is the signal. The comment-thread
+    subscription toggle writes a CommentSubscription row (fan-out later on
+    every approved comment) and the notification-prefs/locale toggles hit the
+    reader account row; each had silently dropped the @limiter.limit its
+    sibling writes carry (backend edge-case audit, ISS-651).
+    """
+
+    def test_reader_thread_subscription_writes_are_rate_limited(self):
+        from app.limiter import limiter
+
+        registered = set(limiter._route_limits)
+        for fn_name in ("subscribe_to_post_thread", "unsubscribe_from_post_thread"):
+            assert f"app.routers.posts.{fn_name}" in registered, (
+                f"post thread subscription write {fn_name} is not rate-limited"
+            )
+
+    def test_reader_self_service_writes_are_rate_limited(self):
+        from app.limiter import limiter
+
+        registered = set(limiter._route_limits)
+        for fn_name in ("set_my_notification_pref", "set_my_reader_locale"):
+            assert f"app.routers.reader.{fn_name}" in registered, (
+                f"reader self-service write {fn_name} is not rate-limited"
+            )
+
+    def test_analytics_post_views_trend_uses_id_bounded_path_param(self):
+        """The per-post views-trend path param must be IdInt (422 over uncaught 500).
+
+        A raw ``int`` path binding lets an out-of-int-range value reach the
+        DB and throw psycopg2 OverflowError, producing a logged 500 instead of
+        the codebase's documented 422-on-malformed-input policy. The IdInt
+        bound (ge=1, le=2_147_483_647) upper-caps it the way its sibling
+        stats routes already do.
+        """
+        import inspect
+        from typing import get_origin
+
+        from app.routers.analytics import post_views_trend
+
+        sig = inspect.signature(post_views_trend)
+        post_id_ann = sig.parameters["post_id"].annotation
+
+        # IdInt is Annotated[int, Field(ge=1, le=...)].
+
+        assert get_origin(post_id_ann) is not None or post_id_ann is not int, (
+            "post_views_trend post_id must not be a bare int (500 on overflow)"
+        )

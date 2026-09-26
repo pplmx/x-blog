@@ -313,8 +313,10 @@ def get_post_subscription_status(
 
 
 @router.put("/{post_id}/subscription", response_model=PostSubscriptionStatus, status_code=201)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def subscribe_to_post_thread(
     post_id: IdInt,
+    request: Request,  # noqa: ARG001
     response: Response,
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount = Depends(auth.get_current_reader),
@@ -332,8 +334,10 @@ def subscribe_to_post_thread(
 
 
 @router.delete("/{post_id}/subscription", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def unsubscribe_from_post_thread(
     post_id: IdInt,
+    request: Request,  # noqa: ARG001
     db: Session = Depends(get_db),
     reader: auth.ReaderAccount = Depends(auth.get_current_reader),
 ):

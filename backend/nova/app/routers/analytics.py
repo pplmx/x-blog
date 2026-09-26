@@ -15,6 +15,7 @@ from app import crud, models
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
+from app.schemas import IdInt
 
 router = APIRouter(prefix="/api/admin/stats/views", tags=["stats"])
 
@@ -41,7 +42,7 @@ def views_trend(
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
 def post_views_trend(
     request: Request,  # noqa: ARG001
-    post_id: int,
+    post_id: IdInt,
     days: int = Query(30, ge=1, le=365, description="number of days to include"),
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_admin),

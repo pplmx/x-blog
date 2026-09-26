@@ -3109,7 +3109,9 @@ def get_my_notification_prefs(
 
 
 @router.patch("/me/notification-preferences", response_model=NotificationPrefs)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def set_my_notification_pref(
+    request: Request,  # noqa: ARG001
     payload: NotificationPrefUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
@@ -3148,7 +3150,9 @@ class ReaderLocaleUpdate(BaseModel):
 
 
 @router.put("/me/locale", response_model=ReaderLocaleUpdate)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 def set_my_reader_locale(
+    request: Request,  # noqa: ARG001
     payload: ReaderLocaleUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: Session = Depends(get_db),
