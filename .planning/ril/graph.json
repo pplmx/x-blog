@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 440,
+  "round": 441,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T06:51:20+00:00",
+  "updated_at": "2026-09-26T07:33:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -22,7 +22,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 436,
+      "touched_round": 440,
       "title": "frontend-aura",
       "description": "Nuxt 4 Vue 3 TypeScript frontend at frontend/aura; composables; admin pages; e2e Playwright; biome lint"
     },
@@ -33395,6 +33395,49 @@
       "touched_round": 439,
       "title": "round-440: backup restore total-comments cap",
       "commit": "7cf1824b"
+    },
+    "ISS-642": {
+      "id": "ISS-642",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T07:32:29+00:00",
+      "updated_at": "2026-09-26T07:33:46+00:00",
+      "touched_round": 440,
+      "description": "Reader login and 2FA code-step show the raw ofetch technical string ([POST] \\\"...\\\": 400 ...) on rejected credentials — the round-433 anti-pattern"
+    },
+    "TASK-563": {
+      "id": "TASK-563",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T07:32:30+00:00",
+      "updated_at": "2026-09-26T07:33:46+00:00",
+      "touched_round": 440,
+      "category": "correctness",
+      "severity": "medium"
+    },
+    "DEC-488": {
+      "id": "DEC-488",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T07:33:30+00:00",
+      "updated_at": "2026-09-26T07:33:30+00:00",
+      "touched_round": 440,
+      "rationale": "Round-433 established that the api layer's rethrown ofetch error message (a technical [POST] \\\"...\\\": 400 ... string) must never reach users; the comment form maps 400s to localized lines. The reader login page still showed e.message directly on rejected credentials. Map known 400s (bad password, invalid 2FA code, email registered) to localized lines, fall back to the backend's human envelope then a generic network line.",
+      "alternatives_rejected": "Showing the backend envelope message directly for all errors (loses localization for the three most common 400s); keeping e.message (exposes a technical string to readers)"
+    },
+    "CHG-790": {
+      "id": "CHG-790",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T07:33:30+00:00",
+      "updated_at": "2026-09-26T07:33:30+00:00",
+      "touched_round": 440,
+      "commit": "bdef560e",
+      "summary": "reader login surfaces localized error messages instead of the raw ofetch string"
     }
   },
   "edges": [
@@ -50249,6 +50292,36 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-26T06:51:20+00:00"
+    },
+    {
+      "from": "ISS-642",
+      "to": "COMP-002",
+      "type": "located_in",
+      "created_at": "2026-09-26T07:33:30+00:00"
+    },
+    {
+      "from": "TASK-563",
+      "to": "ISS-642",
+      "type": "addresses",
+      "created_at": "2026-09-26T07:33:30+00:00"
+    },
+    {
+      "from": "CHG-790",
+      "to": "ISS-642",
+      "type": "resolves",
+      "created_at": "2026-09-26T07:33:46+00:00"
+    },
+    {
+      "from": "CHG-790",
+      "to": "TASK-563",
+      "type": "implements",
+      "created_at": "2026-09-26T07:33:46+00:00"
+    },
+    {
+      "from": "DEC-488",
+      "to": "TASK-563",
+      "type": "governs",
+      "created_at": "2026-09-26T07:33:46+00:00"
     }
   ]
 }
