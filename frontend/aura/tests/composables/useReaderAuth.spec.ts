@@ -279,6 +279,56 @@ describe("useReaderAuth", () => {
 			const { login } = useReaderAuth();
 			await expect(login("r@example.com", "pw")).rejects.toThrow("network layer error");
 		});
+
+		// Round-442: login/login2FA/register dropped the HTTP status when they
+		// rethrew (only resetPassword kept it), so every real failure read as a
+		// network error on the login page. The business 400 is the signal the
+		// page uses to pick the localized line, so it must ride the thrown Error.
+		it("login carries the human message AND the business 401 status", async () => {
+			// Wrong email/password is a single indistinguishable 401 on the backend
+			// (anti-oracle, DEC-401) — the status is what the page localizes on.
+			readerLoginMock.mockResolvedValue(
+				backendErr(
+					'[POST] "http://x/api/reader/login": 401 Unauthorized',
+					"Incorrect email or password",
+					401,
+				),
+			);
+			const { login } = useReaderAuth();
+			const err = await login("r@example.com", "wrong").catch((e: unknown) => e);
+			expect((err as Error).message).toBe("Incorrect email or password");
+			expect((err as { statusCode?: number }).statusCode).toBe(401);
+		});
+
+		it("register carries the human message AND the business 400 status", async () => {
+			readerRegisterMock.mockResolvedValue(
+				backendErr(
+					'[POST] "http://x/api/reader/register": 400 Bad Request',
+					"Email already registered",
+					400,
+				),
+			);
+			const { register } = useReaderAuth();
+			const err = await register("r@example.com", "secret123").catch((e: unknown) => e);
+			expect((err as Error).message).toBe("Email already registered");
+			expect((err as { statusCode?: number }).statusCode).toBe(400);
+		});
+
+		it("login2FA carries the human message AND the business 401 status", async () => {
+			// A bad code and a bogus/expired challenge are one indistinguishable 401
+			// (anti-oracle, DEC-401) — the status is what the page localizes on.
+			readerLogin2FAMock.mockResolvedValue(
+				backendErr(
+					'[POST] "http://x/api/reader/login/2fa": 401 Unauthorized',
+					"Invalid or expired login attempt",
+					401,
+				),
+			);
+			const { login2FA } = useReaderAuth();
+			const err = await login2FA("mfa-x", "000000").catch((e: unknown) => e);
+			expect((err as Error).message).toBe("Invalid or expired login attempt");
+			expect((err as { statusCode?: number }).statusCode).toBe(401);
+		});
 	});
 
 	describe("resetPassword (DEC-286, TASK-371)", () => {

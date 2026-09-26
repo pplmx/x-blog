@@ -91,10 +91,12 @@ describe("login page", () => {
 		// The api layer rethrows ofetch errors whose `.message` is the technical
 		// "[POST] \"...\": 400 ..." string; the friendly envelope lives at
 		// `data.error.message` (round-441, same rule as the comment form).
-		loginMock.mockRejectedValue({
-			statusCode: 400,
-			data: { error: { message: "Incorrect email or password" } },
-		});
+		// useReaderAuth rethrows as a plain Error carrying the apiErrorMessage
+		// output AND the HTTP status (round-441/442) — mirror that here. A wrong
+		// email/password is a deliberate single 401 on the backend (anti-oracle).
+		loginMock.mockRejectedValue(
+			Object.assign(new Error("Incorrect email or password"), { statusCode: 401 }),
+		);
 		const wrapper = mountLogin();
 		await wrapper.find('input[type="email"]').setValue("r@example.com");
 		await wrapper.find('input[type="password"]').setValue("wrong");
@@ -105,6 +107,25 @@ describe("login page", () => {
 		expect(wrapper.text()).toContain("邮箱或密码不正确");
 		expect(wrapper.text()).not.toContain("Incorrect email or password");
 		expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+	});
+
+	it("maps a register-mode 400 to the already-registered line", async () => {
+		// Backend answer for a duplicate email is the one 400 in the flow
+		// (register is 201 on success); page maps it to a localized line.
+		registerMock.mockRejectedValue(
+			Object.assign(new Error("Email already registered"), { statusCode: 400 }),
+		);
+		const wrapper = mountLogin();
+		await wrapper.findAll("button")[1].trigger("click"); // switch to register
+		await wrapper.find('input[autocomplete="name"]').setValue("Riki");
+		await wrapper.find('input[type="email"]').setValue("r@example.com");
+		await wrapper.find('input[type="password"]').setValue("secret123");
+		await wrapper.find("form").trigger("submit.prevent");
+		await flushPromises();
+
+		expect(wrapper.text()).toContain("该邮箱已注册");
+		expect(wrapper.text()).not.toContain("[POST]");
+		expect(wrapper.text()).not.toContain("Email already registered");
 	});
 
 	it("ignores a redundant submit while a login is in flight (deep-dive finding)", async () => {
@@ -275,11 +296,13 @@ describe("two-factor login step (round 364, DEC-401)", () => {
 	it("maps a 2FA 400 to the localized code-error line, not the raw envelope", async () => {
 		vi.stubGlobal("useRoute", () => ({ query: {} }));
 		loginMock.mockResolvedValue(challenge);
-		// Backend envelope: {"error": {"message": "Invalid or expired login attempt"}}.
-		login2FAMock.mockRejectedValue({
-			statusCode: 400,
-			data: { error: { message: "Invalid or expired login attempt" } },
-		});
+		// useReaderAuth rethrows as a plain Error carrying the apiErrorMessage
+		// output AND the HTTP status (round-441/442) — mirror that here. A bad
+		// authenticator code is a deliberate single 401 on the backend
+		// (anti-oracle, DEC-401).
+		login2FAMock.mockRejectedValue(
+			Object.assign(new Error("Invalid or expired login attempt"), { statusCode: 401 }),
+		);
 		const navMock = vi.fn();
 		vi.stubGlobal("navigateTo", navMock);
 		const wrapper = mountLogin();

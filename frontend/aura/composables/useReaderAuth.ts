@@ -110,11 +110,30 @@ export function useReaderAuth() {
 		isAuthenticated.value = true;
 	};
 
+	/**
+	 * Turn a failed reader-auth query into a thrown Error that preserves BOTH
+	 * the human message AND the HTTP status. apiErrorMessage picks the backend's
+	 * envelope text (or a safe fallback), and the status rides along (a 401 is a
+	 * business-level rejection — wrong email/password or a bad authenticator
+	 * code, both deliberately one indistinguishable 401 — that the login page
+	 * must map to a localized line, NOT a generic network failure). Mirror of
+	 * the resetPassword pattern below; before this, login/login2FA/register
+	 * dropped the status so every failure read as "network".
+	 */
+	function toAuthError(err: unknown, fallback: string): Error & { statusCode?: number } {
+		const status =
+			(err as { statusCode?: number } | undefined)?.statusCode ??
+			(err as { status?: number } | undefined)?.status;
+		const thrown = new Error(apiErrorMessage(err, fallback)) as Error & { statusCode?: number };
+		if (status !== undefined) thrown.statusCode = status;
+		return thrown;
+	}
+
 	const login = async (email: string, password: string): Promise<ReaderLoginResponse> => {
 		const { readerLogin } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin({ email, password });
 		if (error.value) {
-			throw new Error(apiErrorMessage(error.value, "Login failed"));
+			throw toAuthError(error.value, "Login failed");
 		}
 		// 2FA readers (round 364, DEC-401): the first step only proves the
 		// password, so no session is stored here — the caller sees
@@ -136,7 +155,7 @@ export function useReaderAuth() {
 		const { readerLogin2FA } = await import("~~/api/reader/auth");
 		const { data, error } = await readerLogin2FA({ mfa_token: mfaToken, code });
 		if (error.value || !data.value?.access_token) {
-			throw new Error(apiErrorMessage(error.value, "Login failed"));
+			throw toAuthError(error.value, "Login failed");
 		}
 		setSession(data.value);
 		return data.value;
@@ -150,7 +169,7 @@ export function useReaderAuth() {
 		const { readerRegister } = await import("~~/api/reader/auth");
 		const { data, error } = await readerRegister({ email, password, display_name: displayName });
 		if (error.value || !data.value?.access_token) {
-			throw new Error(apiErrorMessage(error.value, "Registration failed"));
+			throw toAuthError(error.value, "Registration failed");
 		}
 		setSession(data.value);
 		return data.value;
@@ -176,17 +195,10 @@ export function useReaderAuth() {
 		const { confirmPasswordReset } = await import("~~/api/reader/auth");
 		const { data, error } = await confirmPasswordReset({ token, new_password: newPassword });
 		if (error.value || !data.value?.access_token) {
-			// Preserve the HTTP status (a 400 = used/expired reset token, i.e. a
-			// business-level rejection, NOT a network failure) on the thrown
-			// error so the reset page can tell "invalid link" from "network".
-			const status =
-				(error.value as { statusCode?: number } | undefined)?.statusCode ??
-				(error.value as { status?: number } | undefined)?.status;
-			const err = new Error(apiErrorMessage(error.value, "Password reset failed")) as Error & {
-				statusCode?: number;
-			};
-			if (status !== undefined) err.statusCode = status;
-			throw err;
+			// Status preserved (a 400 = used/expired reset token, i.e. a
+			// business-level rejection, NOT a network failure) so the reset page
+			// can tell "invalid link" from "network".
+			throw toAuthError(error.value, "Password reset failed");
 		}
 		updateToken(data.value);
 		return data.value;

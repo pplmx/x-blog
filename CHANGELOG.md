@@ -9,15 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- 🗣️ **Reader login/code-step now show localized messages instead of the raw
-  ofetch error string (round 441)** — when the backend rejected credentials the
-  login page surfaced `e.message`, the api layer's rethrown ofetch technical
-  string (e.g. `[POST] "...": 400 ...`), to the user — the exact anti-pattern
-  the comment form fixed in round 433. Wrong email/password, an invalid 2FA
-  code, and an already-registered email are now mapped to localized lines;
-  rarer errors fall back to the backend's human envelope message, then to a
-  generic network line. The raw technical string is never shown. (TASK-563,
-  ISS-642)
+- 🗣️ **Reader login, 2FA code-step and registration now surface localized
+  error messages with a correct fallback chain (rounds 441/442)** — a failed
+  sign-in showed the backend's raw English envelope text to the reader (e.g.
+  "Incorrect email or password"), but worse, the reader-auth composables
+  *dropped the HTTP status* when they rethrew the failure, so the login page
+  could not tell a wrong-password 400 from a network error — every real
+  rejection read as a misleading generic failure. `useReaderAuth` now preserves
+  the status code on the thrown Error (mirroring `resetPassword`), and the
+  login page maps the known 400s — wrong email/password, an invalid
+  authenticator code, an already-registered email — to localized lines, falling
+  back to the backend's human envelope message, then to any meaningful
+  non-technical message, then to a generic network line. The raw ofetch
+  technical string (`[POST] "...": 400 ...`) is never shown to a reader.
+  (TASK-563, ISS-642; TASK-564, ISS-643)
 - 🐛 **Backup restore now rejects unbounded comment arrays (round 440)** — the
   restore guard capped the post count but a single post's `comments` array was
   otherwise unbounded, so one crafted snapshot could smuggle an arbitrary

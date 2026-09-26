@@ -45,20 +45,35 @@ const totpCode = ref("");
 /**
  * Turn a failed reader-auth call into a reader-presentable message. The api
  * layer (`command`) rethrows ofetch errors whose `.message` is the technical
- * "[POST] \"…\": 400 …" string — never show that (same rule as the comment
- * form, round-433). Map the known 400s to localized lines, then fall back to
- * the backend's human envelope message, then to a generic network line.
+ * "[POST] \"…\": 401 …" string — never show that (same rule as the comment
+ * form, round-433).
+ *
+ * The reader-auth composables rethrow failures as a plain Error whose
+ * `.message` is apiErrorMessage's output (backend envelope text or a safe
+ * fallback) with the HTTP status preserved on `statusCode`. The backend is
+ * deliberately anti-oracle: a wrong email/password and a bad authenticator
+ * code are BOTH one indistinguishable 401 (reader.py, DEC-401) — so a 401 is
+ * the signal to map to the localized credentials line; a duplicate registration
+ * is the one 400. Everything else falls back to the backend's human envelope,
+ * then any non-technical `.message` (a 429/5xx carries meaning), then a
+ * generic network line.
  */
 function readerAuthErrorMessage(e: unknown): string {
 	const status = (e as { statusCode?: number })?.statusCode ?? (e as { status?: number })?.status;
-	if (status === 400) {
-		if (mode.value === "register") return t("reader.login.errors.emailRegistered");
+	if (status === 401) {
 		return twoFactorStep.value
 			? t("reader.login.errors.twoFactorCode")
 			: t("reader.login.errors.invalidCredentials");
 	}
+	if (mode.value === "register" && status === 400) {
+		return t("reader.login.errors.emailRegistered");
+	}
 	const envelope = (e as { data?: { error?: { message?: string } } })?.data?.error?.message;
 	if (typeof envelope === "string" && envelope.length > 0) return envelope;
+	// The raw ofetch technical string always starts with "[" ([METHOD] "url": …);
+	// a rendered message never does, so only surface it when it is not that.
+	const message = (e as { message?: unknown } | undefined)?.message;
+	if (typeof message === "string" && message.length > 0 && !message.startsWith("[")) return message;
 	return t("reader.login.errors.network");
 }
 
