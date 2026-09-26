@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **Reader self-service writes throttled; analytics path param bounded (round 448)** —
+  a backend edge-case audit found four authenticated write routes silently
+  missing the `@limiter.limit` their sibling writes carry: PUT/DELETE
+  `/posts/{id}/subscription` (each toggle writes a `CommentSubscription` row
+  that later fans out push/email on every approved comment), PATCH
+  `/me/notification-preferences` and PUT `/me/locale` (per-reader account
+  writes). All four now share the WRITE bucket. One admin stats route bound its
+  `post_id` path param as a bare `int` — an out-of-range path value reached the
+  DB and threw psycopg2 OverflowError behind a catch-all 500, the exact defect
+  class `IdInt` exists to prevent; it now binds `IdInt` like its sibling routes
+  (422 over uncaught 500). Regression guards appended to the rate-limit suite
+  mirroring the admin write-endpoint introspection test. All four are
+  authenticated routes, so this is consistency + robustness, not a live
+  exploit. (TASK-566, ISS-651)
 - ♿ **Auth a11y + link contrast + live counts + modal focus traps (round 448)** —
   a reader/auth-focused a11y pass fixed four concrete gaps. (1) The auth
   inputs (login/register, 2FA code, forgot/reset-password, admin login) had
@@ -25,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mobile TOC sheet leaked focus on the very first Shift+Tab: focus lands on
   the `tabindex="-1"` dialog root, which the trap did not treat as a wrap
   boundary, so a keyboard user fell out behind the `aria-modal` overlay on the
-  first keypress. (ISS-650)
+  first keypress. (TASK-565, ISS-650)
 - 🔠 **KaTeX webfonts now actually ship in the production build (round 445)** —
   main.css's `@import "katex/dist/katex.min.css"` was inlined by the repo's
   postcss-import, which copied the stylesheet's relative `url(fonts/…)`
