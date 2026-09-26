@@ -232,10 +232,11 @@ function cancel2fa() {
 
       <form v-if="!twoFactorStep" @submit.prevent="handleSubmit" class="space-y-5">
         <div v-if="mode === 'register'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label for="reader-display-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ t("reader.login.displayName") }}
           </label>
           <input
+            id="reader-display-name"
             ref="displayNameInput"
             v-model="displayName"
             type="text"
@@ -248,10 +249,12 @@ function cancel2fa() {
 
         <div>
           <label
+            for="reader-email"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.login.email") }}
           </label>
           <input
+            id="reader-email"
             v-model="email"
             type="email"
             autocomplete="email"
@@ -263,10 +266,12 @@ function cancel2fa() {
 
         <div>
           <label
+            for="reader-password"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.login.password") }}
           </label>
           <input
+            id="reader-password"
             v-model="password"
             type="password"
             :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
@@ -312,10 +317,12 @@ function cancel2fa() {
       <form v-else @submit.prevent="handle2faSubmit" class="space-y-5">
         <div>
           <label
+            for="reader-totp-code"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.login.twoFactorCodeLabel") }}
           </label>
           <input
+            id="reader-totp-code"
             v-model="totpCode"
             type="text"
             inputmode="numeric"

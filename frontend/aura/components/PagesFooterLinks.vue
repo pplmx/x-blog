@@ -19,7 +19,7 @@ const { data: pages } = await usePages();
       v-for="p in pages"
       :key="p.slug"
       :to="`/pages/${p.slug}`"
-      class="inline-flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors mr-4"
+      class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mr-4"
     >
       <Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
       {{ p.title }}

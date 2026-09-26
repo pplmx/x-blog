@@ -472,10 +472,17 @@ async function submitReply(id: number) {
     <!-- Moderation filters (RIL TASK-078, ISS-047) -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-6 flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <p class="text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t("admin.comments.status") }}
-        </label>
-        <div class="inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+        </p>
+        <!-- Segmented button group: a label element cannot target buttons, so
+             the filter set is grouped by role with an explicit accessible
+             name. -->
+        <div
+          role="group"
+          :aria-label="t('admin.comments.status')"
+          class="inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
+        >
           <button
             type="button"
             :aria-pressed="!flaggedOnly && statusFilter === 'all'"

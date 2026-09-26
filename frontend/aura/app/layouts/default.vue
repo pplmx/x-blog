@@ -354,7 +354,7 @@ onMounted(initTheme);
         <nav class="mb-6" :aria-label="t('common.footer.discussion')">
           <NuxtLink
             to="/discussion"
-            class="inline-flex items-center gap-1 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <Icon icon="lucide:messages-square" class="w-3.5 h-3.5" />
             {{ t('common.footer.discussion') }}
@@ -369,13 +369,13 @@ onMounted(initTheme);
             <Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
             <span>{{ t('common.footer.forDevelopers') }}</span>
           </div>
-          <div class="flex items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
-            <NuxtLink to="/" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.home') }}</NuxtLink>
-            <NuxtLink to="/about" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">{{ t('common.nav.about') }}</NuxtLink>
+          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <NuxtLink to="/" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{{ t('common.nav.home') }}</NuxtLink>
+            <NuxtLink to="/about" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{{ t('common.nav.about') }}</NuxtLink>
             <a
               href="/rss/feed.xml"
               type="application/rss+xml"
-              class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
               :title="t('common.footer.subscribeRss')"
             >
               <span class="inline-flex items-center gap-1.5">
@@ -383,7 +383,7 @@ onMounted(initTheme);
                 {{ t('common.footer.subscribeRss') }}
               </span>
             </a>
-            <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-gray-300 transition-colors">GitHub</a>
+            <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">GitHub</a>
           </div>
         </div>
       </div>

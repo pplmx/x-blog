@@ -1981,10 +1981,12 @@ describe("Post Detail Page", () => {
 			const wrapper = await mountPostPage({ $fetchImpl: fetchHandler });
 
 			// On mount the composable scrolled to the saved offset and the chip
-			// announces the jump (default test locale is zh).
+			// announces the jump (default test locale is zh). Scoped to the
+			// chip's testid: role="status" is also the permanent like-count
+			// live region, so a broad role selector is no longer unique.
 			await flushPromises();
 			await flushPromises();
-			const chip = wrapper.find('[role="status"]');
+			const chip = wrapper.find('[data-testid="resume-chip"]');
 			expect(chip.exists()).toBe(true);
 			expect(chip.text()).toContain("44%"); // 1400 / (4000 - 800)
 			expect(chip.text()).toContain("回到顶部");
@@ -1993,7 +1995,7 @@ describe("Post Detail Page", () => {
 			// Back-to-top dismisses the chip.
 			await wrapper.find('[data-testid="resume-back-to-top"]').trigger("click");
 			await flushPromises();
-			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="resume-chip"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 
@@ -2009,7 +2011,7 @@ describe("Post Detail Page", () => {
 
 			await flushPromises();
 			await flushPromises();
-			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="resume-chip"]').exists()).toBe(false);
 			wrapper.unmount();
 		});
 	});

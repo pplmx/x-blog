@@ -11,6 +11,7 @@
 		"views": "{count} 次阅读",
 		"readingTime": "{count} 分钟",
 		"likes": "喜欢",
+		"likesCount": "{count} 个赞",
 		"likeError": "点赞失败，请稍后重试。",
 		"notFoundTitle": "404 - 页面不存在",
 		"notFoundHeading": "页面迷路了",

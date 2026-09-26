@@ -1216,10 +1216,13 @@ function handleFileInput(e: Event) {
         </div>
 
         <div class="bg-gradient-to-br from-pink-50 dark:from-pink-900/20 to-white dark:to-gray-900 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-5">
-          <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+          <!-- Section heading for the tag multi-select; the per-tag labels
+               below are the accessible names for the checkboxes, so this
+               heading stays a plain <p>, not a <label> with no target. -->
+          <p class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             <Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
             {{ t("admin.postEdit.tags") }}
-          </label>
+          </p>
           <div v-if="tags.length > 0">
             <div class="relative mb-2">
               <Icon icon="lucide:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />

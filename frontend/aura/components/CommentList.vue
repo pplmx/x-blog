@@ -218,6 +218,11 @@
                 />
                 <span class="like-count">{{ comment.likes ?? 0 }}</span>
               </button>
+              <!-- Live region: per-comment count changes after a round-trip;
+                   announce the settled count (HeaderSearch pattern). -->
+              <span class="sr-only" role="status" aria-live="polite">
+                {{ t('components.commentList.likesCount', { count: comment.likes ?? 0 }) }}
+              </span>
               <!-- Comment flag/report for moderation (DEC-108, TASK-166): a
                    visitor flags an inappropriate comment; one per browser. -->
               <button
@@ -387,6 +392,10 @@
                 />
                 <span class="like-count">{{ reply.likes ?? 0 }}</span>
               </button>
+              <!-- Live region: the reply like count. -->
+              <span class="sr-only" role="status" aria-live="polite">
+                {{ t('components.commentList.likesCount', { count: reply.likes ?? 0 }) }}
+              </span>
               <button
                 type="button"
                 class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"

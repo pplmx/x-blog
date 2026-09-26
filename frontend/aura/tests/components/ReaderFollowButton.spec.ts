@@ -173,6 +173,9 @@ describe("ReaderFollowButton", () => {
 		// …and the session-expired prompt (with a way back to sign-in) shows.
 		expect(w.text()).toContain("common.sessionExpired");
 		expect(w.find('a[href="/login"]').exists()).toBe(true);
-		expect(w.find('[role="status"]').exists()).toBe(false);
+		// …with no stale "follow failed" bubble. (role="status" is also the
+		// always-announced follower-count live region, so assert on the error
+		// bubble text instead of the broad role selector.)
+		expect(w.text()).not.toContain("readerProfile.followFailed");
 	});
 });

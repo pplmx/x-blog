@@ -339,12 +339,32 @@ const paginationTokens = computed(() =>
 	),
 );
 
-// Screen-reader page announcement (round 397, same pattern as home): pagination
-// swaps the results in place, which is invisible to assistive tech — announce
-// the landed page when it changes.
-const pageAnnouncement = computed(() =>
-	t("common.state.pageAnnounce", { page: activeResult.value?.pagination?.page ?? 1 }),
-);
+// Screen-reader announcement (round 397, same pattern as home): pagination
+// swaps the results in place, which is invisible to assistive tech, and the
+// visible "<p>" summary is not live — so the region below announces the
+// settled result count the moment a query lands, the empty state, and the
+// landed page when navigation changes it (HeaderSearch pattern). Deliberately
+// persistent: only a text *change* triggers a polite announcement, so a stable
+// result set stays silent while pending swaps announce "Loading".
+const pageAnnouncement = computed(() => {
+	const pagination = activeResult.value?.pagination;
+	if (activePending.value || activeError.value || !pagination) {
+		return t("common.state.loading");
+	}
+	const count = pagination.total ?? 0;
+	const summary =
+		count === 0
+			? t("search.noResults.title")
+			: t(mode.value === "comments" ? "search.results.commentsSummary" : "search.results.summary", {
+					query: query.value,
+					count,
+				});
+	const page =
+		(pagination.total_pages ?? 1) > 1
+			? ` — ${t("common.state.pageAnnounce", { page: pagination.page ?? 1 })}`
+			: "";
+	return `${summary}${page}`;
+});
 
 // Out-of-range deep link (e.g. /search?q=foo&page=5 on a dataset that now has
 // 2 pages): the backend returns an empty list with total_pages < requested, and

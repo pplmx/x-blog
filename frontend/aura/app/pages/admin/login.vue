@@ -120,10 +120,12 @@ async function handleLogin() {
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
           <label
+            for="admin-username"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("admin.login.username") }}
           </label>
           <input
+            id="admin-username"
             v-model="username"
             type="text"
             :placeholder="t('admin.login.usernamePlaceholder')"
@@ -134,10 +136,12 @@ async function handleLogin() {
 
         <div>
           <label
+            for="admin-password"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("admin.login.password") }}
           </label>
           <input
+            id="admin-password"
             v-model="password"
             type="password"
             :placeholder="t('admin.login.passwordPlaceholder')"

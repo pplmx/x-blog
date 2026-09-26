@@ -124,6 +124,9 @@ onUnmounted(() => {
 			<Icon icon="lucide:users" class="w-4 h-4" aria-hidden="true" />
 			{{ followerCountLabel }}
 		</span>
+		<!-- Live region: the count bumps after a round-trip; re-announce the
+			 settled label (HeaderSearch pattern). -->
+		<span class="sr-only" role="status" aria-live="polite">{{ followerCountLabel }}</span>
 		<button
 			v-if="signedIn && !isSelf"
 			type="button"

@@ -11,6 +11,7 @@
 		"views": "{count} views",
 		"readingTime": "{count} min read",
 		"likes": "Like",
+		"likesCount": "{count} likes",
 		"likeError": "Failed to like the post. Please try again.",
 		"notFoundTitle": "404 - Page not found",
 		"notFoundHeading": "The page got lost",

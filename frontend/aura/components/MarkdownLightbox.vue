@@ -93,10 +93,15 @@ function onKeydown(event: KeyboardEvent): void {
 				break;
 			}
 			const active = document.activeElement;
-			if (event.shiftKey && (active === first || !root.contains(active))) {
+			// The root carries tabindex="-1" (programmatic focus on open) and is
+			// not in the focusable list, so a bare Tab from it also counts as a
+			// leak — wrap it to first/last instead of falling through to the
+			// page behind the backdrop.
+			const atRoot = active === root;
+			if (event.shiftKey && (atRoot || active === first || !root.contains(active))) {
 				event.preventDefault();
 				last.focus();
-			} else if (!event.shiftKey && (active === last || !root.contains(active))) {
+			} else if (!event.shiftKey && (atRoot || active === last || !root.contains(active))) {
 				event.preventDefault();
 				first.focus();
 			}

@@ -75,6 +75,7 @@
 			"verifiedReader": "已认证读者",
 			"like": "点赞",
 			"liked": "已点赞",
+			"likesCount": "{count} 个赞",
 			"likeError": "点赞失败，请重试。",
 			"editLabel": "编辑你的评论",
 			"editSuccess": "评论已更新。",

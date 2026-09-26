@@ -71,10 +71,12 @@ async function handleSubmit() {
       <form v-if="!sent" @submit.prevent="handleSubmit" class="space-y-5">
         <div>
           <label
+            for="forgot-password-email"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.forgotPassword.email") }}
           </label>
           <input
+            id="forgot-password-email"
             v-model="email"
             type="email"
             autocomplete="email"

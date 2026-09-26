@@ -111,10 +111,12 @@ async function handleSubmit() {
       <form v-if="!done && token" @submit.prevent="handleSubmit" class="space-y-5">
         <div>
           <label
+            for="reset-password-new"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.resetPassword.password") }}
           </label>
           <input
+            id="reset-password-new"
             v-model="password"
             type="password"
             autocomplete="new-password"
@@ -127,10 +129,12 @@ async function handleSubmit() {
 
         <div>
           <label
+            for="reset-password-confirm"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >{{ t("reader.resetPassword.confirm") }}
           </label>
           <input
+            id="reset-password-confirm"
             v-model="confirm"
             type="password"
             autocomplete="new-password"

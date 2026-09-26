@@ -286,10 +286,15 @@ function onSheetKeydown(event: KeyboardEvent) {
 	const first = focusables[0];
 	const last = focusables[focusables.length - 1];
 	if (!first || !last) return;
-	if (event.shiftKey && document.activeElement === first) {
+	const active = document.activeElement;
+	// The panel root carries tabindex="-1" (programmatic focus on open) and is
+	// not in the focusable list, so a bare Tab from it also leaks past the
+	// backdrop — wrap it to first/last (same guard as the image lightbox).
+	const atRoot = active === panel;
+	if (event.shiftKey && (atRoot || active === first)) {
 		event.preventDefault();
 		last.focus();
-	} else if (!event.shiftKey && document.activeElement === last) {
+	} else if (!event.shiftKey && (atRoot || active === last)) {
 		event.preventDefault();
 		first.focus();
 	}
@@ -579,6 +584,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
         v-if="resumeChipVisible && resumePercent != null"
         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2 text-sm text-gray-700 dark:text-gray-200"
         role="status"
+        data-testid="resume-chip"
       >
         <Icon icon="lucide:bookmark" class="w-4 h-4 text-blue-500" />
         <span>{{ t('post.resumeReading', { percent: resumePercent }) }}</span>
@@ -765,7 +771,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
       <article class="flex-1 min-w-0 max-w-4xl">
         <!-- Header -->
         <header class="mb-10">
-          <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-6">
+          <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-6">
             <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
             {{ t('common.action.backHome') }}
           </NuxtLink>
@@ -802,7 +808,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
                  print-friendly route; the print button itself calls window.print(). -->
             <NuxtLink
               :to="`/posts/${post.slug}/print`"
-              class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+              class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               :aria-label="t('post.printPdf')"
             >
               <Icon icon="lucide:printer" class="w-3.5 h-3.5" />
@@ -912,6 +918,17 @@ function handleCommentSubmitted(created: Comment | undefined) {
             <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
             {{ (post.likes ?? 0).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}
           </button>
+          <!-- Live region: the like count mutates after a round-trip; a screen
+               reader that has moved focus never sees the button aria-label
+               change, so announce the settled count here (HeaderSearch
+               pattern). -->
+          <span class="sr-only" role="status" aria-live="polite">
+            {{
+              likedThisPost
+                ? t('post.liked')
+                : t('post.likes')
+            }} · {{ t('post.likesCount', { count: post.likes ?? 0 }) }}
+          </span>
           <span v-if="likeError" role="alert" class="text-sm text-red-500">{{ likeError }}</span>
         </div>
 
