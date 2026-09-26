@@ -143,12 +143,16 @@
                    TASK-377), so render a generic identity instead; only a truly
                    anonymous commenter keeps their free-typed nickname. -->
               <!-- Avatar (DEC-299/TASK-378): a reader-set picture beside the
-                   verified identity, linking to the same public profile. -->
-              <img
-                v-if="comment.reader && comment.reader.avatar_url"
-                :src="comment.reader.avatar_url"
+                   verified identity, linking to the same public profile. The
+                   shared ReaderAvatar degrades to the letter if the file is
+                   gone (round-446) — a deleted avatar must not leave a broken
+                   image icon in the thread. -->
+              <ReaderAvatar
+                v-if="comment.reader"
+                :url="comment.reader.avatar_url"
+                :name="comment.reader.display_name"
                 :alt="comment.reader.display_name || 'avatar'"
-                class="w-5 h-5 rounded-full object-cover"
+                size="w-5 h-5"
               />
               <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
                 <NuxtLink

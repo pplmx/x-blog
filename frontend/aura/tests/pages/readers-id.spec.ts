@@ -110,6 +110,12 @@ vi.mock("~~/api/reader/blocks", () => ({
 const stubs = {
 	Icon: { template: "<svg class='icon-stub' :data-icon='icon' />", props: ["icon"] },
 	NuxtLink: { template: "<a class='nuxt-link-stub' :href='to'><slot/></a>", props: ["to"] },
+	// Shared component (round-446); stub to the bare img so avatar assertions
+	// stay on the resolved <img src>.
+	ReaderAvatar: {
+		props: ["url", "name"],
+		template: '<img v-if="url" :src="url" :alt="name || \'\'" />',
+	},
 };
 
 const samplePage = {

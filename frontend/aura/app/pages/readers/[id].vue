@@ -322,19 +322,16 @@ const pageAnnouncement = computed(() =>
 			<!-- Profile header -->
 			<div class="flex items-center gap-4 mb-6 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
 				<!-- Avatar (DEC-299/TASK-378): the reader's uploaded picture when
-					 set, else the initial-letter placeholder (text-only identity). -->
-				<img
-					v-if="data.profile.avatar_url"
-					:src="data.profile.avatar_url"
+					 set, else the initial-letter placeholder (text-only identity).
+					 ReaderAvatar also replaces a file that vanished server-side with
+					 the letter (round-446) instead of a broken-image icon. -->
+				<ReaderAvatar
+					:url="data.profile.avatar_url"
+					:name="data.profile.display_name"
 					:alt="data.profile.display_name || 'avatar'"
-					class="shrink-0 w-16 h-16 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+					size="w-16 h-16 border border-gray-100 dark:border-gray-800"
+					glyph="text-2xl"
 				/>
-				<div
-					v-else
-					class="shrink-0 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl font-bold"
-				>
-					{{ (data.profile.display_name || "R").charAt(0).toUpperCase() }}
-				</div>
 				<div>
 					<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
 						{{ data.profile.display_name || t("readerProfile.anonymousName") }}

@@ -125,20 +125,15 @@ function onSignOut() {
       :aria-expanded="open"
       @click="toggle"
     >
-      <!-- Avatar (DEC-299) or letter fallback, + unread badge (ISS-124). -->
+      <!-- Avatar (DEC-299) or letter fallback, + unread badge (ISS-124).
+           ReaderAvatar degrades to the letter if the file is gone (round-446). -->
       <span class="relative">
-        <img
-          v-if="reader?.avatar_url"
-          :src="reader.avatar_url"
-          alt=""
-          class="h-8 w-8 rounded-full object-cover"
+        <ReaderAvatar
+          v-if="reader"
+          :url="reader.avatar_url"
+          :name="displayName"
+          size="h-8 w-8"
         />
-        <span
-          v-else
-          class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-sm font-semibold text-white"
-        >
-          {{ (displayName || "R").charAt(0).toUpperCase() }}
-        </span>
         <span
           v-if="unreadCount > 0"
           role="status"
@@ -167,18 +162,12 @@ function onSignOut() {
           class="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
           @click="closeMenu"
         >
-          <img
-            v-if="reader?.avatar_url"
-            :src="reader.avatar_url"
-            alt=""
-            class="h-9 w-9 rounded-full object-cover"
+          <ReaderAvatar
+            v-if="reader"
+            :url="reader.avatar_url"
+            :name="displayName"
+            size="h-9 w-9"
           />
-          <span
-            v-else
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-sm font-semibold text-white"
-          >
-            {{ (displayName || "R").charAt(0).toUpperCase() }}
-          </span>
           <span class="min-w-0">
             <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
               {{ displayName }}

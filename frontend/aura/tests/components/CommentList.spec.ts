@@ -167,6 +167,12 @@ async function mountCommentList({
 					template: '<a :href="to"><slot/></a>',
 					props: ["to"],
 				},
+				// The shared ReaderAvatar (round-446); stub to the bare img so the
+				// avatar assertions stay on the resolved <img src>.
+				ReaderAvatar: {
+					props: ["url", "name"],
+					template: '<img v-if="url" :src="url" :alt="name || \'\'" />',
+				},
 			},
 		},
 	});
