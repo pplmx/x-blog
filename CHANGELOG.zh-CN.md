@@ -9,6 +9,36 @@
 
 ## [Unreleased]
 
+- 🔠 **KaTeX webfonts 现在真正随生产构建发布（round 445）**——main.css 里的
+  `@import "katex/dist/katex.min.css"` 被仓库的 postcss-import 内联：样式表里相对路径
+  的 `url(fonts/…)` 被逐字拷进产物，Vite 永远无法把它改路径到
+  `node_modules/katex/dist/fonts`——于是一个 KaTeX 字体文件都没进 `.output`，
+  每个数学块都 404 自己的 webfont（用残缺的回退字形渲染；数学 e2e 只断言 `.katex`
+  元素存在，从未发现）。现在该样式表直接登记为 Vite `css` 入口，59 个字体资产全部
+  被解析并以哈希名发布。（TASK-565, ISS-647）
+- 🖼️ **共享 `ReaderAvatar` 组件，带裂图回退（round 447）**——此前「有 URL 显示
+  `<img>`，否则显示首字母」的头像模式在头部菜单、评论区、读者主页三处复制粘贴，
+  且每处拷贝在引用的静态文件被删（越权删除、或数据库还原而静态目录没还）时都渲染
+  出裂图图标。新组件收敛该模式，并在 `@error` 时换回首字母字形，按站点调尺寸/字形。
+  （TASK-566, ISS-649）
+- 🧭 **管理端：会话过期 401 路由 + 本地化错误文案（round 446）**——dashboard 的
+  统计加载、CSV/备份下载、还原、待审评论刷新都在用带上 `authHeaders()` 的裸
+  `$fetch`，绕过了 transport 的会话过期处理，于是失效的 admin token 把操作者困在
+  一条原生 ofetch 401 里、没有任何重新登录路径；本地 `adminFetch` 现在把这些 401
+  路由到 `/admin/login?next=`（沿用 `useUpload.ts` 模式）。tags/categories/series/
+  posts/users 列表加载失败会渲染原生 ofetch 技术串（内部 API URL、错语言）——已改为
+  页面本地化文案；readers/newsletter/dashboard/media 的操作失败统一走
+  `apiErrorMessage`。文章编辑器 slug/封面占位符本地化，日历标签改用 NuxtLink（SPA
+  导航而非整页刷新），分类/标签/系列的新建按钮在请求进行中显示忙碌 spinner。
+  （TASK-567, ISS-648）
+- 🐛 **e2e：/discussion 生产构建不再 500、过期的偏好 schema 修正、删除确认对话框
+  被接受（round 445）**——(1) /discussion 页在生产构建下固定返回 500（“Cannot
+  access 'X' before initialization”）：`useSeo` 的响应式 getter 在顶层 `await`
+  声明 `page`/`feed` 之前就读取了它们（TDZ）；已按 index/search 模式把 SEO 调用
+  挪到数据 ref 之后。(2) 通知偏好 e2e 固定了过期的 7 字段 schema，而权威偏好有
+  10 个字段——已按文档化的被提及/读者新评论类型更新。(3) 收件箱删除 e2e 一直没删
+  到它的行，因为 `window.confirm` 被自动取消（等效 cancel）——现在点击会接受该
+  对话框。（TASK-564, ISS-644/645/646; GH #52/#53/#55）
 - 🗣️ **读者登录、2FA 验证码步骤与注册现在显示本地化错误提示，并具备正确的回退链
   （rounds 441/442）**——登录失败此前直接把后端原始的英文信封文本展示给读者（例如
   “Incorrect email or password”）；更糟的是 reader-auth composable 在把失败重新

@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔠 **KaTeX webfonts now actually ship in the production build (round 445)** —
+  main.css's `@import "katex/dist/katex.min.css"` was inlined by the repo's
+  postcss-import, which copied the stylesheet's relative `url(fonts/…)`
+  verbatim into the bundle so Vite could never rebase them against
+  `node_modules/katex/dist/fonts` — zero KaTeX font files landed in `.output`
+  and every math block 404'd its webfonts (rendering with broken fallback
+  glyphs; the math e2e only asserted `.katex` elements exist, so it never
+  caught it). The stylesheet is now a direct Vite `css` entry, which resolves
+  and emits all 59 font assets with hashed names. (TASK-565, ISS-647)
+- 🖼️ **Shared `ReaderAvatar` component with broken-image fallback (round 447)**
+  — the img-if-set-else-initial-letter avatar pattern was copy-pasted across
+  the header menu, comment thread and reader profile, and every copy rendered
+  a broken-image icon when the referenced static file was gone (out-of-band
+  deletion or a DB restore without its static dir). The new component
+  consolidates the pattern and swaps to the letter glyph on `@error`, with the
+  size/glyph tuned per site. (TASK-566, ISS-649)
+- 🧭 **Admin surfaces: expired-session 401 routing + localized error messages
+  (round 446)** — the dashboard's analytics loaders, CSV/backup download,
+  restore and pending-comments refresh called raw `$fetch` with `authHeaders()`,
+  bypassing the transport's session-expiry handler, so a dead admin token
+  stranded the operator with a raw ofetch 401 and no re-auth path; a local
+  `adminFetch` now routes those 401s to `/admin/login?next=` (the
+  `useUpload.ts` pattern). List-load failures on tags/categories/series/
+  posts/users rendered the raw ofetch technical string (internal API URL, wrong
+  language) — they now show page-localized messages; action failures on
+  readers/newsletter/dashboard/media route through `apiErrorMessage`. The post
+  editor's slug/cover placeholders are localized, calendar chips use NuxtLink
+  (SPA nav instead of a full reload), and taxonomy create buttons show a busy
+  spinner while in flight. (TASK-567, ISS-648)
+- 🐛 **e2e: /discussion no longer 500s in production, stale prefs schema
+  corrected, delete-confirm dialog accepted (round 445)** — (1) the
+  /discussion page returned a fixed 500 in the production build ("Cannot access
+  'X' before initialization"): the `useSeo` reactive getter read `page`/`feed`
+  before their top-level `await` declared them (their TDZ); hoisted the SEO
+  call below the data refs (the index/search pattern). (2) The
+  notification-preferences e2e pinned a stale 7-kind schema while the
+  authoritative prefs have 10 fields — updated with the mention/reader_comment
+  kinds documented. (3) The inbox delete e2e never deleted its row because
+  `window.confirm` was auto-dismissed (a cancel) — the click now accepts the
+  dialog. (TASK-564, ISS-644/645/646; GH #52/#53/#55)
 - 🗣️ **Reader login, 2FA code-step and registration now surface localized
   error messages with a correct fallback chain (rounds 441/442)** — a failed
   sign-in showed the backend's raw English envelope text to the reader (e.g.
