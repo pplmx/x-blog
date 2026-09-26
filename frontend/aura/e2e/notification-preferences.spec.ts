@@ -27,26 +27,25 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		const readerH = { Authorization: `Bearer ${token}` };
 
 		// Before touching the UI: the preferences API reports all kinds on.
+		// Mirrors the authoritative NotificationPrefs schema in reader.py — the
+		// push/inbox kinds default on, the opt-in email_* kinds default off. The
+		// @-mention kinds (DEC-322/DEC-326) and reader_comment fan-out (DEC-403)
+		// joined the set after the original seven, so this pinned the full 10.
 		const initial = await request.get("/api/reader/me/notification-preferences", {
 			headers: readerH,
 		});
 		expect(initial.status()).toBe(200);
-		const initialData = (await initial.json()) as {
-			new_post: boolean;
-			reply: boolean;
-			thread_comment: boolean;
-			email_new_post: boolean;
-			email_reply: boolean;
-			email_thread_comment: boolean;
-			email_weekly_digest: boolean;
-		};
+		const initialData = (await initial.json()) as Record<string, boolean>;
 		expect(initialData).toEqual({
 			new_post: true,
 			reply: true,
 			thread_comment: true,
+			mention: true,
+			reader_comment: true,
 			email_new_post: false,
 			email_reply: false,
 			email_thread_comment: false,
+			email_mention: false,
 			email_weekly_digest: false,
 		});
 
@@ -100,13 +99,29 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
 
 		// The email channel is strictly opt-in: each email kind renders its own
-		// toggle, all off by default, alongside the push/inbox kinds (now seven
-		// switches total).
+		// toggle, all off by default, alongside the push/inbox kinds. The pref
+		// card renders one switch per NotificationPrefs field — 5 email kinds +
+		// 5 push/inbox kinds (mention + reader_comment joined after the original
+		// seven, e2e#52) = 10 switches total.
 		const emailNewPost = page.getByRole("switch", { name: "邮件：新文章" });
 		const emailReply = page.getByRole("switch", { name: "邮件：回复" });
-		await expect(page.getByRole("switch")).toHaveCount(7);
+		// Exact matches: the "被提及" label is a substring of "邮件：被提及",
+		// so a bare name lookup would resolve to 2 switches (strict-mode fail).
+		const mentionSwitch = page.getByRole("switch", { name: "被提及", exact: true });
+		const readerCommentSwitch = page.getByRole("switch", {
+			name: "关注读者的新评论",
+			exact: true,
+		});
+		await expect(page.getByRole("switch")).toHaveCount(10);
 		await expect(emailNewPost).toHaveAttribute("aria-checked", "false");
 		await expect(emailReply).toHaveAttribute("aria-checked", "false");
+		await expect(page.getByRole("switch", { name: "邮件：被提及" })).toHaveAttribute(
+			"aria-checked",
+			"false",
+		);
+		// The mention kinds render even when their channel is off by default.
+		await expect(mentionSwitch).toBeVisible();
+		await expect(readerCommentSwitch).toBeVisible();
 
 		// Flip one email kind on -> the PATCH persists it server-side.
 		await emailNewPost.click();

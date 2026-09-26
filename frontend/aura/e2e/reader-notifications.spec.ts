@@ -208,6 +208,10 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		await expect(page.locator("body")).toContainText("新文章发布", { timeout: 10000 });
 		const delButtons = page.getByRole("button", { name: "删除这条通知" });
 		await expect(delButtons).toHaveCount(1, { timeout: 10000 });
+		// Inline delete gates on a window.confirm (notifications.vue) — accept
+		// it, else Playwright auto-dismisses the dialog as a cancel and the row
+		// is never deleted (round-445: the empty state never appeared, e2e#55).
+		page.once("dialog", (dialog) => void dialog.accept());
 		await delButtons.click();
 		// The row leaves the list: the 'new_post' badge text disappears because
 		// the only remaining row was deleted (row count → 0, "no notifications").

@@ -24,18 +24,6 @@ import { commentAuthorName } from "~~/utils/commentAuthorName";
 const { t, locale } = useLang();
 const route = useRoute();
 
-useSeo(() => ({
-	title: t("discussion.seo.title"),
-	description: t("discussion.seo.description"),
-	path: page.value > 1 ? `/discussion?page=${page.value}` : "/discussion",
-	locale: locale.value,
-	pagination: {
-		page: page.value || 1,
-		totalPages: feed.value?.pagination?.total_pages ?? 1,
-		pagePath: (pg) => (pg > 1 ? `/discussion?page=${pg}` : "/discussion"),
-	},
-}));
-
 // Feed auto-discovery for the discussion (round 368, DEC-409): the RSS/Atom
 // feeds of the latest approved comments, so a feed-reader / "subscribe" flow
 // on this page finds the right subscriptions (same pattern as app.vue's
@@ -68,6 +56,24 @@ const page = computed(() => {
 });
 
 const { data: feed, pending, error, refresh: refreshFeed } = await useDiscussionFeed(page, 20);
+
+// SEO must run AFTER the data refs it reads are declared (round-445, e2e#53):
+// this script-setup blocks on the top-level await above, and the reactive
+// getter passed to useSeo reads page/feed. Expanding it before that await is
+// done reads them in their TDZ, which 500s the whole page in the production
+// build ("Cannot access 'X' before initialization"). Data-first, useSeo-later
+// is the index/search/archive pattern.
+useSeo(() => ({
+	title: t("discussion.seo.title"),
+	description: t("discussion.seo.description"),
+	path: page.value > 1 ? `/discussion?page=${page.value}` : "/discussion",
+	locale: locale.value,
+	pagination: {
+		page: page.value || 1,
+		totalPages: feed.value?.pagination?.total_pages ?? 1,
+		pagePath: (pg) => (pg > 1 ? `/discussion?page=${pg}` : "/discussion"),
+	},
+}));
 // Blocked-reader suppression (round 386, DEC-437): the feed is public, but a
 // signed-in viewer's own block list (a receiver-side opt-out, DEC-425) should
 // hide the blocked readers' cards. Loads asynchronously; the feed first paints
