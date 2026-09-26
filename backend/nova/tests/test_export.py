@@ -273,3 +273,44 @@ class TestExportDateOnlyInclusive:
     def test_malformed_bound_still_422(self, client, auth_headers):
         resp = client.get("/api/export/posts.csv?date_to=not-a-date", headers=auth_headers)
         assert resp.status_code == 422
+
+    def test_export_posts_csv_streams_across_pages(self, client, auth_headers, db_session):
+        """round 439 (ISS-637): the id-keyset paging must cross the page
+        boundary (EXPORT_PAGE_SIZE=500) and still return EVERY row in id-desc
+        order — the streaming refactor must not drop or duplicate rows."""
+        from app import models
+
+        for i in range(503):
+            db_session.add(
+                models.Post(title=f"Page Post {i + 1}", slug=f"page-export-{i + 1}", content="C", published=True)
+            )
+        db_session.commit()
+
+        rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        assert len(rows) == 503 + 1  # header + all 503 posts (no drops across pages)
+        data = rows[1:]
+        # id desc: the last created (slug page-export-503) is the first data row.
+        assert data[0].split(",")[1] == "Page Post 503"
+        assert data[-1].split(",")[1] == "Page Post 1"
+
+    def test_export_comments_csv_streams_via_yield_per(self, client, auth_headers, db_session):
+        """round 439 (ISS-637): the scalar comments query must stream via
+        yield_per without missing rows across batches."""
+        from app import models
+
+        post = models.Post(title="C", slug="comment-page-export", content="C", published=True)
+        db_session.add(post)
+        db_session.commit()
+        for i in range(503):
+            db_session.add(
+                models.Comment(post_id=post.id, nickname=f"StreamComment {i + 1}", content="x", is_approved=True)
+            )
+        db_session.commit()
+
+        rows = client.get("/api/export/comments.csv", headers=auth_headers).text.strip().split("\n")
+        # Header + all 503 comments.
+        assert len(rows) == 504, len(rows)
+        # Columns: ID, Post ID, Nickname, ... — nickname is the 3rd column.
+        nicknames = [r.split(",")[2].replace('"', "") for r in rows[1:]]
+        assert "StreamComment 503" in nicknames and "StreamComment 1" in nicknames
+        assert len(set(nicknames)) == 503

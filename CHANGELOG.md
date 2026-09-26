@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🚀 **Admin CSV exports stream row-by-row instead of materializing everything
+  in memory (round 439)** — the posts/comments exports loaded every ORM row
+  (`.all()`, up to 100k) and built the whole CSV in one `StringIO` before
+  sending a single chunk: tens of MB of models + a buffer on an admin endpoint,
+  and no bytes until every row was serialized. The posts export now pages the
+  query by id keyset (its tags eager-load is a collection, which `yield_per`
+  refuses), the comments export iterates its scalar query with `yield_per`,
+  and both stream CSV chunks that concatenate byte-for-byte identical to the
+  old single pass. A consumer (or a browser tab close) that stops early saves
+  all the tail serialization. (TASK-561, ISS-637)
 - 🤖 **robots.txt now Disallows private/auth/API paths so crawlers stop
   fetching them (round 438)** — the served robots.txt was effectively “crawl
   everything” (`Allow: /` with no Disallow). The round-437 `noindex` meta

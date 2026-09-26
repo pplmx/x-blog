@@ -1,5 +1,6 @@
 import csv
 import io
+from collections.abc import Iterator
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -13,6 +14,36 @@ from app.dates import inclusive_end_of_day, parse_bound
 from app.limiter import RATE_LIMIT_EXPORT, limiter
 
 router = APIRouter(prefix="/api/export", tags=["export"])
+
+# Both CSV exports used to materialize EVERY ORM row (`.all()`) and the whole
+# CSV in one StringIO before streaming a single chunk — O(n) memory on an
+# admin-only endpoint (a 100k-post export ≈ tens of MB of models + a buffer)
+# and no bytes until every row is serialized. Now the row sources page the
+# query and yield chunk-by-chunk (ISS-637). Chunks are byte-identical to one
+# csv.writer pass: concatenating them reproduces the old single CSV exactly.
+# The response generators run while FastAPI's get_db teardown is deferred
+# (dependency cleanup happens after a StreamingResponse finishes), so
+# re-querying per page keeps a live session.
+EXPORT_PAGE_SIZE = 500
+
+
+def _csv_chunks(headers: list[str], row_iter: Iterator[list[str]]) -> Iterator[str]:
+    """Yield the CSV header line, then one chunk per data row.
+
+    Each chunk is a complete csv.writer row (``\r\n``-terminated), so a stream
+    consumer that concatenates the chunks gets the exact single-pass CSV — and
+    a consumer that stops early saves all the serialization of the tail.
+    """
+
+    def _row(row: list[str]) -> str:
+        buf = io.StringIO()
+        csv.writer(buf).writerow(row)
+        return buf.getvalue()
+
+    yield _row(headers)
+    for row in row_iter:
+        yield _row(row)
+
 
 # Characters that make a cell a formula in spreadsheet applications
 _CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -77,60 +108,68 @@ def export_posts_csv(
     if end is not None:
         query = query.filter(models.Post.created_at <= end)
 
-    # category/tags are read per row below; eager-load so a 10k-post export
-    # stays a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
+    # category/tags are read per row below; eager-load so a page of posts stays
+    # a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
     # Deterministic order: without an ORDER BY, the LIMIT-selected subset above
     # the cap is chosen by the query plan — unreproducible, and the remainder is
     # unreachable. Post.id desc is cheap (PK index) and matches the DEC-239
     # tiebreak idiom (the sibling comments export already orders by created_at).
-    posts = (
-        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.Post.id.desc())
-        .limit(limit)
-        .all()
-    )
+    def _post_rows() -> Iterator[list[str]]:
+        # Keyset page by id because the tags eager-load is a joined collection,
+        # which Query.yield_per refuses; id-desc keyset keeps the same
+        # deterministic order and one bounded query per page (ISS-637).
+        now = crud.utc_now_naive()
+        remaining = limit
+        last_id: int | None = None
+        while remaining > 0:
+            page_query = query if last_id is None else query.filter(models.Post.id < last_id)
+            want = min(EXPORT_PAGE_SIZE, remaining)
+            page = (
+                page_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                .order_by(models.Post.id.desc())
+                .limit(want)
+                .all()
+            )
+            if not page:
+                return
+            for post in page:
+                last_id = post.id
+                yield [
+                    post.id,
+                    _csv_safe(post.title),
+                    _csv_safe(post.slug),
+                    _csv_safe(post.excerpt or ""),
+                    _csv_safe(post.category.name if post.category else ""),
+                    _csv_safe(",".join(t.name for t in post.tags)),
+                    post.views or 0,
+                    post.likes or 0,
+                    _csv_status(post, now),
+                    "yes" if post.pinned else "no",
+                    post.publish_at.isoformat() if post.publish_at else "",
+                    post.created_at.isoformat() if post.created_at else "",
+                ]
+            remaining -= len(page)
+            if len(page) < want:
+                return
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(
-        [
-            "ID",
-            "Title",
-            "Slug",
-            "Excerpt",
-            "Category",
-            "Tags",
-            "Views",
-            "Likes",
-            "Status",
-            "Pinned",
-            "Publish At",
-            "Created At",
-        ]
-    )
-
-    now = crud.utc_now_naive()
-    for post in posts:
-        writer.writerow(
-            [
-                post.id,
-                _csv_safe(post.title),
-                _csv_safe(post.slug),
-                _csv_safe(post.excerpt or ""),
-                _csv_safe(post.category.name if post.category else ""),
-                _csv_safe(",".join(t.name for t in post.tags)),
-                post.views or 0,
-                post.likes or 0,
-                _csv_status(post, now),
-                "yes" if post.pinned else "no",
-                post.publish_at.isoformat() if post.publish_at else "",
-                post.created_at.isoformat() if post.created_at else "",
-            ]
-        )
-
-    output.seek(0)
     return StreamingResponse(
-        iter([output.getvalue()]),
+        _csv_chunks(
+            [
+                "ID",
+                "Title",
+                "Slug",
+                "Excerpt",
+                "Category",
+                "Tags",
+                "Views",
+                "Likes",
+                "Status",
+                "Pinned",
+                "Publish At",
+                "Created At",
+            ],
+            _post_rows(),
+        ),
         media_type="text/csv",
         headers={
             "Content-Disposition": "attachment; filename=posts.csv",
@@ -168,15 +207,15 @@ def export_comments_csv(
     if end is not None:
         query = query.filter(models.Comment.created_at <= end)
 
-    comments = query.order_by(models.Comment.created_at.desc()).limit(limit).all()
+    # Scalar-only query (no joined collections), so Query.yield_per batches the
+    # rows instead of materializing the whole result set for the CSV pass (the
+    # posts export keysets by id because its tags eager-load is a collection,
+    # which yield_per refuses). Same created_at-desc order as before.
+    comments = query.order_by(models.Comment.created_at.desc()).limit(limit).yield_per(EXPORT_PAGE_SIZE)
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["ID", "Post ID", "Nickname", "Email", "Content", "Status", "Created At"])
-
-    for comment in comments:
-        writer.writerow(
-            [
+    def _comment_rows() -> Iterator[list[str]]:
+        for comment in comments:
+            yield [
                 comment.id,
                 comment.post_id,
                 _csv_safe(comment.nickname),
@@ -185,11 +224,9 @@ def export_comments_csv(
                 "approved" if comment.is_approved else "pending",
                 comment.created_at.isoformat() if comment.created_at else "",
             ]
-        )
 
-    output.seek(0)
     return StreamingResponse(
-        iter([output.getvalue()]),
+        _csv_chunks(["ID", "Post ID", "Nickname", "Email", "Content", "Status", "Created At"], _comment_rows()),
         media_type="text/csv",
         headers={
             "Content-Disposition": "attachment; filename=comments.csv",

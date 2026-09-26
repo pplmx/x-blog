@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+- 🚀 **管理端 CSV 导出改为逐行流式，不再全量驻留内存（round 439）**——posts/
+  comments 导出此前会 `.all()` 拉取全部 ORM 行（上限 10 万）并在单个
+  `StringIO` 里拼完整份 CSV 才发送一个 chunk：管理端接口上几十 MB 的模型+缓冲，
+  且要等全部行序列化完才有字节。现在 posts 导出按 id 键集分页（其 tags 集合
+  加载与 `yield_per` 不兼容），comments 导出对其纯标量查询用 `yield_per` 迭代，
+  两者逐行/逐块流式输出，拼接后与旧的单次 pass 逐字节相同；中途停止的消费方
+  （或浏览器关标签）省掉所有尾部序列化。（TASK-561, ISS-637）
 - 🤖 **robots.txt 现在 Disallow 私有/认证/API 路径，爬虫不再抓取（round 438）**——
   之前提供的 robots.txt 实际上等于“全放行”（只有 `Allow: /`、没有任何
   Disallow）。round-437 的 `noindex` meta 只阻止私有页被*收录*，但爬虫仍会下载
