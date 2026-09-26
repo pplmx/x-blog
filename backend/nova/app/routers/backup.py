@@ -26,6 +26,10 @@ router = APIRouter(prefix="/api/admin/backup", tags=["export"])
 # into an unbounded restore: 20k posts is far beyond a real blog (the CSV
 # export cap is 100k rows), and each post may carry comments.
 MAX_RESTORE_POSTS = 20_000
+# A post's ``comments`` array is otherwise unbounded — one crafted post could
+# sneak an arbitrary number of comment rows into a single import. Cap at the
+# same order as the CSV export cap (ISS-626); real blogs never get close.
+MAX_RESTORE_COMMENTS = 100_000
 
 
 class BackupRestoreRequest(BaseModel):
@@ -66,6 +70,9 @@ def restore_backup(
     """
     if len(data.posts) > MAX_RESTORE_POSTS:
         raise HTTPException(status_code=422, detail=f"Too many posts (max {MAX_RESTORE_POSTS})")
+    total_comments = sum(len(p.get("comments") or []) for p in data.posts)
+    if total_comments > MAX_RESTORE_COMMENTS:
+        raise HTTPException(status_code=422, detail=f"Too many comments (max {MAX_RESTORE_COMMENTS})")
     try:
         return crud.restore_backup(db, data.model_dump())
     except ValueError as e:

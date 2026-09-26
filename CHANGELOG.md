@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Backup restore now rejects unbounded comment arrays (round 440)** — the
+  restore guard capped the post count but a single post's `comments` array was
+  otherwise unbounded, so one crafted snapshot could smuggle an arbitrary
+  number of comment rows into a single import. The acceptance guard now also
+  caps total comments (100k, the same order as the CSV export cap; real blogs
+  never get close) and 422s before any write. (TASK-562, ISS-626)
 - 🚀 **Admin CSV exports stream row-by-row instead of materializing everything
   in memory (round 439)** — the posts/comments exports loaded every ORM row
   (`.all()`, up to 100k) and built the whole CSV in one `StringIO` before

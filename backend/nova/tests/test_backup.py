@@ -328,3 +328,32 @@ class TestBackupRestore:
             headers=auth_headers,
         )
         assert response.status_code == 422
+
+
+def test_restore_rejects_unbounded_comment_arrays(client, auth_headers, monkeypatch):
+    """ISS-626: a post's ``comments`` array must be bounded — one crafted post
+    used to be able to smuggle an arbitrary number of comment rows into a single
+    import. Cap at MAX_RESTORE_COMMENTS (422 before any write)."""
+    from app.routers import backup as backup_router
+
+    monkeypatch.setattr(backup_router, "MAX_RESTORE_COMMENTS", 2)
+    payload = {
+        "format": "x-blog-backup",
+        "version": 1,
+        "posts": [
+            {
+                "title": "Crafted",
+                "slug": "crafted",
+                "pub_status": "published",
+                "comments": [
+                    {"nickname": "a", "content": "x"},
+                    {"nickname": "b", "content": "y"},
+                    {"nickname": "c", "content": "z"},
+                ],
+            }
+        ],
+    }
+    response = client.post("/api/admin/backup/restore", json=payload, headers=auth_headers)
+    assert response.status_code == 422
+    # FastAPI's HTTPException is mapped to the app's error envelope.
+    assert "Too many comments" in response.json()["error"]["message"]
