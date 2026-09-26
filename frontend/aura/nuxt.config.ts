@@ -40,7 +40,13 @@ export default defineNuxtConfig({
 	nitro: {
 		preset: "node-server",
 	},
-	css: ["~~/assets/css/main.css"],
+	// katex.min.css is a DIRECT Vite entry, not an @import inside main.css:
+	// main.css's @import is inlined by postcss-import, which bakes the CSS's
+	// relative url(fonts/...) verbatim into the bundle — Vite then can't rebase
+	// those against node_modules/katex/dist/fonts and the KaTeX webfonts never
+	// ship (every math block 404s its fonts in production). As a top-level css
+	// array entry, Vite processes katex.min.css itself and emits the font assets.
+	css: ["~~/assets/css/main.css", "katex/dist/katex.min.css"],
 	app: {
 		head: {
 			charset: "utf-8",
