@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 439,
+  "round": 440,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T06:37:00+00:00",
+  "updated_at": "2026-09-26T06:51:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 438,
+      "touched_round": 439,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -32788,11 +32788,11 @@
     "ISS-626": {
       "id": "ISS-626",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-24T20:48:02+00:00",
-      "updated_at": "2026-09-24T20:48:02+00:00",
-      "touched_round": 428,
+      "updated_at": "2026-09-26T06:51:20+00:00",
+      "touched_round": 439,
       "title": "backup restore accepts unbounded comments-per-post array in a single post body",
       "severity": "low"
     },
@@ -33360,6 +33360,41 @@
       "touched_round": 438,
       "title": "round-439: streaming CSV exports (id-keyset posts, yield_per comments)",
       "commit": "65295b63"
+    },
+    "TASK-562": {
+      "id": "TASK-562",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T06:51:19+00:00",
+      "updated_at": "2026-09-26T06:51:19+00:00",
+      "touched_round": 439,
+      "category": "security",
+      "severity": "low",
+      "title": "Cap total comments in backup restore acceptance guard (ISS-626)"
+    },
+    "DEC-487": {
+      "id": "DEC-487",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T06:51:19+00:00",
+      "updated_at": "2026-09-26T06:51:19+00:00",
+      "touched_round": 439,
+      "title": "Close round 440 (restore comment cap, ISS-626 satisfied)",
+      "rationale": "Closed the last dispositioned LOW backlog item from DEC-482 (ISS-626): the restore acceptance guard capped the post count (MAX_RESTORE_POSTS=20k) but each post's comments array was unbounded, so a single crafted snapshot could smuggle an arbitrary number of comment rows into one import under one post. Added MAX_RESTORE_COMMENTS=100k (same order as the CSV export cap) summed across all posts and 422 before crud.restore_backup runs. VERIFY: new test monkeypatches the cap to 2 and asserts the 422 error envelope; all 13 backup tests pass on SQLite + PG; full backend suite 1920 green (93.54%); ruff clean. This closes every backlog issue recorded in DEC-482; remaining open items are ISS-625 (total_pages=0, frontend-safe, deliberately not changed to avoid breaking third-party consumers) and ISS-632 (push broadcast O(n), deferred in DEC-478 with rationale unchanged).",
+      "alternatives_rejected": "A per-post comment cap instead of a total cap (a total cap is the actual DoS-relevant bound - one post with 60k comments plus others is the concern, and a per-post cap alone would still allow 20k posts x cap); dropping restore's bounds entirely (the caps are cheap and this is a blind-write admin endpoint)."
+    },
+    "CHG-789": {
+      "id": "CHG-789",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T06:51:19+00:00",
+      "updated_at": "2026-09-26T06:51:19+00:00",
+      "touched_round": 439,
+      "title": "round-440: backup restore total-comments cap",
+      "commit": "7cf1824b"
     }
   },
   "edges": [
@@ -50190,6 +50225,30 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-26T06:37:00+00:00"
+    },
+    {
+      "from": "TASK-562",
+      "to": "ISS-626",
+      "type": "addresses",
+      "created_at": "2026-09-26T06:51:19+00:00"
+    },
+    {
+      "from": "CHG-789",
+      "to": "ISS-626",
+      "type": "resolves",
+      "created_at": "2026-09-26T06:51:20+00:00"
+    },
+    {
+      "from": "CHG-789",
+      "to": "TASK-562",
+      "type": "implements",
+      "created_at": "2026-09-26T06:51:20+00:00"
+    },
+    {
+      "from": "DEC-487",
+      "to": "COMP-001",
+      "type": "governs",
+      "created_at": "2026-09-26T06:51:20+00:00"
     }
   ]
 }
