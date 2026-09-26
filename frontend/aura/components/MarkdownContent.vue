@@ -371,10 +371,17 @@ function lineNumbers(code: string): number[] {
         </div>
       </div>
 
-      <!-- Mermaid diagram -->
+      <!-- Mermaid diagram. [&>svg]:ml-auto, NOT justify-center: a diagram wider
+           than the viewport must leave its left edge reachable. With
+           justify-center + overflow-x-auto the overhang splits to both sides
+           and scrollLeft can't go negative, so the start of a wide diagram is
+           permanently cut off on mobile (flex-overflow clip trap); the ml-auto
+           margin centers fitting diagrams yet collapses to a reachable left
+           edge once the child overflows. The SVG is injected via innerHTML,
+           hence the arbitrary variant targeting the child. -->
       <div
         v-else-if="seg.type === 'mermaid'"
-        class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex justify-center"
+        class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex [&>svg]:ml-auto"
         :data-mermaid-key="seg.key"
         :ref="(el) => handleMermaidRef(el, seg.code, seg.key)"
       />
