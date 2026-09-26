@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 445,
+  "round": 446,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T10:35:39+00:00",
+  "updated_at": "2026-09-26T12:18:46+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33582,6 +33582,28 @@
       "updated_at": "2026-09-26T10:35:39+00:00",
       "touched_round": 445,
       "commit": "3736543f"
+    },
+    "ISS-648": {
+      "id": "ISS-648",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-26T12:16:41+00:00",
+      "updated_at": "2026-09-26T12:18:46+00:00",
+      "touched_round": 445,
+      "severity": "medium",
+      "category": "correctness",
+      "rationale": "Admin surface audit (round-445): (1) dashboard raw- islands (analytics loaders, CSV export, backup download/restore, pending-comments refresh) bypass transport's flagAdminUnauthorized, so an expired admin session strands the operator with a raw ofetch 401 and no re-auth path; (2) admin list pages tags/categories/series/posts/users render load failures via error?.message || String(error), leaking ofetch's technical string (internal API URL, wrong language); (3) action failures on readers/newsletter/dashboard/media do the same via e instanceof Error ? e.message; (4) post editor hardcoded English placeholders; (5) calendar chips use plain <a> causing full reloads; (6) taxonomy create buttons lack busy feedback. AdminPushToggle's 401 handling verified already-correct (no change needed)."
+    },
+    "CHG-795": {
+      "id": "CHG-795",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T12:18:46+00:00",
+      "updated_at": "2026-09-26T12:18:46+00:00",
+      "touched_round": 445,
+      "commit": "17d2f7a0"
     }
   },
   "edges": [
@@ -50526,6 +50548,12 @@
       "to": "ISS-647",
       "type": "resolves",
       "created_at": "2026-09-26T10:35:39+00:00"
+    },
+    {
+      "from": "CHG-795",
+      "to": "ISS-648",
+      "type": "resolves",
+      "created_at": "2026-09-26T12:18:46+00:00"
     }
   ]
 }
