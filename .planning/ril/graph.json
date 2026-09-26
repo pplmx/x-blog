@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 443,
+  "round": 444,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T08:06:23+00:00",
+  "updated_at": "2026-09-26T08:18:03+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33492,6 +33492,17 @@
       "touched_round": 442,
       "commit": "cc5f1808",
       "summary": "e2e: localized reader-login error contract lock (TASK-564 verification)"
+    },
+    "DEC-490": {
+      "id": "DEC-490",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T08:18:03+00:00",
+      "updated_at": "2026-09-26T08:18:03+00:00",
+      "touched_round": 443,
+      "rationale": "converged-idle after rounds 441-443 (reader login error UX hardening). Delivered: localized login/2FA/register error messages, the root-cause fix (useReaderAuth toAuthError preserves the HTTP status so the page can map the deliberate single-401 anti-oracle and the one 400 to localized lines), both a unit-mock contract correction (mocks now mirror the real composable rethrow shape) and an e2e lock of the contract. Deep-dive audit after delivery surfaced no above-threshold new task: reader password/email-change/account/comment/sync/notification-badge surfaces are already status-driven and localized; the 429 case is covered app-wide by the transport-driven RateLimitNotice banner; total_pages=0 on empty results (ISS-625, low) is defended by every frontend consumer (?? 1 / || 1 / last>=1 guards) so changing the API contract to floor at 1 is not worth the churn; the admin push broadcast O(n) load (ISS-632, low) is superuser-only with modest practical N and a redesign belongs to the already-deferred multi-worker/background scope (DEC-214/DEC-433). All VERIFY green: 2509 frontend tests, typecheck, biome lint (4 pre-existing e2e warnings), and the reader-auth e2e spec (5/5).",
+      "alternatives_rejected": "Standardizing the admin-only raw ofetch message displays (admin debugging value, no reader impact); flooring total_pages at 1 across ~10 endpoints (contract churn for a low-severity issue the frontend already defends); refactoring the broadcast to keyset streaming (admin-only, modest N, defer to background-worker redesign)"
     }
   },
   "edges": [
