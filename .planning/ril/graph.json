@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 442,
+  "round": 443,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T07:58:50+00:00",
+  "updated_at": "2026-09-26T08:06:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33456,7 +33456,7 @@
       "version": 2,
       "created_at": "2026-09-26T07:58:26+00:00",
       "updated_at": "2026-09-26T07:58:50+00:00",
-      "touched_round": 441,
+      "touched_round": 442,
       "category": "correctness",
       "severity": "high"
     },
@@ -33481,6 +33481,17 @@
       "touched_round": 441,
       "commit": "1a6bb4df",
       "summary": "useReaderAuth preserves HTTP status on thrown errors so login/2FA/register map to localized lines"
+    },
+    "CHG-792": {
+      "id": "CHG-792",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-26T08:06:23+00:00",
+      "updated_at": "2026-09-26T08:06:23+00:00",
+      "touched_round": 442,
+      "commit": "cc5f1808",
+      "summary": "e2e: localized reader-login error contract lock (TASK-564 verification)"
     }
   },
   "edges": [
@@ -50395,6 +50406,12 @@
       "to": "TASK-564",
       "type": "governs",
       "created_at": "2026-09-26T07:58:50+00:00"
+    },
+    {
+      "from": "CHG-792",
+      "to": "TASK-564",
+      "type": "implements",
+      "created_at": "2026-09-26T08:06:23+00:00"
     }
   ]
 }
