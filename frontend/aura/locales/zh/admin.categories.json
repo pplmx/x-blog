@@ -15,6 +15,7 @@
 		"searchPlaceholder": "搜索分类…",
 		"searchEmpty": "没有匹配的分类",
 		"operationFailed": "操作失败，请重试",
-		"loading": "加载中..."
+		"loading": "加载中...",
+		"loadFailed": "加载分类列表失败，请重试。"
 	}
 }

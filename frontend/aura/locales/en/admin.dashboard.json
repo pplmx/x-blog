@@ -64,7 +64,9 @@
 			"confirmRestore": "This will restore the selected backup into the live blog and OVERWRITE existing posts, categories, tags and series that match. Continue?",
 			"commentsCreated": "Comments +{count}",
 			"skipped": "({count} skipped)",
-			"parseError": "Could not parse the chosen file: not a valid backup JSON"
+			"parseError": "Could not parse the chosen file: not a valid backup JSON",
+			"downloadFailed": "Failed to download the backup. Please try again.",
+			"restoreFailed": "Failed to restore the backup. Please try again."
 		},
 		"trend": {
 			"title": "Reading trend (last 30 days)",

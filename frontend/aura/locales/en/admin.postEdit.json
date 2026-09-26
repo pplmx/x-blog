@@ -83,6 +83,8 @@
 			"total": "{total} views in the last 30 days",
 			"hint": "Daily views — is this post gaining or decaying?",
 			"failed": "Failed to load reading trend"
-		}
+		},
+		"slugPlaceholder": "article-slug",
+		"coverImagePlaceholder": "https://example.com/image.jpg"
 	}
 }

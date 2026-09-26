@@ -258,7 +258,10 @@ function displayDate(post: AdminPost): string {
          table (with the slim bar above) is the honest view during a pending
          retry, not a stale error block (deep-dive finding). -->
     <div v-else-if="!pending && error" class="text-center py-12 text-red-500">
-      <p class="mb-4">{{ error?.message || String(error) }}</p>
+      <!-- Localized, never error.message: an HTTP failure's message is only
+           ofetch's technical string, leaking the API URL in a wrong-language
+           line (round-445 audit). -->
+      <p class="mb-4">{{ t("admin.postsList.loadFailed") }}</p>
       <button
         type="button"
         class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

@@ -125,7 +125,8 @@
 				"skippedLabel": "Skipped",
 				"emailsSent": "{count} emails sent",
 				"locked": "Another digest job is running — this run sent nothing.",
-				"noRecipients": "No eligible recipients in the current window."
+				"noRecipients": "No eligible recipients in the current window.",
+				"error": "Failed to send the digest. Please try again."
 			}
 		},
 		"pages": {

@@ -34,6 +34,7 @@
 		},
 		"loading": "加载中...",
 		"cloneFailed": "复制文章失败。",
-		"deleteFailed": "删除文章失败。"
+		"deleteFailed": "删除文章失败。",
+		"loadFailed": "加载文章列表失败，请重试。"
 	}
 }

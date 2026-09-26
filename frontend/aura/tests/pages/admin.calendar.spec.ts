@@ -26,7 +26,10 @@ vi.mock("../../api/admin/calendar", () => ({
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },
-	NuxtLink: { template: "<a><slot /></a>" },
+	// The page navigates with NuxtLink (round-445: plain <a> caused a full
+	// reload on every chip tap); the stub renders `to` as href so the editor
+	// deep-link contract stays assertable.
+	NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
 };
 
 let CalendarPage: unknown;

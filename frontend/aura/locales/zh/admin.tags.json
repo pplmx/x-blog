@@ -15,6 +15,7 @@
 		"searchPlaceholder": "搜索标签…",
 		"searchEmpty": "没有匹配的标签",
 		"operationFailed": "操作失败，请重试",
-		"loading": "加载中..."
+		"loading": "加载中...",
+		"loadFailed": "加载标签列表失败，请重试。"
 	}
 }

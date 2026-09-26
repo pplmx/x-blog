@@ -309,17 +309,20 @@ function cellLabel(date: Date, key: string): string {
                   <span>{{ cell.day }}</span>
                 </div>
                 <div class="mt-1.5 space-y-1">
-                  <a
+                  <!-- NuxtLink, not <a>: the grid chip navigates within the SPA
+                       (full reload dropped the calendar month state on every tap,
+                       round-445 audit). -->
+                  <NuxtLink
                     v-for="p in postsOnDay(cell.key)"
                     :key="p.id"
-                    :href="`/admin/posts/${p.id}`"
+                    :to="`/admin/posts/${p.id}`"
                     class="block truncate rounded px-1.5 py-0.5 text-[11px] leading-4 font-medium hover:opacity-80"
                     :class="typeSpec(p.type).cls"
                     :title="p.title"
                     data-testid="calendar-post-chip"
                   >
                     {{ p.title }}
-                  </a>
+                  </NuxtLink>
                   <p v-if="postsOnDay(cell.key).length === 0" class="text-[10px] text-gray-300 dark:text-gray-700">
                     {{ t('admin.calendar.emptyDay') }}
                   </p>
@@ -344,13 +347,13 @@ function cellLabel(date: Date, key: string): string {
         </p>
         <ul v-else class="space-y-2">
           <li v-for="p in unscheduledPosts" :key="p.id">
-            <a
-              :href="`/admin/posts/${p.id}`"
+            <NuxtLink
+              :to="`/admin/posts/${p.id}`"
               class="block truncate text-sm text-gray-700 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400"
               :title="p.title"
             >
               {{ p.title }}
-            </a>
+            </NuxtLink>
           </li>
         </ul>
       </aside>

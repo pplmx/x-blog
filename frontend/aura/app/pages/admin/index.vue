@@ -9,6 +9,7 @@ import type { AdminComment, AdminCommentListResponse } from "~~/api/admin/commen
 import { approveAdminComment } from "~~/api/admin/comments";
 import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
+import { apiErrorMessage } from "~~/api/errors";
 import type { BlogStats } from "~~/api/public/stats";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate, parseApiDate } from "~~/composables/apiDate";
@@ -120,7 +121,7 @@ function isAnalyticsFailed(key: AnalyticsKey): boolean {
 
 async function loadViewsTrend(): Promise<void> {
 	try {
-		viewsTrend.value = await $fetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
+		viewsTrend.value = await adminFetch<ViewsTrend>(`${apiBase}/api/admin/stats/views?days=30`, {
 			headers: authHeaders(),
 		});
 		setAnalyticsFailed("views", false);
@@ -131,7 +132,7 @@ async function loadViewsTrend(): Promise<void> {
 }
 async function loadFollowStats(): Promise<void> {
 	try {
-		followStats.value = await $fetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
+		followStats.value = await adminFetch<FollowStats>(`${apiBase}/api/admin/stats/follows`, {
 			headers: authHeaders(),
 		});
 		setAnalyticsFailed("follows", false);
@@ -142,7 +143,7 @@ async function loadFollowStats(): Promise<void> {
 }
 async function loadTopSearches(): Promise<void> {
 	try {
-		topSearches.value = await $fetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
+		topSearches.value = await adminFetch<SearchTerm[]>(`${apiBase}/api/admin/stats/searches`, {
 			headers: authHeaders(),
 		});
 		setAnalyticsFailed("searches", false);
@@ -153,9 +154,12 @@ async function loadTopSearches(): Promise<void> {
 }
 async function loadCommentActivity(): Promise<void> {
 	try {
-		commentActivity.value = await $fetch<CommentActivity>(`${apiBase}/api/admin/stats/comments`, {
-			headers: authHeaders(),
-		});
+		commentActivity.value = await adminFetch<CommentActivity>(
+			`${apiBase}/api/admin/stats/comments`,
+			{
+				headers: authHeaders(),
+			},
+		);
 		setAnalyticsFailed("comments", false);
 	} catch {
 		commentActivity.value = null;
@@ -190,6 +194,28 @@ function trendDayShort(iso: string): string {
 function authHeaders(): Record<string, string> {
 	const token = typeof localStorage !== "undefined" ? localStorage.getItem("admin_token") : null;
 	return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Admin-scoped $fetch that ALSO routes session-expiry 401 → /admin/login?next=.
+// The shared transport's command()/query() merge flagAdminUnauthorized, but the
+// dashboard's raw-$fetch islands (analytics loaders, CSV export, backup/restore,
+// pending-comments refresh) bypass that — an expired/revoked token on one of
+// them left the operator staring at a raw ofetch 401 with no re-auth path while
+// parked on the dashboard (round-445 audit, useUpload.ts:48 pattern). Only the
+// navigation-stopping 401 matters here; other failures rethrow for the caller's
+// existing per-surface error handling.
+async function adminFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
+	try {
+		return await $fetch<T>(path, options);
+	} catch (cause) {
+		const status =
+			(cause as { statusCode?: number } | undefined)?.statusCode ??
+			(cause as { response?: { status?: number } } | undefined)?.response?.status;
+		if (status === 401) {
+			handleAdminUnauthorized(window.location.pathname + window.location.search);
+		}
+		throw cause;
+	}
 }
 
 async function loadDashboard(): Promise<void> {
@@ -328,7 +354,7 @@ async function downloadExport(kind: "posts" | "comments"): Promise<void> {
 		const qs = q.toString();
 		const url = `${apiBase}/api/export/${kind}.csv${qs ? `?${qs}` : ""}`;
 
-		const res = await $fetch<unknown>(url, {
+		const res = await adminFetch<unknown>(url, {
 			headers: { Accept: "text/csv", ...authHeaders() },
 		});
 		// $fetch auto-parses unknown content-type as text; coerce to string.
@@ -343,7 +369,10 @@ async function downloadExport(kind: "posts" | "comments"): Promise<void> {
 		a.remove();
 		URL.revokeObjectURL(urlObj);
 	} catch (e) {
-		exportError.value = e instanceof Error ? e.message : String(e);
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit).
+		exportError.value = apiErrorMessage(e, t("admin.dashboard.operationFailed"));
 	} finally {
 		exporting.value = null;
 	}
@@ -377,7 +406,7 @@ async function downloadFullBackup(): Promise<void> {
 	try {
 		// Fetched as JSON and re-stringified, so the downloaded file is a
 		// canonical snapshot regardless of the wire formatting.
-		const data = await $fetch<Record<string, unknown>>(`${apiBase}/api/admin/backup`, {
+		const data = await adminFetch<Record<string, unknown>>(`${apiBase}/api/admin/backup`, {
 			headers: authHeaders(),
 		});
 		const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -392,7 +421,10 @@ async function downloadFullBackup(): Promise<void> {
 		a.remove();
 		URL.revokeObjectURL(urlObj);
 	} catch (e) {
-		backupError.value = e instanceof Error ? e.message : String(e);
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit).
+		backupError.value = apiErrorMessage(e, t("admin.dashboard.backup.downloadFailed"));
 	} finally {
 		backupState.value = "idle";
 	}
@@ -421,7 +453,7 @@ async function onRestoreFileChange(event: Event): Promise<void> {
 		} catch {
 			throw new Error(t("admin.dashboard.backup.parseError"));
 		}
-		const counts = await $fetch<Record<string, number>>(`${apiBase}/api/admin/backup/restore`, {
+		const counts = await adminFetch<Record<string, number>>(`${apiBase}/api/admin/backup/restore`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json", ...authHeaders() },
 			body: JSON.stringify(snap),
@@ -429,7 +461,11 @@ async function onRestoreFileChange(event: Event): Promise<void> {
 		restoreSummary.value = backupCounts(counts);
 		void loadDashboard(); // refresh the stats cards with restored content
 	} catch (e) {
-		backupError.value = e instanceof Error ? e.message : String(e);
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit). Restore
+		// errors have a page-specific line (parse errors already carry their own).
+		backupError.value = apiErrorMessage(e, t("admin.dashboard.backup.restoreFailed"));
 	} finally {
 		backupState.value = "idle";
 		input.value = "";
@@ -541,7 +577,10 @@ async function handleApprove(commentId: number, approved: boolean) {
 		// Roll the row back to its prior state so a failed toggle doesn't leave
 		// the UI claiming a moderation change the server rejected.
 		if (comment && typeof previous === "boolean") comment.is_approved = previous;
-		approveError.value = e instanceof Error ? e.message : t("admin.dashboard.operationFailed");
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit).
+		approveError.value = apiErrorMessage(e, t("admin.dashboard.operationFailed"));
 	} finally {
 		const next = new Set(approvingIds.value);
 		next.delete(commentId);
@@ -553,7 +592,7 @@ async function handleApprove(commentId: number, approved: boolean) {
 async function loadPendingComments() {
 	try {
 		const apiBase = useRuntimeConfig().public.apiUrl;
-		const res = await $fetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
+		const res = await adminFetch<AdminCommentListResponse>(`${apiBase}/api/admin/comments`, {
 			query: { page: 1, limit: 5, is_approved: false },
 			headers: authHeaders(),
 		});

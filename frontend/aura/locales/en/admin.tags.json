@@ -15,6 +15,7 @@
 		"searchPlaceholder": "Search tags…",
 		"searchEmpty": "No tags match your search",
 		"operationFailed": "Operation failed, please retry",
-		"loading": "Loading..."
+		"loading": "Loading...",
+		"loadFailed": "Failed to load tags. Please try again."
 	}
 }

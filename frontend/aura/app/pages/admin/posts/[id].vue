@@ -1144,7 +1144,7 @@ function handleFileInput(e: Event) {
             id="post-slug"
             v-model="formData.slug"
             type="text"
-            placeholder="article-slug"
+            :placeholder="t('admin.postEdit.slugPlaceholder')"
             class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
@@ -1486,7 +1486,7 @@ function handleFileInput(e: Event) {
             id="cover_image"
             v-model="formData.cover_image"
             type="text"
-            placeholder="https://example.com/image.jpg"
+            :placeholder="t('admin.postEdit.coverImagePlaceholder')"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           >
           <button

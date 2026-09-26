@@ -276,6 +276,9 @@ async function handleDelete(id: number) {
           :disabled="!newForm.title.trim() || isProcessing"
           class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
         >
+          <!-- Spinner: says the click registered instead of reading as a frozen
+               page while the POST round-trips (round-445 audit). -->
+          <Icon v-if="isProcessing" icon="lucide:loader-2" class="w-4 h-4 animate-spin inline-block mr-1.5" aria-hidden="true" role="presentation" />
           {{ t("admin.series.create") }}
         </button>
       </form>
@@ -288,7 +291,10 @@ async function handleDelete(id: number) {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      <p class="mb-4">{{ error?.message || String(error) }}</p>
+      <!-- Localized, never error.message: an HTTP failure's message is only
+           ofetch's technical string, leaking the API URL in a wrong-language
+           line (round-445 audit). -->
+      <p class="mb-4">{{ t("admin.series.loadFailed") }}</p>
       <button
         type="button"
         class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

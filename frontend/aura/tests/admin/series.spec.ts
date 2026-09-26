@@ -91,13 +91,16 @@ describe("Admin Series Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders the localized load-failed message (never the raw ofetch string)", async () => {
 			mockFetchAdminSeries.mockReturnValue(
 				mockFetchResult(null, { error: { message: "Fetch error" } }),
 			);
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
-			expect(wrapper.text()).toContain("Fetch error");
+			// Round-445 audit: the load-failure block must not leak error.message
+			// (ofetch's technical string) — it shows the localized line instead.
+			expect(wrapper.text()).toContain("加载系列列表失败，请重试。");
+			expect(wrapper.text()).not.toContain("Fetch error");
 		});
 	});
 
@@ -291,11 +294,14 @@ describe("Admin Series Page", () => {
 			expect(wrapper.text()).toContain("操作失败");
 		});
 
-		it("renders String(error) when a fetch error has no message", async () => {
+		it("renders the localized message even when the fetch error carries no message object", async () => {
 			mockFetchAdminSeries.mockReturnValue(mockFetchResult(null, { error: "Bare error string" }));
 			const SeriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(SeriesPage);
-			expect(wrapper.text()).toContain("Bare error string");
+			// Round-445 audit: the load-failure block is localized regardless of
+			// the error's shape — a bare string error must not be surface it.
+			expect(wrapper.text()).toContain("加载系列列表失败，请重试。");
+			expect(wrapper.text()).not.toContain("Bare error string");
 		});
 	});
 

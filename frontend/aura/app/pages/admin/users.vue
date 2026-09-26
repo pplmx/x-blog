@@ -369,7 +369,10 @@ async function handleDelete(id: number) {
     </div>
 
     <div v-else-if="error" class="text-center py-12" role="alert">
-      <p class="text-red-500 mb-4">{{ error?.message || String(error) }}</p>
+      <!-- Localized, never error.message: an HTTP failure's message is only
+           ofetch's technical string, leaking the API URL in a wrong-language
+           line (round-445 audit). -->
+      <p class="text-red-500 mb-4">{{ t("admin.users.loadFailed") }}</p>
       <button
         type="button"
         class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

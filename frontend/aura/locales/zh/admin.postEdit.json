@@ -83,6 +83,8 @@
 			"total": "近 30 天 {total} 次阅读",
 			"hint": "每日阅读量，用于判断内容热度走向",
 			"failed": "阅读趋势加载失败"
-		}
+		},
+		"slugPlaceholder": "article-slug",
+		"coverImagePlaceholder": "https://example.com/image.jpg"
 	}
 }

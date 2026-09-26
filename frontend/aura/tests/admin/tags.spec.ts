@@ -82,7 +82,7 @@ describe("Admin Tags Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders the localized load-failed message (never the raw ofetch string)", async () => {
 			mockFetchAdminTags.mockReturnValue({
 				data: ref(null),
 				pending: ref(false),
@@ -92,7 +92,10 @@ describe("Admin Tags Page", () => {
 
 			const TagsPage = await loadPage();
 			const wrapper = await mountWithSuspense(TagsPage);
-			expect(wrapper.text()).toContain("Fetch error");
+			// Round-445 audit: the load-failure block must not leak error.message
+			// (ofetch's technical string) — it shows the localized line instead.
+			expect(wrapper.text()).toContain("加载标签列表失败，请重试。");
+			expect(wrapper.text()).not.toContain("Fetch error");
 		});
 	});
 

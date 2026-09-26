@@ -139,7 +139,7 @@ describe("Admin Posts Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders the localized load-failed message (never the raw ofetch string)", async () => {
 			mockFetchAdminPosts.mockReturnValue({
 				data: ref(null),
 				pending: ref(false),
@@ -149,7 +149,10 @@ describe("Admin Posts Page", () => {
 
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
-			expect(wrapper.text()).toContain("Network error");
+			// Round-445 audit: the load-failure block must not leak error.message
+			// (ofetch's technical string) — it shows the localized line instead.
+			expect(wrapper.text()).toContain("加载文章列表失败，请重试。");
+			expect(wrapper.text()).not.toContain("Network error");
 		});
 	});
 

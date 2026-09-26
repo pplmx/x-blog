@@ -25,6 +25,7 @@
 		"draftBadge": "draft",
 		"moveUp": "Move up",
 		"moveDown": "Move down",
-		"episodeFailed": "Couldn't reorder — please try again"
+		"episodeFailed": "Couldn't reorder — please try again",
+		"loadFailed": "Failed to load series. Please try again."
 	}
 }

@@ -20,6 +20,7 @@ import {
 	useAdminDigestOverview,
 	useAdminNewsletterSubscribers,
 } from "~~/api/admin/newsletter";
+import { apiErrorMessage } from "~~/api/errors";
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
@@ -120,7 +121,10 @@ async function runDigest(dryRun: boolean) {
 		// there too is harmless and keeps both paths symmetric).
 		await refreshDigestOverview();
 	} catch (e) {
-		digestError.value = e instanceof Error ? e.message : String(e);
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — the backend
+		// envelope when readable, else the localized fallback (round-445 audit).
+		digestError.value = apiErrorMessage(e, t("admin.newsletter.digestPanel.error"));
 	} finally {
 		digestBusy.value = false;
 	}
@@ -146,7 +150,7 @@ async function removeSubscriber(id: number, email: string) {
 		const status = (e as { response?: { status?: number } } | undefined)?.response?.status;
 		if (status !== 404) {
 			rowGone = false;
-			actionError.value = e instanceof Error ? e.message : t("admin.newsletter.deleteFailed");
+			actionError.value = apiErrorMessage(e, t("admin.newsletter.deleteFailed"));
 		}
 	} finally {
 		busyIds.value.delete(id);

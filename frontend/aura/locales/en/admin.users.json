@@ -41,6 +41,7 @@
 		"editor": "editor",
 		"hint": "New users get the editor role: they can manage content but not users, export, or batch actions. Delete is disabled for your own account.",
 		"accessDenied": "Access denied",
-		"editorNoAccess": "The editor role cannot manage users."
+		"editorNoAccess": "The editor role cannot manage users.",
+		"loadFailed": "Failed to load users. Please try again."
 	}
 }

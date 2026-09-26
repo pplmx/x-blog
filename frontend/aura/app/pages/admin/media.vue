@@ -13,6 +13,7 @@ import {
 	useAdminMedia,
 } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
+import { apiErrorMessage } from "~~/api/errors";
 // parseApiDate is script-side (formatDate below), so it needs no biome-ignore.
 import { parseApiDate } from "~~/composables/apiDate";
 
@@ -119,7 +120,10 @@ async function handleBatchDelete() {
 			currentPage.value = totalPages.value;
 		}
 	} catch (e) {
-		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit).
+		actionError.value = apiErrorMessage(e, t("admin.media.deleteFailed"));
 	} finally {
 		batchDeleting.value = false;
 	}
@@ -190,7 +194,10 @@ async function handleDelete(item: UploadFileInfo) {
 			currentPage.value = totalPages.value;
 		}
 	} catch (e) {
-		actionError.value = e instanceof Error ? e.message : t("admin.media.deleteFailed");
+		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — backend envelope
+		// when readable, else the localized fallback (round-445 audit).
+		actionError.value = apiErrorMessage(e, t("admin.media.deleteFailed"));
 	} finally {
 		deletingUrls.value.delete(item.url);
 	}

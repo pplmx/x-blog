@@ -87,7 +87,7 @@ describe("Admin Categories Page", () => {
 	});
 
 	describe("Error state", () => {
-		it("renders error message when fetch fails", async () => {
+		it("renders the localized load-failed message (never the raw ofetch string)", async () => {
 			mockFetchAdminCategories.mockReturnValue({
 				data: ref(null),
 				pending: ref(false),
@@ -97,7 +97,10 @@ describe("Admin Categories Page", () => {
 
 			const CategoriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(CategoriesPage);
-			expect(wrapper.text()).toContain("Fetch error");
+			// Round-445 audit: the load-failure block must not leak error.message
+			// (ofetch's technical string) — it shows the localized line instead.
+			expect(wrapper.text()).toContain("加载分类列表失败，请重试。");
+			expect(wrapper.text()).not.toContain("Fetch error");
 		});
 	});
 

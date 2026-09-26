@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { activateReader, deactivateReader, useAdminReaders } from "~~/api/admin/readers";
 import type { AdminReader } from "~~/api/contracts/reader";
+import { apiErrorMessage } from "~~/api/errors";
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });
@@ -87,7 +88,11 @@ async function toggleActive(reader: AdminReader) {
 		const row = items.value.find((r) => r.id === status.id);
 		if (row) row.is_active = status.is_active;
 	} catch (e) {
-		actionError.value = e instanceof Error ? e.message : t("admin.readers.toggleFailed");
+		// apiErrorMessage: on an HTTP failure e.message is only ofetch's technical
+		// string (leaks the API URL in a wrong-language line) — the helper returns
+		// the backend envelope when readable, else the localized fallback
+		// (round-445 audit).
+		actionError.value = apiErrorMessage(e, t("admin.readers.toggleFailed"));
 	} finally {
 		busyIds.value.delete(reader.id);
 	}

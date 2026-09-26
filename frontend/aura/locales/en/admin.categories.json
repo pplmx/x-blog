@@ -15,6 +15,7 @@
 		"searchPlaceholder": "Search categories…",
 		"searchEmpty": "No categories match your search",
 		"operationFailed": "Operation failed, please retry",
-		"loading": "Loading..."
+		"loading": "Loading...",
+		"loadFailed": "Failed to load categories. Please try again."
 	}
 }

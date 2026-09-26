@@ -25,6 +25,7 @@
 		"draftBadge": "草稿",
 		"moveUp": "上移",
 		"moveDown": "下移",
-		"episodeFailed": "调整失败，请重试"
+		"episodeFailed": "调整失败，请重试",
+		"loadFailed": "加载系列列表失败，请重试。"
 	}
 }

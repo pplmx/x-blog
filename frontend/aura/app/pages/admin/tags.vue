@@ -141,6 +141,10 @@ async function handleDelete(id: number) {
           :disabled="!newTagName.trim() || isProcessing"
           class="px-6 py-3 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 disabled:opacity-50 transition-colors"
         >
+          <!-- Create is fast but not instant; the spinner says the click
+               registered instead of reading as a frozen page while the POST
+               round-trips (round-445 audit). -->
+          <Icon v-if="isProcessing" icon="lucide:loader-2" class="w-4 h-4 animate-spin inline-block mr-1.5" aria-hidden="true" role="presentation" />
           {{ t("admin.tags.create") }}
         </button>
       </form>
@@ -153,7 +157,10 @@ async function handleDelete(id: number) {
     </div>
 
     <div v-else-if="error" class="text-center py-12 text-red-500">
-      <p class="mb-4">{{ error?.message || String(error) }}</p>
+      <!-- Localized, never error.message: on an HTTP failure that is only
+           ofetch's technical string ("[GET] ...: 500"), leaking the internal
+           API URL in a wrong-language line (round-445 audit). -->
+      <p class="mb-4">{{ t("admin.tags.loadFailed") }}</p>
       <button
         type="button"
         class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
