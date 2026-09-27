@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 450,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T16:30:20+00:00",
+  "updated_at": "2026-09-27T16:38:59+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33901,10 +33901,10 @@
       "id": "TASK-571",
       "type": "task",
       "status": "resolved",
-      "version": 2,
+      "version": 3,
       "created_at": "2026-09-27T15:47:56+00:00",
-      "updated_at": "2026-09-27T15:49:26+00:00",
-      "touched_round": 449,
+      "updated_at": "2026-09-27T16:38:59+00:00",
+      "touched_round": 450,
       "category": "test-quality",
       "severity": "low",
       "confidence": 1,
@@ -33981,6 +33981,18 @@
       "touched_round": 450,
       "commit": "021cbcc7",
       "title": "fix(backend): rate-limit all remaining admin write routes (TASK-572)"
+    },
+    "DEC-494": {
+      "id": "DEC-494",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T16:38:36+00:00",
+      "updated_at": "2026-09-27T16:38:36+00:00",
+      "touched_round": 450,
+      "title": "Close round 450 (perf-tools env, gate fixes, admin rate limits)",
+      "rationale": "Round 450 delivered five verified fixes under the continuous-polish directive. (1) CHG-806/86cdab07: perf scripts benchmarked/seed ran against hardcoded dev-PG URLs, silently ignoring the DATABASE_URL their docstrings document — now honored with defaults preserved. (2) CHG-804: ruff gate was red on ARG001 unused args in the CJK search test (regression from the round-449 GIN-index commit), fixed per repo convention. (3) CHG-805: the useLikeSync first-test flaked under full-suite load (1000ms waitFor vs cold dynamic import); now awaits the like() promise deterministically. (4) CHG-807: e2e TOTP helper dropped 4 noNonNullAssertion warnings via readUInt32BE (verified identical over 10k counters), pnpm lint now fully clean. (5) CHG-808/TASK-572: five admin write routes carried no rate limit while every sibling did (DELETE comments/flags, PUT settings, reader de/activate, digest send-weekly) — added the WRITE bucket + registry-presence regression guard; a sweep of every mutating router route confirmed no other gaps. VERIFY: backend 1928 passed (93.54%, SQLite) + admin/digest/ratelimit suites 170 passed on real PG, frontend 2515 passed, nuxt typecheck green, ruff/biome/rumdl clean, alembic drift gate untouched (no schema change). Deep-dive budget: 3 new tasks created (TASK-570/571/572), all resolved.",
+      "alternatives_rejected": "Re-opening the decisioned-bounded items ISS-242 (cache staleness, DEC-004), ISS-632 (push batch, DEC-478), ISS-625 (total_pages=0, DEC-476) — each already has a reasoned deferral and no new evidence appeared this round."
     }
   },
   "edges": [
