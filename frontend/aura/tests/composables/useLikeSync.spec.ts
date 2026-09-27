@@ -52,10 +52,17 @@ describe("useLikeSync", () => {
 		likeReaderPostMock.mockResolvedValue({ post_id: 5, already_existed: false });
 
 		const sync = useLikeSync();
-		sync.like(5);
-
+		// Fire-and-forget: the optimistic local flip must be synchronous while the
+		// cloud mirror runs async…
+		const likePromise = sync.like(5);
 		expect(sync.isLiked(5)).toBe(true);
-		await vi.waitFor(() => expect(likeReaderPostMock).toHaveBeenCalledWith(5));
+		// …but the mirror must land before the test ends. Await the promise rather
+		// than vi.waitFor: like() resolves only after the mirror settles (its
+		// documented contract), so this is deterministic instead of racing the
+		// 1000ms waitFor window against the cold dynamic module import under
+		// full-suite CPU load.
+		await likePromise;
+		expect(likeReaderPostMock).toHaveBeenCalledWith(5);
 	});
 
 	it("does not touch the cloud when logged out (guest like stays local)", async () => {
