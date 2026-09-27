@@ -9,6 +9,19 @@
 
 ## [Unreleased]
 
+- ⚡ **文章搜索不再每次查询都重建 tsvector（round 448）**——`crud.search_posts`
+  的 ASCII 搜索路径对每次请求都内联计算 `to_tsvector(...)` 再匹配 `@@`，等于每次
+  搜索都全表扫描 + 全量词典分词。在灌了 5000 篇帖子的 PostgreSQL 上实测（复现脚本
+  `scripts/seed_perf_db.py` 与 `bench_perf_db.py` 已入库）：一次热搜索 2.8–5.7 秒。
+  新增迁移（`a8c9d0e1f2a3`）在查询所用的同一表达式上建**函数式 GIN 索引**
+  （PG 上 `CONCURRENTLY` 创建、SQLite 上为无操作）——优化器现在走
+  Bitmap Index Scan，同一个 ORM 查询降到约 2 ms。索引只存在于迁移里（若写成模型
+  `__table_args__` 表达式会让 SQLite 的 `create_all` 失败），而 autogenerate 默认
+  不比对索引，所以 alembic 漂移门禁保持全绿。另加了一个 PG-gated 回归测试：把迁移
+  的 DDL 应用到 scratch schema，断言 ORM 搜索 SELECT 的查询计划真的走索引扫描，
+  锁死「查询表达式 ↔ 索引表达式」的同步（一旦漂移性能就回退）。验证：SQLite
+  1927 通过（覆盖率 93.54%）、PG 一致性 1938 通过（93.83%）、全新 PG 从零
+  迁移到 head 且索引存在。（TASK-568, ISS-654）
 - 🗄️ **PG 一致性套件不再在共享数据库上相互冲突（round 448）**——把 PG-gated 测试
   指向真实 PostgreSQL 并以 `-n` 并行运行时，暴露出两个 SQLite 一直藏着的并行隔离
   缺陷。(1) 周报任务的 Postgres advisory 锁是**数据库级**的，可所有 xdist worker

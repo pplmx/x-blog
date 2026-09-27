@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
+  ASCII search path in `crud.search_posts` matched `@@` against a
+  `to_tsvector(...)` computed inline, so every search did a full-table scan +
+  dictionary pass over all posts. Measured on a seeded 5k-post PostgreSQL
+  (`scripts/seed_perf_db.py` + `bench_perf_db.py`, kept for reproducibility):
+  2.8–5.7 s per warm search. A new migration adds a functional **GIN index**
+  (`a8c9d0e1f2a3`, `CONCURRENTLY` on PG, no-op on SQLite) on the exact query
+  expression — the planner now does a Bitmap Index Scan and the same ORM query
+  returns in ~2 ms. The index is migration-only (a model `__table_args__`
+  expression would break SQLite `create_all`) and autogenerate ignores index
+  diffs, so the alembic drift gate stays green. A PG-gated regression test
+  applies the migration DDL to the scratch schema and asserts the ORM search
+  SELECT plans an index scan, locking expression-equivalence against future
+  drift. Verified: SQLite 1927 passed (93.54 %), PG-parity 1938 passed
+  (93.83 %), fresh-PG bootstrap migrates to head with the index present.
+  (TASK-568, ISS-654)
 - 🗄️ **PG-parity suite no longer collides on the shared database (round 448)** —
   running the PG-gated tests against a real PostgreSQL under `-n` exposed two
   parallel-isolation defects SQLite had been hiding. (1) The weekly-digest job's

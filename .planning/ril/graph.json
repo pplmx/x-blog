@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 447,
+  "round": 448,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T00:29:39+00:00",
+  "updated_at": "2026-09-27T10:30:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -11,7 +11,7 @@
       "version": 1,
       "created_at": "2026-08-06T13:23:41+00:00",
       "updated_at": "2026-08-06T13:23:41+00:00",
-      "touched_round": 447,
+      "touched_round": 448,
       "title": "backend-nova",
       "description": "FastAPI Python 3.14 backend at backend/nova; SQLAlchemy ORM; routers in app/routers, crud.py business logic, 656 lines"
     },
@@ -103,7 +103,7 @@
       "version": 2,
       "created_at": "2026-08-06T13:24:48+00:00",
       "updated_at": "2026-08-10T05:08:10+00:00",
-      "touched_round": 31,
+      "touched_round": 448,
       "title": "posts-list API is bottlenecked by uncached DB reads on the most trafficked endpoint",
       "confidence": 0.7,
       "description": "/api/posts is the hottest public endpoint; caching the list with a TTL would reduce DB load. Risk: SQLAlchemy ORM objects detach across sessions — cache must store serialized dicts."
@@ -32517,7 +32517,7 @@
       "version": 1,
       "created_at": "2026-09-24T19:25:07+00:00",
       "updated_at": "2026-09-24T19:25:07+00:00",
-      "touched_round": 428,
+      "touched_round": 448,
       "title": "frontend server utils (rate limit client IP)"
     },
     "ISS-617": {
@@ -33750,6 +33750,55 @@
       "updated_at": "2026-09-27T00:28:55+00:00",
       "touched_round": 447,
       "commit": "8ba05962208b863a2b17095551ba6ad34560a7bc"
+    },
+    "TASK-568": {
+      "id": "TASK-568",
+      "type": "task",
+      "status": "resolved",
+      "version": 3,
+      "created_at": "2026-09-27T10:08:42+00:00",
+      "updated_at": "2026-09-27T10:22:07+00:00",
+      "touched_round": 448,
+      "category": "performance",
+      "severity": "high",
+      "priority_score": 8,
+      "title": "GIN index for tsvector post search",
+      "description": "ASCII search_posts computes to_tsvector per row (no index) — 2.8-5.7s on a seeded 5k-post PG; functional GIN index fixes to ~2ms"
+    },
+    "CHG-801": {
+      "id": "CHG-801",
+      "type": "change",
+      "status": "active",
+      "version": 3,
+      "created_at": "2026-09-27T10:08:42+00:00",
+      "updated_at": "2026-09-27T10:22:07+00:00",
+      "touched_round": 448,
+      "commit": "2de61e81",
+      "title": "Add GIN index on post-search tsvector expression"
+    },
+    "ISS-654": {
+      "id": "ISS-654",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-27T10:22:07+00:00",
+      "updated_at": "2026-09-27T10:22:07+00:00",
+      "touched_round": 448,
+      "severity": "high",
+      "title": "tsvector post search unindexed (2.8-5.7s on 5k posts)",
+      "description": "ASCII search_posts recomputes to_tsvector over all posts per query; no GIN index. Fixed by CHG-801."
+    },
+    "EV-318": {
+      "id": "EV-318",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T10:23:47+00:00",
+      "updated_at": "2026-09-27T10:23:47+00:00",
+      "touched_round": 448,
+      "source": "bench_perf_db.py / EXPLAIN ANALYZE on seeded 5k-post PG (2026-09-27)",
+      "description": "ASCII search_posts('python') 5670ms before, 2ms after adding functional GIN index; planner: Bitmap Index Scan on ix_posts_tsvector_content",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -50784,6 +50833,24 @@
       "to": "TASK-567",
       "type": "implements",
       "created_at": "2026-09-27T00:28:56+00:00"
+    },
+    {
+      "from": "CHG-801",
+      "to": "TASK-568",
+      "type": "implements",
+      "created_at": "2026-09-27T10:17:24+00:00"
+    },
+    {
+      "from": "CHG-801",
+      "to": "ISS-654",
+      "type": "resolves",
+      "created_at": "2026-09-27T10:23:47+00:00"
+    },
+    {
+      "from": "ISS-654",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-27T10:28:58+00:00"
     }
   ]
 }
