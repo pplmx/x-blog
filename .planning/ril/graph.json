@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 447,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-26T16:30:05+00:00",
+  "updated_at": "2026-09-27T00:29:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33716,6 +33716,40 @@
       "updated_at": "2026-09-26T16:29:40+00:00",
       "touched_round": 447,
       "commit": "949e3fb20a752b1d993c3b2e63e50d6a766bf8c5"
+    },
+    "ISS-653": {
+      "id": "ISS-653",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-27T00:27:41+00:00",
+      "updated_at": "2026-09-27T00:29:39+00:00",
+      "touched_round": 447,
+      "title": "PG-parity tests collide on the shared database under -n (advisory lock + public-schema table races)",
+      "severity": "medium",
+      "summary": "Running the PG-gated suite against a real PostgreSQL with -n exposed two parallel-isolation defects hidden by SQLite: (1) the digest job's advisory lock is database-scoped but all workers used one fixed key, so one worker's lock-contention test locked out every other worker's digest send (reason='locked', 4+ fails); (2) the digest + CJK PG verification tests create_all/drop_all'd into the shared database's PUBLIC schema, so two workers raced and one drop_all wiped a table the other had just created (and touched the operator's real public schema on a shared dev PG)."
+    },
+    "TASK-567": {
+      "id": "TASK-567",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-27T00:28:17+00:00",
+      "updated_at": "2026-09-27T00:29:39+00:00",
+      "touched_round": 447,
+      "category": "test-quality",
+      "severity": "low",
+      "summary": "Isolate PG-parity suite per worker: per-worker digest advisory-lock key + pg_scratch_engine schema for digest/CJK verification tests"
+    },
+    "CHG-800": {
+      "id": "CHG-800",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T00:28:55+00:00",
+      "updated_at": "2026-09-27T00:28:55+00:00",
+      "touched_round": 447,
+      "commit": "8ba05962208b863a2b17095551ba6ad34560a7bc"
     }
   },
   "edges": [
@@ -50726,6 +50760,30 @@
       "to": "COMP-008",
       "type": "located_in",
       "created_at": "2026-09-26T16:29:40+00:00"
+    },
+    {
+      "from": "CHG-800",
+      "to": "ISS-653",
+      "type": "resolves",
+      "created_at": "2026-09-27T00:28:55+00:00"
+    },
+    {
+      "from": "ISS-653",
+      "to": "COMP-001",
+      "type": "located_in",
+      "created_at": "2026-09-27T00:28:56+00:00"
+    },
+    {
+      "from": "TASK-567",
+      "to": "ISS-653",
+      "type": "addresses",
+      "created_at": "2026-09-27T00:28:56+00:00"
+    },
+    {
+      "from": "CHG-800",
+      "to": "TASK-567",
+      "type": "implements",
+      "created_at": "2026-09-27T00:28:56+00:00"
     }
   ]
 }

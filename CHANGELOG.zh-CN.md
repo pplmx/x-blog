@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+- 🗄️ **PG 一致性套件不再在共享数据库上相互冲突（round 448）**——把 PG-gated 测试
+  指向真实 PostgreSQL 并以 `-n` 并行运行时，暴露出两个 SQLite 一直藏着的并行隔离
+  缺陷。(1) 周报任务的 Postgres advisory 锁是**数据库级**的，可所有 xdist worker
+  都用一个固定键：其中一个 worker 的锁竞争测试会让其它 worker 的周报发送全部返回
+  `reason="locked"`，4+ 个本可逐个通过的测试失败。锁键现按 worker 加盐（仅在
+  `TEST_DATABASE_URL` 下生效；生产仍用稳定基准键）。(2) digest 与 CJK 的 PG 验证
+  测试在共享数据库的 **public schema** 上做 `create_all`/`drop_all`——两个 worker
+  竞争时会互相清掉对方刚建的表（`table comments does not exist`），还会碰到共享
+  开发库上的真实数据；新增的 `pg_scratch_engine` fixture 给每个 worker 独立的
+  `xblog_pgscratch_{worker}` schema。已在开发 PG（10.112.9.49）上验证：
+  digest+pgconn+cjk 组合现在确定全绿（53 passed ×4 轮）；SQLite 路径不受影响。
+  （TASK-567, ISS-653）
 - 🖼️ **超宽的 mermaid 图在手机上不再裁掉左边缘（round 448）**——图表容器此前是
   `flex justify-center overflow-x-auto`：比视口宽的图会向两侧溢出，而
   `scrollLeft` 不能为负，于是宽流程图的起点在小屏上永远滚不到（flex 溢出裁剪

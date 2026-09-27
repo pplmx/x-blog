@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🗄️ **PG-parity suite no longer collides on the shared database (round 448)** —
+  running the PG-gated tests against a real PostgreSQL under `-n` exposed two
+  parallel-isolation defects SQLite had been hiding. (1) The weekly-digest job's
+  Postgres advisory lock is **database-scoped**, but all xdist workers used one
+  fixed key: the lock-contention test in one worker made every *other* worker's
+  digest send return `reason="locked"`, failing 4+ tests that each passed in
+  isolation. The lock key is now worker-salted under `TEST_DATABASE_URL`
+  (production keeps the stable base key). (2) The digest and CJK PG
+  verification tests did `create_all`/`drop_all` on the shared database's
+  **public schema**, so two workers racing wiped each other's tables ("table
+  comments does not exist") and touched the operator's real data on a shared
+  dev PG; a new `pg_scratch_engine` fixture gives each worker its own
+  `xblog_pgscratch_{worker}` schema. Verified vs the dev PG (10.112.9.49): the
+  digest+pgconn+cjk mix is now deterministically green (53 passed ×4 runs);
+  SQLite path unaffected. (TASK-567, ISS-653)
 - 🖼️ **Wide mermaid diagrams no longer clip their left edge on mobile (round 448)** —
   the diagram container was `flex justify-center overflow-x-auto`: a diagram
   wider than the viewport overflows to *both* sides and `scrollLeft` can't go
