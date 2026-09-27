@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 452,
+  "round": 453,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T17:30:09+00:00",
+  "updated_at": "2026-09-27T17:52:08+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34042,6 +34042,18 @@
       "touched_round": 452,
       "commit": "b8508e89",
       "title": "fix(frontend): autocomplete on admin auth/change-password fields (TASK-573)"
+    },
+    "DEC-496": {
+      "id": "DEC-496",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T17:51:02+00:00",
+      "updated_at": "2026-09-27T17:51:02+00:00",
+      "touched_round": 452,
+      "title": "Close round 452 (autocomplete UX, full-suite green)",
+      "rationale": "Round 452 under the continuous-polish directive: CHG-810/TASK-573 added autocomplete attributes to the five email/password inputs that lacked them (admin-login password, three admin change-password fields, readonly current-email display) so browsers/password managers classify them correctly — the reader-side forms already had them, the admin-side gap broke saved-credential offering and new-password generation. A full-app scan confirms all 21 email/password inputs now carry a correct autocomplete. Also confirmed the round-451 end state on the real dev PostgreSQL (10.112.9.49): full PG-parity 1939 passed, 93.83%. VERIFY this round: full backend 1928 passed 93.54% (SQLite), frontend 2515 passed (clean isolated run; the intermediate ~2 test failures were an overlapping-vitest artifact, re-run green), nuxt typecheck green, ruff/biome/rumdl clean. Deep-dive returns this round: 1 task (TASK-573, below the 3.0 loop threshold but a genuine, verified UX defect — fixed directly per the operator usability directive).",
+      "alternatives_rejected": "Scoping the autocomplete fix to reader forms only (they were already correct — no work there). Using aria-hidden/name heuristics instead of autocomplete (browsers ignore them). Mapping the transient 2-test red in one run to a code regression without re-running in isolation (the dedicated useUpload/useLikeSync suites passed; the re-run is fully green — it was a worker collision, not a logic change)."
     }
   },
   "edges": [
