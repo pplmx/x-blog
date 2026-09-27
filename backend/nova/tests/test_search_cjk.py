@@ -188,6 +188,90 @@ class TestSearchSnippet:
     not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
     reason="requires TEST_DATABASE_URL pointing at PostgreSQL (e.g. dev host 10.112.9.49:13310)",
 )
+class TestTsvectorGinIndexPostgres:
+    """The tsvector GIN index (migration a8c9d0e1f2a3) must actually drive the
+    ASCII search query — this is a performance regression guard, not a
+    correctness one.
+
+    crud.search_posts builds ``to_tsvector('english', title || ' ' ||
+    coalesce(excerpt, '') || ' ' || content) @@ plainto_tsquery(...)`` at query
+    time. Without an index that matches that EXPRESSION, Postgres recomputes
+    tsvector over every post per search (measured multi-second on a seeded
+    5k-post DB, 2026-09-27). The functional GIN index fixes that only while its
+    expression stays in sync with the query — if either drifts, the planner
+    silently falls back to a seq scan and the regression returns. This test
+    applies the migration DDL to the scratch schema and asserts the ORM-compiled
+    search SELECT plans a Bitmap Index Scan on it (the PGO-marked scan, not a
+    bare seq scan + filter).
+    """
+
+    def test_tsvector_index_drives_search_plan(self, pg_scratch_engine):
+        from sqlalchemy import event, func, select, text
+        from sqlalchemy.orm import sessionmaker
+
+        from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
+
+        engine = pg_scratch_engine
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        try:
+            from app.database import Base
+
+            Base.metadata.create_all(engine)
+            # Apply exactly what the migration ships: CREATE INDEX CONCURRENTLY
+            # cannot run inside a transaction (the migration wraps it in an
+            # autocommit block), so execute on a dedicated autocommit connection.
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                conn.execute(text(migration.INDEX_DDL))
+
+            query = search_posts.__globals__["models"]
+            ts_query = func.plainto_tsquery("english", "python")
+            ts_vector = func.to_tsvector(
+                "english",
+                query.Post.title + " " + func.coalesce(query.Post.excerpt, "") + " " + query.Post.content,
+            )
+            stmt = (
+                select(query.Post)
+                .where(query.Post.published.is_(True))
+                .where(ts_vector.op("@@")(ts_query))
+                .order_by(func.ts_rank(ts_vector, ts_query).desc(), query.Post.id.desc())
+            )
+
+            # Capture the exact SQL the ORM would run, then EXPLAIN it. The
+            # captured statement uses psycopg2 pyformat (%(name)s) parameters,
+            # so EXPLAIN must go through the same raw DBAPI cursor with the same
+            # parameter dict — a SQLAlchemy text() re-bind would mangle it.
+            captured: list[tuple[str, object]] = []
+
+            def _capture(dbapi_conn, cursor, statement, parameters, context, executemany):
+                captured.append((statement, parameters))
+
+            event.listen(engine, "before_cursor_execute", _capture)
+            db.execute(stmt).all()
+            event.remove(engine, "before_cursor_execute", _capture)
+            assert captured, "expected the ORM select to execute"
+            captured_sql, captured_params = captured[-1]
+
+            raw = engine.raw_connection()
+            cur = raw.cursor()
+            cur.execute("EXPLAIN (ANALYZE, COSTS OFF) " + captured_sql, captured_params)
+            plan = "\n".join(row[0] for row in cur.fetchall())
+            cur.close()
+            raw.close()
+            assert "ix_posts_tsvector_content" in plan, f"GIN index not in plan:\n{plan}"
+            assert "Bitmap Index Scan" in plan or "Index Scan" in plan, f"planner did not use the index:\n{plan}"
+        finally:
+            db.close()
+            from app.database import Base
+
+            Base.metadata.drop_all(bind=engine)
+            engine.dispose()
+
+
+@pytest.mark.skipif(
+    not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
+    reason="requires TEST_DATABASE_URL pointing at PostgreSQL (e.g. dev host 10.112.9.49:13310)",
+)
 class TestChineseSearchPostgres:
     """Runs the CJK branch against a REAL PostgreSQL. Skipped by default — the
     operator runs it with TEST_DATABASE_URL pointing at the dev pg host (see

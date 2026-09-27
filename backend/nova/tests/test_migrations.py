@@ -266,6 +266,122 @@ def test_redundant_indexes_are_removed_from_create_all_era_schema(monkeypatch):
     ]
 
 
+# ---------------------------------------------------------------------------
+# Post-search tsvector GIN index (perf, PG-only — see the migration module):
+# the ASCII tsvector path in crud.search_posts computed to_tsvector over the
+# whole posts table per query (multi-second searches at ~5k posts) because no
+# index drove the @@ match. A functional GIN index on the exact query
+# expression fixes it (measured 2.8s+ -> ~2ms); it is migration-only because a
+# __table_args__ Index would make SQLite create_all evaluate to_tsvector and
+# fail. SQLite must be a no-op; PG must be concurrent + idempotent.
+# ---------------------------------------------------------------------------
+
+
+class _CreateIndex_AutocommitContext:
+    """Shared autocommit-block helper so the two PG cases can assert there."""
+
+    entered = False
+
+
+def _tsvector_bind(index_exists: bool, dialect: str = "postgresql"):
+    class Dialect:
+        name = dialect
+
+    class Result:
+        @staticmethod
+        def scalar():
+            return 1 if index_exists else None
+
+    class Bind:
+        dialect = Dialect()
+
+        @staticmethod
+        def execute(*_args, **_kwargs):
+            return Result()
+
+    return Bind()
+
+
+def test_posts_tsvector_index_created_concurrently_on_postgres(monkeypatch):
+    from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
+
+    _CreateIndex_AutocommitContext.entered = False
+    executed = []
+
+    @contextmanager
+    def autocommit_block():
+        _CreateIndex_AutocommitContext.entered = True
+        yield
+
+    class Context:
+        pass
+
+    Context.autocommit_block = staticmethod(autocommit_block)
+
+    monkeypatch.setattr(migration.op, "get_bind", lambda: _tsvector_bind(index_exists=False))
+    monkeypatch.setattr(migration.op, "get_context", lambda: Context())
+    monkeypatch.setattr(migration.op, "execute", lambda stmt: executed.append(str(stmt)))
+
+    migration.upgrade()
+
+    assert _CreateIndex_AutocommitContext.entered is True
+    assert executed and "USING gin" in executed[0]
+    assert migration.INDEX_NAME in executed[0]
+
+
+def test_posts_tsvector_index_skipped_when_present_on_postgres(monkeypatch):
+    """Idempotency: an already-created index must not re-run CREATE INDEX
+    CONCURRENTLY (which would error with 'already exists')."""
+    from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
+
+    executed = []
+
+    monkeypatch.setattr(migration.op, "get_bind", lambda: _tsvector_bind(index_exists=True))
+    monkeypatch.setattr(migration.op, "get_context", lambda: object())
+    monkeypatch.setattr(migration.op, "execute", lambda stmt: executed.append(str(stmt)))
+
+    migration.upgrade()
+
+    assert executed == []
+
+
+def test_posts_tsvector_index_is_noop_on_sqlite(monkeypatch):
+    """SQLite (the default test back) lacks to_tsvector/GIN and uses the ILIKE
+    substring branch — the migration must not attempt PG-only DDL there."""
+    from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
+
+    executed = []
+    monkeypatch.setattr(migration.op, "get_bind", lambda: _tsvector_bind(index_exists=False, dialect="sqlite"))
+    monkeypatch.setattr(migration.op, "get_context", lambda: object())
+    monkeypatch.setattr(migration.op, "execute", lambda stmt: executed.append(str(stmt)))
+
+    migration.upgrade()
+    assert executed == []
+
+
+def test_posts_tsvector_index_downgrade_drops_on_postgres(monkeypatch):
+    from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
+
+    executed = []
+
+    @contextmanager
+    def autocommit_block():
+        yield
+
+    class Context:
+        pass
+
+    Context.autocommit_block = staticmethod(autocommit_block)
+
+    monkeypatch.setattr(migration.op, "get_bind", lambda: _tsvector_bind(index_exists=True))
+    monkeypatch.setattr(migration.op, "get_context", lambda: Context())
+    monkeypatch.setattr(migration.op, "execute", lambda stmt: executed.append(str(stmt)))
+
+    migration.downgrade()
+
+    assert executed and "DROP INDEX CONCURRENTLY" in executed[0]
+
+
 @pytest.fixture()
 def stale_bookmark_sqlite_url(tmp_path: Path) -> str:
     """A create_all-era SQLite DB whose reader_bookmarks lacks the done column.
