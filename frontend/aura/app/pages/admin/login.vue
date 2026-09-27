@@ -144,6 +144,7 @@ async function handleLogin() {
             id="admin-password"
             v-model="password"
             type="password"
+            autocomplete="current-password"
             :placeholder="t('admin.login.passwordPlaceholder')"
             required
             class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"

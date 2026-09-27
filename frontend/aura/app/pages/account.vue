@@ -1284,6 +1284,7 @@ function shortEndpoint(endpoint: string): string {
               :value="reader?.email ?? ''"
               type="email"
               readonly
+              autocomplete="off"
               class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </label>
