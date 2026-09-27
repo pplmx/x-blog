@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   4-byte big-endian read (`& 0x7fffffff` clears the sign bit) and bounds-checks
   the offset, so a bad index throws instead of silently yielding 0. Verified
   behavior-identical over 10k random counters; `pnpm lint` is now fully clean.
+- 🔒 **Every admin write route now carries the WRITE rate-limit bucket (round 450)** —
+  five admin routes were missing `@limiter.limit` while every sibling write used it:
+  `DELETE /comments/{id}/flags`, `PUT /settings/{key}`, reader
+  deactivate/activate, and the on-demand `POST /digests/send-weekly`. A
+  compromised admin session or a fault-looping digest send was unthrottled. A
+  registry-presence regression guard covers all five; a sweep of every mutating
+  router route confirmed no other gaps. (TASK-572)
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +
