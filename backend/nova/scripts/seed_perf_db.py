@@ -8,6 +8,7 @@ production. Run:
         .venv/bin/python scripts/seed_perf_db.py
 """
 
+import os
 import random
 import sys
 from datetime import UTC, datetime, timedelta
@@ -68,9 +69,20 @@ BODY = (
 # Shared dev-PostgreSQL root (host/user/pass/db all 'postgres'), used to create
 # the scratch database when it is missing (with FORCE so a stale one from a
 # killed run can't wedge the CREATE).
-_MAINTENANCE_URL = "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/postgres"
+#
+# DATABASE_URL (the docstring's documented invocation) overrides the target:
+# before this, the URL was hardcoded here so a documented run on another host
+# was a silent no-op that benchmarked the dev database anyway.
 _PERF_DB_NAME = "xblog_perf"
+_MAINTENANCE_URL = "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/postgres"
 ENGINE_URL = f"postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/{_PERF_DB_NAME}"
+if "DATABASE_URL" in os.environ:
+    ENGINE_URL = os.environ["DATABASE_URL"]
+    # Derive the database-creating maintenance connection from the same
+    # host/credentials, pointing at the server's maintenance DB ('postgres').
+    _url = ENGINE_URL.rsplit("/", 1)[0]
+    _MAINTENANCE_URL = f"{_url}/postgres"
+    _PERF_DB_NAME = ENGINE_URL.rsplit("/", 1)[-1]
 
 
 def _ensure_database_exists() -> None:

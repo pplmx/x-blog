@@ -12,6 +12,7 @@ Run:
         .venv/bin/python scripts/bench_perf_db.py
 """
 
+import os
 import sys
 import time
 from datetime import UTC, datetime
@@ -24,7 +25,9 @@ sys.path.insert(0, ".")
 from app import models  # noqa: E402
 from app.crud import _effective_publish_col, get_archive, get_post_by_slug, get_posts, search_posts  # noqa: E402
 
-ENGINE_URL = "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/xblog_perf"
+# DATABASE_URL (the docstring's documented invocation) overrides the target —
+# before this the URL was hardcoded, silently ignoring the documented env var.
+ENGINE_URL = os.environ.get("DATABASE_URL", "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/xblog_perf")
 NOW_NAIVE = datetime.now(UTC).replace(tzinfo=None)
 
 
