@@ -45,6 +45,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   email per fresh address — the same spam/abuse class as register). Its code
   default matched; the override line now lives where an operator tuning limits
   would look. (CHG-809)
+- 🔑 **Admin auth fields get proper autocomplete (round 452)** — the admin-login
+  password, the change-password form's current/new/confirm fields, and the
+  readonly current-email display in the account email-change form had no
+  `autocomplete` attribute, so browsers and password managers could not
+  classify them — admin logins never offered the saved credential and
+  change-password offered no new-password generation (a usage gap the
+  reader-side forms already solved). `current-password`/`new-password` now
+  match, and the readonly display is `autocomplete="off"`. A full scan
+  confirms all 21 email/password inputs across the app carry a correct value.
+  (TASK-573)
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +
