@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compromised admin session or a fault-looping digest send was unthrottled. A
   registry-presence regression guard covers all five; a sweep of every mutating
   router route confirmed no other gaps. (TASK-572)
+- 🚢 **Compose exposes the newsletter rate-limit override (round 451)** — the
+  per-endpoint limit list in `docker-compose.yml` documents each as
+  "independently overridable" but omitted `RATE_LIMIT_NEWSLETTER` (the tight
+  5/min bucket on the unauthenticated subscribe entry that fires an outbound
+  email per fresh address — the same spam/abuse class as register). Its code
+  default matched; the override line now lives where an operator tuning limits
+  would look. (CHG-809)
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +

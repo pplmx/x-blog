@@ -31,6 +31,10 @@
   `PUT /settings/{key}`、读者停用/启用、以及按需的 `POST /digests/send-weekly`。
   被盗用的 admin 会话或故障循环的摘要发送此前不受任何限流。已为这 5 个接口添加
   注册表存在性回归断言，并全量扫描所有可变路由确认无其他缺口。（TASK-572）
+- 🚢 **Compose 现在暴露 newsletter 限流覆盖项（round 451）**——`docker-compose.yml`
+  的按接口限流清单写明每个都可独立覆盖，却漏了 `RATE_LIMIT_NEWSLETTER`（面向未认证
+  订阅入口的 5 次/分钟紧桶，每个新地址都会触发一封外发邮件——与注册同属垃圾/滥用类别）。
+  其代码默认值本就一致；现在该覆盖项写在了运维调整限流时会找的地方。（CHG-809）
 - ⚡ **文章搜索不再每次查询都重建 tsvector（round 448）**——`crud.search_posts`
   的 ASCII 搜索路径对每次请求都内联计算 `to_tsvector(...)` 再匹配 `@@`，等于每次
   搜索都全表扫描 + 全量词典分词。在灌了 5000 篇帖子的 PostgreSQL 上实测（复现脚本
