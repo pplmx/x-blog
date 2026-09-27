@@ -1303,8 +1303,10 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(min_length=8, description="New password must be at least 8 characters")
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/comments/{comment_id}/flags")
 def dismiss_comment_flags(
+    request: Request,  # noqa: ARG001
     comment_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -1457,8 +1459,10 @@ def get_site_setting_ep(
     return SettingRead(key=key, value="true" if effective else "false")
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/settings/{key}", response_model=SettingRead)
 def put_site_setting_ep(
+    request: Request,  # noqa: ARG001
     key: str,
     body: SettingUpdate,
     db: Session = Depends(get_db),
@@ -1589,8 +1593,10 @@ def _get_reader_or_404(db: Session, reader_id: int) -> auth.ReaderAccount:
     return reader
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/readers/{reader_id}/deactivate", response_model=AdminReaderStatusResponse)
 def admin_deactivate_reader(
+    request: Request,  # noqa: ARG001
     reader_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -1617,8 +1623,10 @@ def admin_deactivate_reader(
     )
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/readers/{reader_id}/activate", response_model=AdminReaderStatusResponse)
 def admin_activate_reader(
+    request: Request,  # noqa: ARG001
     reader_id: IdInt,
     db: Session = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
@@ -1641,8 +1649,10 @@ def admin_activate_reader(
     )
 
 
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/digests/send-weekly", response_model=dict)
 def admin_send_weekly_digest(
+    request: Request,  # noqa: ARG001
     dry_run: bool = Query(False, description="Build + report without sending mail or stamping digest_sent_at"),
     _current_user: auth.User = Depends(get_current_superuser),
     db: Session = Depends(get_db),

@@ -148,6 +148,37 @@ class TestAdminWriteEndpointsRateLimited:
         ):
             assert f"app.routers.admin.{fn_name}" in registered
 
+    def test_admin_misc_writes_are_rate_limited(self):
+        """Every remaining admin write route carries the WRITE bucket.
+
+        Regression guard for the round-450 sweep: dismiss_comment_flags
+        (DELETE /comments/{id}/flags), put_site_setting_ep (PUT
+        /settings/{key}), reader de/activate, and the on-demand weekly digests
+        each had silently dropped the @limiter.limit every sibling admin write
+        carries — a compromised admin session (or a fault-looping scheduled
+        digest send) was unthrottled.
+        """
+        from app.limiter import limiter
+        from app.routers.admin import (
+            admin_activate_reader,
+            admin_deactivate_reader,
+            admin_send_weekly_digest,
+            dismiss_comment_flags,
+            put_site_setting_ep,
+        )
+
+        registered = set(limiter._route_limits)
+        for fn in (
+            dismiss_comment_flags,
+            put_site_setting_ep,
+            admin_deactivate_reader,
+            admin_activate_reader,
+            admin_send_weekly_digest,
+        ):
+            assert f"{fn.__module__}.{fn.__name__}" in registered, (
+                f"admin write endpoint {fn.__name__} is not rate-limited"
+            )
+
 
 class TestReaderWriteEndpointsRateLimited:
     """Reader self-service writes must carry the WRITE rate limit.
