@@ -65,10 +65,39 @@ BODY = (
 ).strip()
 
 
+# Shared dev-PostgreSQL root (host/user/pass/db all 'postgres'), used to create
+# the scratch database when it is missing (with FORCE so a stale one from a
+# killed run can't wedge the CREATE).
+_MAINTENANCE_URL = "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/postgres"
+_PERF_DB_NAME = "xblog_perf"
+ENGINE_URL = f"postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/{_PERF_DB_NAME}"
+
+
+def _ensure_database_exists() -> None:
+    """Create the scratch perf DB if missing (self-bootstrapping).
+
+    The migration docstring points operators at this script to reproduce the
+    GIN-index measurement, so it should be a one-shot command — not require a
+    manual ``createdb`` step that the eager operator forgets and then sees a
+    confusing "database does not exist".
+    """
+    adm = create_engine(_MAINTENANCE_URL, isolation_level="AUTOCOMMIT")
+    try:
+        with adm.connect() as conn:
+            exists = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": _PERF_DB_NAME},
+            ).scalar()
+            if not exists:
+                conn.execute(text(f'CREATE DATABASE "{_PERF_DB_NAME}"'))
+                print(f"created scratch database {_PERF_DB_NAME}")
+    finally:
+        adm.dispose()
+
+
 def main() -> None:
-    engine = create_engine(
-        "postgresql+psycopg2://postgres:postgres@10.112.9.49:13310/xblog_perf", pool_size=5, max_overflow=5
-    )
+    _ensure_database_exists()
+    engine = create_engine(ENGINE_URL, pool_size=5, max_overflow=5)
     with engine.begin() as conn:
         conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         conn.execute(text("CREATE SCHEMA public"))
