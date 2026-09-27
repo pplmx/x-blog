@@ -39,7 +39,11 @@ function totpAt(secret: string, counter: number): string {
 	buf.writeBigUInt64BE(BigInt(Math.floor(counter)));
 	const h = createHmac("sha1", key).update(buf).digest();
 	const off = h[h.length - 1] & 0x0f;
-	const bin = ((h[off]! & 0x7f) << 24) | (h[off + 1]! << 16) | (h[off + 2]! << 8) | h[off + 3]!;
+	// RFC 4226 dynamic truncation without non-null assertions: readUInt32BE is
+	// the same 4-byte big-endian extract (`& 0x7fffffff` clears the sign bit),
+	// and bounds-checks the offset (off <= 15 always fits inside the 20-byte
+	// SHA-1 digest, so a bad index throws instead of silently yielding 0).
+	const bin = h.readUInt32BE(off) & 0x7fffffff;
 	return (bin % 1_000_000).toString().padStart(6, "0");
 }
 
