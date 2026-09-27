@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+- 🔧 **性能基准脚本现在遵循 `DATABASE_URL`（round 449）**——`seed_perf_db.py`
+  和 `bench_perf_db.py` 的文档都写明通过 `DATABASE_URL=...` 运行，但两者都把
+  开发 PostgreSQL 地址硬编码进代码，导致在其他主机上按文档运行会静默地基准测试
+  错误的数据库。现在设置 `DATABASE_URL` 时优先使用它（seed 脚本会从同一主机/凭据
+  推导出用于建库的维护连接）；开发默认值保持不变。
+- 🧹 **后端 lint 门禁回归修复（round 449）**——CJK 搜索测试的 DBAPI 事件监听
+  回调带有未使用的形参，触发了 ruff `ARG001` 并使 `ruff check` 变红；现在按仓库
+  惯例以下划线前缀标记未使用参数。CJK/trgm 验证为阴性的结论（DEC-492）本身正确。
+- 🐛 **`useLikeSync` 首个测试的偶发失败修复（round 449）**——like 镜像断言在整
+  套测试运行时，与冷启动的动态模块导入争抢 `vi.waitFor` 默认 1000ms 窗口导致偶发
+  失败（单独运行通过）。测试现在改为 `await` `like()` 的 Promise——它只在云镜像
+  落地后才 resolve（这是其文档契约），因此结果是确定性的。
 - ⚡ **文章搜索不再每次查询都重建 tsvector（round 448）**——`crud.search_posts`
   的 ASCII 搜索路径对每次请求都内联计算 `to_tsvector(...)` 再匹配 `@@`，等于每次
   搜索都全表扫描 + 全量词典分词。在灌了 5000 篇帖子的 PostgreSQL 上实测（复现脚本

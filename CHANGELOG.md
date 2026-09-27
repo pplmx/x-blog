@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔧 **Perf benchmark scripts honor `DATABASE_URL` (round 449)** — `seed_perf_db.py`
+  and `bench_perf_db.py` document running via `DATABASE_URL=...`, but both
+  hardcoded the dev-PostgreSQL URL, so a documented invocation on another host
+  silently benchmarked the wrong database. `DATABASE_URL` now overrides the
+  target when set (the seed derives its database-creating maintenance
+  connection from the same host/credentials); the dev defaults are unchanged.
+- 🧹 **Backend lint-gate regression fixed (round 449)** — the CJK search test's
+  DBAPI event-listener callback tripped ruff `ARG001` (unused args) and
+  reddened `ruff check`; the unused arguments are now underscore-prefixed per
+  the repo convention. The CJK/trgm validated-negative decision (DEC-492)
+  itself was correct.
+- 🐛 **`useLikeSync` first-test flake fixed (round 449)** — the like-mirror
+  assertion raced `vi.waitFor`'s default 1000 ms window against the cold
+  dynamic module import under full-suite load (passed in isolation, ~100 %
+  flaky in the failing run). The test now awaits the `like()` promise, which
+  resolves only after the cloud mirror settles, so it is deterministic.
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +
