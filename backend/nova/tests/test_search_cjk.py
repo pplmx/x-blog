@@ -194,11 +194,10 @@ class TestChineseSearchPostgres:
     backend/nova/run_pg_search_tests.sh). On the OLD tsvector code this test
     fails (the original bug); with the ILIKE fallback it passes."""
 
-    def test_chinese_partial_prefix_matches_on_postgres(self):
-        from sqlalchemy import create_engine
+    def test_chinese_partial_prefix_matches_on_postgres(self, pg_scratch_engine):
         from sqlalchemy.orm import sessionmaker
 
-        engine = create_engine(os.environ["TEST_DATABASE_URL"])
+        engine = pg_scratch_engine
         Session = sessionmaker(bind=engine)
         db = Session()
         try:

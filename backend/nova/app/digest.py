@@ -34,6 +34,7 @@ the advisory lock guards against.
 """
 
 import html
+import os
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
@@ -63,6 +64,17 @@ WEEKLY_WINDOW_DAYS = 7
 #: Postgres advisory-lock key for the digest job (bytes "xBLG" as a bigint).
 #: Arbitrary but stable — the lock is a job-level "someone else is running" flag.
 _DIGEST_LOCK_KEY = 0x78624C47
+#: Env override for the PG-parity test suite: advisory locks are DATABASE-scoped
+#: (not schema-scoped), so the xdist workers that each get their own schema
+#: would still contend on this one key — the lock-contention test in one worker
+#: made every other worker's digest send return ``locked`` (PG-parity red under
+#: ``-n``). conftest sets this to a per-worker derivation; production (no env)
+#: keeps the stable key above.
+_DIGEST_LOCK_KEY_ENV = "X_BLOG_DIGEST_LOCK_KEY"
+
+
+def _digest_lock_key() -> int:
+    return int(os.environ.get(_DIGEST_LOCK_KEY_ENV, str(_DIGEST_LOCK_KEY)))
 
 
 def _dialect_name(db: Session) -> str:
@@ -486,13 +498,13 @@ def _acquire_digest_lock(db: Session) -> bool:
     tests) have no advisory locks and are single-process by construction."""
     if _dialect_name(db) != "postgresql":
         return True
-    return bool(db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _DIGEST_LOCK_KEY}).scalar())
+    return bool(db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _digest_lock_key()}).scalar())
 
 
 def _release_digest_lock(db: Session) -> None:
     if _dialect_name(db) != "postgresql":
         return
-    db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _DIGEST_LOCK_KEY})
+    db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _digest_lock_key()})
 
 
 def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger=None, dry_run: bool = False) -> dict:

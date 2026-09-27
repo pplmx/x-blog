@@ -23,15 +23,15 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 from app import crud, models
 from app.auth import ReaderAccount
 from app.database import Base
 from app.digest import (
-    _DIGEST_LOCK_KEY,
     WEEKLY_WINDOW_DAYS,
+    _digest_lock_key,
     build_digest_message,
     collect_digest_posts,
     collect_digest_recipients,
@@ -568,13 +568,13 @@ skip_pg = pytest.mark.skipif(
 
 
 @skip_pg
-def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink):
+def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink, pg_scratch_engine):
     """Live-Postgres verification of the two paths SQLite cannot exercise:
     the naive ``created_at`` storage branch (PG stores naive UTC, no +00:00
-    suffix) and the advisory-lock contention guard. Uses a scratch DB pointed
-    to by TEST_DATABASE_URL; Schema is create_all/drop_all'd like
-    test_postgres_connection (never point this at a real database)."""
-    engine = create_engine(_postgres_url)
+    suffix) and the advisory-lock contention guard. Uses a per-worker scratch
+    schema (pg_scratch_engine) so the create_all/drop_all never collides with
+    another worker's scratch test or the shared DB's public schema."""
+    engine = pg_scratch_engine
     Session = sessionmaker(bind=engine)
     try:
         Base.metadata.create_all(bind=engine)
@@ -630,14 +630,17 @@ def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink
             assert pref.digest_sent_at is not None
 
             # Advisory lock: hold the lock on a second connection -> job defers.
+            # Scope to the worker-derived key (conftest sets a per-worker salt
+            # under TEST_DATABASE_URL) so the lock assert matches what the app
+            # acquires; production uses the stable base key.
             other = Session()
             try:
-                other.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _DIGEST_LOCK_KEY})
+                other.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _digest_lock_key()})
                 locked = send_weekly_digest(db)
                 assert locked["locked"] is True
                 assert locked["readers"] == 0
             finally:
-                other.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _DIGEST_LOCK_KEY})
+                other.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _digest_lock_key()})
                 other.close()
 
             # Idempotency: a second uncontended run skips the stamped reader.

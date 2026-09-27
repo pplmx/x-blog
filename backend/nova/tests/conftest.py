@@ -45,6 +45,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.cache import (
@@ -91,6 +92,30 @@ def worker_id(request: pytest.FixtureRequest) -> str:
     if hasattr(request.config, "workerinput"):
         return request.config.workerinput["workerid"]
     return "master"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _isolate_pg_advisory_lock_per_worker(worker_id: str):
+    """Give each PG xdist worker its own digest advisory-lock key.
+
+    Postgres advisory locks are DATABASE-scoped, not schema-scoped. Under
+    TEST_DATABASE_URL the conftest gives every worker its own schema, but the
+    digest job's fixed ``_DIGEST_LOCK_KEY`` lives on the shared database — so
+    the advisory-lock-contention test in one worker made every OTHER worker's
+    digest send return ``locked`` (digest suite red under ``-n`` on PG while
+    each test passed in isolation; PG-parity regression found round 448). Set a
+    per-worker key derivation so parallel workers never contend, while the
+    in-worker lock/contention semantics stay intact. Production (no
+    TEST_DATABASE_URL) never sets the env var and keeps the stable key.
+    """
+    if TEST_DATABASE_URL and "postgresql" in TEST_DATABASE_URL:
+        from app.digest import _DIGEST_LOCK_KEY, _DIGEST_LOCK_KEY_ENV
+
+        # Worker-stable salt: 'gw0' -> distinguishable from 'gw1', 'master'
+        # untouched. Deterministic across restart, unlike id()/random.
+        salt = sum(ord(c) for c in worker_id)
+        os.environ[_DIGEST_LOCK_KEY_ENV] = str(_DIGEST_LOCK_KEY + salt)
+    yield
 
 
 @pytest.fixture
@@ -209,6 +234,44 @@ def db_session(test_engine) -> Generator[Session]:
         session.close()
         connection.rollback()  # undo everything this test did
         connection.close()
+
+
+@pytest.fixture
+def pg_scratch_engine(worker_id: str) -> Generator[Engine | None]:
+    """Dedicated per-worker engine for PG-only tests that create/drop whole
+    table sets (digest lock contention, CJK search).
+
+    Those tests used ``create_engine(TEST_DATABASE_URL)`` directly, landing
+    their ``create_all``/``drop_all`` in the shared database's PUBLIC schema.
+    That is fine in isolation but a real parallel hazard: under ``-n`` two
+    workers running different scratch-test files both drop/create the same
+    public tables, so one drops a table the other just created ("table
+    comments does not exist", PG-parity red under load). It also touched the
+    public schema the operator's own data lives in. Like ``test_engine``,
+    this points each worker at its own scratch schema (``xblog_pgscratch_gwN``)
+    and pins every pooled connection to it via search_path.
+    """
+    if not (TEST_DATABASE_URL and "postgresql" in TEST_DATABASE_URL):
+        yield None
+        return
+    schema = f"xblog_pgscratch_{(worker_id or 'master').lower()}"
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True, pool_size=3, max_overflow=5)
+
+    @event.listens_for(engine, "connect")
+    def _pin_scratch(dbapi_connection, _connection_record):
+        cur = dbapi_connection.cursor()
+        cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+        cur.execute(f'SET search_path TO "{schema}"')
+        cur.execute("SET TIME ZONE 'UTC'")
+        cur.close()
+
+    try:
+        yield engine
+    finally:
+        with engine.connect() as conn:
+            conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+            conn.commit()
+        engine.dispose()
 
 
 # ---------------------------------------------------------------------------
