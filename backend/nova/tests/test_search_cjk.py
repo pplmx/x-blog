@@ -243,7 +243,7 @@ class TestTsvectorGinIndexPostgres:
             # parameter dict — a SQLAlchemy text() re-bind would mangle it.
             captured: list[tuple[str, object]] = []
 
-            def _capture(dbapi_conn, cursor, statement, parameters, context, executemany):
+            def _capture(_dbapi_conn, _cursor, statement, parameters, _context, _executemany):
                 captured.append((statement, parameters))
 
             event.listen(engine, "before_cursor_execute", _capture)
