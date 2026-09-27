@@ -21,6 +21,11 @@
   套测试运行时，与冷启动的动态模块导入争抢 `vi.waitFor` 默认 1000ms 窗口导致偶发
   失败（单独运行通过）。测试现在改为 `await` `like()` 的 Promise——它只在云镜像
   落地后才 resolve（这是其文档契约），因此结果是确定性的。
+- 🧹 **E2E TOTP 辅助函数不再使用非空断言（round 449）**——`e2e/reader-2fa.spec.ts`
+  中 RFC 4226 动态截断用四个 `h[off]!` 断言取字节；改用 `Buffer.readUInt32BE(off)`
+  表达同样的 4 字节大端读取（`& 0x7fffffff` 清除符号位）并做越界检查，坏的索引会
+  抛错而非静默返回 0。已用 10000 个随机 counter 验证行为完全一致；`pnpm lint`
+  现在完全干净。
 - ⚡ **文章搜索不再每次查询都重建 tsvector（round 448）**——`crud.search_posts`
   的 ASCII 搜索路径对每次请求都内联计算 `to_tsvector(...)` 再匹配 `@@`，等于每次
   搜索都全表扫描 + 全量词典分词。在灌了 5000 篇帖子的 PostgreSQL 上实测（复现脚本

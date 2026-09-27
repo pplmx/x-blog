@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dynamic module import under full-suite load (passed in isolation, ~100 %
   flaky in the failing run). The test now awaits the `like()` promise, which
   resolves only after the cloud mirror settles, so it is deterministic.
+- 🧹 **E2E TOTP helper no longer uses non-null assertions (round 449)** — the
+  RFC 4226 dynamic truncation in `e2e/reader-2fa.spec.ts` extracted bytes with
+  four `h[off]!` assertions; `Buffer.readUInt32BE(off)` expresses the same
+  4-byte big-endian read (`& 0x7fffffff` clears the sign bit) and bounds-checks
+  the offset, so a bad index throws instead of silently yielding 0. Verified
+  behavior-identical over 10k random counters; `pnpm lint` is now fully clean.
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +
