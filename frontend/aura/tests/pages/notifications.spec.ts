@@ -719,6 +719,45 @@ describe("Notifications page (TASK-192)", () => {
 		}
 	});
 
+	it("deleting the LAST row converges to the empty state (e2e #55)", async () => {
+		// Regression guard for the e2e that kept failing (reader-notifications:
+		// "deletes a single notification row and the list updates to the empty
+		// state"): after the reader's only notification is deleted, the page
+		// must swap the list for the "no notifications" empty state (the old
+		// failure was spec-side — Playwright auto-dismissed the native confirm,
+		// so the row was never deleted — but the product-side transition is
+		// pinned deterministically here, without the e2e stack).
+		vi.stubGlobal("confirm", () => true);
+		try {
+			mockFetch.mockResolvedValue({
+				items: [makeNotif({ id: 9, title: "仅剩这条通知" })],
+				total: 1,
+				unread: 1,
+				page: 1,
+				limit: 100,
+				total_pages: 1,
+			});
+			const wrapper = await mountPage();
+			await flushPromises();
+			expect(wrapper.text()).toContain("仅剩这条通知");
+			// The list renders (not the empty state) while a row exists.
+			expect(wrapper.text()).not.toContain("暂无通知");
+
+			// Delete the survivor from the UI: count drops to zero, list is gone.
+			const delButtons = wrapper
+				.findAll("button")
+				.filter((b) => b.attributes("aria-label") === "删除这条通知");
+			expect(delButtons.length).toBe(1);
+			await delButtons[0]?.trigger("click");
+			await flushPromises();
+			expect(mockDeleteRow).toHaveBeenCalledWith(9);
+			expect(wrapper.text()).not.toContain("仅剩这条通知");
+			expect(wrapper.text()).toContain("暂无通知");
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it("keeps the row when the delete is not confirmed (round 396)", async () => {
 		vi.stubGlobal("confirm", () => false);
 		try {
