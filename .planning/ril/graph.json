@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 451,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T16:49:37+00:00",
+  "updated_at": "2026-09-27T17:10:10+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34004,6 +34004,18 @@
       "touched_round": 451,
       "commit": "82d2a9b2",
       "title": "docs(deploy): expose RATE_LIMIT_NEWSLETTER override in compose"
+    },
+    "DEC-495": {
+      "id": "DEC-495",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T17:10:10+00:00",
+      "updated_at": "2026-09-27T17:10:10+00:00",
+      "touched_round": 451,
+      "title": "Close round 451 (deploy-config parity + router audit)",
+      "rationale": "Round 451 under the continuous-polish directive: (1) CHG-809/82d2a9b2 exposed RATE_LIMIT_NEWSLETTER in docker-compose (the per-endpoint overridable list omitted the tight 5/min bucket on the unauthenticated newsletter-subscribe entry that fires an outbound email per fresh address — same spam/abuse class as register, DEC-351/TASK-401). (2) Deep-dive audits this round: full-router sweep confirmed no remaining ungated mutating write routes (only admin.py had any — fixed as TASK-572), IdInt-vs-raw-int path-param audit across all routers found zero raw int bindings (round-448s analytics fix was not a one-off), useSeo-TDZ ordering audit across all pages found no data-late pages (round-445s gaslight 500 fix is applied everywhere), and the resume-reading role=status strict-mode collision from the round-216 finding is already fixed in-spec (filtered locator, line 131-133). VERIFY: backend 1928 passed 93.54% (SQLite) + admin/digest/ratelimit 170 passed on real PG (PostgreSQL 18.4, dev 10.112.9.49), frontend 2515 passed, nuxt typecheck green, ruff/biome/rumdl clean (pnpm lint now 0 warnings after CHG-807), alembic check no drift. Changelog en/zh in parity at round 451.",
+      "alternatives_rejected": "Running the full 117-spec Playwright suite here: the three known load-flake specs (resume-reading, admin-post-preview, my-comments-filter) fail on pristine HEAD in this CPU-contended sandbox regardless of code state (memory e2e-sandbox-flaky-specs, verified several rounds); that environment noise would not add signal to a compiler/linter/test-gated round. No feature work this round — the directive is polish/bugfix, and no un-shipped user-visible feature candidate cleared the value gate."
     }
   },
   "edges": [
