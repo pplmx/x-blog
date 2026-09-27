@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 453,
+  "round": 454,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T18:09:40+00:00",
+  "updated_at": "2026-09-27T18:22:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34066,6 +34066,18 @@
       "title": "Close round 453 (verification deep-dive, no new above-threshold work)",
       "rationale": "Round 453 deep-dive audited the remaining user-facing and deploy surfaces for residual polish/bug work: admin media page, admin calendar (stale-response guard present), admin/users + admin login + account email-change (autocomplete gap found in round 452 and already fixed as TASK-572... CHG-810), ShareButtons (clipboard fallback + a11y + SR live region present), usePagination (fully edge-tested), useMarkdown sanitizeUrl/XSS (DOMPurify-verified + regex fallback + URL-attr stripping), reader public profile PII (no-oracle 404, opt-in public_likes/bookmarks, never email), useSeo/JSON-LD (textContent via unhead, effectivePublishTs), router IdInt path-param audit (all numeric path params are IdInt-bound, no raw int left), and a compose rate-limit override exposure (CHG-809). No new above-threshold task emerged; the git-flagged ruff gate regression (TASK-571) and remaining admin rate-limit gap (TASK-572) were already closed this session. VERIFY: backend full suite green (SQLite 1928 passed 93.54% earlier; final re-run this round), full PG-parity 1939 passed 93.83% on the real dev PostgreSQL 18.4 (10.112.9.49), frontend 2515 passed (clean isolated run after a transient overlapping-vitest artifact), nuxt typecheck green, ruff/biome/rumdl clean, alembic drift check no new operations. Attempting to boot a disposable live backend on the shared dev DB was killed by the sandbox (memory e2e-backend-sandbox-quirk) and its transactional migrations rolled back cleanly — the DB read confirms only the pre-existing alembic stamp + no app tables, i.e. unchanged.",
       "alternatives_rejected": "Running alembic upgrade to head on the shared dev postgres DB to fix the observed mid-chain stamp: the state read shows no app tables and the same pre-existing u0f2e4c6a8b0 stamp from before this session — the killed run rolled back atomically, so there is nothing to repair; mutating a shared dev database for convenience is over-reach when the PG-parity suite already proves the migration chain on this server. Re-opening the deferred active issues (ISS-242/243/244/625/632) without new evidence — each carries a recorded deferral (DEC-004/014/476/478) reaffirmed this round."
+    },
+    "DEC-498": {
+      "id": "DEC-498",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T18:22:58+00:00",
+      "updated_at": "2026-09-27T18:22:58+00:00",
+      "touched_round": 454,
+      "title": "Close round 454 (deep-dive ran dry)",
+      "rationale": "Round 454 deep-dive audited the remaining unexamined surfaces for genuine polish/bug work and found the codebase already converged: useResumeReading (generation-invalidate restores, suppress windows, fraction clearing — fully edge-cased), account data export (immediate-revokeObjectURL matches the admin CSV export convention; consistent + test-mocked, not an evidenced bug), bookmarks sync-state, useSeo JSON-LD (textContent via unhead, effectivePublishAt), full i18n en/zh key parity (0 drift, both via parityGap and a fresh flat-key diff), and an i18n unused-keys scan whose 243 flags all resolve to dynamic t(labelKey)/t(feature) references — no dead keys. The 5 active issues all carry recorded deferrals with no new evidence. Per section 8 this is a dry deep-dive round: 0 new tasks above the 3.0 threshold created.",
+      "alternatives_rejected": "Deferring URL.revokeObjectURL after a.tick() in the account export (theoretical Firefox/Safari download-abort nuance): the pattern is identical to the admin CSV export, works in practice, is already covered by mocked tests, and has never been reported; converting it is speculative churn. Cleaning the 243 i18n scan flags: they are dynamic-reference false positives, not dead keys. Re-opening the deferred active issues without new evidence."
     }
   },
   "edges": [
