@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 448,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T11:22:52+00:00",
+  "updated_at": "2026-09-27T12:01:40+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -33755,13 +33755,13 @@
       "id": "TASK-568",
       "type": "task",
       "status": "resolved",
-      "version": 3,
+      "version": 4,
       "created_at": "2026-09-27T10:08:42+00:00",
-      "updated_at": "2026-09-27T10:22:07+00:00",
+      "updated_at": "2026-09-27T11:58:22+00:00",
       "touched_round": 448,
       "category": "performance",
       "severity": "high",
-      "priority_score": 8,
+      "priority_score": 8.5,
       "title": "GIN index for tsvector post search",
       "description": "ASCII search_posts computes to_tsvector per row (no index) — 2.8-5.7s on a seeded 5k-post PG; functional GIN index fixes to ~2ms"
     },
@@ -33845,6 +33845,30 @@
       "touched_round": 448,
       "commit": "449367e3a2b6",
       "title": "Pin delete-last-row empty-state transition in notifications page tests"
+    },
+    "CHG-803": {
+      "id": "CHG-803",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-09-27T11:57:49+00:00",
+      "updated_at": "2026-09-27T11:59:17+00:00",
+      "touched_round": 448,
+      "commit": "f582b056",
+      "title": "seed_perf_db.py self-bootstraps the scratch perf DB (bench tooling for TASK-568 verification)"
+    },
+    "TASK-569": {
+      "id": "TASK-569",
+      "type": "task",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-27T12:00:58+00:00",
+      "updated_at": "2026-09-27T12:00:58+00:00",
+      "touched_round": 448,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "Reproducible perf-benchmark tooling for hot-path CRUD on seeded PG",
+      "description": "seed_perf_db.py (5k posts/15k comments/400 readers, self-bootstrapping DB) + bench_perf_db.py (real-crud timing + EXPLAIN) — the measurement harness behind TASK-568/ISS-654, kept for reproducible re-runs."
     }
   },
   "edges": [
@@ -50915,6 +50939,12 @@
       "to": "COMP-007",
       "type": "located_in",
       "created_at": "2026-09-27T11:22:52+00:00"
+    },
+    {
+      "from": "CHG-803",
+      "to": "TASK-569",
+      "type": "implements",
+      "created_at": "2026-09-27T12:01:40+00:00"
     }
   ]
 }
