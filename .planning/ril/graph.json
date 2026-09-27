@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 448,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T10:46:55+00:00",
+  "updated_at": "2026-09-27T11:22:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -4743,7 +4743,7 @@
       "version": 1,
       "created_at": "2026-08-16T17:48:47+00:00",
       "updated_at": "2026-08-16T17:48:47+00:00",
-      "touched_round": 76,
+      "touched_round": 448,
       "note": "JWT auth"
     },
     "ISS-070": {
@@ -33822,6 +33822,29 @@
       "touched_round": 448,
       "rationale": "CJK ILIKE substring search cannot be accelerated by pg_trgm (terms <3 chars form no trigram); the ILIKE full scan is the correct DEC-070 design. ASCII tsvector got a GIN index (CHG-801) instead.",
       "alternatives_rejected": "pg_trgm single-column GIN; pg_trgm on concatenated title||excerpt||content expression; rewriting query to concatenated ILIKE (changes match semantics)"
+    },
+    "ISS-655": {
+      "id": "ISS-655",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-09-27T11:20:27+00:00",
+      "updated_at": "2026-09-27T11:20:27+00:00",
+      "touched_round": 448,
+      "severity": "medium",
+      "title": "Delete-last-notification empty-state transition lacked a deterministic unit guard (e2e #55)",
+      "description": "Product code verified correct (filter -> items.length===0 -> empty state); e2e kettle failed due to spec-side confirm dismissal. Added unit guard covering the delete-last-row->empty-state transition."
+    },
+    "CHG-802": {
+      "id": "CHG-802",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-27T11:22:12+00:00",
+      "updated_at": "2026-09-27T11:22:12+00:00",
+      "touched_round": 448,
+      "commit": "449367e3a2b6",
+      "title": "Pin delete-last-row empty-state transition in notifications page tests"
     }
   },
   "edges": [
@@ -50880,6 +50903,18 @@
       "to": "COMP-001",
       "type": "governs",
       "created_at": "2026-09-27T10:46:55+00:00"
+    },
+    {
+      "from": "CHG-802",
+      "to": "ISS-655",
+      "type": "resolves",
+      "created_at": "2026-09-27T11:22:52+00:00"
+    },
+    {
+      "from": "ISS-655",
+      "to": "COMP-007",
+      "type": "located_in",
+      "created_at": "2026-09-27T11:22:52+00:00"
     }
   ]
 }
