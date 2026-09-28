@@ -156,9 +156,19 @@ test.describe("Web Push reader opt-in", () => {
 		// one ::1 row per run until the cap 429s every later anonymous subscribe
 		// (the push-cluster 503 class this spec was written to keep green,
 		// round-458). The UI unsubscribe POST deletes the row — same path the
-		// real user takes.
+		// real user takes. The composable's syncBackend(unsubscribe) is
+		// best-effort (swallows errors, usePushSubscription.ts), so ALSO assert
+		// the backend 204 — a swallowed DELETE would flip the button while the
+		// row leaks, the exact round-458 failure class (code-review round-460).
+		const unsubscribe204 = page
+			.waitForResponse(
+				(r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204,
+				{ timeout: 10000 },
+			)
+			.catch(() => null);
 		await subscribedBtn(page).click();
 		await expect(button).toBeVisible();
+		expect(await unsubscribe204).toBeTruthy();
 	});
 
 	test("re-detects the existing subscription on reload without re-subscribing", async ({
@@ -183,9 +193,19 @@ test.describe("Web Push reader opt-in", () => {
 		expect(after).toBe(before); // init only re-detected, did not re-subscribe
 
 		// Cleanup: revert this anonymous subscription (same per-IP cap leak as
-		// the subscribe test above — never leave an anonymous ::1 row behind).
+		// the subscribe test above — never leave an anonymous ::1 row behind),
+		// and assert the backend 204 like the subscribe test's cleanup: the
+		// composable swallows unsubscribe errors, so the UI flip alone must not
+		// be trusted to mean the row is deleted (round-458 / review round-460).
+		const unsubscribe204 = page
+			.waitForResponse(
+				(r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204,
+				{ timeout: 10000 },
+			)
+			.catch(() => null);
 		await subscribedBtn(page).click();
 		await expect(page.locator('button[aria-label="订阅新文章通知"]')).toBeVisible();
+		expect(await unsubscribe204).toBeTruthy();
 	});
 
 	test("signed-in reader's subscription is bound via the reader JWT (DEC-064)", async ({
