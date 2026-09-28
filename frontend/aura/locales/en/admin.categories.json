@@ -11,6 +11,7 @@
 		"edit": "Edit",
 		"delete": "Delete",
 		"confirmDelete": "Delete this category?",
+		"countLabel": "{count} posts",
 		"empty": "No categories yet",
 		"searchPlaceholder": "Search categories…",
 		"searchEmpty": "No categories match your search",

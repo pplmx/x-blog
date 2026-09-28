@@ -11,6 +11,7 @@
 		"edit": "编辑",
 		"delete": "删除",
 		"confirmDelete": "确定要删除这个标签吗？",
+		"countLabel": "{count} 篇文章",
 		"empty": "还没有任何标签",
 		"searchPlaceholder": "搜索标签…",
 		"searchEmpty": "没有匹配的标签",

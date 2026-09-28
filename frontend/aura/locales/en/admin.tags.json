@@ -11,6 +11,7 @@
 		"edit": "Edit",
 		"delete": "Delete",
 		"confirmDelete": "Delete this tag?",
+		"countLabel": "{count} posts",
 		"empty": "No tags yet",
 		"searchPlaceholder": "Search tags…",
 		"searchEmpty": "No tags match your search",
