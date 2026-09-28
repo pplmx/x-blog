@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 456,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T04:35:39+00:00",
+  "updated_at": "2026-09-28T09:11:44+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34086,7 +34086,7 @@
       "version": 2,
       "created_at": "2026-09-28T02:34:07+00:00",
       "updated_at": "2026-09-28T02:36:43+00:00",
-      "touched_round": 454,
+      "touched_round": 456,
       "category": "test-quality",
       "severity": "low",
       "confidence": 1,
@@ -34128,6 +34128,42 @@
       "title": "Close round 456 (surface audit ran dry)",
       "rationale": "Round 456 audited the last unexamined surfaces: the RSS/Atom proxy layer (proxyConditionalFeed forwards ETag/Cache-Control + query scope + If-None-Match — fully consistent with the backend ETag-only conditional contract; no If-Modified-Since gap because the backend never emits Last-Modified), useBookmarkSync (twin of useLikeSync — same per-post write chains, generation-guarded clear-merge, auth-failure surfacing; no new defect), the print/PDF page (noindex + effective-publish-time + dead-end recovery + scoped print CSS — clean, has a spec), and a composable-spec audit (the 5 composables lacking direct spec files are all exercised through their consuming page/component tests, including error/rollback paths — no coverage gap). All VERIFY gates are green this session: backend 1928 passed 93.54% (SQLite) + PG-parity 1939 passed 93.83% on dev PG, frontend 2515 passed, nuxt typecheck green, pyright 0 errors, ruff/biome/rumdl clean, alembic drift no-op. No new above-threshold task surfaced — the codebase is genuinely converged after rounds 449-455 delivered CHG-804..CHG-811.",
       "alternatives_rejected": "Re-opening deferred active issues (ISS-242/243/244/625/632) without new evidence — each carries a recorded deferral decision. Adding direct spec files for the 5 composables that lack them (adminPostListState, i18n, seo-jsonld, useAdminPushSubscription, useBookmarkFolders): they are already covered through consuming components/pages including error paths, so a parallel spec file would duplicate coverage, not add it."
+    },
+    "CHG-812": {
+      "id": "CHG-812",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T09:11:09+00:00",
+      "updated_at": "2026-09-28T09:11:09+00:00",
+      "touched_round": 456,
+      "title": "test(e2e): admin-categories delete uses substring name match (fix broken exact assertion in CHG-811)",
+      "commit": "d11d0608",
+      "description": "CHG-811 (d4709f7c) rewrote the delete test to final-state style but asserted getByText(name,{exact:true}): the admin category row's name <span> also embeds the post_count badge, so element text is '<name> 0' and exact can never match; the post-delete negative assertion shared the flaw and was vacuously true. Live e2e failed at line 83. Fix: substring match for present+gone checks (5/5 green). Root cause distinct from e2e#54's count-delta race."
+    },
+    "HYP-024": {
+      "id": "HYP-024",
+      "type": "hypothesis",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T09:11:22+00:00",
+      "updated_at": "2026-09-28T09:11:22+00:00",
+      "touched_round": 456,
+      "confidence": 1,
+      "title": "exact:true cannot match category names because the post_count badge shares the name span",
+      "description": "category.vue renders <span>{{ name }} <span class=badge>{{ post_count }}</span></span>; getByText(name,{exact:true}) normalizes the outer span text to 'name 0' — never equal. Verified by a11y snapshot: '待删除分类-1790585385310 0' present in DOM while exact getByText failed."
+    },
+    "EV-320": {
+      "id": "EV-320",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T09:11:33+00:00",
+      "updated_at": "2026-09-28T09:11:33+00:00",
+      "touched_round": 456,
+      "source": "e2e/admin-categories.spec.ts:83 (live run)",
+      "description": "a11y snapshot of the failing run shows the row '待删除分类-1790585385310 0' present in the DOM (list had refreshed to 35 categories, incl. the API-created id 35) while getByText(name,{exact:true}) timed out; substring getByText(name) matched immediately and the delete test went green 5/5.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -51259,6 +51295,18 @@
       "to": "TASK-574",
       "type": "implements",
       "created_at": "2026-09-28T02:36:43+00:00"
+    },
+    {
+      "from": "CHG-812",
+      "to": "TASK-574",
+      "type": "implements",
+      "created_at": "2026-09-28T09:11:21+00:00"
+    },
+    {
+      "from": "EV-320",
+      "to": "HYP-024",
+      "type": "validates",
+      "created_at": "2026-09-28T09:11:44+00:00"
     }
   ]
 }
