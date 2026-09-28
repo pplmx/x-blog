@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 455,
+  "round": 456,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T02:47:28+00:00",
+  "updated_at": "2026-09-28T04:35:39+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34116,6 +34116,18 @@
       "title": "Close round 455 (github-issue triage + e2e resilience)",
       "rationale": "Round 455 used the GitHub issue tracker as the work source (real external signals per skill section 1/11): all 5 open issues were triaged. #52 (stale 7-kind notification-prefs schema) and #55 (notification delete never reaching empty state) and #53 (discussion SSR 500 / feed timing) are RESOLVED — commit be6b70c0 fixes all three with pinned root causes (TDZ hoist, 10-kind schema, confirm-dialog accept) and the current specs assert the fixed behavior. #54 (flaky trio) had its flakiest member fixed this round: CHG-811/TASK-574 rewrote the admin-categories delete test to assert final state (named row leaves DOM) instead of a count delta, per the issue action guidance; history:15 and reader-likes:73 already carry the resilience it asks for (explicit timeouts, conditional guards, final-state assertions). The Dependency Dashboard (#37) is a bot-managed Renovate issue, not an action item. Per the human-intervention boundary, closing the resolved GitHub issues under the user identity was correctly blocked by the sandbox — the code fixes are committed; closing the issues is left for the operator.",
       "alternatives_rejected": "Closing the resolved GitHub issues #52/#53/#55 via gh CLI without the operator explicitly requesting it (blocked by the sandbox external-write classifier — publishing actions under the user identity need their consent; the fixes themselves are committed either way). Investing in running the full 117-spec Playwright suite here to prove #54 green: the sandbox kills backgrounded uvicorn and the trio flake is load-dependent in this CPU-contended box (memory e2e-sandbox-flaky-specs); the resilience change is structural and CI will exercise it."
+    },
+    "DEC-500": {
+      "id": "DEC-500",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T04:35:39+00:00",
+      "updated_at": "2026-09-28T04:35:39+00:00",
+      "touched_round": 456,
+      "title": "Close round 456 (surface audit ran dry)",
+      "rationale": "Round 456 audited the last unexamined surfaces: the RSS/Atom proxy layer (proxyConditionalFeed forwards ETag/Cache-Control + query scope + If-None-Match — fully consistent with the backend ETag-only conditional contract; no If-Modified-Since gap because the backend never emits Last-Modified), useBookmarkSync (twin of useLikeSync — same per-post write chains, generation-guarded clear-merge, auth-failure surfacing; no new defect), the print/PDF page (noindex + effective-publish-time + dead-end recovery + scoped print CSS — clean, has a spec), and a composable-spec audit (the 5 composables lacking direct spec files are all exercised through their consuming page/component tests, including error/rollback paths — no coverage gap). All VERIFY gates are green this session: backend 1928 passed 93.54% (SQLite) + PG-parity 1939 passed 93.83% on dev PG, frontend 2515 passed, nuxt typecheck green, pyright 0 errors, ruff/biome/rumdl clean, alembic drift no-op. No new above-threshold task surfaced — the codebase is genuinely converged after rounds 449-455 delivered CHG-804..CHG-811.",
+      "alternatives_rejected": "Re-opening deferred active issues (ISS-242/243/244/625/632) without new evidence — each carries a recorded deferral decision. Adding direct spec files for the 5 composables that lack them (adminPostListState, i18n, seo-jsonld, useAdminPushSubscription, useBookmarkFolders): they are already covered through consuming components/pages including error paths, so a parallel spec file would duplicate coverage, not add it."
     }
   },
   "edges": [
