@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   match, and the readonly display is `autocomplete="off"`. A full scan
   confirms all 21 email/password inputs across the app carry a correct value.
   (TASK-573)
+- 🧪 **admin-categories delete e2e asserts final state, not a count delta (round 455)** —
+  the delete test derived a live row count then asserted `toHaveCount(count-1)`,
+  racing the delete re-render under serial-suite load (the flakiest member of
+  the e2e-flaky trio in issue #54 — passed only on retry #1). Rewritten: create
+  a uniquely-named category via the API, scope the row to the list container,
+  delete it, and assert the final state (the named row leaves the DOM), with
+  idempotent cleanup if the UI delete failed. Final-state assertions are immune
+  to the count race. (TASK-574)
 - ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +

@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 454,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-27T18:22:58+00:00",
+  "updated_at": "2026-09-28T02:36:43+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34078,6 +34078,32 @@
       "title": "Close round 454 (deep-dive ran dry)",
       "rationale": "Round 454 deep-dive audited the remaining unexamined surfaces for genuine polish/bug work and found the codebase already converged: useResumeReading (generation-invalidate restores, suppress windows, fraction clearing — fully edge-cased), account data export (immediate-revokeObjectURL matches the admin CSV export convention; consistent + test-mocked, not an evidenced bug), bookmarks sync-state, useSeo JSON-LD (textContent via unhead, effectivePublishAt), full i18n en/zh key parity (0 drift, both via parityGap and a fresh flat-key diff), and an i18n unused-keys scan whose 243 flags all resolve to dynamic t(labelKey)/t(feature) references — no dead keys. The 5 active issues all carry recorded deferrals with no new evidence. Per section 8 this is a dry deep-dive round: 0 new tasks above the 3.0 threshold created.",
       "alternatives_rejected": "Deferring URL.revokeObjectURL after a.tick() in the account export (theoretical Firefox/Safari download-abort nuance): the pattern is identical to the admin CSV export, works in practice, is already covered by mocked tests, and has never been reported; converting it is speculative churn. Cleaning the 243 i18n scan flags: they are dynamic-reference false positives, not dead keys. Re-opening the deferred active issues without new evidence."
+    },
+    "TASK-574": {
+      "id": "TASK-574",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-28T02:34:07+00:00",
+      "updated_at": "2026-09-28T02:36:43+00:00",
+      "touched_round": 454,
+      "category": "test-quality",
+      "severity": "low",
+      "confidence": 1,
+      "effort": 0.4,
+      "title": "e2e#54: make admin-categories delete test final-state based instead of count-delta",
+      "description": "GitHub issue #54 lists admin-categories:62 as one of a flaky e2e trio (passes on retry #1, serial-suite load). The delete test derived a live row count then asserted toHaveCount(count-1), racing the delete re-render (and any concurrent state); under serial-suite load the window could miss. Rewrote to create a uniquely-named category via API, delete the scoped row, and assert the FINAL state (name leaves the DOM) with idempotent cleanup — no intermediate-count assertion. history.spec and reader-likes.spec already carry the resilience this issue asks for (explicit timeouts + final-state/conditional guards), so they need no change."
+    },
+    "CHG-811": {
+      "id": "CHG-811",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T02:36:43+00:00",
+      "updated_at": "2026-09-28T02:36:43+00:00",
+      "touched_round": 454,
+      "commit": "d4709f7c",
+      "title": "test(e2e): admin-categories delete final-state assertion (e2e#54)"
     }
   },
   "edges": [
@@ -51203,6 +51229,12 @@
       "to": "TASK-573",
       "type": "implements",
       "created_at": "2026-09-27T17:30:09+00:00"
+    },
+    {
+      "from": "CHG-811",
+      "to": "TASK-574",
+      "type": "implements",
+      "created_at": "2026-09-28T02:36:43+00:00"
     }
   ]
 }
