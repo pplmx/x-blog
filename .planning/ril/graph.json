@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 457,
+  "round": 458,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T09:19:24+00:00",
+  "updated_at": "2026-09-28T11:36:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34188,6 +34188,42 @@
       "severity": "low",
       "title": "a11y: admin category/tag count badge reads as a bare number with no unit",
       "description": "The post_count pill lives inside the name <span> (categories.vue + tags.vue); screen readers announce 'Name 3' with the bare numeral glued to the name, no 'posts/篇' unit context. Found while triaging the CHG-812 exact-match e2e bug (same markup)."
+    },
+    "CHG-814": {
+      "id": "CHG-814",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T11:36:04+00:00",
+      "updated_at": "2026-09-28T11:36:04+00:00",
+      "touched_round": 457,
+      "title": "test(e2e): push per-IP cap leak + strict-mode locator fixes (7 full-suite failures)",
+      "commit": "86391cdc",
+      "description": "Full-suite + isolated runs exposed 7 reproducible failures. (a) push.spec anonymous subscribes left one push_subscriptions row/run (only test 4 unsubscribed); anonymous subs are DB-row-capped per client IP (MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10) and on the persisting e2e SQLite the '::1' bucket filled -> every anonymous subscribe 429'd 'Too many push subscriptions (IP ::1)' -> 4/4 push tests red. Tests 1+2 now unsubscribe via the UI; cap knob raised to 1000 in boot_e2e.sh + just e2e. (b) search-suggest + reader-profile-follow used getByText on strings that now duplicate in a sr-only aria-live copy -> strict_mode violation x3; now target heading by role / count by [aria-label]. 14/14 green after."
+    },
+    "ISS-657": {
+      "id": "ISS-657",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T11:36:04+00:00",
+      "updated_at": "2026-09-28T11:36:04+00:00",
+      "touched_round": 457,
+      "severity": "high",
+      "title": "e2e push tests 429 deterministically: anonymous ::1 push cap filled by leaked subscription rows",
+      "description": "push.spec tests subscribing while anonymous never unsubscribed, so each full-suite run leaked one push_subscriptions row stamped ip_key='::1'. With MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10 the ::1 bucket filled (persisting e2e aurora.db) and every later anonymous subscribe 429'd with the handler's own 'Too many push subscriptions (IP ::1)', so 4/4 push tests failed (button never flips to subscribed). Not a slowapi issue - a DB row-count cap."
+    },
+    "ISS-658": {
+      "id": "ISS-658",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T11:36:04+00:00",
+      "updated_at": "2026-09-28T11:36:04+00:00",
+      "touched_round": 457,
+      "severity": "medium",
+      "title": "e2e strict-mode ambiguity: sr-only aria-live copy duplicates visible text (search-suggest + reader-profile-follow)",
+      "description": "a11y sr-only <span role=status> copies of empty-state/count strings made getByText('...') resolve to 2 elements -> strict_mode violation in search-suggest (empty-state hint) and reader-profile-follow ('N 位粉丝' x3). Fix: heading-by-role and [aria-label] locators targeting the visible element."
     }
   },
   "edges": [
@@ -51337,6 +51373,18 @@
       "to": "ISS-656",
       "type": "resolves",
       "created_at": "2026-09-28T09:19:24+00:00"
+    },
+    {
+      "from": "CHG-814",
+      "to": "ISS-657",
+      "type": "resolves",
+      "created_at": "2026-09-28T11:36:26+00:00"
+    },
+    {
+      "from": "CHG-814",
+      "to": "ISS-658",
+      "type": "resolves",
+      "created_at": "2026-09-28T11:36:26+00:00"
     }
   ]
 }
