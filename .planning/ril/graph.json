@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 456,
+  "round": 457,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T09:11:44+00:00",
+  "updated_at": "2026-09-28T09:19:24+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34164,6 +34164,30 @@
       "source": "e2e/admin-categories.spec.ts:83 (live run)",
       "description": "a11y snapshot of the failing run shows the row '待删除分类-1790585385310 0' present in the DOM (list had refreshed to 35 categories, incl. the API-created id 35) while getByText(name,{exact:true}) timed out; substring getByText(name) matched immediately and the delete test went green 5/5.",
       "confidence": 1.0
+    },
+    "CHG-813": {
+      "id": "CHG-813",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T09:19:07+00:00",
+      "updated_at": "2026-09-28T09:19:07+00:00",
+      "touched_round": 457,
+      "title": "fix(admin): post-count badge aria-label (screen-reader unit context)",
+      "commit": "6e7c280b",
+      "description": "admin categories/tags rows render the count pill inside the name <span>, so AT announces 'Name 3' - bare number, no unit. Added localized aria-label (countLabel) to the pill on both pages; visible UI unchanged. e2e 5/5 + typecheck green."
+    },
+    "ISS-656": {
+      "id": "ISS-656",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T09:19:07+00:00",
+      "updated_at": "2026-09-28T09:19:07+00:00",
+      "touched_round": 457,
+      "severity": "low",
+      "title": "a11y: admin category/tag count badge reads as a bare number with no unit",
+      "description": "The post_count pill lives inside the name <span> (categories.vue + tags.vue); screen readers announce 'Name 3' with the bare numeral glued to the name, no 'posts/篇' unit context. Found while triaging the CHG-812 exact-match e2e bug (same markup)."
     }
   },
   "edges": [
@@ -51307,6 +51331,12 @@
       "to": "HYP-024",
       "type": "validates",
       "created_at": "2026-09-28T09:11:44+00:00"
+    },
+    {
+      "from": "CHG-813",
+      "to": "ISS-656",
+      "type": "resolves",
+      "created_at": "2026-09-28T09:19:24+00:00"
     }
   ]
 }
