@@ -103,13 +103,16 @@ test.describe("Reader-to-reader follow (DEC-403)", () => {
 		// B opens A's public profile: the count is public, and because B is a
 		// signed-in non-self reader a 关注 button is present.
 		await page.goto(`/readers/${a.reader_id}`);
-		await expect(page.getByText("0 位粉丝")).toBeVisible();
+		// The follower count is BOTH the visible aria-label'd span and a sr-only
+		// aria-live copy, so getByText("N 位粉丝") hits strict-mode ambiguity
+		// (round-458) — target the visible count by its aria-label instead.
+		await expect(page.locator('[aria-label="0 位粉丝"]')).toBeVisible();
 		const followBtn = page.getByRole("button", { name: "关注" });
 		await expect(followBtn).toBeVisible();
 		await followBtn.click();
 		// Server-confirmed toggle: button flips to 已关注, count bumps to 1.
 		await expect(page.getByRole("button", { name: "已关注" })).toBeVisible();
-		await expect(page.getByText("1 位粉丝")).toBeVisible();
+		await expect(page.locator('[aria-label="1 位粉丝"]')).toBeVisible();
 
 		// The capability: A posts a comment that a moderator approves → B gets a
 		// durable reader_comment inbox row.
@@ -147,9 +150,10 @@ test.describe("Reader-to-reader follow (DEC-403)", () => {
 		});
 		expect(follow.status()).toBe(201);
 
-		// Signed-out browser only ever gets the count.
+		// Signed-out browser only ever gets the count (aria-label target: the
+		// count also has a sr-only aria-live copy, see the fan-out test above).
 		await page.goto(`/readers/${a.reader_id}`);
-		await expect(page.getByText("1 位粉丝")).toBeVisible();
+		await expect(page.locator('[aria-label="1 位粉丝"]')).toBeVisible();
 		await expect(page.getByRole("button", { name: "关注" })).toHaveCount(0);
 		await expect(page.getByRole("button", { name: "已关注" })).toHaveCount(0);
 	});

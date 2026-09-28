@@ -45,8 +45,11 @@ test("recovers a typo'd search via a did-you-mean suggestion", async ({ page, re
 		const typo = title.replace("战", "贱");
 		await page.goto(`/search?q=${encodeURIComponent(typo)}`);
 
-		// The zero-hit empty state renders the classic hint...
-		await expect(page.getByText("没有找到相关文章")).toBeVisible();
+		// The zero-hit empty state renders the classic hint... The empty-state
+		// text exists BOTH as the visible <h3> and as a sr-only aria-live copy
+		// (round-4xx a11y), so a bare getByText hits strict-mode ambiguity —
+		// target the visible heading by role (round-458).
+		await expect(page.getByRole("heading", { name: "没有找到相关文章" })).toBeVisible();
 
 		// ...and the edit-distance suggestion for the real title.
 		const region = page.getByRole("region", { name: "你是不是想找：" });

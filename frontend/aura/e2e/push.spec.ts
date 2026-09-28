@@ -149,6 +149,16 @@ test.describe("Web Push reader opt-in", () => {
 		expect(state.subscribeCalls).toBe(1);
 		expect(state.subscribeKeyBytes).toBe(65);
 		await expect(subscribe200).toBeTruthy();
+
+		// Cleanup: revert this anonymous subscription. Anonymous subs are
+		// capped per client IP (MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE), and on a
+		// persisting e2e DB a test that subscribes and never unsubscribes leaks
+		// one ::1 row per run until the cap 429s every later anonymous subscribe
+		// (the push-cluster 503 class this spec was written to keep green,
+		// round-458). The UI unsubscribe POST deletes the row — same path the
+		// real user takes.
+		await subscribedBtn(page).click();
+		await expect(button).toBeVisible();
 	});
 
 	test("re-detects the existing subscription on reload without re-subscribing", async ({
@@ -171,6 +181,11 @@ test.describe("Web Push reader opt-in", () => {
 				(window as unknown as { __pushE2E: { subscribeCalls: number } }).__pushE2E.subscribeCalls,
 		);
 		expect(after).toBe(before); // init only re-detected, did not re-subscribe
+
+		// Cleanup: revert this anonymous subscription (same per-IP cap leak as
+		// the subscribe test above — never leave an anonymous ::1 row behind).
+		await subscribedBtn(page).click();
+		await expect(page.locator('button[aria-label="订阅新文章通知"]')).toBeVisible();
 	});
 
 	test("signed-in reader's subscription is bound via the reader JWT (DEC-064)", async ({
