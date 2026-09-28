@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 458,
+  "round": 459,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T11:36:26+00:00",
+  "updated_at": "2026-09-28T12:01:13+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34224,6 +34224,42 @@
       "severity": "medium",
       "title": "e2e strict-mode ambiguity: sr-only aria-live copy duplicates visible text (search-suggest + reader-profile-follow)",
       "description": "a11y sr-only <span role=status> copies of empty-state/count strings made getByText('...') resolve to 2 elements -> strict_mode violation in search-suggest (empty-state hint) and reader-profile-follow ('N 位粉丝' x3). Fix: heading-by-role and [aria-label] locators targeting the visible element."
+    },
+    "DEC-501": {
+      "id": "DEC-501",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T12:01:13+00:00",
+      "updated_at": "2026-09-28T12:01:13+00:00",
+      "touched_round": 459,
+      "title": "round-459 dry deep-dive closure",
+      "rationale": "Full-suite frontend work verified on real PostgreSQL: TEST_DATABASE_URL=postgresql://...@10.112.9.49:13310/postgres pytest -n 8 -> 1939 passed, 93.83% coverage, 0 failures; the earlier -n auto run's 1135 errors reproduced the documented shared-memory choke (pg-xdist-test-quirks) and cleared at -n 8. Probed 5 quality surfaces with no new above-threshold task: (1) admin 401 islands - fully migrated (index.vue local adminFetch routes 401 via handleAdminUnauthorized, round-445), (2) silent .catch(()=>{}) sites are all intentional fire-and-forget or chain-tail design (useLikeSync/useBookmarkSync chainPostWrite rethrows to caller), (3) e2e test.skip all legitimately env/data gated (CI_RESTRICTED, smtpIsUp), (4) admin posts list has debounced search + status filter + pagination + URL state, (5) en/zh locale key sets identical. No change delivered this round.",
+      "alternatives_rejected": "Inventing busywork to appear productive; re-documenting converged surfaces"
+    },
+    "EV-321": {
+      "id": "EV-321",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T12:01:13+00:00",
+      "updated_at": "2026-09-28T12:01:13+00:00",
+      "touched_round": 459,
+      "source": "pytest -n 8 PG-parity 2026-09-28",
+      "description": "PG parity on dev PG: 1939 passed, 93.83% cov, 0 failed/errored. Confirms today's frontend-only commits (CHG-812/813/814) regress nothing on the real dialect; backs the earlier 1939-passed baseline.",
+      "confidence": 1.0
+    },
+    "EV-322": {
+      "id": "EV-322",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T12:01:13+00:00",
+      "updated_at": "2026-09-28T12:01:13+00:00",
+      "touched_round": 459,
+      "source": "pytest -n auto PG-parity 2026-09-28",
+      "description": "Reproduced the pg-xdist-test-quirks shared-memory choke: -n auto on the dev PG gave 10 failed/795 passed/1135 errors in 19.9s (secondary-worker spawn choke), identical run with -n 8 fully green. Use -n 8 (not auto) for PG parity here.",
+      "confidence": 1.0
     }
   },
   "edges": [
