@@ -77,17 +77,20 @@ test.describe("Admin category management", () => {
 		const categoryId = ((await created.json()) as { id: number }).id;
 
 		// The row is present (scoped to the list-row container so the search
-		// input wrapper's hasText match can't shadow it).
+		// input wrapper's hasText match can't shadow it). Note: substring
+		// match, NOT exact — the name <span> also holds the post_count badge,
+		// so the element text is "<name> 0"; exact:true can never match, and
+		// the negative assertion below would be vacuously true.
 		await page.goto("/admin/categories");
 		const row = page.locator(".space-y-3 > div", { hasText: name }).first();
-		await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText(name)).toBeVisible({ timeout: 10000 });
 
 		// Delete it; the page uses window.confirm for delete confirmation.
 		page.on("dialog", (dialog) => dialog.accept());
 		await row.getByRole("button", { name: "删除" }).click();
 
 		// FINAL state: the named row leaves the DOM (not a count delta race).
-		await expect(page.getByText(name, { exact: true })).not.toBeVisible({ timeout: 10000 });
+		await expect(page.getByText(name)).not.toBeVisible({ timeout: 10000 });
 
 		// Clean up if the UI delete somehow failed — never leave a duplicate
 		// "待删除分类" row behind for subsequent runs (idempotent).
