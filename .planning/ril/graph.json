@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 459,
+  "round": 460,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T12:01:13+00:00",
+  "updated_at": "2026-09-28T12:24:42+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34208,7 +34208,7 @@
       "version": 1,
       "created_at": "2026-09-28T11:36:04+00:00",
       "updated_at": "2026-09-28T11:36:04+00:00",
-      "touched_round": 457,
+      "touched_round": 460,
       "severity": "high",
       "title": "e2e push tests 429 deterministically: anonymous ::1 push cap filled by leaked subscription rows",
       "description": "push.spec tests subscribing while anonymous never unsubscribed, so each full-suite run leaked one push_subscriptions row stamped ip_key='::1'. With MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10 the ::1 bucket filled (persisting e2e aurora.db) and every later anonymous subscribe 429'd with the handler's own 'Too many push subscriptions (IP ::1)', so 4/4 push tests failed (button never flips to subscribed). Not a slowapi issue - a DB row-count cap."
@@ -34259,6 +34259,30 @@
       "touched_round": 459,
       "source": "pytest -n auto PG-parity 2026-09-28",
       "description": "Reproduced the pg-xdist-test-quirks shared-memory choke: -n auto on the dev PG gave 10 failed/795 passed/1135 errors in 19.9s (secondary-worker spawn choke), identical run with -n 8 fully green. Use -n 8 (not auto) for PG parity here.",
+      "confidence": 1.0
+    },
+    "CHG-815": {
+      "id": "CHG-815",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T12:24:11+00:00",
+      "updated_at": "2026-09-28T12:24:11+00:00",
+      "touched_round": 460,
+      "title": "test(e2e): push cleanup asserts backend unsubscribe 204 (round-460 review hardening)",
+      "commit": "f75b722f",
+      "description": "code-reviewer (round 460) found the push.spec anonymous-sub cleanup asserted only the UI flip; the composable's syncBackend(unsubscribe) swallows errors, so a failed DELETE leaves the ::1 row but the button reverts and the test passes - the exact round-458 leak class. Hardened both cleanup sites to arm waitForResponse(/api/push/unsubscribe 204) before the click and assert truthy after. Full push.spec 6/6 green."
+    },
+    "EV-323": {
+      "id": "EV-323",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T12:24:11+00:00",
+      "updated_at": "2026-09-28T12:24:11+00:00",
+      "touched_round": 459,
+      "source": "code-reviewer abaeefc28131e3522 (round 460)",
+      "description": "Review of 107eb75e..HEAD: CRITICAL 0, HIGH 0, MEDIUM 1 (unsubscribe 204 not asserted - fixed as CHG-815), LOW 4 (hypothetical locator/dsl brittleness, accepted). Verdict APPROVE.",
       "confidence": 1.0
     }
   },
@@ -51421,6 +51445,12 @@
       "to": "ISS-658",
       "type": "resolves",
       "created_at": "2026-09-28T11:36:26+00:00"
+    },
+    {
+      "from": "CHG-815",
+      "to": "ISS-657",
+      "type": "resolves",
+      "created_at": "2026-09-28T12:24:42+00:00"
     }
   ]
 }
