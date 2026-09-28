@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 EXPORT_PAGE_SIZE = 500
 
 
-def _csv_chunks(headers: list[str], row_iter: Iterator[list[str]]) -> Iterator[str]:
+def _csv_chunks(headers: list[str], row_iter: Iterator[list[int | object | str]]) -> Iterator[str]:
     """Yield the CSV header line, then one chunk per data row.
 
     Each chunk is a complete csv.writer row (``\r\n``-terminated), so a stream
@@ -35,7 +35,7 @@ def _csv_chunks(headers: list[str], row_iter: Iterator[list[str]]) -> Iterator[s
     a consumer that stops early saves all the serialization of the tail.
     """
 
-    def _row(row: list[str]) -> str:
+    def _row(row: list[int | object | str]) -> str:
         buf = io.StringIO()
         csv.writer(buf).writerow(row)
         return buf.getvalue()
@@ -114,7 +114,7 @@ def export_posts_csv(
     # the cap is chosen by the query plan — unreproducible, and the remainder is
     # unreachable. Post.id desc is cheap (PK index) and matches the DEC-239
     # tiebreak idiom (the sibling comments export already orders by created_at).
-    def _post_rows() -> Iterator[list[str]]:
+    def _post_rows() -> Iterator[list[int | object | str]]:
         # Keyset page by id because the tags eager-load is a joined collection,
         # which Query.yield_per refuses; id-desc keyset keeps the same
         # deterministic order and one bounded query per page (ISS-637).
@@ -213,7 +213,7 @@ def export_comments_csv(
     # which yield_per refuses). Same created_at-desc order as before.
     comments = query.order_by(models.Comment.created_at.desc()).limit(limit).yield_per(EXPORT_PAGE_SIZE)
 
-    def _comment_rows() -> Iterator[list[str]]:
+    def _comment_rows() -> Iterator[list[int | object | str]]:
         for comment in comments:
             yield [
                 comment.id,
