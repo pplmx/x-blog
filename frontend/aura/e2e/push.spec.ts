@@ -161,10 +161,9 @@ test.describe("Web Push reader opt-in", () => {
 		// the backend 204 — a swallowed DELETE would flip the button while the
 		// row leaks, the exact round-458 failure class (code-review round-460).
 		const unsubscribe204 = page
-			.waitForResponse(
-				(r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204,
-				{ timeout: 10000 },
-			)
+			.waitForResponse((r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204, {
+				timeout: 10000,
+			})
 			.catch(() => null);
 		await subscribedBtn(page).click();
 		await expect(button).toBeVisible();
@@ -198,10 +197,9 @@ test.describe("Web Push reader opt-in", () => {
 		// composable swallows unsubscribe errors, so the UI flip alone must not
 		// be trusted to mean the row is deleted (round-458 / review round-460).
 		const unsubscribe204 = page
-			.waitForResponse(
-				(r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204,
-				{ timeout: 10000 },
-			)
+			.waitForResponse((r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204, {
+				timeout: 10000,
+			})
 			.catch(() => null);
 		await subscribedBtn(page).click();
 		await expect(page.locator('button[aria-label="订阅新文章通知"]')).toBeVisible();

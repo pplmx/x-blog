@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 460,
+  "round": 461,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T12:24:42+00:00",
+  "updated_at": "2026-09-28T13:12:15+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34284,6 +34284,30 @@
       "source": "code-reviewer abaeefc28131e3522 (round 460)",
       "description": "Review of 107eb75e..HEAD: CRITICAL 0, HIGH 0, MEDIUM 1 (unsubscribe 204 not asserted - fixed as CHG-815), LOW 4 (hypothetical locator/dsl brittleness, accepted). Verdict APPROVE.",
       "confidence": 1.0
+    },
+    "CHG-816": {
+      "id": "CHG-816",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T13:12:15+00:00",
+      "updated_at": "2026-09-28T13:12:15+00:00",
+      "touched_round": 460,
+      "title": "fix(export): CSV row generators declare int|object|str cells (pyright gate)",
+      "commit": "98b98be5",
+      "description": "round-461 VERIFY: pyright on app/ surfaced 2 errors - _post_rows/_comment_rows declared Iterator[list[str]] but yield mixed int/object/str cells (streaming CSV rework 65295b63). Annotation-only widening to list[int | object | str] through _csv_chunks/_row. Runtime unchanged; SQLite suite 1928 passed, pyright 0 errors."
+    },
+    "ISS-659": {
+      "id": "ISS-659",
+      "type": "issue",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-28T13:12:15+00:00",
+      "updated_at": "2026-09-28T13:12:15+00:00",
+      "touched_round": 460,
+      "severity": "medium",
+      "title": "pyright: export.py CSV generator row types mismatch yields (CI gate)",
+      "description": "The admin CSV export's _post_rows/_comment_rows annotate Iterator[list[str]] but yield lists with int (ids/views/likes) and object (_csv_safe); pyright v1.1.411 flags both as incompatible with the inferred Generator[list[int|object|str]] - a real CI-gate red since the streaming rework."
     }
   },
   "edges": [
@@ -51451,6 +51475,12 @@
       "to": "ISS-657",
       "type": "resolves",
       "created_at": "2026-09-28T12:24:42+00:00"
+    },
+    {
+      "from": "CHG-816",
+      "to": "ISS-659",
+      "type": "resolves",
+      "created_at": "2026-09-28T13:12:15+00:00"
     }
   ]
 }
