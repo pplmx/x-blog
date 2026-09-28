@@ -59,23 +59,43 @@ test.describe("Admin category management", () => {
 		}
 	});
 
-	test("admin can delete a category with confirmation", async ({ page }) => {
-		const categoryItems = page.locator(".space-y-3 > div");
-		const count = await categoryItems.count();
+	test("admin can delete a category with confirmation", async ({ page, request }) => {
+		// Create a uniquely-named category via the API so the row to delete is
+		// unambiguous, then assert the FINAL state (name gone) instead of a
+		// count delta — the old count-derived assertion raced the delete
+		// re-render and flaked under serial-suite load (e2e#54).
+		const name = `待删除分类-${Date.now()}`;
+		const admin = await request.post("/api/admin/login", {
+			form: { username: "admin", password: "admin123" },
+		});
+		const token = ((await admin.json()) as { access_token: string }).access_token;
+		const created = await request.post("/api/admin/categories", {
+			data: { name },
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(created.ok()).toBe(true);
+		const categoryId = ((await created.json()) as { id: number }).id;
 
-		if (count > 0) {
-			const firstItem = categoryItems.first();
-			const deleteBtn = firstItem.locator('button:has-text("删除")');
+		// The row is present (scoped to the list-row container so the search
+		// input wrapper's hasText match can't shadow it).
+		await page.goto("/admin/categories");
+		const row = page.locator(".space-y-3 > div", { hasText: name }).first();
+		await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 10000 });
 
-			if (await deleteBtn.isVisible()) {
-				// The page uses window.confirm for delete confirmation
-				page.on("dialog", (dialog) => dialog.accept());
-				await deleteBtn.click();
+		// Delete it; the page uses window.confirm for delete confirmation.
+		page.on("dialog", (dialog) => dialog.accept());
+		await row.getByRole("button", { name: "删除" }).click();
 
-				// Category count should decrease
-				await expect(categoryItems).toHaveCount(count - 1);
-			}
-		}
+		// FINAL state: the named row leaves the DOM (not a count delta race).
+		await expect(page.getByText(name, { exact: true })).not.toBeVisible({ timeout: 10000 });
+
+		// Clean up if the UI delete somehow failed — never leave a duplicate
+		// "待删除分类" row behind for subsequent runs (idempotent).
+		await request
+			.delete(`/api/admin/categories/${categoryId}`, {
+				headers: { Authorization: `Bearer ${token}` },
+			})
+			.catch(() => {});
 	});
 
 	test("create form validates required fields", async ({ page }) => {
