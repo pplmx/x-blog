@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T02:07:00+00:00",
+  "updated_at": "2026-09-29T03:14:48+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34308,6 +34308,42 @@
       "severity": "medium",
       "title": "pyright: export.py CSV generator row types mismatch yields (CI gate)",
       "description": "The admin CSV export's _post_rows/_comment_rows annotate Iterator[list[str]] but yield lists with int (ids/views/likes) and object (_csv_safe); pyright v1.1.411 flags both as incompatible with the inferred Generator[list[int|object|str]] - a real CI-gate red since the streaming rework."
+    },
+    "TASK-575": {
+      "id": "TASK-575",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T03:11:17+00:00",
+      "updated_at": "2026-09-29T03:13:40+00:00",
+      "touched_round": 462,
+      "category": "performance",
+      "severity": "low",
+      "priority_score": 5.0,
+      "title": "Rate limiter pays O(table) prune per request once buckets cross 10k (cover/og CPU DoS amplifier)"
+    },
+    "CHG-817": {
+      "id": "CHG-817",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T03:13:40+00:00",
+      "updated_at": "2026-09-29T03:13:40+00:00",
+      "touched_round": 462,
+      "commit": "67fa1b54",
+      "title": "Gate cover/og rate limiter O(table) prune to 60s cadence"
+    },
+    "DEC-502": {
+      "id": "DEC-502",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T03:14:48+00:00",
+      "updated_at": "2026-09-29T03:14:48+00:00",
+      "touched_round": 462,
+      "title": "Close round 462 (deep-dive: rate-limiter CPU amplifier fix + graph hygiene)",
+      "rationale": "Round mapped the open-issue surface: closed four unprevented graph hits (ISS-656/657/658/659 had resolves edges but stayed active), confirmed the remaining active issues are covered by documented deferrals (DEC-214 multi-worker, DEC-476 total_pages, DEC-478 push batching). Fresh server-surface deep-dive found one real defect: the cover/og in-memory limiter ran an O(table) prune on every call once buckets past 10k, amplifying CPU at peak load; interval-gated to 60s (TASK-575/CHG-817, commit 67fa1b54), cadence pinned by a new test. GH e2e issues #52/53/54/55 were verified fixed in code (be6b70c0, 31dcab23, 72e8ba1f, round-455 CHG-811) but closing them was blocked by the permission classifier (external write) - left for the user.",
+      "alternatives_rejected": "Took the rate-limiter fix over (a) total_pages=0 semantic change (DEC-476: frontend hides pagination at <=1 page, no user-visible benefit), (b) e2e bootstrap to re-run the suite (sandbox is load-flaky per repo memory; fix verified by spec diff + green unit gates)."
     }
   },
   "edges": [
@@ -51481,6 +51517,12 @@
       "to": "ISS-659",
       "type": "resolves",
       "created_at": "2026-09-28T13:12:15+00:00"
+    },
+    {
+      "from": "CHG-817",
+      "to": "TASK-575",
+      "type": "implements",
+      "created_at": "2026-09-29T03:14:20+00:00"
     }
   ]
 }
