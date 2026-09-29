@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isRateLimited } from "../../server/utils/simpleRateLimit";
+import { __lastPruneAt, isRateLimited } from "../../server/utils/simpleRateLimit";
 
 describe("isRateLimited", () => {
 	beforeEach(() => {
@@ -59,5 +59,33 @@ describe("isRateLimited", () => {
 
 		// The limiter keeps working for fresh keys after cleanup.
 		expect(isRateLimited("post-cleanup-key", 5, 60_000)).toBe(false);
+	});
+
+	it("gates the full-table prune to the cleanup interval", () => {
+		// Advance well past the interval first so any sweep residue carried in
+		// module state from earlier tests (fake-timer bases differ by ms) cannot
+		// defuse the interval check below — then top the table back up past the
+		// threshold with LIVE keys. The first over-threshold call therefore
+		// sweeps (the interval has long elapsed) and anchors lastCleanup "now".
+		vi.advanceTimersByTime(120_000);
+		for (let i = 0; i < 10_100; i++) {
+			isRateLimited(`gate-build-${i}`, 5, 60_000);
+		}
+		expect(isRateLimited("interval-anchor", 5, 60_000)).toBe(false);
+		const first = __lastPruneAt();
+		expect(first).toBeGreaterThan(0);
+
+		// A burst of distinct keys within the interval must NOT re-trigger the
+		// O(table-size) sweep — the per-key filter on each access keeps each
+		// bucket's freshness correct regardless of when the sweep next runs.
+		for (let i = 0; i < 2_000; i++) {
+			isRateLimited(`interval-fill-${i}`, 5, 60_000);
+		}
+		expect(__lastPruneAt()).toBe(first);
+
+		// Advancing past the interval re-arms the sweep on the next call.
+		vi.advanceTimersByTime(60_001);
+		isRateLimited("interval-late", 5, 60_000);
+		expect(__lastPruneAt()).toBeGreaterThan(first);
 	});
 });

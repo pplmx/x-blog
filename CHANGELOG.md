@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **Image-endpoint rate limiter stops paying an O(table) sweep per request
+  (round 462)** — the in-memory sliding-window limiter behind `/api/cover` and
+  `/api/og` ran a full-table prune pass on EVERY call once the bucket table
+  crossed 10,000 keys — including the very calls it was about to reject, so a
+  burst of distinct IPs turned the limiter itself into a CPU amplifier at
+  exactly the load it exists to absorb. The sweep is now interval-gated (at
+  most once per 60 s); per-key freshness is still enforced on every access.
+  Cadence covered by a new test via a test-only `__lastPruneAt()` hook.
 - 🔧 **Perf benchmark scripts honor `DATABASE_URL` (round 449)** — `seed_perf_db.py`
   and `bench_perf_db.py` document running via `DATABASE_URL=...`, but both
   hardcoded the dev-PostgreSQL URL, so a documented invocation on another host
