@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 461,
+  "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-28T13:12:15+00:00",
+  "updated_at": "2026-09-29T02:07:00+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34180,11 +34180,11 @@
     "ISS-656": {
       "id": "ISS-656",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-28T09:19:07+00:00",
-      "updated_at": "2026-09-28T09:19:07+00:00",
-      "touched_round": 457,
+      "updated_at": "2026-09-29T02:07:00+00:00",
+      "touched_round": 462,
       "severity": "low",
       "title": "a11y: admin category/tag count badge reads as a bare number with no unit",
       "description": "The post_count pill lives inside the name <span> (categories.vue + tags.vue); screen readers announce 'Name 3' with the bare numeral glued to the name, no 'posts/篇' unit context. Found while triaging the CHG-812 exact-match e2e bug (same markup)."
@@ -34204,11 +34204,11 @@
     "ISS-657": {
       "id": "ISS-657",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-28T11:36:04+00:00",
-      "updated_at": "2026-09-28T11:36:04+00:00",
-      "touched_round": 460,
+      "updated_at": "2026-09-29T02:07:00+00:00",
+      "touched_round": 462,
       "severity": "high",
       "title": "e2e push tests 429 deterministically: anonymous ::1 push cap filled by leaked subscription rows",
       "description": "push.spec tests subscribing while anonymous never unsubscribed, so each full-suite run leaked one push_subscriptions row stamped ip_key='::1'. With MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE=10 the ::1 bucket filled (persisting e2e aurora.db) and every later anonymous subscribe 429'd with the handler's own 'Too many push subscriptions (IP ::1)', so 4/4 push tests failed (button never flips to subscribed). Not a slowapi issue - a DB row-count cap."
@@ -34216,11 +34216,11 @@
     "ISS-658": {
       "id": "ISS-658",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-28T11:36:04+00:00",
-      "updated_at": "2026-09-28T11:36:04+00:00",
-      "touched_round": 457,
+      "updated_at": "2026-09-29T02:07:00+00:00",
+      "touched_round": 462,
       "severity": "medium",
       "title": "e2e strict-mode ambiguity: sr-only aria-live copy duplicates visible text (search-suggest + reader-profile-follow)",
       "description": "a11y sr-only <span role=status> copies of empty-state/count strings made getByText('...') resolve to 2 elements -> strict_mode violation in search-suggest (empty-state hint) and reader-profile-follow ('N 位粉丝' x3). Fix: heading-by-role and [aria-label] locators targeting the visible element."
@@ -34300,11 +34300,11 @@
     "ISS-659": {
       "id": "ISS-659",
       "type": "issue",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-28T13:12:15+00:00",
-      "updated_at": "2026-09-28T13:12:15+00:00",
-      "touched_round": 460,
+      "updated_at": "2026-09-29T02:07:00+00:00",
+      "touched_round": 462,
       "severity": "medium",
       "title": "pyright: export.py CSV generator row types mismatch yields (CI gate)",
       "description": "The admin CSV export's _post_rows/_comment_rows annotate Iterator[list[str]] but yield lists with int (ids/views/likes) and object (_csv_safe); pyright v1.1.411 flags both as incompatible with the inferred Generator[list[int|object|str]] - a real CI-gate red since the streaming rework."
