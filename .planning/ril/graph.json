@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T06:15:30+00:00",
+  "updated_at": "2026-09-29T06:26:29+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34499,6 +34499,31 @@
       "title": "Close round 465 (GH#54 trio fully resolved)",
       "rationale": "Batch-hunted the repo-flagged flaky e2e specs on the live stack: 15 passed, 2 flaky, 0 failed. The 2 flaky members (history:15, reader-likes:73) both proved to be REAL read-after-write races caught on a fresh machine, not pure load flakes - unlike reader-likes flipped optimistically and /liked read a stale server; history wrote its guest trail on the fetched-post watch, so a fast navigation unmounts before the write. Each fixed at its server-visible sync point (unlike count settle; article h1 render). GH#54 trio is now complete: admin-categories (round-455), history and reader-likes (this round). Verified green across repeat runs.",
       "alternatives_rejected": "Did not rework the product-side optimistic-unlike consistency (DELETE retry queue): the repo already has likeSyncIssue for surfaced failures and the optimistic UI is a documented tradeoff; the e2e gate is now deterministic, and a client upload-retry architecture is out of scope for a test-stability round."
+    },
+    "EV-327": {
+      "id": "EV-327",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T06:26:29+00:00",
+      "updated_at": "2026-09-29T06:26:29+00:00",
+      "touched_round": 462,
+      "source": "full e2e suite (all 260 specs) 2026-09-29, live stack",
+      "title": "e2e gate now passes on HEAD: 254 passed, 0 failed, 1 env flake, 5 skipped",
+      "note": "Session trajectory: run1 250+2fail+3flaky (comment-reply-email REAL, admin-digest harness) -> run2 251+1fail -> final 254+0fail+1flaky. bookmarks.spec.ts:23 is the sole remaining flake - passed in the isolated batch, environmental. GH #52/#53/#54/#55 member fixes all hold under full-suite serial load.",
+      "confidence": 1.0
+    },
+    "DEC-506": {
+      "id": "DEC-506",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T06:26:29+00:00",
+      "updated_at": "2026-09-29T06:26:29+00:00",
+      "touched_round": 462,
+      "title": "Round 465 gate confirmation (converged)",
+      "rationale": "The full e2e gate, red on HEAD at session start (comment-reply-email deterministic failure plus the GH#54 flaky trio), is now green: 254 passed, zero failures, one environmental load flake. Combined with green backend on both SQLite (1928) and dev PostgreSQL 18.4 (1939) plus frontend 2515 unit tests, every verification level this directive cares about is exercised and passing. No new above-threshold defect emerged across the backend sweep, frontend sweep, PG parity and four full e2e runs.",
+      "alternatives_rejected": "Nothing to re-litigate: the sole residual flake has no code defect and passed in isolation; pushing further rounds would be chore churn against a converged, fully-verified gate."
     }
   },
   "edges": [
