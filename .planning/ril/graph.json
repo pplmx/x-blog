@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T03:37:01+00:00",
+  "updated_at": "2026-09-29T04:28:45+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34369,6 +34369,65 @@
       "title": "Close round 463 (PG-parity verification round)",
       "rationale": "Backend deep-dive on the recently-touched surfaces (digest/export/admin/newsletter/suggest/rss/robots) plus an unbounded-.all() and robots-Disallow sweep found no new defect beyond round-462 fix. Strongest deliverable: full PG-parity suite green against the dev PostgreSQL 18.4 (1939 passed, 93.83%) - the real deployment dialect the user flagged, with per-worker scratch schemas and advisory-lock salt holding (EV-324). SQLite parity 1928. Both dialect gates green on this HEAD.",
       "alternatives_rejected": "Did not re-open ISS-632 (push broadcast batching): DEC-478 deferral stands, no new signal, and a fan-out rework is a large diff against a LOW item. Did not boot the interactive e2e stack: sandbox is load-flaky per repo memory and the static + unit + dialect gates are already green; recording it as the recommended next level of verification instead."
+    },
+    "ISS-660": {
+      "id": "ISS-660",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T04:22:13+00:00",
+      "updated_at": "2026-09-29T04:28:14+00:00",
+      "touched_round": 462,
+      "severity": "medium",
+      "title": "e2e comment-reply-email journey deterministically red on HEAD (address-scoped count ignores manage email)"
+    },
+    "TASK-576": {
+      "id": "TASK-576",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T04:22:13+00:00",
+      "updated_at": "2026-09-29T04:23:13+00:00",
+      "touched_round": 462,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "Scope guest reply-email e2e count to the reply subject"
+    },
+    "CHG-818": {
+      "id": "CHG-818",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T04:23:13+00:00",
+      "updated_at": "2026-09-29T04:23:13+00:00",
+      "touched_round": 462,
+      "commit": "8fdbd216",
+      "title": "Scope guest reply-email e2e count to the reply subject"
+    },
+    "EV-325": {
+      "id": "EV-325",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T04:23:13+00:00",
+      "updated_at": "2026-09-29T04:23:13+00:00",
+      "touched_round": 462,
+      "source": "full e2e suite x2 + targeted run 2026-09-29 (local stack, justfile env)",
+      "title": "comment-reply-email spec was the only deterministic e2e failure on HEAD",
+      "note": "2 full runs: 250/251 passed; admin-digest flake was my SMTP-sink boot race (harness), not code. Flaky set (bookmarks, guest-thread-follow, history:15) flips across runs = documented load-flake pattern (GH #54 class). Fix verified: spec passes.",
+      "confidence": 1.0
+    },
+    "DEC-504": {
+      "id": "DEC-504",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T04:28:45+00:00",
+      "updated_at": "2026-09-29T04:28:45+00:00",
+      "touched_round": 462,
+      "title": "Close round 464 (live e2e smoke caught a real gate regression)",
+      "rationale": "Booted the real stack and ran the committed e2e suite twice (250/251 passed): exactly ONE deterministic failure surfaced - the guest reply-email journey counted every sink email to the guest address while the manage email (round 385) legitimately shares that address. Root cause: stale test assertion, not backend behavior. Fixed by subject-scoping the count (TASK-576/CHG-818, commit 8fdbd216) and re-verified green on the live stack. A genuine CI-gate red on HEAD that static review could not see - the live verification earned its keep. The admin-digest failure in run 1 was my SMTP-sink boot race (harness), confirmed when it passed with sink-first ordering.",
+      "alternatives_rejected": "Did not chase the flaky trio (bookmarks, guest-thread-follow, history:15): they flip across runs and match the documented load-flake environmental class (GH #54 pattern, repo memory) with no code defect to fix. Backend was independently verified green on dev PostgreSQL 18.4 this session (EV-324, 1939 passed)."
     }
   },
   "edges": [
@@ -51548,6 +51607,24 @@
       "to": "TASK-575",
       "type": "implements",
       "created_at": "2026-09-29T03:14:20+00:00"
+    },
+    {
+      "from": "CHG-818",
+      "to": "ISS-660",
+      "type": "resolves",
+      "created_at": "2026-09-29T04:27:48+00:00"
+    },
+    {
+      "from": "CHG-818",
+      "to": "TASK-576",
+      "type": "implements",
+      "created_at": "2026-09-29T04:27:48+00:00"
+    },
+    {
+      "from": "TASK-576",
+      "to": "ISS-660",
+      "type": "addresses",
+      "created_at": "2026-09-29T04:28:13+00:00"
     }
   ]
 }
