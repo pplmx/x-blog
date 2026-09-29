@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T03:14:48+00:00",
+  "updated_at": "2026-09-29T03:37:01+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34344,6 +34344,31 @@
       "title": "Close round 462 (deep-dive: rate-limiter CPU amplifier fix + graph hygiene)",
       "rationale": "Round mapped the open-issue surface: closed four unprevented graph hits (ISS-656/657/658/659 had resolves edges but stayed active), confirmed the remaining active issues are covered by documented deferrals (DEC-214 multi-worker, DEC-476 total_pages, DEC-478 push batching). Fresh server-surface deep-dive found one real defect: the cover/og in-memory limiter ran an O(table) prune on every call once buckets past 10k, amplifying CPU at peak load; interval-gated to 60s (TASK-575/CHG-817, commit 67fa1b54), cadence pinned by a new test. GH e2e issues #52/53/54/55 were verified fixed in code (be6b70c0, 31dcab23, 72e8ba1f, round-455 CHG-811) but closing them was blocked by the permission classifier (external write) - left for the user.",
       "alternatives_rejected": "Took the rate-limiter fix over (a) total_pages=0 semantic change (DEC-476: frontend hides pagination at <=1 page, no user-visible benefit), (b) e2e bootstrap to re-run the suite (sandbox is load-flaky per repo memory; fix verified by spec diff + green unit gates)."
+    },
+    "EV-324": {
+      "id": "EV-324",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T03:36:07+00:00",
+      "updated_at": "2026-09-29T03:36:07+00:00",
+      "touched_round": 462,
+      "source": "PG-parity full suite 2026-09-29 (TEST_DATABASE_URL=postgresql+psycopg2://postgres@10.112.9.49:13310/postgres, pytest -n 4)",
+      "title": "Backend HEAD green on the real deployment dialect",
+      "note": "1939 passed (SQLite parity 1928), 93.83% cov, PG 18.4; round-448 scratch-schema isolation + per-worker advisory-lock salt hold",
+      "confidence": 1.0
+    },
+    "DEC-503": {
+      "id": "DEC-503",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T03:37:01+00:00",
+      "updated_at": "2026-09-29T03:37:01+00:00",
+      "touched_round": 462,
+      "title": "Close round 463 (PG-parity verification round)",
+      "rationale": "Backend deep-dive on the recently-touched surfaces (digest/export/admin/newsletter/suggest/rss/robots) plus an unbounded-.all() and robots-Disallow sweep found no new defect beyond round-462 fix. Strongest deliverable: full PG-parity suite green against the dev PostgreSQL 18.4 (1939 passed, 93.83%) - the real deployment dialect the user flagged, with per-worker scratch schemas and advisory-lock salt holding (EV-324). SQLite parity 1928. Both dialect gates green on this HEAD.",
+      "alternatives_rejected": "Did not re-open ISS-632 (push broadcast batching): DEC-478 deferral stands, no new signal, and a fan-out rework is a large diff against a LOW item. Did not boot the interactive e2e stack: sandbox is load-flaky per repo memory and the static + unit + dialect gates are already green; recording it as the recommended next level of verification instead."
     }
   },
   "edges": [
