@@ -22,6 +22,12 @@ const password = "e2epass123";
 
 const SINK_FILE = "/tmp/x-blog-smtp-sink.jsonl";
 
+// The reply-email subject (shared with the address-scoped counters below).
+// Distinct from the "你的评论已发布 — 可管理" manage email, which ALSO lands at
+// the guest's address (round 385, when their own comment gets approved) — any
+// address-scoped assertion must scope by this subject to isolate reply mails.
+const REPLY_SUBJECT = "有人回复了你的评论";
+
 /** The latest SMTP-sink record addressed to ``email`` (or null). */
 function messageFromSink(email: string): { to: string; subject: string; text: string } | null {
 	let latest: { to: string; subject: string; text: string } | null = null;
@@ -126,7 +132,7 @@ test.describe("Guest commenter reply-email (TASK-392)", () => {
 		// reply and carrying the per-comment unsubscribe token.
 		const record = messageFromSink(guestEmail);
 		expect(record).toBeDefined();
-		expect(record?.subject).toBe("有人回复了你的评论");
+		expect(record?.subject).toBe(REPLY_SUBJECT);
 		expect(record?.text).toContain(`/posts/guest-reply-e2e-${uid}#comment-${replyId}`);
 
 		// Extract the unsubscribe token from the email link and confirm the UI
@@ -153,11 +159,20 @@ test.describe("Guest commenter reply-email (TASK-392)", () => {
 			data: { approved: true },
 		});
 		expect(approve2.status()).toBe(200);
-		// No NEW message for the guest after unsubscribing (the count stays at
-		// the one from before the unsubscribe).
+		// No NEW REPLY email after unsubscribing (the reply count stays at the
+		// one from before the unsubscribe). Scoped by SUBJECT, not address: the
+		// guest's own comment-approval also sends the "你的评论已发布 — 可管理"
+		// manage email to the same address (round 385), so an address-scoped
+		// count is two by construction and would false-red the journey.
 		const after = readFileSync(SINK_FILE, "utf8")
 			.split("\n")
-			.filter((l) => l.trim() && (JSON.parse(l) as { to: string }).to === guestEmail);
+			.filter(
+				(l) =>
+					l.trim() &&
+					((j) => j.to === guestEmail && j.subject === REPLY_SUBJECT)(
+						JSON.parse(l) as { to: string; subject: string },
+					),
+			);
 		expect(after.length).toBe(1);
 	});
 });

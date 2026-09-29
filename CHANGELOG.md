@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧪 **guest reply-email e2e no longer false-red: count scoped to the reply
+  subject (round 464)** — a deterministic full-suite failure: the journey's
+  "unsubscribe stops future mail" step counted ALL sink emails to the guest's
+  address and expected 1, but the guest's own comment-approval ALSO sends the
+  "你的评论已发布 — 可管理" manage email to that same address (round 385), so the
+  count was two by construction and CI's e2e gate was red on HEAD. The check
+  now scopes to the reply-email subject, verifying the real contract — no
+  second REPLY email after unsubscribe — while acknowledging the manage email
+  legitimately shares the address.
 - ⚡ **Image-endpoint rate limiter stops paying an O(table) sweep per request
   (round 462)** — the in-memory sliding-window limiter behind `/api/cover` and
   `/api/og` ran a full-table prune pass on EVERY call once the bucket table
