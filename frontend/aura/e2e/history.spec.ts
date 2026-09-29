@@ -39,6 +39,18 @@ test.describe("Reading history page (TASK-169)", () => {
 		await postLink.click();
 		await page.waitForURL(/\/posts\//);
 
+		// The local trail is written by a watch on the FETCHED post (not on the
+		// URL change — SPA nav swaps the URL immediately while the post data is
+		// still in flight), so wait for the article heading to actually render
+		// before leaving. Navigating to /history sooner races the record() write:
+		// under load the post fetch can resolve after the component unmounted and
+		// the trail stays empty (the read-after-write flake, GH #54).
+		if (title) {
+			await expect(page.locator("article h1", { hasText: title }).first()).toBeVisible({
+				timeout: 10000,
+			});
+		}
+
 		// Reach the history page. This spec is a GUEST journey, and the personal
 		// links now live in the signed-in "My" avatar menu (round 382) — guests
 		// have no header entry, so navigate directly.

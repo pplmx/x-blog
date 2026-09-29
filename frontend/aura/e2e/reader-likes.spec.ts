@@ -103,7 +103,14 @@ test.describe("Reader cloud-synced likes", () => {
 		await expect(nowLiked).toBeVisible({ timeout: 5000 });
 		await expect(nowLiked).toHaveText(String(before + 1), { timeout: 5000 });
 		await nowLiked.click();
-		await expect(page.locator("button[title='喜欢']").first()).toBeVisible({ timeout: 5000 });
+		const unlikedBtn = page.locator("button[title='喜欢']").first();
+		await expect(unlikedBtn).toBeVisible({ timeout: 5000 });
+		// The flip is optimistic (the marker clears immediately), but the count
+		// only drops to `before` AFTER unlikeSync's cloud DELETE lands and
+		// refreshPost refetches. Wait for that server-visible settle before
+		// navigating — otherwise /liked can mount mid-flight and read a server
+		// that still holds the like (the read-after-write flake, GH #54).
+		await expect(unlikedBtn).toHaveText(String(before), { timeout: 10000 });
 
 		// /liked is back to its empty state for this reader.
 		await page.goto("/liked");

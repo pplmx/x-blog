@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧪 **e2e read-after-write flakes fixed: /liked unlike + reading-history trail
+  (round 465)** — the last two members of the GH #54 flaky trio failed on
+  first attempt under serial-suite load. (1) `reader-likes` unliked on the post
+  page, then navigated straight to /liked: the unlike button flips
+  OPTIMISTICALLY, so the test read a server that still held the like — with the
+  empty-state wait timing out (its `toHaveCount(0)` "passed" during the
+  pending skeleton). The test now waits for the count to drop back to the
+  pre-like value, which only happens after the cloud DELETE lands and the count
+  refetches — a deterministic server-visible sync point. (2) `history` clicked
+  a post and navigated to /history after only `waitForURL`: the guest trail is
+  written by a watch on the *fetched* post, not the URL change, so under load
+  the fetch could resolve after the component unmounted and the trail stayed
+  empty. It now waits for the article heading to render (the record() write has
+  landed). Both verified green across repeated runs.
 - 🧪 **guest reply-email e2e no longer false-red: count scoped to the reply
   subject (round 464)** — a deterministic full-suite failure: the journey's
   "unsubscribe stops future mail" step counted ALL sink emails to the guest's
