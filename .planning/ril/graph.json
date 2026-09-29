@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 462,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T04:28:45+00:00",
+  "updated_at": "2026-09-29T06:15:30+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34428,6 +34428,77 @@
       "title": "Close round 464 (live e2e smoke caught a real gate regression)",
       "rationale": "Booted the real stack and ran the committed e2e suite twice (250/251 passed): exactly ONE deterministic failure surfaced - the guest reply-email journey counted every sink email to the guest address while the manage email (round 385) legitimately shares that address. Root cause: stale test assertion, not backend behavior. Fixed by subject-scoping the count (TASK-576/CHG-818, commit 8fdbd216) and re-verified green on the live stack. A genuine CI-gate red on HEAD that static review could not see - the live verification earned its keep. The admin-digest failure in run 1 was my SMTP-sink boot race (harness), confirmed when it passed with sink-first ordering.",
       "alternatives_rejected": "Did not chase the flaky trio (bookmarks, guest-thread-follow, history:15): they flip across runs and match the documented load-flake environmental class (GH #54 pattern, repo memory) with no code defect to fix. Backend was independently verified green on dev PostgreSQL 18.4 this session (EV-324, 1939 passed)."
+    },
+    "ISS-661": {
+      "id": "ISS-661",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T06:11:30+00:00",
+      "updated_at": "2026-09-29T06:13:18+00:00",
+      "touched_round": 462,
+      "severity": "medium",
+      "title": "e2e GH#54 flaky members history:15 and reader-likes:73 are read-after-write races, not load flakes"
+    },
+    "TASK-577": {
+      "id": "TASK-577",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T06:11:30+00:00",
+      "updated_at": "2026-09-29T06:13:18+00:00",
+      "touched_round": 462,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "Make /liked unlike await the cloud DELETE before navigating"
+    },
+    "TASK-578": {
+      "id": "TASK-578",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-09-29T06:11:30+00:00",
+      "updated_at": "2026-09-29T06:13:18+00:00",
+      "touched_round": 462,
+      "category": "test-quality",
+      "severity": "medium",
+      "title": "Wait for the history local-trail record to land before navigating away"
+    },
+    "CHG-819": {
+      "id": "CHG-819",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T06:13:17+00:00",
+      "updated_at": "2026-09-29T06:13:17+00:00",
+      "touched_round": 462,
+      "commit": "04e886c1",
+      "title": "Fix last two GH#54 read-after-write e2e flakes"
+    },
+    "EV-326": {
+      "id": "EV-326",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T06:14:21+00:00",
+      "updated_at": "2026-09-29T06:14:21+00:00",
+      "touched_round": 462,
+      "source": "live e2e stack 2026-09-29 (full suite x2 + targeted batches)",
+      "title": "GH#54 flaky members root-caused and proven as read-after-write races",
+      "note": "reader-likes: unlike flips optimistically; count return to pre-like value only after DELETE commits. history: guest trail written by watch on fetched post, not URL change; article h1 render gates the write. Both fixed and verified green across repeated runs.",
+      "confidence": 1.0
+    },
+    "DEC-505": {
+      "id": "DEC-505",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T06:15:30+00:00",
+      "updated_at": "2026-09-29T06:15:30+00:00",
+      "touched_round": 462,
+      "title": "Close round 465 (GH#54 trio fully resolved)",
+      "rationale": "Batch-hunted the repo-flagged flaky e2e specs on the live stack: 15 passed, 2 flaky, 0 failed. The 2 flaky members (history:15, reader-likes:73) both proved to be REAL read-after-write races caught on a fresh machine, not pure load flakes - unlike reader-likes flipped optimistically and /liked read a stale server; history wrote its guest trail on the fetched-post watch, so a fast navigation unmounts before the write. Each fixed at its server-visible sync point (unlike count settle; article h1 render). GH#54 trio is now complete: admin-categories (round-455), history and reader-likes (this round). Verified green across repeat runs.",
+      "alternatives_rejected": "Did not rework the product-side optimistic-unlike consistency (DELETE retry queue): the repo already has likeSyncIssue for surfaced failures and the optimistic UI is a documented tradeoff; the e2e gate is now deterministic, and a client upload-retry architecture is out of scope for a test-stability round."
     }
   },
   "edges": [
@@ -51625,6 +51696,24 @@
       "to": "ISS-660",
       "type": "addresses",
       "created_at": "2026-09-29T04:28:13+00:00"
+    },
+    {
+      "from": "CHG-819",
+      "to": "ISS-661",
+      "type": "resolves",
+      "created_at": "2026-09-29T06:14:21+00:00"
+    },
+    {
+      "from": "CHG-819",
+      "to": "TASK-577",
+      "type": "implements",
+      "created_at": "2026-09-29T06:14:21+00:00"
+    },
+    {
+      "from": "CHG-819",
+      "to": "TASK-578",
+      "type": "implements",
+      "created_at": "2026-09-29T06:14:21+00:00"
     }
   ]
 }
