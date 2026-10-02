@@ -43,7 +43,7 @@
 		"@vitest/coverage-v8": "^4.1.11",
 		"@vue/test-utils": "^2.4.11",
 		"autoprefixer": "^10.5.4",
-		"dompurify": "^3.4.14",
+		"dompurify": "^3.4.16",
 		"globals": "^17.11.0",
 		"happy-dom": "^20.11.8",
 		"katex": "^0.18.4",
