@@ -95,8 +95,8 @@ importers:
         specifier: ^0.18.4
         version: 0.18.4
       marked:
-        specifier: ^16.4.2
-        version: 16.4.2
+        specifier: ^18.0.0
+        version: 18.0.14
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2
@@ -2829,6 +2829,7 @@ packages:
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@13.0.6:
@@ -3415,6 +3416,11 @@ packages:
 
   marked@16.4.2:
     resolution: {integrity: sha512-TI3V8YYWvkVf3KJe1dRkpnjs68JUPyEa5vjKrp1XEEJUAOaQc+Qj+L1qWbPd0SJuAdQkFU0h73sXXqwDYxsiDA==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
+  marked@18.0.14:
+    resolution: {integrity: sha512-mBHK6FBHuBAlhgRe88w9F0O1AbwwXJUcQibUbC/QcdTbVGAD7aWza+xt3N6oT/jCZx3/OMeS+8rnuiHZcQ9s7A==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -8357,6 +8363,8 @@ snapshots:
       semver: 7.8.5
 
   marked@16.4.2: {}
+
+  marked@18.0.14: {}
 
   math-intrinsics@1.1.0: {}
 
