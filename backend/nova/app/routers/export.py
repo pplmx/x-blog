@@ -1,6 +1,6 @@
 import csv
 import io
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -35,7 +35,7 @@ def _csv_chunks(headers: list[str], row_iter: Iterator[list[int | object | str]]
     a consumer that stops early saves all the serialization of the tail.
     """
 
-    def _row(row: list[int | object | str]) -> str:
+    def _row(row: Sequence[int | object | str]) -> str:
         buf = io.StringIO()
         csv.writer(buf).writerow(row)
         return buf.getvalue()
