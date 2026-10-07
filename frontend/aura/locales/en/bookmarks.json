@@ -32,6 +32,8 @@
 		"queueDone": "Done",
 		"noQueuePosts": "Nothing here — the reading queue is empty.",
 		"doneBadge": "Done",
+		"availableOffline": "Offline",
+		"availableOfflineTitle": "Saved to your device — readable without a connection",
 		"markDone": "Mark as read",
 		"markToRead": "Move back to To-read",
 		"closeManage": "Done",

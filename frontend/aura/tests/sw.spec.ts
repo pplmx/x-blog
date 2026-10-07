@@ -249,3 +249,134 @@ describe("service worker offline cache (round 384)", () => {
 		await expect(served).rejects.toThrow("Unreachable and not cached");
 	});
 });
+
+describe("service worker bookmarks offline cache (PWA slice)", () => {
+	const origin = "https://blog.example.com";
+	const location = { origin };
+	// Same shared fake CacheStorage as the runtime-cache suite: URL-keyed Map.
+	const cacheStore = new Map<string, unknown>();
+	const caches = {
+		open: vi.fn(async () => ({
+			put: vi.fn(async (url: string, resp: unknown) => cacheStore.set(url, resp)),
+			keys: vi.fn(async () => Array.from(cacheStore.keys()).map((url) => ({ url }))),
+			delete: vi.fn(async (url: string) => cacheStore.delete(url)),
+		})),
+		match: vi.fn(async (req: unknown) => cacheStore.get((req as Request).url)),
+	};
+
+	function okResponse() {
+		return { ok: true, clone: () => okResponse() } as unknown as Response;
+	}
+	function request(url: string, method = "GET") {
+		return { method, url, mode: "navigate" } as unknown as Request;
+	}
+	/** A post HTML response whose body references a cacheable /_nuxt asset. */
+	function postHtml(assetUrl: string) {
+		const body = `<html><head><script src="${assetUrl}"></script></head><body>hi</body></html>`;
+		return {
+			ok: true,
+			clone: () => postHtml(assetUrl),
+			text: async () => body,
+		} as unknown as Response;
+	}
+
+	/** Drive the registered message handler and await its waitUntil promise. */
+	async function driveMessage(
+		handlers: Record<string, EventHandler>,
+		data: unknown,
+	): Promise<void> {
+		const waits: Promise<unknown>[] = [];
+		handlers.message?.({ data, waitUntil: (p: Promise<unknown>) => waits.push(p) });
+		await Promise.all(waits);
+	}
+
+	beforeEach(() => cacheStore.clear());
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("precaches a bookmarked post's document AND its referenced asset on message", async () => {
+		const { handlers } = loadServiceWorker({ caches, location });
+		const postUrl = `${origin}/posts/hello`;
+		const assetUrl = `${origin}/_nuxt/chunk.js`;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((url: string) =>
+				url === postUrl ? Promise.resolve(postHtml(assetUrl)) : Promise.resolve(okResponse()),
+			),
+		);
+		await driveMessage(handlers, { type: "offline-precache", posts: ["/posts/hello"] });
+		expect(cacheStore.has(postUrl)).toBe(true);
+		// The /_nuxt asset the post's SSR HTML references is also cached, so the
+		// post fully renders offline even though it was never visited.
+		expect(cacheStore.has(assetUrl)).toBe(true);
+	});
+
+	it("never precaches admin/API/feed/cross-origin/data: paths via message", async () => {
+		const { handlers } = loadServiceWorker({ caches, location });
+		const fetchMock = vi.fn().mockResolvedValue(okResponse());
+		vi.stubGlobal("fetch", fetchMock);
+		await driveMessage(handlers, {
+			type: "offline-precache",
+			posts: [
+				"/admin/posts",
+				"/api/reader/me",
+				"/rss/feed.xml",
+				`${origin}/sitemap.xml`,
+				"https://evil.example.com/posts/x",
+				"data:text/html,hi",
+				"//protocol-relative.example.com/a",
+			],
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(cacheStore.size).toBe(0);
+	});
+
+	it("skips admin/API assets referenced inside a precached post (defense in depth)", async () => {
+		const { handlers } = loadServiceWorker({ caches, location });
+		const postUrl = `${origin}/posts/hello`;
+		const body =
+			`<script src="${origin}/_nuxt/ok.js"></script>` +
+			`<script src="${origin}/admin/console.js"></script>` +
+			`<script src="${origin}/api/posts"></script>`;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((url: string) => {
+				if (url === postUrl)
+					return Promise.resolve({
+						ok: true,
+						clone: function clone() {
+							return this;
+						},
+						text: async () => body,
+					} as unknown as Response);
+				return Promise.resolve(okResponse());
+			}),
+		);
+		await driveMessage(handlers, { type: "offline-precache", posts: ["/posts/hello"] });
+		expect(cacheStore.has(`${origin}/_nuxt/ok.js`)).toBe(true);
+		expect(cacheStore.has(`${origin}/admin/console.js`)).toBe(false);
+		expect(cacheStore.has(`${origin}/api/posts`)).toBe(false);
+		// fetch was called for the post + the allowed asset only.
+		expect(cacheStore.size).toBe(2);
+	});
+
+	it("prunes an un-bookmarked post from the bookmarks cache on message", async () => {
+		const { handlers } = loadServiceWorker({ caches, location });
+		const postUrl = `${origin}/posts/hello`;
+		await (await caches.open()).put(postUrl, okResponse());
+		await driveMessage(handlers, { type: "offline-unbookmark", posts: ["/posts/hello"] });
+		expect(cacheStore.has(postUrl)).toBe(false);
+	});
+
+	it("serves a bookmarked post from cache offline even when it was never visited", async () => {
+		const { handlers } = loadServiceWorker({ caches, location });
+		const postUrl = `${origin}/posts/hello`;
+		await (await caches.open()).put(postUrl, okResponse());
+		vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+		let served: Promise<unknown> | undefined;
+		handlers.fetch?.({
+			request: request(postUrl),
+			respondWith: (p: Promise<unknown>) => (served = p),
+		});
+		await expect(served).resolves.toBe(cacheStore.get(postUrl));
+	});
+});

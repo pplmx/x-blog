@@ -32,6 +32,8 @@
 		"queueDone": "已读",
 		"noQueuePosts": "这里空空如也 —— 待读队列已清空。",
 		"doneBadge": "已读",
+		"availableOffline": "可离线",
+		"availableOfflineTitle": "已保存到本设备，断网也能阅读",
 		"markDone": "标记为已读",
 		"markToRead": "移回待读",
 		"closeManage": "完成",

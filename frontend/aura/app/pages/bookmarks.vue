@@ -5,6 +5,7 @@ import { formatPostDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
 import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks";
+import { useOfflineBookmarks } from "~~/composables/useOfflineBookmarks";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -20,6 +21,13 @@ const {
 	remove: removeFolder,
 	assign: assignFolder,
 } = useBookmarkFolders();
+
+// Offline reading (PWA slice): allows a signed-in reader to read their saved
+// posts with no connection. `refreshOfflineStatus` keeps `isAvailable` in
+// sync with the SW's bookmarks cache so each row can render an "available
+// offline" badge; `precache`/`prune` tell the SW to fetch-and-cache (or drop)
+// saved posts.
+const { isAvailable, precache, prune, refreshOfflineStatus } = useOfflineBookmarks();
 
 useSeo(() => ({
 	title: t("bookmarks.seoTitle"),
@@ -93,8 +101,18 @@ interface UndoEntry {
 const undoItems = ref<UndoEntry[]>([]);
 let undoWatchTimer: ReturnType<typeof setInterval> | undefined;
 
+// A saved post's cache lives under its public post URL. Kept as one helper so
+// remove/undo/precache all build it identically.
+function postPath(bookmark: Bookmark): string {
+	return `/posts/${bookmark.slug}`;
+}
+
 function handleRemove(bookmark: Bookmark) {
 	remove(bookmark.id);
+	// Offline cache hygiene: as soon as a post is unsaved, prune its cached
+	// copy so the reader's offline set matches their saved set (the "available
+	// offline" badge follows automatically).
+	void prune([postPath(bookmark)]);
 	undoItems.value = undoItems.value.filter((e) => e.bookmark.id !== bookmark.id);
 	undoItems.value.push({ bookmark, expiresAt: Date.now() + 6000 });
 	ensureUndoSweeper();
@@ -146,6 +164,9 @@ async function undoRemove(id: number) {
 			noteFolderActionFailure();
 		}
 	}
+	// Re-precache the restored post so it's offline-available again right away
+	// (the remove above already pruned it).
+	void precache([postPath(restored)]);
 	if (undoItems.value.length === 0) stopUndoSweeper();
 	refreshFolderCountsSoon();
 }
@@ -162,11 +183,26 @@ onUnmounted(() => {
 // When a signed-in reader opens the page, reconcile with the cloud: push any
 // local-only bookmarks up and adopt the merged server list (other-device
 // changes appear here). Safe while logged out — no-op. (TASK-134)
-onMounted(() => {
-	void mergeLocalToCloud();
+//
+// After the cloud merge settles, proactively cache the reader's saved posts for
+// offline reading (PWA slice) and reflect which of them are actually available
+// offline. This is the moment the saved set is authoritative, so it is the right
+// place to warm the offline cache rather than doing it per-interaction.
+onMounted(async () => {
+	// Folder counts load synchronously on mount for a signed-in reader (kept
+	// before the merge await so the baseline is deterministic).
 	if (signedIn.value) {
 		void loadFolders();
 	}
+	// Reconcile with the cloud, then warm the offline copy of the (now merged)
+	// saved set and reflect which posts are actually available offline. The
+	// precache runs after the merge so the FULL saved set — not just local-only
+	// rows — is what gets cached.
+	await mergeLocalToCloud();
+	if (signedIn.value) {
+		void precache(bookmarks.value.map(postPath));
+	}
+	await refreshOfflineStatus();
 });
 
 // --- Folders (DEC-120, TASK-172) ------------------------------------------
@@ -697,6 +733,17 @@ function handleToggleDone(bookmark: Bookmark) {
             >
               <Icon icon="lucide:check" class="w-3 h-3" />
               {{ t('bookmarks.doneBadge') }}
+            </span>
+
+            <!-- Offline availability (PWA slice): shines once the SW has cached
+                 this saved post, proving it can be read without a connection. -->
+            <span
+              v-if="isAvailable(bookmark.slug)"
+              :title="t('bookmarks.availableOfflineTitle')"
+              class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300"
+            >
+              <Icon icon="lucide:wifi-off" class="w-3 h-3" />
+              {{ t('bookmarks.availableOffline') }}
             </span>
 
             <!-- Queue toggle: mark Done (move out of To-read) / back To-read -->
