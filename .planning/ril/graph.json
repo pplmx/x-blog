@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 462,
+  "round": 464,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-09-29T06:26:29+00:00",
+  "updated_at": "2026-10-07T14:56:40+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34524,6 +34524,95 @@
       "title": "Round 465 gate confirmation (converged)",
       "rationale": "The full e2e gate, red on HEAD at session start (comment-reply-email deterministic failure plus the GH#54 flaky trio), is now green: 254 passed, zero failures, one environmental load flake. Combined with green backend on both SQLite (1928) and dev PostgreSQL 18.4 (1939) plus frontend 2515 unit tests, every verification level this directive cares about is exercised and passing. No new above-threshold defect emerged across the backend sweep, frontend sweep, PG parity and four full e2e runs.",
       "alternatives_rejected": "Nothing to re-litigate: the sole residual flake has no code defect and passed in isolation; pushing further rounds would be chore churn against a converged, fully-verified gate."
+    },
+    "EV-328": {
+      "id": "EV-328",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T16:04:51+00:00",
+      "updated_at": "2026-09-29T16:04:51+00:00",
+      "touched_round": 463,
+      "title": "e2e verification of the four open e2e issues (GH#52/53/54/55) on HEAD",
+      "confidence": 1.0,
+      "source": "targeted Playwright runs 2026-09-30 live stack (uvicorn :18888, nuxt preview :34567): notification-preferences 3/3, reader-notifications 5/5 incl. e2e#55 delete-empty-state, discussion-feed 2/2 + discussion-rss 2/2 (e2e#53), admin-categories/history/reader-likes 8/8 (e2e#54 trio). 20/20 passed, 0 failed"
+    },
+    "DEC-507": {
+      "id": "DEC-507",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-09-29T16:06:51+00:00",
+      "updated_at": "2026-09-29T16:06:51+00:00",
+      "touched_round": 463,
+      "title": "Round 466: verify + close the 4 open e2e issue trackers (GH#52/53/54/55)",
+      "rationale": "All four open e2e trackers were already fixed in code (be6b70c0 fixed the /discussion SSR TDZ 500 + stale 10-kind prefs schema + missed confirm dialog; round-464/465 fixed the GH#54 read-after-write trio). This round re-ran each targeted spec against the live stack on HEAD and every one is green (EV-328: 20/20). Closing all four issues with the verified evidence; no code change needed, verification only.",
+      "alternatives_rejected": "Skipping re-verification and closing on stale graph state would break the VERIFY-before-claim rule; rewriting or weakening the specs to make them pass was not needed since they already pass"
+    },
+    "DEC-508": {
+      "id": "DEC-508",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-07T14:15:45+00:00",
+      "updated_at": "2026-10-07T14:15:45+00:00",
+      "touched_round": 464,
+      "title": "Enter feature-evolution mode: installable PWA + offline saved posts",
+      "rationale": "Operator directive to keep iterating; quality convergence met (0 active tasks, 5 active issues deferred by DEC-214/433/476/478, baseline green round-465 re-verify). Transitioning to feature-evolution per skill section 11. Top value-gated candidate chosen: installable PWA + offline reading of saved posts (builds on existing round-384 SW + cloud bookmarks).",
+      "alternatives_rejected": "Broader multi-type search (S-M, lower user value); single-post .md export (S, narrower migration audience); re-opening deferred multi-worker architecture tasks (blocked on deployment shape / Redis)"
+    },
+    "TASK-579": {
+      "id": "TASK-579",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-10-07T14:15:46+00:00",
+      "updated_at": "2026-10-07T14:42:04+00:00",
+      "touched_round": 464,
+      "category": "core-feature",
+      "title": "Installable PWA + offline reading of saved bookmarked posts",
+      "description": "Vertical slice: (1) web manifest + icons + theme-color so a signed-in reader can Add-to-Home-Screen a standalone app shell; (2) extend the existing round-384 service worker to proactively cache the full content of the signed-in reader's bookmarked/saved posts, pruning on un-bookmark, excluding auth/admin pages; (3) an 'available offline' indicator on /bookmarks rows. Reuses existing cloud-bookmark + SW infra.",
+      "severity": 0.6,
+      "confidence": 0.9,
+      "effort": 3.0,
+      "unlock_factor": 1.2
+    },
+    "CHG-820": {
+      "id": "CHG-820",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-10-07T14:41:56+00:00",
+      "updated_at": "2026-10-07T14:56:40+00:00",
+      "touched_round": 464,
+      "commit": "2eb2c31b",
+      "title": "Installable PWA shell: manifest + icons + theme-color",
+      "description": "Web manifest, 192/512+maskable PNG icons regenerated from logo, theme-color; wired rel=manifest + apple-touch-icon into nuxt.config app.head. Served from public/."
+    },
+    "CHG-821": {
+      "id": "CHG-821",
+      "type": "change",
+      "status": "active",
+      "version": 2,
+      "created_at": "2026-10-07T14:41:56+00:00",
+      "updated_at": "2026-10-07T14:56:40+00:00",
+      "touched_round": 464,
+      "commit": "c017e3b8",
+      "title": "Offline reading of bookmarked posts via service worker",
+      "description": "Extended public/sw.js with xblog-bookmarks-v1 bounded cache (200), message API (offline-precache/offline-unbookmark), shared isCacheablePath gate excluding /api /admin /rss /feed.xml /sitemap.xml + cross-origin. New useOfflineBookmarks composable bridges /bookmarks; per-row 'Offline' badge reflects real cache state; precache gated on signed-in reader after cloud merge."
+    },
+    "EV-329": {
+      "id": "EV-329",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-07T14:42:02+00:00",
+      "updated_at": "2026-10-07T14:42:02+00:00",
+      "touched_round": 464,
+      "source": "frontend/aura tests+pw, round-465 re-verify",
+      "title": "PWA slice verified: unit+lint+typecheck+e2e+browser proof",
+      "content": "pnpm test 2521 passed (148 files, incl 5 new sw.spec bookmarks-cache cases); biome lint clean; nuxt typecheck clean; playwright e2e pwa-bookmarks-offline.spec.ts 2 passed on fresh prod build (manifest valid + signed-in bookmark offline read); manual Chromium proof: '可离线' badge shown, BOOKMARKS_CACHE held 79 entries, navigator.onLine=false still rendered post h1; baseline re-verified green (1928 backend tests 93.54% cov, pyright export.py fixed).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -51739,6 +51828,18 @@
       "to": "TASK-578",
       "type": "implements",
       "created_at": "2026-09-29T06:14:21+00:00"
+    },
+    {
+      "from": "CHG-820",
+      "to": "TASK-579",
+      "type": "implements",
+      "created_at": "2026-10-07T14:42:01+00:00"
+    },
+    {
+      "from": "CHG-821",
+      "to": "TASK-579",
+      "type": "implements",
+      "created_at": "2026-10-07T14:42:02+00:00"
     }
   ]
 }
