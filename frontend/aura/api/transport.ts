@@ -1,26 +1,23 @@
-import type { AvailableRouterMethod, NitroFetchRequest } from "nitropack/types";
-import type { AsyncData, NuxtError, UseFetchOptions } from "nuxt/app";
+import type { AnyServerRouteMethod, AsyncData, NuxtError, UseFetchOptions } from "nuxt/app";
 import { type Ref, unref } from "vue";
 
 import { useAdminAuth } from "~~/composables/useAdminAuth";
 import { useRateLimitNotice } from "~~/composables/useRateLimitNotice";
 
 export type ApiQueryPath = Parameters<typeof useFetch>[0];
+
 export type ApiQueryOptions<
 	ResT,
 	DataT = ResT,
 	PickKeys extends KeysOf<DataT> = KeysOf<DataT>,
 	DefaultT = undefined,
-	ReqT extends NitroFetchRequest = string & {},
-	Method extends ApiQueryMethod<ReqT> = ApiQueryMethod<ReqT>,
+	ReqT extends string = string,
+	Method extends AnyServerRouteMethod = AnyServerRouteMethod,
 > = UseFetchOptions<ResT, DataT, PickKeys, DefaultT, ReqT, Method>;
 export type ApiCommandOptions = Parameters<typeof $fetch>[1];
 export type QueryValue = string | number | boolean | null | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
-type ApiQueryMethod<ReqT extends NitroFetchRequest> =
-	| AvailableRouterMethod<ReqT>
-	| Uppercase<AvailableRouterMethod<ReqT>>;
 type KeysOf<T> = Array<T extends T ? (keyof T extends string ? keyof T : never) : never>;
 type PickFrom<T, K extends Array<string>> =
 	T extends Array<unknown>
@@ -37,8 +34,8 @@ type ApiQueryTransformOptions<
 	DataT,
 	PickKeys extends KeysOf<DataT>,
 	DefaultT,
-	ReqT extends NitroFetchRequest,
-	Method extends ApiQueryMethod<ReqT>,
+	ReqT extends string,
+	Method extends AnyServerRouteMethod,
 > = Omit<ApiQueryOptions<ResT, DataT, PickKeys, DefaultT, ReqT, Method>, "transform"> & {
 	transform: (input: ResT) => DataT | Promise<DataT>;
 };
@@ -50,8 +47,8 @@ function apiBaseUrl(): string {
 export function query<
 	ResT = unknown,
 	ErrorT = NuxtError<unknown>,
-	ReqT extends NitroFetchRequest = NitroFetchRequest,
-	const Method extends ApiQueryMethod<ReqT> = ApiQueryMethod<ReqT>,
+	ReqT extends string = string,
+	const Method extends AnyServerRouteMethod = AnyServerRouteMethod,
 	DataT = ResT,
 	const PickKeys extends KeysOf<DataT> = KeysOf<DataT>,
 	DefaultT = undefined,
@@ -62,8 +59,8 @@ export function query<
 export function query<
 	ResT = unknown,
 	ErrorT = NuxtError<unknown>,
-	ReqT extends NitroFetchRequest = NitroFetchRequest,
-	const Method extends ApiQueryMethod<ReqT> = ApiQueryMethod<ReqT>,
+	ReqT extends string = string,
+	const Method extends AnyServerRouteMethod = AnyServerRouteMethod,
 	DataT = ResT,
 	const PickKeys extends KeysOf<DataT> = KeysOf<DataT>,
 	DefaultT = DataT,
@@ -74,8 +71,8 @@ export function query<
 export function query<
 	ResT = unknown,
 	ErrorT = NuxtError<unknown>,
-	ReqT extends NitroFetchRequest = NitroFetchRequest,
-	const Method extends ApiQueryMethod<ReqT> = ApiQueryMethod<ReqT>,
+	ReqT extends string = string,
+	const Method extends AnyServerRouteMethod = AnyServerRouteMethod,
 	DataT = ResT,
 	const PickKeys extends KeysOf<DataT> = KeysOf<DataT>,
 	DefaultT = undefined,
@@ -86,8 +83,8 @@ export function query<
 export function query<
 	ResT = unknown,
 	ErrorT = NuxtError<unknown>,
-	ReqT extends NitroFetchRequest = NitroFetchRequest,
-	const Method extends ApiQueryMethod<ReqT> = ApiQueryMethod<ReqT>,
+	ReqT extends string = string,
+	const Method extends AnyServerRouteMethod = AnyServerRouteMethod,
 	DataT = ResT,
 	const PickKeys extends KeysOf<DataT> = KeysOf<DataT>,
 	DefaultT = DataT,
@@ -113,7 +110,16 @@ export function query(path: ApiQueryPath, options: object = {}) {
 		flagAdminUnauthorized(c.response, resolveRequestPath(path));
 		return runResponseErrorHook(callerOnResponseError, context);
 	};
-	return useFetch<unknown>(path, resolvedOptions);
+	// Nuxt 4.6's typed-fetch types `useFetch`'s `baseURL` as a `const` string
+	// literal (permissive overloads accept only the empty `""` literal) so the
+	// request resolves against the emitted server-route set. That cannot express
+	// this wrapper's core job — injecting the API base URL from
+	// `useRuntimeConfig().public.apiUrl`, a runtime `string` unknown at type
+	// time — and the proxied `/api/...` paths aren't part of the typed Nitro
+	// routes anyway. The cast routes around that one const-literal constraint;
+	// the public `query()` overloads above remain the real typed contract and
+	// are unchanged (mirrored by the `command`/`$fetch` cast below).
+	return useFetch<unknown>(path, resolvedOptions as never);
 }
 
 export function command<T>(path: string, options?: ApiCommandOptions): Promise<T> {
