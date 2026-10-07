@@ -52,7 +52,19 @@ export default defineNuxtConfig({
 			charset: "utf-8",
 			viewport: "width=device-width, initial-scale=1",
 			title: "X-Blog — 一个现代化的技术博客系统",
+			link: [
+				// PWA installability (manifest.webmanifest served from public/):
+				// lets a reader "Add to Home Screen" a standalone app shell.
+				{ rel: "manifest", href: "/manifest.webmanifest" },
+				{ rel: "apple-touch-icon", href: "/icons/icon-192.png" },
+			],
 			meta: [
+				// PWA installability: the browser theme-color bar matches the
+				// app's standalone shell. Keep in sync with the
+				// manifest.theme_color (violet brand accent).
+				{ name: "theme-color", content: "#7c3aed" },
+				{ name: "apple-mobile-web-app-capable", content: "yes" },
+				{ name: "apple-mobile-web-app-status-bar-style", content: "default" },
 				{
 					name: "description",
 					content: siteDescription,
