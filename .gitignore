@@ -63,3 +63,6 @@ core.*
 sentry-release.yml
 # Static files (uploaded)
 **/static/uploads/
+
+# Local dev utilities
+frontend/aura/scripts/
