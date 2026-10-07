@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 464,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-07T14:56:40+00:00",
+  "updated_at": "2026-10-07T16:08:54+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34613,6 +34613,87 @@
       "title": "PWA slice verified: unit+lint+typecheck+e2e+browser proof",
       "content": "pnpm test 2521 passed (148 files, incl 5 new sw.spec bookmarks-cache cases); biome lint clean; nuxt typecheck clean; playwright e2e pwa-bookmarks-offline.spec.ts 2 passed on fresh prod build (manifest valid + signed-in bookmark offline read); manual Chromium proof: '可离线' badge shown, BOOKMARKS_CACHE held 79 entries, navigator.onLine=false still rendered post h1; baseline re-verified green (1928 backend tests 93.54% cov, pyright export.py fixed).",
       "confidence": 1.0
+    },
+    "ISS-662": {
+      "id": "ISS-662",
+      "type": "issue",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-10-07T15:13:05+00:00",
+      "updated_at": "2026-10-07T16:08:54+00:00",
+      "touched_round": 464,
+      "title": "Dependency vulnerabilities on main branch (Dependabot 70; 2 critical/35 high scrubbed to runtime-serving-path set)",
+      "severity": 0.9,
+      "description": "GitHub Dependabot reported 70 alerts (2 critical/35 high/24 moderate/9 low). Local pip-audit + pnpm audit --prod found 53 actionable: backend 18 (pyjwt 14 advisories, urllib3 3, multidict 1), frontend prod 35 (undici/devalue via nuxt, @vue/server-renderer via vue, sharp, plus devtools RCE criticals simple-git/shell-quote fixed as side effect of nuxt bump). Dev-only tooling deferred as not in serving path."
+    },
+    "TASK-580": {
+      "id": "TASK-580",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-10-07T15:13:09+00:00",
+      "updated_at": "2026-10-07T16:08:54+00:00",
+      "touched_round": 464,
+      "category": "security",
+      "title": "Upgrade backend runtime deps to patched versions",
+      "description": "uv add pyjwt>=2.15.0 (14 advisories), urllib3>=2.8.0 (transitive via sentry-sdk), multidict>=6.9.1 (transitive via aiohttp/pywebpush). Verify JWT auth (HS256) + full backend suite + lint + pyright.",
+      "severity": 0.8,
+      "confidence": 0.9,
+      "effort": 2.0,
+      "unlock_factor": 1.0
+    },
+    "TASK-581": {
+      "id": "TASK-581",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-10-07T15:13:10+00:00",
+      "updated_at": "2026-10-07T16:08:54+00:00",
+      "touched_round": 464,
+      "category": "security",
+      "title": "Upgrade frontend runtime deps to patched versions",
+      "description": "pnpm add vue@^3.5.43 (SSR-renderer HIGH), nuxt@^4.6.0 (undici/devalue HIGH + devtools RCE criticals), sharp@^0.35.5 (HIGH). Nuxt minor bump is moderate risk: full gate (biome, vitest, typecheck, e2e) mandatory.",
+      "severity": 0.8,
+      "confidence": 0.9,
+      "effort": 3.0,
+      "unlock_factor": 1.0
+    },
+    "CHG-822": {
+      "id": "CHG-822",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-07T16:08:42+00:00",
+      "updated_at": "2026-10-07T16:08:42+00:00",
+      "touched_round": 464,
+      "commit": "10a04385",
+      "title": "Bump backend runtime deps to patched versions",
+      "description": "uv add pyjwt>=2.15.1 (clears 14 advisories incl. algorithm-confusion/DoS; HS256 auth verified, 52 auth tests pass), urllib3>=2.8.0 (streaming DoS/TLS-proxy), multidict>=6.9.1,<7.0 (memory-leak); kept aiohttp>=3.14.4 by pinning multidict<7 (aiohttp caps it). Full backend suite 1928 passed, ruff/format/pyright clean."
+    },
+    "CHG-823": {
+      "id": "CHG-823",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-07T16:08:43+00:00",
+      "updated_at": "2026-10-07T16:08:43+00:00",
+      "touched_round": 464,
+      "commit": "a6456c6a",
+      "title": "Bump frontend runtime deps to patched versions",
+      "description": "vue 3.5.41->3.5.43 (@vue/server-renderer HIGH GHSA-g2v6-rqmx-r4w6), nuxt 4.5.2->4.6.0 (nitro undici + devalue HIGH/MOD/LOW), sharp 0.35.4->0.35.5 (HIGH GHSA-wq5f-xc86-pv6w). Adapted api/transport.ts to nuxt 4.6 typed-fetch rework (type-only). @nuxt/devtools RCE criticals (simple-git/shell-quote) REMAIN — dev-only, deferred (Tier 2). Gates green: 2521 vitest, biome clean, typecheck 0 err, e2e 256 passed (1 known pre-existing bookmark flake)."
+    },
+    "EV-330": {
+      "id": "EV-330",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-07T16:08:48+00:00",
+      "updated_at": "2026-10-07T16:08:48+00:00",
+      "touched_round": 464,
+      "source": "backend+nova & frontend/aura audit/gates, round-466",
+      "title": "Dependency vuln fixes verified; residual dev-only deferred",
+      "content": "pip-audit backend: 0 known vulnerabilities. pnpm audit --prod: runtime serving-path advisories cleared (undici/devalue/@vue/server-renderer/sharp gone); 15 remain all in @nuxt/devtools + build tooling (simple-git/shell-quote CRITICAL, glob/brace-expansion/braces/node-forge/source-map-js HIGH) - dev-server/build-time only, deferred Tier 2 pending nuxt devtools bump. Flaky =bookmark read-after-write pre-existing GH#54, not a regression.",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -51840,6 +51921,30 @@
       "to": "TASK-579",
       "type": "implements",
       "created_at": "2026-10-07T14:42:02+00:00"
+    },
+    {
+      "from": "TASK-580",
+      "to": "ISS-662",
+      "type": "addresses",
+      "created_at": "2026-10-07T15:13:12+00:00"
+    },
+    {
+      "from": "TASK-581",
+      "to": "ISS-662",
+      "type": "addresses",
+      "created_at": "2026-10-07T15:13:13+00:00"
+    },
+    {
+      "from": "CHG-822",
+      "to": "TASK-580",
+      "type": "implements",
+      "created_at": "2026-10-07T16:08:47+00:00"
+    },
+    {
+      "from": "CHG-823",
+      "to": "TASK-581",
+      "type": "implements",
+      "created_at": "2026-10-07T16:08:47+00:00"
     }
   ]
 }
