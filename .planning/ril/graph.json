@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 464,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-08T00:31:05+00:00",
+  "updated_at": "2026-10-08T01:11:20+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34710,10 +34710,10 @@
     "TASK-582": {
       "id": "TASK-582",
       "type": "task",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-10-08T00:31:05+00:00",
-      "updated_at": "2026-10-08T00:31:05+00:00",
+      "updated_at": "2026-10-08T01:10:31+00:00",
       "touched_round": 464,
       "category": "core-feature",
       "title": "Extend site search to index series, static pages, and authors",
@@ -34722,6 +34722,31 @@
       "confidence": 0.9,
       "effort": 3.0,
       "unlock_factor": 1.1
+    },
+    "CHG-824": {
+      "id": "CHG-824",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-08T01:10:23+00:00",
+      "updated_at": "2026-10-08T01:10:23+00:00",
+      "touched_round": 464,
+      "commit": "b64c93b7",
+      "title": "Broaden /search to series, published static pages, and authors",
+      "description": "New GET /api/search/all combined search (CJK-aware, dialect-parity) across posts + series + pages + authors with type-tagged, deep-linkable hits; per-surface public gates matching each read API (pages published-only, series all-public, authors pen-named display_name non-null, posts published+passed-publish_at). Frontend ?type=all tab + useAllSearch composable + typeBadge helpers + en/zh i18n. Backend test_search_all.py + frontend unit + e2e search-all.spec.ts + README API rows."
+    },
+    "EV-331": {
+      "id": "EV-331",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-08T01:10:28+00:00",
+      "updated_at": "2026-10-08T01:10:28+00:00",
+      "touched_round": 464,
+      "source": "backend+nova & frontend/aura gates, round-466",
+      "title": "Search slice verified: 1941 backend + 2529 frontend + 3 e2e deep-link journeys",
+      "content": "backend pytest 1941 passed / 93.56% cov, ruff/format clean, pyright 0 errors; frontend vitest 2529 passed, biome clean, nuxt typecheck clean, build ok; e2e search-all.spec.ts 3 passed (series/page/author deep-link) + existing search specs pass, no regressions. Per-surface gates verified in code: search_pages filters published.is_(True) (no draft leak), search_authors uses display_name IS NOT NULL matching the /api/authors convention (authors.py:33/admin.py:404/rss.py:690/857), search_posts reuses published+passed-publish_at predicate, series all-public (no draft state).",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -51973,6 +51998,12 @@
       "to": "TASK-581",
       "type": "implements",
       "created_at": "2026-10-07T16:08:47+00:00"
+    },
+    {
+      "from": "CHG-824",
+      "to": "TASK-582",
+      "type": "implements",
+      "created_at": "2026-10-08T01:11:20+00:00"
     }
   ]
 }
