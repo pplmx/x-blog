@@ -3,9 +3,11 @@ import { computed, onMounted, ref, watch } from "vue";
 import type { PostList } from "~~/api/contracts/shared";
 import { usePostSearch } from "~~/api/public/posts";
 import {
+	type AllSearchItem,
 	type CommentSearchItem,
 	type SearchSuggestion,
 	type SearchSuggestResponse,
+	useAllSearch,
 	useCommentSearch,
 } from "~~/api/public/search";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
@@ -39,11 +41,14 @@ const page = computed(() => {
 
 // Search MODE (round 366, DEC-405): ?type=comments searches the DISCUSSION
 // (approved comments on public posts) instead of posts — the blog's thread is
-// its second content asset and used to be unsearchable. Lives in the URL so a
-// comment-search share link deep-links into the right mode; anything other
-// than "comments" is post search (the pre-existing default).
-type SearchMode = "posts" | "comments";
-const mode = computed<SearchMode>(() => (route.query.type === "comments" ? "comments" : "posts"));
+// its second content asset and used to be unsearchable. ?type=all searches
+// posts + series + published static pages + author archives together (combined
+// search). Lives in the URL so a share link deep-links into the right mode;
+// anything else is post search (the pre-existing default).
+type SearchMode = "posts" | "comments" | "all";
+const mode = computed<SearchMode>(() =>
+	route.query.type === "comments" ? "comments" : route.query.type === "all" ? "all" : "posts",
+);
 
 // Filter state lives in the URL query so a filtered search is shareable and
 // survives reload (DEC-084): category/tag by name, sort, and an effective
@@ -102,7 +107,9 @@ const hasActiveFilters = computed(() => Object.keys(activeFilters.value).length 
 
 // Every navigation that must survive a page turn or a mode switch goes through
 // these: pageQuery preserves the active post filters, the search mode, and q.
-const modeParam = computed(() => (mode.value === "comments" ? { type: "comments" } : {}));
+const modeParam = computed(() =>
+	mode.value === "comments" ? { type: "comments" } : mode.value === "all" ? { type: "all" } : {},
+);
 function pageQuery(extra: Record<string, string | undefined>): Record<string, string | undefined> {
 	return { ...activeFilters.value, ...modeParam.value, ...extra };
 }
@@ -116,8 +123,8 @@ function clearFilters(): void {
 
 function setMode(next: SearchMode): void {
 	if (next === mode.value) return;
-	if (next === "comments") {
-		navigateTo({ query: { q: query.value, type: "comments", page: "1" } });
+	if (next === "comments" || next === "all") {
+		navigateTo({ query: { q: query.value, type: next, page: "1" } });
 	} else {
 		const q: Record<string, string | undefined> = {
 			q: query.value,
@@ -227,16 +234,51 @@ function retryComments() {
 	void refreshComments();
 }
 
+// Combined search (?type=all): posts + series + published static pages +
+// author archives in one mixed list, each hit carrying a type tag + deep-link
+// path. Same reactive URL contract as the other two modes.
+const allSearchParams = computed(() => ({
+	q: query.value,
+	page: page.value,
+	limit: 10,
+}));
+const {
+	data: allResult,
+	pending: allPending,
+	error: allError,
+	refresh: refreshAll,
+} = await useAllSearch(allSearchParams, {
+	enabled: computed(() => mode.value === "all" && !!query.value.trim()),
+	watch: [mode],
+});
+function retryAll() {
+	void refreshAll();
+}
+
 // The ACTIVE result set is whatever the current mode renders: the post search
 // result or the comment search result. Every results-area binding goes through
 // these so a mode switch rides one rendering pipeline.
 const activeResult = computed(() =>
-	mode.value === "comments" ? commentResult.value : searchResult.value,
+	mode.value === "comments"
+		? commentResult.value
+		: mode.value === "all"
+			? allResult.value
+			: searchResult.value,
 );
 const activePending = computed(() =>
-	mode.value === "comments" ? commentsPending.value : pending.value,
+	mode.value === "comments"
+		? commentsPending.value
+		: mode.value === "all"
+			? allPending.value
+			: pending.value,
 );
-const activeError = computed(() => (mode.value === "comments" ? commentsError.value : error.value));
+const activeError = computed(() =>
+	mode.value === "comments"
+		? commentsError.value
+		: mode.value === "all"
+			? allError.value
+			: error.value,
+);
 
 // "Did you mean" suggestions (round 390, DEC-443): the post search is exact
 // substring + tsvector, so a zero-hit page is a dead end with no recovery path.
@@ -330,6 +372,29 @@ const activeComments = computed<CommentSearchItem[]>(() => {
 	const items = mode.value === "comments" ? (commentResult.value?.items ?? []) : [];
 	return items.filter((c) => !c.reader || !blockedReaderIds.value.has(c.reader.id));
 });
+const activeAll = computed<AllSearchItem[]>(() =>
+	mode.value === "all" ? (allResult.value?.items ?? []) : [],
+);
+// Per-type accent + icon for the combined result cards (type tag the backend
+// stamps on every hit), so the mixed list scans by colour and icon.
+function typeBadgeClass(type: AllSearchItem["type"]): string {
+	const map: Record<AllSearchItem["type"], string> = {
+		post: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300",
+		series: "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300",
+		page: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300",
+		author: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300",
+	};
+	return map[type];
+}
+function typeIcon(type: AllSearchItem["type"]): string {
+	const map: Record<AllSearchItem["type"], string> = {
+		post: "lucide:file-text",
+		series: "lucide:layers",
+		page: "lucide:file",
+		author: "lucide:user",
+	};
+	return map[type];
+}
 
 // Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
 const paginationTokens = computed(() =>
@@ -352,13 +417,14 @@ const pageAnnouncement = computed(() => {
 		return t("common.state.loading");
 	}
 	const count = pagination.total ?? 0;
+	const summaryKey =
+		mode.value === "comments"
+			? "search.results.commentsSummary"
+			: mode.value === "all"
+				? "search.results.allSummary"
+				: "search.results.summary";
 	const summary =
-		count === 0
-			? t("search.noResults.title")
-			: t(mode.value === "comments" ? "search.results.commentsSummary" : "search.results.summary", {
-					query: query.value,
-					count,
-				});
+		count === 0 ? t("search.noResults.title") : t(summaryKey, { query: query.value, count });
 	const page =
 		(pagination.total_pages ?? 1) > 1
 			? ` — ${t("common.state.pageAnnounce", { page: pagination.page ?? 1 })}`
@@ -591,6 +657,19 @@ function goToPage(pg: number | string) {
           <Icon icon="lucide:message-square" class="w-3.5 h-3.5 inline-block mr-1" />
           {{ t('search.mode.comments') }}
         </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="mode === 'all'"
+          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+          :class="mode === 'all'
+            ? 'bg-white dark:bg-gray-700 text-violet-600 dark:text-violet-400 shadow-sm'
+            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+          @click="setMode('all')"
+        >
+          <Icon icon="lucide:layout-grid" class="w-3.5 h-3.5 inline-block mr-1" />
+          {{ t('search.mode.all') }}
+        </button>
       </div>
 
       <!-- Header -->
@@ -598,11 +677,21 @@ function goToPage(pg: number | string) {
         <h1
           class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
         >
-          {{ t(mode === "comments" ? "search.results.commentsTitle" : "search.results.title") }}
+          {{ t(
+            mode === "comments"
+              ? "search.results.commentsTitle"
+              : mode === "all"
+                ? "search.results.allTitle"
+                : "search.results.title",
+          ) }}
         </h1>
         <p class="text-gray-500 dark:text-gray-400 mt-2">
           {{ t(
-            mode === "comments" ? "search.results.commentsSummary" : "search.results.summary",
+            mode === "comments"
+              ? "search.results.commentsSummary"
+              : mode === "all"
+                ? "search.results.allSummary"
+                : "search.results.summary",
             { query, count: activeResult?.pagination?.total || 0 },
           ) }}
         </p>
@@ -721,7 +810,7 @@ function goToPage(pg: number | string) {
         <button
           type="button"
           class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="mode === 'comments' ? retryComments() : retrySearch()"
+          @click="mode === 'comments' ? retryComments() : mode === 'all' ? retryAll() : retrySearch()"
         >
           {{ t("common.action.retry") }}
         </button>
@@ -733,7 +822,7 @@ function goToPage(pg: number | string) {
            shows the empty state instead of a blank area under a misleading
            "N results" header (round 386, DEC-437). -->
       <div
-        v-else-if="!activePosts.length && !activeComments.length"
+        v-else-if="!activePosts.length && !activeComments.length && !activeAll.length"
         class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
       >
         <div
@@ -853,7 +942,7 @@ function goToPage(pg: number | string) {
 
         <!-- COMMENT results (round 366, DEC-405): a hit carries the post brief
              and deep-links ONTO the comment (DEC-321), never just the post. -->
-        <template v-else>
+        <template v-else-if="mode === 'comments'">
           <div
             v-for="comment in activeComments"
             :key="comment.id"
@@ -886,6 +975,37 @@ function goToPage(pg: number | string) {
                 {{ t("search.comments.jumpTo") }}
               </span>
             </div>
+          </div>
+        </template>
+
+        <!-- COMBINED results (?type=all): posts + series + published static
+             pages + author archives in one list. Every card carries a type
+             tag and deep-links to its real page (/posts, /series, /pages,
+             /authors), so a term that lives only in a series title, a page
+             body or a pen name still lands the reader somewhere. -->
+        <template v-else>
+          <div
+            v-for="item in activeAll"
+            :key="`${item.type}-${item.id}`"
+            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+          >
+            <div class="flex items-center gap-2 mb-2">
+              <span
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="typeBadgeClass(item.type)"
+              >
+                <Icon :icon="typeIcon(item.type)" class="w-3 h-3" aria-hidden="true" />
+                {{ t(`search.allTypes.${item.type}`) }}
+              </span>
+            </div>
+            <NuxtLink :to="item.path" class="text-xl font-bold hover:text-blue-600">
+              {{ item.title }}
+            </NuxtLink>
+            <p
+              v-if="item.snippet"
+              class="text-gray-600 mt-2 line-clamp-3"
+              v-html="sanitizeHtml(item.snippet)"
+            />
           </div>
         </template>
 

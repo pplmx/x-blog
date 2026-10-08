@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ref } from "vue";
 
-import { useCommentSearch } from "../../../api/public/search.ts";
+import { useAllSearch, useCommentSearch } from "../../../api/public/search.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 
@@ -56,5 +56,32 @@ describe("useCommentSearch (round 366, DEC-405)", () => {
 
 		const path = queryCalls[0].path as () => string;
 		expect(path()).toBe("/api/search/comments?q=found");
+	});
+});
+
+describe("useAllSearch (combined search — posts/series/pages/authors)", () => {
+	it("requests the combined search endpoint with q and pagination", () => {
+		useAllSearch({ q: "fables", page: 2, limit: 10 });
+
+		expect(queryCalls).toHaveLength(1);
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/search/all?q=fables&page=2&limit=10");
+	});
+
+	it("re-builds the URL reactively when params change", () => {
+		let q = "series";
+		useAllSearch(() => ({ q, page: 1, limit: 10 }));
+
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/search/all?q=series&page=1&limit=10");
+		q = "评论";
+		expect(path()).toBe("/api/search/all?q=%E8%AF%84%E8%AE%BA&page=1&limit=10");
+	});
+
+	it("omits undefined params from the URL", () => {
+		useAllSearch({ q: "authors", page: undefined });
+
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/search/all?q=authors");
 	});
 });

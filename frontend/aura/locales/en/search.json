@@ -15,13 +15,22 @@
 		"mode": {
 			"label": "What to search",
 			"posts": "Articles",
-			"comments": "Comments"
+			"comments": "Comments",
+			"all": "Everything"
 		},
 		"results": {
 			"title": "Search Results",
 			"summary": "Found {count} articles matching \"{query}\"",
 			"commentsTitle": "Comment Search Results",
-			"commentsSummary": "Found {count} comments matching \"{query}\""
+			"commentsSummary": "Found {count} comments matching \"{query}\"",
+			"allTitle": "Search Everything",
+			"allSummary": "Found {count} results matching \"{query}\""
+		},
+		"allTypes": {
+			"post": "Article",
+			"series": "Series",
+			"page": "Page",
+			"author": "Author"
 		},
 		"comments": {
 			"jumpTo": "Jump to the comment",

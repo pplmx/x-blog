@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 464,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-07T16:08:54+00:00",
+  "updated_at": "2026-10-08T00:31:05+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34694,6 +34694,34 @@
       "title": "Dependency vuln fixes verified; residual dev-only deferred",
       "content": "pip-audit backend: 0 known vulnerabilities. pnpm audit --prod: runtime serving-path advisories cleared (undici/devalue/@vue/server-renderer/sharp gone); 15 remain all in @nuxt/devtools + build tooling (simple-git/shell-quote CRITICAL, glob/brace-expansion/braces/node-forge/source-map-js HIGH) - dev-server/build-time only, deferred Tier 2 pending nuxt devtools bump. Flaky =bookmark read-after-write pre-existing GH#54, not a regression.",
       "confidence": 1.0
+    },
+    "DEC-509": {
+      "id": "DEC-509",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-08T00:31:05+00:00",
+      "updated_at": "2026-10-08T00:31:05+00:00",
+      "touched_round": 464,
+      "title": "Feature: broaden site search beyond posts/comments to series/static-pages/authors",
+      "rationale": "Continuing feature-evolution mode (DEC-508 active, quality convergence held). Next value-gated candidate from round-465 gap survey: /search only covers Posts + Comments modes, leaving series, published static pages, and pen-named author archives unfindable. For a site visitor this solves 'I can't find a series/page/writer even though it exists' — closing a real findability gap over otherwise-invisible content.",
+      "alternatives_rejected": "Single-post .md export (S, narrower reuse/migration audience); PWA is already delivered (TASK-579); no operator roadmap beyond continued iteration"
+    },
+    "TASK-582": {
+      "id": "TASK-582",
+      "type": "task",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-08T00:31:05+00:00",
+      "updated_at": "2026-10-08T00:31:05+00:00",
+      "touched_round": 464,
+      "category": "core-feature",
+      "title": "Extend site search to index series, static pages, and authors",
+      "description": "Extend the CJK-aware search pipeline (currently Posts + Comments modes) to also index: series (title/description), published static pages at /pages/{slug} (title+body), and pen-named author archives. Publish-only, no draft leak. Add a third mode (or broaden default) on /search using existing type-filter/query-navigation patterns. Acceptance: typing a phrase in only a series title, a static page, or an author's pen name returns that record deep-linked from site search.",
+      "severity": 0.5,
+      "confidence": 0.9,
+      "effort": 3.0,
+      "unlock_factor": 1.1
     }
   },
   "edges": [

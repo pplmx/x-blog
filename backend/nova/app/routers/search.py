@@ -227,6 +227,143 @@ def search(
     }
 
 
+def _sort_epoch(dt) -> float:
+    """Comparable epoch for the combined search's cross-type sort.
+
+    The per-type columns are all naive-UTC datetimes by ORM convention
+    (utc_now_naive); ``timestamp()`` interprets a naive datetime as local
+    time, but every value here is naive UTC, so the uniform offset preserves
+    relative ordering across SQLite/Postgres and across runs. NULL → 0.0 so an
+    item with no timestamp sorts last in a newest-first list.
+    """
+    return dt.timestamp() if dt is not None else 0.0
+
+
+# Canonical cross-type item builders for the combined search (/api/search/all).
+# Each returns the uniform envelope the frontend renders: a ``type`` tag, the
+# deep-linkable ``path``, and a mark-safe highlighted snippet (escaped before
+# <mark> — the same snippet-XSS guarantee the post/comment search holds).
+
+
+def _all_post_item(post, query: str, is_postgres: bool, db: Session) -> dict:
+    return {
+        "type": "post",
+        "id": post.id,
+        "title": post.title,
+        "slug": post.slug,
+        "path": f"/posts/{post.slug}",
+        "snippet": _build_snippet(post, query, is_postgres, db),
+    }
+
+
+def _all_series_item(series, query: str) -> dict:
+    return {
+        "type": "series",
+        "id": series.id,
+        "title": series.title,
+        "slug": series.slug,
+        "path": f"/series/{series.slug}",
+        "snippet": _highlight_sqlite(series.description or series.title, query) if series.description else None,
+    }
+
+
+def _all_page_item(page, query: str) -> dict:
+    return {
+        "type": "page",
+        "id": page.id,
+        "title": page.title,
+        "slug": page.slug,
+        "path": f"/pages/{page.slug}",
+        "snippet": _highlight_sqlite(page.content or page.title, query),
+    }
+
+
+def _all_author_item(author, query: str) -> dict:
+    return {
+        "type": "author",
+        "id": author.id,
+        "title": author.display_name,
+        "slug": None,
+        "path": f"/authors/{author.id}",
+        "snippet": _highlight_sqlite(author.bio, query) if author.bio else None,
+    }
+
+
+# Type rank order for a deterministic cross-type tiebreak in the merged sort.
+_TYPE_RANK = {"post": 0, "series": 1, "page": 2, "author": 3}
+
+
+@router.get("/all")
+@limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
+def search_all(
+    request: Request,  # noqa: ARG001
+    q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
+    page: PageInt = 1,
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Combined search across posts, series, published static pages and authors.
+
+    Broadens /search beyond posts (and comments) so a term that lives only in a
+    series title, a static page body, or an author pen name still lands the
+    reader somewhere (the search box was otherwise a dead end for those
+    surfaces). Each hit carries a ``type`` tag and a deep-linkable ``path``;
+    results are merged newest-first with a deterministic cross-type tiebreak.
+
+    Public-visibility gates match each surface's read API exactly: posts go
+    through the same published + scheduled-passthrough predicate as /api/search
+    (no draft/scheduled leak), pages are ``published`` only, series are all
+    public (they have no draft state), and authors are pen-named admins only
+    (a username-only admin has no public identity and is never indexed).
+
+    Pagination: each source contributes its top ``offset+limit`` newest matches
+    (a window that always covers the merged page — one source can supply at
+    most ``offset+limit`` of the top ``offset+limit`` merged items), then the
+    windows are merged, globally sorted and sliced. Same CJK-aware, dialect
+    -parity substring matching as the post search (DEC-084).
+    """
+    if not q.strip():
+        # Same non-blank guard as /api/search (round-296): a whitespace-only q
+        # would otherwise ILIKE '% %' nearly every public row.
+        raise HTTPException(status_code=422, detail="q must be a non-blank search term")
+    # Scheduled-post fan-out: a crossed scheduled post is a public surface and
+    # must announce exactly once (same rule as the other public surfaces).
+    crud.maybe_notify_due_scheduled_posts(db)
+    is_postgres = db.get_bind().dialect.name == "postgresql"
+
+    offset = (page - 1) * limit
+    window = offset + limit
+
+    series, series_total = crud.search_series(db, q, limit=window)
+    pages, pages_total = crud.search_pages(db, q, limit=window)
+    authors, authors_total = crud.search_authors(db, q, limit=window)
+    posts, posts_total = crud.search_posts(db, q, page=1, limit=window, sort="newest")
+
+    ranked: list[tuple[float, dict]] = []
+    for s in series:
+        ranked.append((_sort_epoch(s.created_at), _all_series_item(s, q)))
+    for pg in pages:
+        ranked.append((_sort_epoch(pg.updated_at), _all_page_item(pg, q)))
+    for a in authors:
+        ranked.append((_sort_epoch(a.created_at), _all_author_item(a, q)))
+    for p in posts:
+        ranked.append((_sort_epoch(p.publish_at or p.created_at), _all_post_item(p, q, is_postgres, db)))
+
+    ranked.sort(key=lambda pair: (pair[0], _TYPE_RANK[pair[1]["type"]], pair[1]["id"]), reverse=True)
+    items = [item for _, item in ranked[offset : offset + limit]]
+    total = series_total + pages_total + authors_total + posts_total
+
+    return {
+        "items": items,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": (total + limit - 1) // limit if limit else 0,
+        },
+    }
+
+
 @router.get("/comments")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
 def search_comments(

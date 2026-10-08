@@ -1638,6 +1638,95 @@ def search_posts(
     return posts, total
 
 
+def _term_substring_clauses(terms: list[str], *fields) -> list:
+    """Per-term substring-AND clauses over ``fields`` (the combined-search path).
+
+    Mirrors search_posts's dialect-agnostic branch (DEC-084): every
+    whitespace-separated term must appear as a substring in at least one of the
+    given columns, with LIKE metacharacters escaped so a literal ``%``/``_`` is
+    matched, never treated as a wildcard. ILIKE is inherently CJK-aware and
+    dialect-parity (SQLite/Postgres), which is exactly why the new non-post
+    search targets use it uniformly — no tsvector, keeping every backend's
+    substring semantics identical.
+    """
+    return [and_(or_(*(field.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for field in fields))) for t in terms]
+
+
+def search_series(
+    db: Session,
+    query: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> tuple[list[models.Series], int]:
+    """Series window for the combined search (COMBINED-ALL search).
+
+    Series have no published flag — the public list (list_series) exposes every
+    one of them — so the whole table is indexed, matching its read API exactly.
+    Matches title OR description with the shared substring-AND discipline
+    (CJK-aware, dialect-parity). Newest first with an id tiebreak.
+    """
+    if not query.strip():
+        return [], 0
+    terms = [t for t in query.split() if t] or [query]
+    base = db.query(models.Series).filter(
+        *_term_substring_clauses(terms, models.Series.title, models.Series.description)
+    )
+    total = base.count()
+    items = base.order_by(models.Series.created_at.desc(), models.Series.id.desc()).offset(offset).limit(limit).all()
+    return items, total
+
+
+def search_pages(
+    db: Session,
+    query: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> tuple[list[models.Page], int]:
+    """Static-page window for the combined search (COMBINED-ALL search).
+
+    Published pages only — the same ``published`` gate the public /api/pages
+    read route applies, so a draft page never leaks into search. Matches title
+    OR content. Newest-touched first with an id tiebreak.
+    """
+    if not query.strip():
+        return [], 0
+    terms = [t for t in query.split() if t] or [query]
+    base = (
+        db.query(models.Page)
+        .filter(models.Page.published.is_(True))
+        .filter(*_term_substring_clauses(terms, models.Page.title, models.Page.content))
+    )
+    total = base.count()
+    items = base.order_by(models.Page.updated_at.desc(), models.Page.id.desc()).offset(offset).limit(limit).all()
+    return items, total
+
+
+def search_authors(
+    db: Session,
+    query: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> tuple[list[auth.User], int]:
+    """Author-archive window for the combined search (COMBINED-ALL search).
+
+    Pen-named admins only — ``display_name`` not null, the same gate the
+    /api/authors surface uses, so a username-only admin (no public identity)
+    never appears and the login username is never indexed. Matches the public
+    pen name OR the public bio. Name order with an id tiebreak.
+    """
+    if not query.strip():
+        return [], 0
+    terms = [t for t in query.split() if t] or [query]
+    base = (
+        db.query(auth.User)
+        .filter(auth.User.display_name.isnot(None))
+        .filter(*_term_substring_clauses(terms, auth.User.display_name, auth.User.bio))
+    )
+    total = base.count()
+    items = base.order_by(auth.User.display_name.asc(), auth.User.id.asc()).offset(offset).limit(limit).all()
+    return items, total
+
+
 def increment_views(db: Session, post_id: int) -> models.Post | None:
     """Increment the view count for a post using atomic SQL update.
 

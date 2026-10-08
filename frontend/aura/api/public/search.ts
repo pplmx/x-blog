@@ -35,6 +35,37 @@ export interface CommentSearchParams {
 }
 
 /**
+ * One combined-search hit (this feature): the common envelope /api/search/all
+ * returns for every surface — a ``type`` tag and a deep-linkable ``path`` the
+ * /search UI renders as a labelled card. `slug` is null for author hits (their
+ * deep link is /authors/{id}), present for post/series/page.
+ */
+export interface AllSearchItem {
+	type: "post" | "series" | "page" | "author";
+	id: number;
+	title: string;
+	slug: string | null;
+	path: string;
+	snippet: string | null;
+}
+
+export interface AllSearchResponse {
+	items: AllSearchItem[];
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		total_pages: number;
+	};
+}
+
+export interface AllSearchParams {
+	q?: string;
+	page?: number;
+	limit?: number;
+}
+
+/**
  * One "did you mean" suggestion (round 390, DEC-443): a canonical topic — a
  * tag, a category, or a recent public post title — that an edit-distance pass
  * judged close enough to a zero-hit query to offer as a recovery path.
@@ -72,6 +103,25 @@ export function useCommentSearch(
 ) {
 	return query<CommentSearchResponse>(
 		queryPath("/api/search/comments", params as MaybeGetter<QueryParams>),
+		options,
+	);
+}
+
+/**
+ * Reactive combined search (GET /api/search/all).
+ *
+ * Searches posts + series + published static pages + author archives at once,
+ * each hit carrying a ``type`` tag and a deep-linkable ``path``. Same URL-
+ * reactive contract as usePostSearch/useCommentSearch: pass a computed params
+ * object and the query refetches when q/page change, and gate with `enabled`
+ * when there is nothing to search. Used by /search's ?type=all mode.
+ */
+export function useAllSearch(
+	params: MaybeGetter<AllSearchParams>,
+	options: ApiQueryOptions<AllSearchResponse> = {},
+) {
+	return query<AllSearchResponse>(
+		queryPath("/api/search/all", params as MaybeGetter<QueryParams>),
 		options,
 	);
 }

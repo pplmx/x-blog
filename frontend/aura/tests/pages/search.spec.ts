@@ -93,6 +93,38 @@ const mockCommentResult = {
 	pagination: { total: 1, page: 1, limit: 10, total_pages: 1 },
 };
 
+// A combined-search hit (?type=all): the uniform envelope /api/search/all
+// returns — a type tag + deep-link path per surface.
+const mockAllResult = {
+	items: [
+		{
+			type: "series",
+			id: 5,
+			title: "Quantum Fables series",
+			slug: "quantum-fables",
+			path: "/series/quantum-fables",
+			snippet: "a journal about the <mark>series-marker</mark>",
+		},
+		{
+			type: "page",
+			id: 8,
+			title: "Privacy Policy",
+			slug: "privacy",
+			path: "/pages/privacy",
+			snippet: "we care about <mark>page-marker</mark>",
+		},
+		{
+			type: "author",
+			id: 3,
+			title: "Riki the Weaver",
+			slug: null,
+			path: "/authors/3",
+			snippet: null,
+		},
+	],
+	pagination: { total: 3, page: 1, limit: 10, total_pages: 1 },
+};
+
 async function mountSearchPage({
 	searchResult = mockSearchResult,
 	pending = false,
@@ -101,6 +133,9 @@ async function mountSearchPage({
 	commentResult = mockCommentResult,
 	commentPending = false,
 	commentError = null,
+	allResult = mockAllResult,
+	allPending = false,
+	allError = null,
 	suggestResult = { query: "", suggestions: [] as SearchSuggestion[] },
 	taxonomy = undefined,
 	routeQuery = { q: "test query" },
@@ -113,6 +148,9 @@ async function mountSearchPage({
 	commentResult?: typeof mockCommentResult | null;
 	commentPending?: boolean;
 	commentError?: { message: string } | null;
+	allResult?: typeof mockAllResult | null;
+	allPending?: boolean;
+	allError?: { message: string } | null;
 	/** "Did you mean" payload (round 390, DEC-443) — only rendered on zero hits. */
 	suggestResult?: { query: string; suggestions: SearchSuggestion[] };
 	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
@@ -150,6 +188,14 @@ async function mountSearchPage({
 					: typeof url === "string"
 						? url
 						: ((url as { value?: string }).value ?? "");
+			if (String(u).includes("/api/search/all")) {
+				return {
+					data: ref(allResult) as unknown,
+					pending: ref(allPending),
+					error: ref(allError),
+					refresh: vi.fn(),
+				};
+			}
 			if (String(u).includes("/api/search/comments")) {
 				return {
 					data: ref(commentResult) as unknown,
@@ -1266,5 +1312,57 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(String(searchUrl)).toContain("page=1");
 		// Results render instead of the failed state.
 		expect(wrapper.text()).toContain("Search Result Post");
+	});
+});
+
+describe("Combined search mode (?type=all) — series / pages / authors", () => {
+	it("renders mixed results with a type tag and a deep-link to each surface", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "marker", type: "all" } });
+		// Each hit's title renders on a deep-link to its real page.
+		expect(wrapper.text()).toContain("Quantum Fables series");
+		expect(wrapper.text()).toContain("Privacy Policy");
+		expect(wrapper.text()).toContain("Riki the Weaver");
+		expect(wrapper.find('a[href="/series/quantum-fables"]').exists()).toBe(true);
+		expect(wrapper.find('a[href="/pages/privacy"]').exists()).toBe(true);
+		expect(wrapper.find('a[href="/authors/3"]').exists()).toBe(true);
+		// The type tag (zh) renders for each hit so the mixed list scans by kind.
+		expect(wrapper.text()).toContain("系列");
+		expect(wrapper.text()).toContain("页面");
+		expect(wrapper.text()).toContain("作者");
+		// Post-mode cards are NOT rendered in all mode.
+		expect(wrapper.text()).not.toContain("Search Result Post");
+	});
+
+	it("switching to the All tab navigates to the all-mode URL", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" } });
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		const allTab = wrapper.findAll('[role="tab"]').find((t) => t.text().includes("全部"));
+		expect(allTab).toBeDefined();
+		await allTab?.trigger("click");
+		await flushPromises();
+		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "nuxt", type: "all", page: "1" } });
+	});
+
+	it("renders the all-mode header summary", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "marker", type: "all" } });
+		expect(wrapper.text()).toContain("全站搜索");
+		expect(wrapper.text()).toContain("相关结果 3 条");
+	});
+
+	it("hides the post-only filters in all mode", async () => {
+		const wrapper = await mountSearchPage({ routeQuery: { q: "marker", type: "all" } });
+		// Category/tag/sort/date narrowing is posts-only (the combined mode has
+		// no taxonomy/date dimensions, exactly like comments mode).
+		expect(wrapper.text()).not.toContain("分类");
+		expect(wrapper.text()).not.toContain("排序");
+	});
+
+	it("renders the empty state when the combined search has no hits", async () => {
+		const wrapper = await mountSearchPage({
+			routeQuery: { q: "zzz", type: "all" },
+			allResult: { items: [], pagination: { total: 0, page: 1, limit: 10, total_pages: 0 } },
+		});
+		expect(wrapper.text()).toContain("没有找到相关文章");
 	});
 });

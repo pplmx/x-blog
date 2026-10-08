@@ -265,19 +265,20 @@ with the status filter — DEC-411, round 369).
 
 ### Search, SEO & Stats
 
-| Method | Endpoint                  | Description                                                                                |
-| ------ | ------------------------- | ------------------------------------------------------------------------------------------ |
-| GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                                      |
-| GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405)        |
-| GET    | `/api/comments/feed`      | Latest discussion — newest approved comments across the site + post brief (DEC-407)        |
-| GET    | `/rss/comments.xml`       | Discussion RSS — newest approved comments site-wide, deep-linked to each comment (DEC-409) |
-| GET    | `/rss/comments.atom.xml`  | Discussion Atom — newest approved comments site-wide (DEC-409)                             |
-| GET    | `/api/stats`              | Blog statistics                                                                            |
-| GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                               |
-| GET    | `/rss/atom.xml`           | Atom feed                                                                                  |
-| GET    | `/sitemap.xml`            | XML sitemap                                                                                |
-| GET    | `/robots.txt`             | robots.txt                                                                                 |
-| GET    | `/health`                 | Health check                                                                               |
+| Method | Endpoint                  | Description                                                                                                       |
+| ------ | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/search?q=`          | Full-text search (CJK-aware, DEC-070)                                                                             |
+| GET    | `/api/search/comments?q=` | Comment search — approved comments with highlighted snippets + post brief (DEC-405)                               |
+| GET    | `/api/search/all?q=`      | Combined search — posts + series + published static pages + author archives, each hit type-tagged and deep-linked |
+| GET    | `/api/comments/feed`      | Latest discussion — newest approved comments across the site + post brief (DEC-407)                               |
+| GET    | `/rss/comments.xml`       | Discussion RSS — newest approved comments site-wide, deep-linked to each comment (DEC-409)                        |
+| GET    | `/rss/comments.atom.xml`  | Discussion Atom — newest approved comments site-wide (DEC-409)                                                    |
+| GET    | `/api/stats`              | Blog statistics                                                                                                   |
+| GET    | `/rss/feed.xml`           | RSS 2.0 feed                                                                                                      |
+| GET    | `/rss/atom.xml`           | Atom feed                                                                                                         |
+| GET    | `/sitemap.xml`            | XML sitemap                                                                                                       |
+| GET    | `/robots.txt`             | robots.txt                                                                                                        |
+| GET    | `/health`                 | Health check                                                                                                      |
 
 ### Web Push (optional, needs VAPID keys)
 

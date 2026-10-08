@@ -233,19 +233,20 @@ token）、更换登录邮箱（DEC-357：填新邮箱 + 当前密码，向新�
 
 ### 搜索、SEO 与统计
 
-| 方法 | 路径                      | 说明                                                    |
-| ---- | ------------------------- | ------------------------------------------------------- |
-| GET  | `/api/search?q=`          | 全文搜索（中文感知，DEC-070）                           |
-| GET  | `/api/search/comments?q=` | 评论搜索——已审核评论 + 高亮片段与帖子简介（DEC-405）    |
-| GET  | `/api/comments/feed`      | 最新讨论流——全站最新已审核评论 + 帖子简介（DEC-407）    |
-| GET  | `/rss/comments.xml`       | 讨论 RSS——全站最新已审核评论，深链到每条评论（DEC-409） |
-| GET  | `/rss/comments.atom.xml`  | 讨论 Atom——全站最新已审核评论（DEC-409）                |
-| GET  | `/api/stats`              | 博客统计                                                |
-| GET  | `/rss/feed.xml`           | RSS 2.0 订阅源                                          |
-| GET  | `/rss/atom.xml`           | Atom 订阅源                                             |
-| GET  | `/sitemap.xml`            | XML 站点地图                                            |
-| GET  | `/robots.txt`             | robots.txt                                              |
-| GET  | `/health`                 | 健康检查                                                |
+| 方法 | 路径                      | 说明                                                                        |
+| ---- | ------------------------- | --------------------------------------------------------------------------- |
+| GET  | `/api/search?q=`          | 全文搜索（中文感知，DEC-070）                                               |
+| GET  | `/api/search/comments?q=` | 评论搜索——已审核评论 + 高亮片段与帖子简介（DEC-405）                        |
+| GET  | `/api/search/all?q=`      | 全站搜索——文章 + 系列 + 已发布静态页面 + 作者归档，每条命中带类型标签与深链 |
+| GET  | `/api/comments/feed`      | 最新讨论流——全站最新已审核评论 + 帖子简介（DEC-407）                        |
+| GET  | `/rss/comments.xml`       | 讨论 RSS——全站最新已审核评论，深链到每条评论（DEC-409）                     |
+| GET  | `/rss/comments.atom.xml`  | 讨论 Atom——全站最新已审核评论（DEC-409）                                    |
+| GET  | `/api/stats`              | 博客统计                                                                    |
+| GET  | `/rss/feed.xml`           | RSS 2.0 订阅源                                                              |
+| GET  | `/rss/atom.xml`           | Atom 订阅源                                                                 |
+| GET  | `/sitemap.xml`            | XML 站点地图                                                                |
+| GET  | `/robots.txt`             | robots.txt                                                                  |
+| GET  | `/health`                 | 健康检查                                                                    |
 
 ### 读者账号与云端收藏
 

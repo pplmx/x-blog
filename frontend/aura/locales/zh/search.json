@@ -15,13 +15,22 @@
 		"mode": {
 			"label": "搜索范围",
 			"posts": "文章",
-			"comments": "评论"
+			"comments": "评论",
+			"all": "全部"
 		},
 		"results": {
 			"title": "搜索结果",
 			"summary": "找到 \"{query}\" 相关文章 {count} 篇",
 			"commentsTitle": "评论搜索结果",
-			"commentsSummary": "找到 \"{query}\" 相关评论 {count} 条"
+			"commentsSummary": "找到 \"{query}\" 相关评论 {count} 条",
+			"allTitle": "全站搜索",
+			"allSummary": "找到 \"{query}\" 相关结果 {count} 条"
+		},
+		"allTypes": {
+			"post": "文章",
+			"series": "系列",
+			"page": "页面",
+			"author": "作者"
 		},
 		"comments": {
 			"jumpTo": "跳到该评论",
