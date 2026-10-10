@@ -26,7 +26,7 @@ overrides:
   nanoid@<3.3.18: ^3.3.18
   nanoid@3.3.16: 3.3.18
   postcss: ^8.5.23
-  postcss@8.5.22: 8.5.23
+  postcss@8.5.22: 8.5.29
   # Vite+ toolchain: unify on its bundled Vite core + Vitest so plugins,
   # dependencies, and `vp test` all share a single copy (see viteplus.dev local-cli).
   vite@*: npm:@voidzero-dev/vite-plus-core@1.1.0
