@@ -1,31 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import crud, schemas
+from app import schemas
 from app.auth import User, get_current_admin
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import IdInt
+from app.services import content as content_service
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
 
 
 @router.get("", response_model=list[schemas.Tag])
 async def list_tags(request: Request, db: AsyncSession = Depends(get_db)):
-    # crud.get_tags returns cached plain dicts (see cache.py).
-    return conditional_json(await crud.get_tags(db), request)
+    # content_service.get_tags returns cached plain dicts (see cache.py).
+    return conditional_json(await content_service.get_tags(db), request)
 
 
 @router.get("/{tag_id}", response_model=schemas.Tag)
 async def get_tag(request: Request, tag_id: IdInt, db: AsyncSession = Depends(get_db)):
-    tag = await crud.get_tag(db, tag_id)
+    tag = await content_service.get_tag(db, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     # post_count is derived (not a column); validating the bare ORM object
     # would leave the schema default 0 even for tags with many posts (ISS-363).
     data = schemas.Tag.model_validate(tag).model_dump(mode="json")
-    data["post_count"] = await crud.tag_visible_post_count(db, tag_id)
+    data["post_count"] = await content_service.tag_visible_post_count(db, tag_id)
     return conditional_json(data, request)
 
 
@@ -37,11 +38,11 @@ async def create_tag(
     _current_user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await crud.get_tag_by_name(db, tag.name)
+    existing = await content_service.get_tag_by_name(db, tag.name)
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
     try:
-        return await crud.create_tag(db, tag)
+        return await content_service.create_tag(db, tag)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -56,7 +57,7 @@ async def update_tag(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        db_tag = await crud.update_tag(db, tag_id, tag)
+        db_tag = await content_service.update_tag(db, tag_id, tag)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not db_tag:
@@ -73,7 +74,7 @@ async def delete_tag(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        success = await crud.delete_tag(db, tag_id)
+        success = await content_service.delete_tag(db, tag_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:

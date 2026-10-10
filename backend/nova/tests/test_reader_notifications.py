@@ -40,7 +40,7 @@ async def _tag_id(client, name):
 
 
 async def _create_post(db_session, **overrides):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(
@@ -741,7 +741,8 @@ class TestFanOutPrune:
     """
 
     async def test_batch_prune_keeps_newest_per_reader(self, db_session):
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         # Three readers overflowing the cap, one reader below it (untouched).
         for rid in (1, 2, 3):
@@ -798,7 +799,8 @@ class TestFanOutPrune:
         ).scalar_one() == 1
 
     async def test_fan_out_lands_new_post_and_stays_capped(self, client, db_session, auth_headers):
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         reg = await _register(client, email="fan@example.com")
         reader_id = reg.json()["reader"]["id"]
@@ -844,7 +846,8 @@ class TestFanOutPrune:
         target and prunes each reader's cap back in one pass — the batched
         counterpart of the per-follower record_reader_notification loop it
         replaced. One pre-existing reader below the cap stays untouched."""
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         # Reader 1 is over the cap (205 rows); reader 2 empty; reader 3 empty.
         db_session.add_all(
@@ -1045,7 +1048,7 @@ class TestMentionNotifications:
 
     async def test_resolve_mention_fast_paths_without_at(self, db_session):
         """A comment with no '@' must skip resolution entirely (no reader scan)."""
-        from app import crud
+        from app import repositories as crud
 
         assert await crud.resolve_mention_reader_ids(db_session, "plain text, no mentions") == []
         assert await crud.resolve_mention_reader_ids(db_session, "") == []

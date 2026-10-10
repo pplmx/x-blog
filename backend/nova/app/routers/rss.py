@@ -9,12 +9,13 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, models
+from app import auth, models
 from app.cache import feed_cache
 from app.conditional import PUBLIC_CACHE_CONTROL, conditional_response
 from app.config import settings
 from app.database import get_db
 from app.schemas import IdInt
+from app.services import rss as rss_service
 
 # RSS router with /rss prefix
 rss_router = APIRouter(prefix="", tags=["rss"])
@@ -54,12 +55,12 @@ async def _resolve_feed_scope(
     if category_id is not None and tag_id is not None:
         raise HTTPException(status_code=400, detail="Provide at most one of category_id and tag_id")
     if category_id is not None:
-        category = await crud.get_category(db, category_id)
+        category = await rss_service.get_category(db, category_id)
         if category is None:
             raise HTTPException(status_code=404, detail="Category not found")
         return category, None
     if tag_id is not None:
-        tag = await crud.get_tag(db, tag_id)
+        tag = await rss_service.get_tag(db, tag_id)
         if tag is None:
             raise HTTPException(status_code=404, detail="Tag not found")
         return None, tag
@@ -256,7 +257,7 @@ def generate_rss_feed(
         # Feed dates must report when readers actually got the post: a
         # scheduled post's item keyed to its draft created_at would push the
         # entry down readers' "new" ordering and mis-date it (RIL ISS-264).
-        pub_date = crud.effective_publish_ts(post).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        pub_date = rss_service.effective_publish_ts(post).strftime("%a, %d %b %Y %H:%M:%S GMT")
         link = f"{site_url}/posts/{post.slug}"
 
         if full_content:
@@ -415,7 +416,7 @@ async def get_comments_rss_feed(
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    comments, _ = await crud.list_public_comment_feed(db, page=1, limit=20)
+    comments, _ = await rss_service.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
     site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
@@ -443,7 +444,7 @@ async def get_comments_atom_feed(
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    comments, _ = await crud.list_public_comment_feed(db, page=1, limit=20)
+    comments, _ = await rss_service.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
     site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
@@ -488,13 +489,13 @@ async def get_rss_feed(
     # (external cron hits the feed continuously), and the crossing has no
     # write-time trigger to announce it. Cheap indexed no-op when nothing
     # crossed; exactly-once per post by the durable stamp.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("feed", full, category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = await crud.get_posts(
+    posts, _ = await rss_service.get_posts(
         db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
     )
 
@@ -531,13 +532,13 @@ async def get_atom_feed(
     # Same scheduled-post publish-time fan-out as the RSS feed (DEC-336/
     # TASK-394): the crossing has no write-time trigger, so the Atom read path
     # is one of the surfaces that notice it. Exactly-once by durable stamp.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("atom", category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    posts, _ = await crud.get_posts(
+    posts, _ = await rss_service.get_posts(
         db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
     )
 
@@ -549,10 +550,10 @@ async def get_atom_feed(
 
     items = []
     for post in posts:
-        updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
+        updated = (post.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
         # Same policy as the RSS pubDate: a scheduled post's <published> is its
         # publish_at, never the draft's created_at (RIL ISS-264).
-        published = crud.effective_publish_ts(post).strftime("%Y-%m-%dT%H:%M:%SZ")
+        published = rss_service.effective_publish_ts(post).strftime("%Y-%m-%dT%H:%M:%SZ")
         content = _feed_content_html(post.content)
         link = f"{site_url}/posts/{post.slug}"
         items.append(f"""<entry>
@@ -592,19 +593,21 @@ async def get_category_rss_feed(
     Category has no slug column — its unique ``name`` is the stable, URL-encoded
     path segment. Unknown name -> 404. Cached under a scoped key.
     """
-    category = await crud.get_category_by_name(db, name)
+    category = await rss_service.get_category_by_name(db, name)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
     # a polled surface that surfaces crossed posts — fire the exactly-once
     # sweep like the sitewide feeds. Cheap indexed no-op when nothing crossed.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("rss-category", name, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = await crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id, pinned_first=False)
+    posts, _ = await rss_service.get_posts(
+        db, skip=0, limit=20, published=True, category_id=category.id, pinned_first=False
+    )
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -637,19 +640,19 @@ async def get_series_rss_feed(
 
     Unknown slug -> 404. Cached under a scoped key.
     """
-    series = await crud.get_series_by_slug(db, slug)
+    series = await rss_service.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): same sweep as the
     # other polled feed surfaces; a series feed poller is a reliable crossing
     # trigger. Exactly-once by the durable stamp.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("rss-series", slug, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts = (await crud.get_series_visible_posts(db, series))[:20]
+    posts = (await rss_service.get_series_visible_posts(db, series))[:20]
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -691,13 +694,13 @@ async def get_author_rss_feed(
         raise HTTPException(status_code=404, detail="Author not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
     # a polled surface — fire the exactly-once sweep like the other feeds.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("rss-author", author_id, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = await crud.get_posts(
+    posts, _ = await rss_service.get_posts(
         db,
         skip=0,
         limit=20,
@@ -740,7 +743,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     """Get XML sitemap of the site."""
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): the sitemap's
     # crawl hit surfaces a crossed post — fire the exactly-once sweep too.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await rss_service.maybe_notify_due_scheduled_posts(db)
     cached = feed_cache.get("sitemap")
     if cached is not None:
         return _feed_response(cached, "application/xml", request)
@@ -749,14 +752,16 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     posts: list = []
     offset = 0
     while True:
-        page, _ = await crud.get_posts(db, skip=offset, limit=SITEMAP_POST_PAGE, published=True, pinned_first=False)
+        page, _ = await rss_service.get_posts(
+            db, skip=offset, limit=SITEMAP_POST_PAGE, published=True, pinned_first=False
+        )
         posts.extend(page)
         offset += len(page)
         if len(page) < SITEMAP_POST_PAGE:
             break
-    categories = await crud.get_categories(db)
-    tags = await crud.get_tags(db)
-    series_list = await crud.list_series(db)
+    categories = await rss_service.get_categories(db)
+    tags = await rss_service.get_tags(db)
+    series_list = await rss_service.list_series(db)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
 
@@ -799,7 +804,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
 
     # Posts
     for post in posts:
-        updated = (post.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")
+        updated = (post.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%d")
         entry = f"""<url>
     <loc>{escape(site_url)}/posts/{escape(post.slug)}</loc>
     <lastmod>{updated}</lastmod>
@@ -818,7 +823,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     # Series (indexable /series/{slug} pages — the old sitemap omitted them
     # entirely, so serialized content was unreachable-by-sitemap, DEC-318).
     for series in series_list:
-        updated = (series.updated_at or crud.utc_now_naive()).strftime("%Y-%m-%d")
+        updated = (series.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%d")
         urls.append(f"""<url>
     <loc>{escape(site_url)}/series/{escape(series.slug)}</loc>
     <lastmod>{updated}</lastmod>
@@ -878,7 +883,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
         for writer in writers:
             # The admin User has no updated_at column; a writer with no published
             # post yet falls back to "now" (their archive is still a real page).
-            updated = author_lastmod.get(writer.id) or crud.utc_now_naive()
+            updated = author_lastmod.get(writer.id) or rss_service.utc_now_naive()
             urls.append(f"""<url>
     <loc>{escape(site_url)}/authors/{writer.id}</loc>
     <lastmod>{updated.strftime("%Y-%m-%d")}</lastmod>
@@ -891,7 +896,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     # drafts are unpublished and must stay out.
     published_pages = (await db.execute(select(models.Page).where(models.Page.published.is_(True)))).scalars().all()
     for page in published_pages:
-        updated = page.updated_at or crud.utc_now_naive()
+        updated = page.updated_at or rss_service.utc_now_naive()
         urls.append(f"""<url>
     <loc>{escape(site_url)}/pages/{escape(page.slug)}</loc>
     <lastmod>{updated.strftime("%Y-%m-%d")}</lastmod>

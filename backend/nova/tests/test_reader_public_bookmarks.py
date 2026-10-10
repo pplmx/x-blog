@@ -47,7 +47,7 @@ _slug_counter = 0
 
 async def _create_post(db_session, *, published=True, draft=False, **overrides):
     """Create a post directly via crud (bypasses the admin API for brevity)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter

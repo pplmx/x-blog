@@ -30,7 +30,7 @@ BASE = "/api/posts/{post_id}/comment-subscription/guest"
 
 
 async def _create_post(db_session, slug=None):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,

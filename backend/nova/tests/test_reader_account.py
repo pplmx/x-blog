@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app import models
 from app.auth import ReaderAccount
-from app.crud import approve_comment, create_post
+from app.repositories import approve_comment, create_post
 from app.schemas import PostCreate
 
 PASSWORD = "readerpass123"

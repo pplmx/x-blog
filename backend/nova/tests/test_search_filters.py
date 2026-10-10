@@ -17,7 +17,7 @@ views) to /api/search. Key properties:
 from datetime import UTC, datetime, timedelta
 
 from app import models, schemas
-from app.crud import create_post
+from app.repositories import create_post
 
 BASE = "/api/search"
 

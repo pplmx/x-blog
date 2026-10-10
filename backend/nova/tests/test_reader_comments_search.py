@@ -9,7 +9,7 @@ escaped so % and _ match literally (round-366 precedent).
 
 
 async def _post(db_session, slug="search-comment-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(
@@ -87,7 +87,7 @@ class TestCommentsSearch:
         assert us["items"][0]["content"] == "use snake_case names"
 
     async def test_q_composes_with_status_filter(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         token = await _token(client)
         post = await _post(db_session)

@@ -22,7 +22,7 @@ from app.schemas import PostCreate
 
 
 async def _post(db_session, slug="self-service-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(db_session, PostCreate(title="SS", slug=slug, content="# Hi", published=True))
 

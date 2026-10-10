@@ -11,11 +11,11 @@ from sqlalchemy import select
 
 from app import models
 from app.auth import User, create_access_token, create_reader_token, get_password_hash
-from app.crud import increment_views
+from app.repositories import increment_views
 
 
 async def _create_post(db_session, slug="analytics-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(

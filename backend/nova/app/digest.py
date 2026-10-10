@@ -45,11 +45,6 @@ from sqlalchemy.orm import joinedload
 
 from app import models
 from app.auth import ReaderAccount
-from app.crud import (
-    effective_publish_ts,
-    list_confirmed_guest_thread_digest_subs,
-    utc_now_naive,
-)
 from app.emailer import (
     _env,
     _header_safe_title,
@@ -58,6 +53,11 @@ from app.emailer import (
     send_messages_flags,
 )
 from app.middleware import get_logger
+from app.repositories import (
+    effective_publish_ts,
+    list_confirmed_guest_thread_digest_subs,
+    utc_now_naive,
+)
 
 #: Rolling window: a reader never receives more than the last 7 days of posts,
 #: even if they missed several digests.
@@ -86,7 +86,7 @@ def _dialect_name(db: AsyncSession) -> str:
 def _effective_publish_ts(post: models.Post, now_naive: datetime) -> datetime:
     """The timestamp that puts a post on the "published when" line: its
     scheduled publish_at when set, else its created_at. Shared semantic with
-    the RSS/Atom feeds via ``crud.effective_publish_ts`` (RIL ISS-264); this
+    the RSS/Atom feeds via ``repositories.effective_publish_ts`` (RIL ISS-264); this
     thin wrapper pins the ``now`` fallback where the digest code expects it
     naive."""
     return effective_publish_ts(post, fallback=now_naive)

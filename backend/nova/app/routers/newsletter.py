@@ -32,12 +32,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, models, schemas
-from app.crud import escape_like_pattern, utc_now_naive
 from app.database import get_db
 from app.emailer import send_newsletter_confirm_email
 from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.schemas import NonNulStr
+from app.services.newsletter import escape_like_pattern, utc_now_naive
 
 logger = get_logger(__name__)
 

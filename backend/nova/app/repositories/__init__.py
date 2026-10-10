@@ -1,8 +1,8 @@
-"""Repository layer: domain-split modules extracted verbatim from ``app/crud.py`` (Phase 1).
+"""Repository layer: domain-split data-access modules (Phase 1) split by domain,
+with shared helpers in ``app.repositories._base``.
 
-``app.crud`` remains a thin re-export facade over this package so every existing
-``from app import crud`` / ``from app.crud import X`` import keeps working unchanged;
-Phase 2 will migrate routers/tests to import from these modules directly.
+This package is the data-access barrel (Phase 2): ``app.services`` composes it,
+routers depend on ``app.services``, and the old facade module has been deleted.
 """
 
 from app.cache import (

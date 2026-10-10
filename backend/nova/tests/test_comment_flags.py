@@ -5,7 +5,7 @@ enforced (idempotent, no click spam), and the admin list can filter to flagged
 comments, show their distinct-flag count, and dismiss the flags.
 """
 
-from app.crud import create_post, flag_comment
+from app.repositories import create_post, flag_comment
 from app.schemas import PostCreate
 
 
@@ -117,14 +117,14 @@ class TestAdminFlagged:
 
 class TestBulkDelete:
     async def _approved_comment(self, client, db_session, post_id, content):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         c = await _comment(client, post_id, content=content)
         await approve_comment(db_session, c["id"], approved=True)
         return c
 
     async def _reply(self, client, db_session, post_id, parent_id, content):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         r = await client.post(
             f"/api/comments/post/{post_id}",

@@ -16,7 +16,7 @@ import pytest
 from PIL import Image
 
 from app.auth import ReaderAccount
-from app.crud import approve_comment
+from app.repositories import approve_comment
 from app.routers import reader as reader_module
 
 AVATAR = "/api/reader/me/avatar"

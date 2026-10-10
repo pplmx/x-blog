@@ -57,7 +57,7 @@ async def _make_post(
     publish_at: datetime | None = None,
     created_days_ago: int = 1,
 ) -> int:
-    from app import crud
+    from app import repositories as crud
 
     now = crud.utc_now_naive()
     row = models.Post(
@@ -216,7 +216,7 @@ async def test_window_posts_counts_public_posts_in_window(client, db_session, ad
     """window_posts = collect_digest_posts length: published posts whose
     effective publish time falls in the last WEEKLY_WINDOW_DAYS days."""
     headers = {"Authorization": f"Bearer {admin_token}"}
-    from app import crud
+    from app import repositories as crud
 
     now = crud.utc_now_naive()
 

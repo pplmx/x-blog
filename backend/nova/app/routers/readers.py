@@ -16,10 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, schemas
+from app import auth, schemas
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
 from app.schemas import PageInt
+from app.services import reader as reader_service
 
 router = APIRouter(prefix="/api/readers", tags=["readers"])
 
@@ -120,7 +121,7 @@ async def suggest_mention_readers(
     empty query returns the first few named active readers so a bare '@' still
     has something to show.
     """
-    rows = await crud.suggest_mention_readers(db, query)
+    rows = await reader_service.suggest_mention_readers(db, query)
     return [ReaderMentionSuggestion(**row) for row in rows]
 
 
@@ -142,11 +143,11 @@ async def reader_profile(
     The optional auth resolution is what lets the header render the caller's
     own Follow/Following state (round 365) while the page stays fully public.
     """
-    reader = await crud.get_reader_public_profile(db, reader_id)
+    reader = await reader_service.get_reader_public_profile(db, reader_id)
     if reader is None:
         raise HTTPException(status_code=404, detail="Reader not found")
 
-    comments, total = await crud.list_reader_public_comments(db, reader_id, page=page, limit=limit)
+    comments, total = await reader_service.list_reader_public_comments(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     items = []
     for c in comments:
@@ -159,12 +160,13 @@ async def reader_profile(
             )
         )
     profile_data = ReaderPublicProfile.model_validate(reader).model_dump()
-    profile_data["follower_count"] = await crud.count_reader_followers(db, reader_id)
-    profile_data["is_following"] = current_reader is not None and await crud.is_following_reader(
+    profile_data["follower_count"] = await reader_service.count_reader_followers(db, reader_id)
+    profile_data["is_following"] = current_reader is not None and await reader_service.is_following_reader(
         db, current_reader.id, reader_id
     )
     profile_data["is_blocked"] = (
-        current_reader is not None and await crud.get_reader_block(db, current_reader.id, reader_id) is not None
+        current_reader is not None
+        and await reader_service.get_reader_block(db, current_reader.id, reader_id) is not None
     )
     return ReaderProfilePage(
         profile=ReaderPublicProfile(**profile_data),
@@ -197,10 +199,10 @@ async def reader_public_likes(
     endpoint is not an oracle for "does this reader exist" or "what do they
     like" (same non-leak stance as the profile's missing-reader 404).
     """
-    reader = await crud.get_reader_public_profile(db, reader_id)
+    reader = await reader_service.get_reader_public_profile(db, reader_id)
     if reader is None or not reader.public_likes:
         raise HTTPException(status_code=404, detail="Not found")
-    posts, total = await crud.list_reader_post_likes(db, reader_id, page=page, limit=limit)
+    posts, total = await reader_service.list_reader_post_likes(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
@@ -236,10 +238,10 @@ async def reader_public_bookmarks(
     both unknown readers AND readers who didn't opt in — one indistinguishable
     answer (same non-leak stance as the likes endpoint).
     """
-    reader = await crud.get_reader_public_profile(db, reader_id)
+    reader = await reader_service.get_reader_public_profile(db, reader_id)
     if reader is None or not reader.public_bookmarks:
         raise HTTPException(status_code=404, detail="Not found")
-    posts, total = await crud.list_reader_public_bookmarks(db, reader_id, page=page, limit=limit)
+    posts, total = await reader_service.list_reader_public_bookmarks(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {

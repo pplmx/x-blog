@@ -26,7 +26,7 @@ from app.schemas import PostCreate
 
 
 async def _create_post(db_session, slug="thread-sub-post", published=True):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,
@@ -148,7 +148,7 @@ class TestSubscribeToggleStatus:
         assert listed.json()["items"][0]["slug"] == "thread-visible"
 
         # The post becomes a draft -> the read path must not leak it.
-        from app import crud
+        from app import repositories as crud
 
         await crud.update_post(db_session, post.id, PostUpdate(published=False))
         relisted = await client.get("/api/reader/me/post-subscriptions", headers=_auth(token))
@@ -252,7 +252,7 @@ class TestThreadFanout:
     async def test_reply_dispatches_single_push_per_parent_reader(self, client, db_session, auth_headers):
         """A replied-to reader who ALSO follows the thread gets exactly one push
         (the targeted reply notification), not a second thread-follow push."""
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await self._post(client, db_session)
         token_a = await _token(client, email=f"fan-a{self._COUNTER}@example.com", display_name="A")
@@ -289,11 +289,13 @@ class TestThreadFanout:
         await _subscribe(client, endpoint=f"https://fcm.example.com/a{self._COUNTER}", headers=_auth(token))
         await _follow(client, post.id, token)
         created = await _comment(client, post.id)
-        # _notify_thread_subscribers calls the by-name import in comments.py, so
+        # _notify_thread_subscribers calls the by-name import in the comments
+        # service, so
         # patch that binding (patching app.webpush.vapid_configured alone would
-        # leave comments.vapid_configured — a separate reference — unpatched).
+        # leave the comments service's vapid_configured — a separate reference —
+        # unpatched).
         with (
-            patch("app.routers.comments.vapid_configured", return_value=False),
+            patch("app.services.comments.vapid_configured", return_value=False),
             patch("app.webpush.send_push") as mock_send,
         ):
             resp = await _approve(client, created.json()["id"], auth_headers=auth_headers)

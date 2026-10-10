@@ -17,7 +17,7 @@ import os
 
 import pytest
 
-from app.crud import _has_cjk, search_posts
+from app.repositories import _has_cjk, search_posts
 from app.routers.search import _build_snippet, _highlight_sqlite
 from app.schemas import PostCreate
 
@@ -25,7 +25,7 @@ CJK_CONTENT = "# 标题\n评论系统支持楼中楼回复，回复通知走 Web
 
 
 async def _create_post(db_session, title, slug, content="body", excerpt="excerpt"):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,

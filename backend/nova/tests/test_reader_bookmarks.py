@@ -35,7 +35,7 @@ async def _create_post(db_session, *, published=True, draft=False, **overrides):
     ``draft=True`` is shorthand for ``published=False`` (a draft that exists
     but is not yet public).
     """
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -142,7 +142,7 @@ class TestListBookmarks:
         assert set(item) >= {"title", "excerpt", "cover_image", "created_at", "category", "tags"}
 
     async def test_unpublished_post_disappears_from_list(self, client, db_session):
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)
@@ -312,7 +312,7 @@ class TestDoneQueueState:
         await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
         await client.patch(f"{self.DONE}/{post.id}/done", json={"done": True}, headers=_auth(token))
         # Unpublish the post: it must vanish from the Done filter too.
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         await update_post(db_session, post.id, PostUpdate(published=False))

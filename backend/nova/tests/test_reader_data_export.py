@@ -35,7 +35,7 @@ _slug_counter = 0
 
 
 async def _create_post(db_session, *, published=True, draft=False, **overrides):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -156,7 +156,7 @@ class TestExport:
         assert body2["account"]["email"] == "iso2@example.com"
 
     async def test_non_visible_posts_excluded(self, client, db_session):
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)
@@ -178,7 +178,7 @@ class TestExportCompleteness:
 
     async def _populated_reader(self, client, db_session, admin_headers):
         """A reader with one of everything, returned as (token, ids)."""
-        from app.crud import create_series
+        from app.repositories import create_series
 
         token = await _token(client, email="populated@example.com")
         headers = _auth(token)

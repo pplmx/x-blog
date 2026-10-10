@@ -9,11 +9,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app import crud, models
+from app import models
 from app.auth import User, get_current_superuser
 from app.database import get_db
 from app.dates import inclusive_end_of_day, parse_bound
 from app.limiter import RATE_LIMIT_EXPORT, limiter
+from app.services.analytics import utc_now_naive
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -100,7 +101,7 @@ async def export_posts_csv(
         # "Scheduled" means actually going live: published AND not yet its
         # publish time. A future-publish_at DRAFT never goes live, so it does
         # not belong under this filter (RIL ISS-290).
-        stmt = stmt.where(models.Post.published.is_(True), models.Post.publish_at > crud.utc_now_naive())
+        stmt = stmt.where(models.Post.published.is_(True), models.Post.publish_at > utc_now_naive())
     # status None/"all" → every post regardless of state. A bare-date date_to
     # is widened to end-of-day so the picked day is included in the export.
     start = parse_bound(date_from)
@@ -120,7 +121,7 @@ async def export_posts_csv(
         # Keyset page by id because the tags eager-load is a joined collection,
         # which yield_per refuses; id-desc keyset keeps the same
         # deterministic order and one bounded query per page (ISS-637).
-        now = crud.utc_now_naive()
+        now = utc_now_naive()
         remaining = limit
         last_id: int | None = None
         while remaining > 0:

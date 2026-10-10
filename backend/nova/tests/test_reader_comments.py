@@ -21,7 +21,7 @@ from sqlalchemy import select, update
 
 
 async def _create_post(db_session, slug="reader-comment-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(
@@ -135,7 +135,7 @@ class TestSignedInIdentity:
 
 class TestCommentHistory:
     async def test_list_own_approved_comment(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session)
         token = await _token(client)
@@ -165,7 +165,7 @@ class TestCommentHistory:
         assert body["items"][0]["status"] == "pending"
 
     async def test_rejected_comment_shows_rejected_status(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session)
         token = await _token(client)
@@ -178,7 +178,7 @@ class TestCommentHistory:
         assert body["items"][0]["status"] == "rejected"
 
     async def test_isolated_per_reader(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session)
         t1 = await _token(client, email="a1@example.com", display_name="A")
@@ -235,7 +235,7 @@ class TestCommentHistory:
         """
         from app import models
         from app.auth import ReaderAccount
-        from app.crud import list_reader_comment_subscriptions
+        from app.repositories import list_reader_comment_subscriptions
 
         await _token(client)  # registers the reader
         reader = (
@@ -260,7 +260,7 @@ class TestCommentHistory:
         comment list, plus post context for navigation from the page."""
         import re
 
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session)
         token = await _token(client, display_name="Riki")
@@ -278,7 +278,7 @@ class TestCommentHistory:
 
 class TestDeleteOwnComment:
     async def _own_comment(self, client, db_session, approved=None):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session, slug=f"del-post-{id(self)}")
         token = await _token(client, email=f"del-{id(self)}@example.com", display_name="Del")
@@ -313,7 +313,7 @@ class TestDeleteOwnComment:
 
 class TestEditOwnComment:
     async def _own_approved(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session, slug=f"edit-post-{id(self)}")
         token = await _token(client, email=f"edit-{id(self)}@example.com", display_name="Editor")
@@ -494,7 +494,7 @@ class TestEditOwnComment:
 
 class TestDeleteReparentsReplies:
     async def test_delete_own_comment_promotes_its_replies_to_top_level(self, client, db_session):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session, slug=f"del-reply-{id(self)}")
         token = await _token(client, email=f"del-r-{id(self)}@example.com", display_name="Del")
@@ -564,7 +564,7 @@ class TestFilterAndPaginate:
     """My Comments status filter + pagination (DEC-102, TASK-163)."""
 
     async def _reader_with_statuses(self, client, db_session, count=3):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session, slug=f"filter-{id(self)}")
         token = await _token(client, email=f"filter-{id(self)}@example.com", display_name="Filterer")

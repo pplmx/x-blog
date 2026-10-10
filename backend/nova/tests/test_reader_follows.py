@@ -47,7 +47,7 @@ def _auth(token):
 
 async def _create_post(db_session, **overrides):
     """Create a published post directly via crud (bypasses the admin API)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(
@@ -264,12 +264,12 @@ class TestCommentFanOut:
         b_token, _ = await _reader(client, email="rf-fail-b@example.com")
         await client.put(FOLLOW.format(reader_id=a_id), headers=_auth(b_token))
 
-        from app.routers import comments as comments_router
+        import app.services.comments as comments_service
 
         def boom(*_args, **_kwargs):
             raise RuntimeError("notifications backend down")
 
-        monkeypatch.setattr(comments_router.crud, "record_reader_follow_notifications", boom)
+        monkeypatch.setattr(comments_service, "record_reader_follow_notifications", boom)
 
         post = await _create_post(db_session)
         created = await client.post(

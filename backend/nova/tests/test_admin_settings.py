@@ -6,7 +6,7 @@ a persisted value overrides the env fallback the comment-create path reads, so
 an admin can flip it at runtime without a redeploy.
 """
 
-from app.crud import create_post
+from app.repositories import create_post
 from app.schemas import PostCreate
 
 SETTINGS_URL = "/api/admin/settings/auto_approve_reader_comments"

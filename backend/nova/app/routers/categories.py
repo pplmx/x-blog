@@ -1,25 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import crud, schemas
+from app import schemas
 from app.auth import User, get_current_admin
 from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import IdInt
+from app.services import content as content_service
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 
 @router.get("", response_model=list[schemas.Category])
 async def list_categories(request: Request, db: AsyncSession = Depends(get_db)):
-    # crud.get_categories returns cached plain dicts (see cache.py).
-    return conditional_json(await crud.get_categories(db), request)
+    # content_service.get_categories returns cached plain dicts (see cache.py).
+    return conditional_json(await content_service.get_categories(db), request)
 
 
 @router.get("/{category_id}", response_model=schemas.Category)
 async def get_category(request: Request, category_id: IdInt, db: AsyncSession = Depends(get_db)):
-    category = await crud.get_category(db, category_id)
+    category = await content_service.get_category(db, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     # post_count is derived (not a column); the list endpoint computes it in a
@@ -27,7 +28,7 @@ async def get_category(request: Request, category_id: IdInt, db: AsyncSession = 
     # schema default 0 even for categories with many publicly visible posts
     # (ISS-363).
     data = schemas.Category.model_validate(category).model_dump(mode="json")
-    data["post_count"] = await crud.category_visible_post_count(db, category_id)
+    data["post_count"] = await content_service.category_visible_post_count(db, category_id)
     return conditional_json(data, request)
 
 
@@ -39,11 +40,11 @@ async def create_category(
     _current_user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await crud.get_category_by_name(db, category.name)
+    existing = await content_service.get_category_by_name(db, category.name)
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
     try:
-        return await crud.create_category(db, category)
+        return await content_service.create_category(db, category)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -58,7 +59,7 @@ async def update_category(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        db_category = await crud.update_category(db, category_id, category)
+        db_category = await content_service.update_category(db, category_id, category)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not db_category:
@@ -75,7 +76,7 @@ async def delete_category(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        success = await crud.delete_category(db, category_id)
+        success = await content_service.delete_category(db, category_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:

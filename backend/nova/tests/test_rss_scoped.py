@@ -25,7 +25,7 @@ _slug_counter = 0
 
 
 async def _post(db, title, category=None):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter

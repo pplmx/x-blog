@@ -15,14 +15,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app import auth, crud, models
+from app import auth, models
 from app.auth import ROLE_EDITOR, get_current_admin, get_current_superuser
 from app.cache import (
     clear_categories_cache,
     clear_posts_list_cache,
     clear_tags_cache,
 )
-from app.crud import utc_now_naive
 from app.database import get_db
 from app.dates import inclusive_end_of_day, parse_bound
 from app.image_validation import (
@@ -34,7 +33,7 @@ from app.image_validation import (
     verify_image_decodes,
 )
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_WRITE, client_rate_key, limiter
-from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
+from app.routers.comments import AUTO_APPROVE_READER_COMMENTS
 from app.schemas import (
     AuthorBrief,
     Comment,
@@ -47,7 +46,9 @@ from app.schemas import (
     PostRevisionSummary,
     PostUpdate,
 )
-from app.webpush import dispatch_new_post
+from app.services import admin as admin_service
+from app.services.admin import utc_now_naive
+from app.services.comments import _notify_comment_approved
 
 logger = logging.getLogger(__name__)
 
@@ -452,7 +453,7 @@ async def admin_list_posts(
     stmt = select(models.Post)
 
     if q:
-        stmt = stmt.where(models.Post.title.ilike(f"%{crud.escape_like_pattern(q)}%", escape="\\"))
+        stmt = stmt.where(models.Post.title.ilike(f"%{admin_service.escape_like_pattern(q)}%", escape="\\"))
 
     if status == "published":
         now = utc_now_naive()
@@ -485,7 +486,7 @@ async def admin_list_posts(
                 # id tiebreak: imported/bulk-restored rows share created_at; without a
                 # unique final sort key, offset pages can skip/duplicate across page
                 # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
-                # COALESCE pinned like crud.get_posts (TASK-535 parity): a raw-import
+                # COALESCE pinned like admin_service.get_posts (TASK-535 parity): a raw-import
                 # NULL-pinned row must sort with the unpinned group, not first.
                 .order_by(
                     func.coalesce(models.Post.pinned, False).desc(),
@@ -501,7 +502,7 @@ async def admin_list_posts(
         .all()
     )
     # Approved comment_count per post for this page (single grouped query, no
-    # N+1) — mirrors crud.get_posts so the admin dashboard can render counts
+    # N+1) — mirrors admin_service.get_posts so the admin dashboard can render counts
     # for all statuses, not just the public published list.
     comment_counts: dict[int, int] = {}
     if posts:
@@ -711,7 +712,7 @@ async def admin_create_post(
     try:
         # Author attribution (DEC-359/TASK-405): default to the writing admin;
         # an editor may explicitly attribute the post to another admin.
-        post = await crud.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
+        post = await admin_service.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
@@ -734,7 +735,7 @@ async def admin_clone_post(
     if not source:
         raise HTTPException(status_code=404, detail="Post not found")
     try:
-        post = await crud.clone_post(db, source)
+        post = await admin_service.clone_post(db, source)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
@@ -759,17 +760,17 @@ async def admin_update_post(
         raise HTTPException(status_code=404, detail="Post not found")
 
     # Notify on the draft/scheduled -> published transition made from the admin
-    # editor, matching the crud.update_post fan-out (ate fan-out would silently
+    # editor, matching the admin_service.update_post fan-out (ate fan-out would silently
     # skip every reader's durable inbox row + Web Push for editor-published
     # posts — surfacing as "published but no one got notified").
-    was_visible = crud.is_publicly_visible(post)
+    was_visible = admin_service.is_publicly_visible(post)
 
     if post_data.title is not None:
         post.title = post_data.title
     if post_data.slug is not None and post_data.slug != post.slug:
         # Slug-change redirect (round 350): an old URL that was shared/indexed
-        # must keep pointing at this post after the rename (see crud.record_*).
-        await crud.record_slug_redirect(db, "post", post.slug, post_data.slug)
+        # must keep pointing at this post after the rename (see admin_service.record_*).
+        await admin_service.record_slug_redirect(db, "post", post.slug, post_data.slug)
         post.slug = post_data.slug
     if post_data.content is not None:
         post.content = post_data.content
@@ -817,7 +818,7 @@ async def admin_update_post(
             post.category_id = None
 
     # Series membership (DEC-056/TASK-123): the editor must be able to assign a
-    # post to a series (null = clear membership), mirroring crud.update_post — a
+    # post to a series (null = clear membership), mirroring admin_service.update_post — a
     # bare title/slug update must never silently drop the post out of its series.
     if "series_id" in update_fields:
         if post_data.series_id is not None:
@@ -858,28 +859,24 @@ async def admin_update_post(
         raise HTTPException(status_code=400, detail="Slug already exists")
     await db.refresh(post)
     # Snapshot the updated state into version history (DEC-158, TASK-191).
-    # This route updates fields directly (it doesn't use crud.update_post), so
+    # This route updates fields directly (it doesn't use admin_service.update_post), so
     # the capture is invoked here explicitly.
-    await crud.capture_post_revision(db, post)
+    await admin_service.capture_post_revision(db, post)
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
 
     # Transition into visibility (draft/scheduled -> published) must fan out
-    # the same inbox + push notifications the crud.create/update paths do. The
+    # the same inbox + push notifications the admin_service.create/update paths do. The
     # frontmost publish path is the admin editor's PUT /posts/{id}, which used
     # to skip both — a follower/subscriber count that never moved.
-    if not was_visible and crud.is_publicly_visible(post):
+    if not was_visible and admin_service.is_publicly_visible(post):
         # Exactly-once stamp (DEC-336/TASK-394): this editor path fans out
-        # directly (it does not route through crud.update_post), so it must set
+        # directly (it does not route through admin_service.update_post), so it must set
         # the same durable stamp the fire-on-read sweep (maybe_notify_due_...)
         # checks — otherwise the first public read of a crossed scheduled post
         # edited here would re-announce it.
-        post.new_post_notified_at = crud.utc_now_naive()
-        await db.commit()
-        await crud.record_new_post_notifications(db, post)
-        await dispatch_new_post(db, post, logger)
-        await crud.dispatch_newsletter_new_post(db, post, logger)
+        await admin_service.notify_post_published(db, post, logger)
     return {"id": post.id}
 
 
@@ -891,11 +888,11 @@ async def admin_delete_post(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    # crud.delete_post purges the DEC-009 child tables (bookmarks/history/
+    # admin_service.delete_post purges the DEC-009 child tables (bookmarks/history/
     # subscriptions/daily views) along with the post and its cascaded comments
     # and revisions — keep the admin route on the same code path (RIL ISS-296).
     try:
-        success = await crud.delete_post(db, post_id)
+        success = await admin_service.delete_post(db, post_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:
@@ -911,7 +908,7 @@ async def admin_list_post_revisions(
     post = (await db.execute(select(models.Post).where(models.Post.id == post_id))).scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return await crud.get_post_revisions(db, post_id)
+    return await admin_service.get_post_revisions(db, post_id)
 
 
 @router.get("/posts/{post_id}/revisions/{revision_id}", response_model=PostRevisionDetail)
@@ -921,7 +918,7 @@ async def admin_get_post_revision(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    revision = await crud.get_post_revision(db, post_id, revision_id)
+    revision = await admin_service.get_post_revision(db, post_id, revision_id)
     if not revision:
         raise HTTPException(status_code=404, detail="Revision not found")
     return revision
@@ -937,7 +934,7 @@ async def admin_restore_post_revision(
     _current_user: auth.User = Depends(get_current_admin),
 ):
     try:
-        return await crud.restore_post_revision(db, post_id, revision_id)
+        return await admin_service.restore_post_revision(db, post_id, revision_id)
     except ValueError as e:
         msg = str(e)
         code = 404 if "not found" in msg else 400
@@ -1171,7 +1168,7 @@ async def admin_list_comments(
     if is_approved is not None:
         stmt = stmt.where(models.Comment.is_approved.is_(is_approved))
     if q:
-        like = f"%{crud.escape_like_pattern(q)}%"
+        like = f"%{admin_service.escape_like_pattern(q)}%"
         stmt = stmt.where(
             or_(
                 models.Comment.nickname.ilike(like, escape="\\"),
@@ -1214,7 +1211,7 @@ async def admin_list_comments(
         )
     ).all()
     page_ids = [c.id for c, _ in comment_rows]
-    flag_counts = await crud.flag_counts_for_comments(db, page_ids)
+    flag_counts = await admin_service.flag_counts_for_comments(db, page_ids)
     # Reader account identity for the MODERATION queue (admin-only signal).
     # reader-attributed comments never put the account email in comment.email
     # (DEC-062), and round-427 stopped the old nickname fallback from leaking
@@ -1298,7 +1295,7 @@ async def admin_batch_approve_comments(
         # Stamp reviewed_at on both outcomes so rejected comments leave the
         # moderation pending queue (get_pending_comments filters is_approved
         # AND reviewed_at is NULL) instead of lingering "pending" forever.
-        # Mirrors crud.approve_comment's naive-UTC stamp (DEC-066, TASK-139;
+        # Mirrors admin_service.approve_comment's naive-UTC stamp (DEC-066, TASK-139;
         # ISS-452 keeps these writes consistent with the naive column).
         c.reviewed_at = utc_now_naive()
     if changed:
@@ -1330,11 +1327,11 @@ async def admin_batch_delete_comments(
 ):
     """Bulk-delete selected comments (own-user, spam cleanup). DEC-110.
 
-    Surviving replies are reparented consistently (crud.bulk_delete_comments)
+    Surviving replies are reparented consistently (admin_service.bulk_delete_comments)
     so the thread is never orphaned. Returns the number deleted.
     """
     try:
-        deleted = await crud.bulk_delete_comments(db, body.ids)
+        deleted = await admin_service.bulk_delete_comments(db, body.ids)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"deleted": deleted}
@@ -1358,7 +1355,7 @@ async def dismiss_comment_flags(
     comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    removed = await crud.dismiss_comment_flags(db, comment_id)
+    removed = await admin_service.dismiss_comment_flags(db, comment_id)
     return {"comment_id": comment_id, "removed": removed}
 
 
@@ -1395,10 +1392,10 @@ async def admin_delete_comment(
     try:
         # Reparent surviving replies to the nearest surviving ancestor (or
         # top-level) so deleting a spam thread never orphans its replies or
-        # refuses on Postgres — mirrors crud.bulk_delete_comments (DEC-110).
+        # refuses on Postgres — mirrors admin_service.bulk_delete_comments (DEC-110).
         # The old db.delete()+commit here orphaned replies on SQLite and 400'd
         # on Postgres whenever the comment had replies (backend deep-dive).
-        deleted = await crud.delete_comment_reparent(db, comment_id)
+        deleted = await admin_service.delete_comment_reparent(db, comment_id)
     except ValueError as e:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -1486,7 +1483,7 @@ class SettingUpdate(BaseModel):
 
 
 async def _effective_boolean_setting(db: AsyncSession, key: str, env_default: bool) -> bool:
-    return await crud.boolean_setting(db, key, env_default)
+    return await admin_service.boolean_setting(db, key, env_default)
 
 
 @router.get("/settings/{key}", response_model=SettingRead)
@@ -1518,7 +1515,7 @@ async def put_site_setting_ep(
     if normalized not in {"true", "false", "1", "0", "yes", "no", "on", "off"}:
         raise HTTPException(status_code=422, detail="value must be a boolean string")
     canonical = "true" if normalized in {"1", "true", "yes", "on"} else "false"
-    await crud.upsert_site_setting(db, key, canonical)
+    await admin_service.upsert_site_setting(db, key, canonical)
     return SettingRead(key=key, value=canonical)
 
 
@@ -1569,7 +1566,7 @@ async def admin_list_readers(
     """
     stmt = select(auth.ReaderAccount)
     if q:
-        like = f"%{crud.escape_like_pattern(q)}%"
+        like = f"%{admin_service.escape_like_pattern(q)}%"
         stmt = stmt.where(
             or_(
                 auth.ReaderAccount.email.ilike(like, escape="\\"),

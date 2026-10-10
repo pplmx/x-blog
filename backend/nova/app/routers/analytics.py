@@ -12,11 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import crud, models
+from app import models
 from app.auth import User, get_current_admin
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
 from app.schemas import IdInt
+from app.services import analytics as analytics_service
 
 router = APIRouter(prefix="/api/admin/stats/views", tags=["stats"])
 
@@ -36,7 +37,7 @@ async def views_trend(
     _current_user: User = Depends(get_current_admin),
 ):
     """Last ``days`` days of total views + top posts by in-period views."""
-    return await crud.get_daily_views_stats(db, days=days)
+    return await analytics_service.get_daily_views_stats(db, days=days)
 
 
 @router.get("/posts/{post_id}")
@@ -58,7 +59,7 @@ async def post_views_trend(
     post = result.scalar_one_or_none()
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found")
-    return await crud.get_post_views_trend(db, post_id, days=days)
+    return await analytics_service.get_post_views_trend(db, post_id, days=days)
 
 
 @follows_router.get("")
@@ -70,7 +71,7 @@ async def follows_stats(
     _current_user: User = Depends(get_current_admin),
 ):
     """Per-series + per-category reader follow counts and totals (DEC-144/TASK-184)."""
-    return await crud.get_follow_stats(db, limit=limit)
+    return await analytics_service.get_follow_stats(db, limit=limit)
 
 
 @searches_router.get("")
@@ -82,7 +83,7 @@ async def top_searches(
     _current_user: User = Depends(get_current_admin),
 ):
     """Top public search terms by aggregate count (DEC-152/TASK-188)."""
-    return await crud.get_top_searches(db, limit=limit)
+    return await analytics_service.get_top_searches(db, limit=limit)
 
 
 @comments_router.get("")
@@ -94,4 +95,4 @@ async def comments_stats(
     _current_user: User = Depends(get_current_admin),
 ):
     """Comment-activity series + top commented posts (DEC-154/TASK-189)."""
-    return await crud.get_comment_activity_stats(db, days=days)
+    return await analytics_service.get_comment_activity_stats(db, days=days)

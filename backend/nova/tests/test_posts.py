@@ -26,7 +26,7 @@ async def test_list_posts_returns_cached_second_request(client, auth_headers):
     We spy on crud.get_posts: the first call queries the DB, the second (cache
     hit) must NOT call it.
     """
-    from app import crud
+    from app.services import posts as crud
 
     await client.post(
         "/api/posts",
@@ -976,7 +976,8 @@ async def test_trending_ranks_published_posts_by_in_window_views(client, db_sess
     attaches views_window; posts with rows only outside the window are absent."""
     from datetime import timedelta
 
-    from app import crud, models
+    from app import models
+    from app import repositories as crud
 
     ids = {}
     for name, slug in [("Trend A", "trend-a"), ("Trend B", "trend-b"), ("Trend C", "trend-c")]:
@@ -1018,7 +1019,8 @@ async def test_trending_days_param_widens_the_window(client, db_session, auth_he
     """days=30 includes rows at 21 days out that the default 7d window drops."""
     from datetime import timedelta
 
-    from app import crud, models
+    from app import models
+    from app import repositories as crud
 
     post = await client.post(
         "/api/posts",
@@ -1046,7 +1048,8 @@ async def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_se
     the negatives are asserted against a non-empty result."""
     from datetime import timedelta
 
-    from app import crud, models
+    from app import models
+    from app import repositories as crud
 
     control = (
         await client.post(

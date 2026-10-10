@@ -32,7 +32,7 @@ _slug_counter = 0
 
 async def _create_post(db_session, *, published=True, draft=False, **overrides):
     """Create a post directly via crud (bypasses the admin API for brevity)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -227,7 +227,7 @@ class TestListHistory:
         assert response.json()["items"] == []
 
     async def test_unpublished_post_disappears_from_list(self, client, db_session):
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)
@@ -311,7 +311,7 @@ class TestReadingStats:
         assert len(body["recent"]) == 6  # top-N most recent
 
     async def test_stats_excludes_unpublished(self, client, db_session):
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)
@@ -335,7 +335,7 @@ class TestReadingStats:
         the last read), NOT a live scan of post content — so editing a post
         after it was read leaves the reader's aggregate unchanged, and the
         stats page never materializes content."""
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate, reading_minutes
 
         token = await _token(client, email="minutes@example.com")
@@ -517,7 +517,7 @@ class TestScrollFraction:
             .scalar_one()
             .id
         )
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         db_session.add(
             models.ReadingHistory(
@@ -633,7 +633,7 @@ class TestInProgress:
         reader."""
         from app import models
         from app.auth import ReaderAccount
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         token = await _token(client, email="ip-iso@example.com")
         rid = (
@@ -844,7 +844,7 @@ class TestActivityStreak:
     def test_day_activity_window_ends_at_the_supplied_local_today(self):
         from datetime import date, timedelta
 
-        from app.crud import ACTIVITY_DAYS, _day_activity
+        from app.repositories import ACTIVITY_DAYS, _day_activity
 
         out = _day_activity({date(2026, 9, 13): 2}, today=date(2026, 9, 13))
         assert len(out) == ACTIVITY_DAYS
@@ -854,7 +854,7 @@ class TestActivityStreak:
     def test_current_streak_uses_the_supplied_local_today(self):
         from datetime import date
 
-        from app.crud import _current_streak
+        from app.repositories import _current_streak
 
         dates = {date(2026, 9, 12), date(2026, 9, 13)}
         assert _current_streak(dates, today=date(2026, 9, 13)) == 2  # today active

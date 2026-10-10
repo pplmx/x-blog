@@ -70,7 +70,7 @@ async def _register_named(client, name, email):
 
 
 async def _create_post(db_session, **overrides):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     return await create_post(
@@ -420,7 +420,8 @@ class TestConcurrentMaterializationRace:
     async def test_get_reuses_existing_row(self, db_session, client):
         """GET on an already-materialized row is a pure read returning the
         same row — no second insert attempt."""
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         token = await _token(client)
         reader_id = (await client.get("/api/reader/me", headers=_auth(token))).json()["id"]
@@ -438,7 +439,8 @@ class TestConcurrentMaterializationRace:
     async def test_set_on_existing_row_lands_once(self, db_session, client):
         """A toggle on an already-materialized row updates the single row —
         the concurrent double-insert is exactly the case that would 500."""
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         token = await _token(client)
         reader_id = (await client.get("/api/reader/me", headers=_auth(token))).json()["id"]

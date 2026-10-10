@@ -36,7 +36,7 @@ _slug_counter = 0
 
 async def _create_post(db_session, *, published=True, draft=False, **overrides):
     """Create a post directly via crud (bypasses the admin API for brevity)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -102,7 +102,7 @@ class TestLikeAndList:
     async def test_liked_post_hidden_once_unpublished(self, client, db_session):
         """A liked post that later loses visibility must vanish from the list
         (no draft leak on a read path), while the like row is kept."""
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)

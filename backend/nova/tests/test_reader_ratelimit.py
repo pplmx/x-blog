@@ -55,7 +55,7 @@ async def _create_post(db_session, slug=None):
     The bookmark route only requires the post to be publicly visible, so the
     post-hoc flip satisfies it without touching the app.
     """
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter

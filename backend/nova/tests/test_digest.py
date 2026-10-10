@@ -26,7 +26,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app import crud, models
+from app import models
+from app import repositories as crud
 from app.auth import ReaderAccount
 from app.database import Base
 from app.digest import (

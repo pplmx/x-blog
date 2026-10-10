@@ -34,7 +34,7 @@ _slug_counter = 0
 
 async def _create_post(db_session, *, title="Readable post", category_id=None, published=True, **overrides):
     """Create a post directly via crud (bypasses the admin API for brevity)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -53,7 +53,7 @@ async def _create_post(db_session, *, title="Readable post", category_id=None, p
 
 
 async def _create_category(db_session, name):
-    from app.crud import create_category
+    from app.repositories import create_category
     from app.schemas import CategoryCreate
 
     return await create_category(db_session, CategoryCreate(name=name))
@@ -139,7 +139,7 @@ class TestInsightsContent:
         assert data["top_categories"][0]["name"] == "Rust"
 
     async def test_unpublished_posts_neither_leak_nor_count(self, client, db_session):
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)

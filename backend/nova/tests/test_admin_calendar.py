@@ -10,7 +10,7 @@ the month being excluded. Follows the other admin-analytics test conventions.
 from datetime import timedelta
 
 from app import models
-from app.crud import utc_now_naive
+from app.repositories import utc_now_naive
 
 CAL = "/api/admin/calendar"
 

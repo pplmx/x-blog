@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, models, schemas
+from app import auth, models, schemas
 from app.auth import User, get_current_admin
 from app.cache import posts_list_cache
 from app.conditional import conditional_json
@@ -13,6 +13,7 @@ from app.emailer import send_guest_thread_confirm_email
 from app.limiter import RATE_LIMIT_NEWSLETTER, RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 from app.middleware import get_logger
 from app.schemas import EMAIL_PATTERN, IdInt, NonNulStr, PageInt
+from app.services import posts as posts_service
 
 logger = get_logger(__name__)
 
@@ -29,7 +30,7 @@ class PostSubscriptionStatus(BaseModel):
 @router.get("/archive", response_model=list[schemas.ArchiveEntry])
 async def get_archive(request: Request, db: AsyncSession = Depends(get_db)):
     """Date-based archive index: (year, month, count) buckets newest-first."""
-    rows = await crud.get_archive(db)
+    rows = await posts_service.get_archive(db)
     entries = [schemas.ArchiveEntry(year=y, month=m, count=c) for y, m, c in rows]
     return conditional_json([e.model_dump(mode="json") for e in entries], request)
 
@@ -49,14 +50,14 @@ async def list_posts(
     # a cache hit: the crossing has no write-time trigger, so the list read is
     # one of the first public surfaces to notice it. Cheap indexed no-op when
     # nothing crossed; exactly-once per post by the durable stamp.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await posts_service.maybe_notify_due_scheduled_posts(db)
     cache_key = (page, limit, category_id, tag_id, year, month)
     cached = posts_list_cache.get(cache_key)
     if cached is not None:
         return conditional_json(cached, request)
 
     skip = (page - 1) * limit
-    posts, total = await crud.get_posts(
+    posts, total = await posts_service.get_posts(
         db,
         skip=skip,
         limit=limit,
@@ -103,17 +104,21 @@ async def get_post(
     # is tried as an id first and falls back to a slug lookup when no post
     # has that id (RIL TASK-093, ISS-074).
     is_numeric_id = len(post_id) <= 15 and post_id.isdigit() and post_id.isascii()
-    post = await crud.get_post(db, int(post_id)) if is_numeric_id else await crud.get_post_by_slug(db, post_id)
+    post = (
+        await posts_service.get_post(db, int(post_id))
+        if is_numeric_id
+        else await posts_service.get_post_by_slug(db, post_id)
+    )
     if is_numeric_id and post is None:
-        post = await crud.get_post_by_slug(db, post_id)
+        post = await posts_service.get_post_by_slug(db, post_id)
     # Drafts and not-yet-published scheduled posts are invisible to the public.
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not posts_service.is_publicly_visible(post):
         # Slug-change redirect (round 350): when a post was re-slugged after
         # this slug lived publicly, surface the canonical target so the web
         # layer can emit a permanent 301 instead of a soft 404 — old links
         # keep working. The 404 contract is unchanged (detail untouched); the
         # redirect rides a response header the frontend reads.
-        redirect_target = await crud.resolve_slug_redirect(db, "post", post_id)
+        redirect_target = await posts_service.resolve_slug_redirect(db, "post", post_id)
         if redirect_target:
             raise HTTPException(
                 status_code=404,
@@ -125,7 +130,7 @@ async def get_post(
     # its first public read to fire the new-post fan-out (DEC-336/TASK-394 —
     # no background scheduler, DEC-076). Sweep the whole late set: cheap
     # indexed no-op when nothing crossed, exactly-once per post by stamp.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await posts_service.maybe_notify_due_scheduled_posts(db)
     return post
 
 
@@ -137,14 +142,14 @@ async def create_post(
     _current_user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await crud.get_post_by_slug(db, post.slug)
+    existing = await posts_service.get_post_by_slug(db, post.slug)
     if existing:
         raise HTTPException(status_code=400, detail="Slug already exists")
     try:
         # Author attribution (DEC-359/TASK-405): default to the writing admin,
         # the same semantics as the admin-posts route — never a post silently
         # without an author when the writer is known.
-        return await crud.create_post(db, post, author_id=post.author_id or _current_user.id)
+        return await posts_service.create_post(db, post, author_id=post.author_id or _current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -159,7 +164,7 @@ async def update_post(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        db_post = await crud.update_post(db, post_id, post)
+        db_post = await posts_service.update_post(db, post_id, post)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not db_post:
@@ -176,7 +181,7 @@ async def delete_post(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        success = await crud.delete_post(db, post_id)
+        success = await posts_service.delete_post(db, post_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:
@@ -192,10 +197,10 @@ async def increment_views(
 ):
     """Increment the view count for a post."""
     # Only count views for publicly visible posts (drafts are 404).
-    existing = await crud.get_post(db, post_id)
-    if not existing or not crud.is_publicly_visible(existing):
+    existing = await posts_service.get_post(db, post_id)
+    if not existing or not posts_service.is_publicly_visible(existing):
         raise HTTPException(status_code=404, detail="Post not found")
-    post = await crud.increment_views(db, post_id)
+    post = await posts_service.increment_views(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return post
@@ -209,10 +214,10 @@ async def increment_likes(
     db: AsyncSession = Depends(get_db),
 ):
     """Increment the like count for a post."""
-    existing = await crud.get_post(db, post_id)
-    if not existing or not crud.is_publicly_visible(existing):
+    existing = await posts_service.get_post(db, post_id)
+    if not existing or not posts_service.is_publicly_visible(existing):
         raise HTTPException(status_code=404, detail="Post not found")
-    post = await crud.increment_likes(db, post_id)
+    post = await posts_service.increment_likes(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return post
@@ -223,7 +228,7 @@ async def get_popular_posts(request: Request, limit: int = Query(5, ge=1, le=50)
     """Get the most popular posts by view count."""
     popular = [
         schemas.PostList.model_validate(p).model_dump(mode="json")
-        for p in await crud.get_popular_posts(db, limit=limit)
+        for p in await posts_service.get_popular_posts(db, limit=limit)
     ]
     return conditional_json(popular, request)
 
@@ -244,7 +249,7 @@ async def get_trending_posts(
     """
     trending = [
         schemas.TrendingPost.model_validate(p).model_dump(mode="json")
-        for p in await crud.get_trending_posts(db, days=days, limit=limit)
+        for p in await posts_service.get_trending_posts(db, days=days, limit=limit)
     ]
     return conditional_json(trending, request)
 
@@ -262,12 +267,12 @@ async def get_related_posts(
     # must not act as an oracle for that draft's category. Previously this
     # returned 200 with generic/category-scoped posts for both, leaking draft
     # existence (backend deep-dive review).
-    source = await crud.get_post(db, post_id)
-    if not source or not crud.is_publicly_visible(source):
+    source = await posts_service.get_post(db, post_id)
+    if not source or not posts_service.is_publicly_visible(source):
         raise HTTPException(status_code=404, detail="Post not found")
     related = [
         schemas.PostList.model_validate(p).model_dump(mode="json")
-        for p in await crud.get_related_posts(db, post_id, limit=limit)
+        for p in await posts_service.get_related_posts(db, post_id, limit=limit)
     ]
     return conditional_json(related, request)
 
@@ -279,9 +284,11 @@ async def get_adjacent_posts(request: Request, post_id: IdInt, db: AsyncSession 
     Returns ``{previous, next}`` (either may be null at the ends of the feed).
     A 404 is returned when the post does not exist or is not publicly visible.
     """
-    if (existing := await crud.get_post(db, post_id)) is None or not crud.is_publicly_visible(existing):
+    if (existing := await posts_service.get_post(db, post_id)) is None or not posts_service.is_publicly_visible(
+        existing
+    ):
         raise HTTPException(status_code=404, detail="Post not found")
-    previous, following = await crud.get_adjacent_posts(db, post_id)
+    previous, following = await posts_service.get_adjacent_posts(db, post_id)
     return conditional_json(schemas.AdjacentPosts(previous=previous, next=following).model_dump(mode="json"), request)
 
 
@@ -307,9 +314,11 @@ async def get_post_subscription_status(
     public comment-create/bookmark paths).
     """
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not posts_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    subscribed = reader is not None and (await crud.get_comment_subscription(db, reader.id, post_id)) is not None
+    subscribed = (
+        reader is not None and (await posts_service.get_comment_subscription(db, reader.id, post_id)) is not None
+    )
     return PostSubscriptionStatus(post_id=post_id, subscribed=subscribed)
 
 
@@ -327,9 +336,9 @@ async def subscribe_to_post_thread(
     only follow posts they can see — private/scheduled/unknown are uniformly
     404."""
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not posts_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    _, created = await crud.add_comment_subscription(db, reader.id, post_id)
+    _, created = await posts_service.add_comment_subscription(db, reader.id, post_id)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return PostSubscriptionStatus(post_id=post_id, subscribed=True)
 
@@ -344,7 +353,7 @@ async def unsubscribe_from_post_thread(
 ):
     """Unfollow a post's comment thread. Idempotent: deleting a follow that is
     not present (or a post no longer public) is still a 204 no-op."""
-    await crud.remove_comment_subscription(db, reader.id, post_id)
+    await posts_service.remove_comment_subscription(db, reader.id, post_id)
     return None
 
 
@@ -395,9 +404,9 @@ async def guest_subscribe_to_post_thread(
     """
     email = body.email.strip().lower()
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not posts_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row, _created, needs_opt_in = await crud.add_guest_comment_subscription(
+    row, _created, needs_opt_in = await posts_service.add_guest_comment_subscription(
         db, email, post_id, digest_weekly=body.digest_weekly
     )
     if needs_opt_in:
@@ -434,12 +443,12 @@ async def guest_confirm_post_thread(
     choice rides back so the confirm page can seed its weekly-summary toggle
     (DEC-429)."""
     try:
-        confirmed = await crud.confirm_guest_comment_subscription(db, body.token)
+        confirmed = await posts_service.confirm_guest_comment_subscription(db, body.token)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not confirmed:
         raise HTTPException(status_code=404, detail="Invalid token")
-    row = await crud.get_guest_comment_subscription_by_token(db, body.token)
+    row = await posts_service.get_guest_comment_subscription_by_token(db, body.token)
     return {"confirmed": True, "digest_weekly": row.digest_weekly if row else False}
 
 
@@ -453,7 +462,7 @@ async def guest_set_post_thread_digest(
     """Flip a guest thread-follow's cadence via its emailed token (round 381,
     DEC-429): weekly summary vs a mail per approved comment. Idempotent; an
     unknown token is 404 — the token is the capability, no credentials."""
-    if not await crud.set_guest_thread_digest(db, body.token, body.digest_weekly):
+    if not await posts_service.set_guest_thread_digest(db, body.token, body.digest_weekly):
         raise HTTPException(status_code=404, detail="Invalid token")
     return {"digest_weekly": body.digest_weekly, "updated": True}
 
@@ -468,6 +477,6 @@ async def guest_unsubscribe_post_thread(
     """Flip a guest thread-follow's consent off via its emailed token
     (idempotent; an unknown token is 404). Row + token stay, so a stale link
     keeps working and the address is not re-emailed."""
-    if not await crud.unsubscribe_guest_comment_subscription(db, body.token):
+    if not await posts_service.unsubscribe_guest_comment_subscription(db, body.token):
         raise HTTPException(status_code=404, detail="Invalid token")
     return {"unsubscribed": True}

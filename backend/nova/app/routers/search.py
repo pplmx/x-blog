@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import crud, models
-from ..crud import _has_cjk, _has_searchable_token, log_search_query, search_posts
+from app.services import search as search_service
+from app.services.search import _has_cjk, _has_searchable_token, log_search_query, search_posts
+
+from .. import models
 from ..database import get_db
 from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
@@ -162,7 +164,7 @@ async def search(
 ):
     if not q.strip():
         # A whitespace-only q passes min_length=1 but tokenizes to an empty
-        # term, so crud.search_posts' `[t for t in query.split() if t] or [query]`
+        # term, so search_service.search_posts' `[t for t in query.split() if t] or [query]`
         # falls back to the raw " " → a content ILIKE '% %' matching nearly every
         # published post: an anonymous full-table scan on an unauthenticated
         # endpoint (round-296 deep-dive). Reject it at the boundary instead.
@@ -173,7 +175,7 @@ async def search(
     # surfaces a crossed scheduled post like any public surface, so it must
     # trigger the same exactly-once announce. Cheap indexed no-op when nothing
     # crossed; the durable stamp prevents duplicates.
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await search_service.maybe_notify_due_scheduled_posts(db)
     is_postgres = db.get_bind().dialect.name == "postgresql"
     # date-only "to" bounds are inclusive of the picked day (see
     # dates.inclusive_end_of_day); parse both raw strings back to naive-UTC
@@ -194,7 +196,7 @@ async def search(
     # ts_headline is only useful for ASCII queries — CJK/mixed (and
     # punctuation-only queries that tokenize to an empty tsquery) go through
     # the Python highlighter so Postgres snippets highlight too (DEC-071;
-    # scope must mirror crud.search_posts's use_tsvector, TASK-246).
+    # scope must mirror search_service.search_posts's use_tsvector, TASK-246).
     use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
     snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
 
@@ -329,16 +331,16 @@ async def search_all(
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     # Scheduled-post fan-out: a crossed scheduled post is a public surface and
     # must announce exactly once (same rule as the other public surfaces).
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await search_service.maybe_notify_due_scheduled_posts(db)
     is_postgres = db.get_bind().dialect.name == "postgresql"
 
     offset = (page - 1) * limit
     window = offset + limit
 
-    series, series_total = await crud.search_series(db, q, limit=window)
-    pages, pages_total = await crud.search_pages(db, q, limit=window)
-    authors, authors_total = await crud.search_authors(db, q, limit=window)
-    posts, posts_total = await crud.search_posts(db, q, page=1, limit=window, sort="newest")
+    series, series_total = await search_service.search_series(db, q, limit=window)
+    pages, pages_total = await search_service.search_pages(db, q, limit=window)
+    authors, authors_total = await search_service.search_authors(db, q, limit=window)
+    posts, posts_total = await search_service.search_posts(db, q, page=1, limit=window, sort="newest")
 
     ranked: list[tuple[float, dict]] = []
     for s in series:
@@ -393,12 +395,12 @@ async def search_comments(
         # public comment — reject at the boundary (same guard as /search,
         # round-296 deep-dive).
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
-    comments, total = await crud.search_comments(db, query=q, page=page, limit=limit)
+    comments, total = await search_service.search_comments(db, query=q, page=page, limit=limit)
 
     items = []
     for c in comments:
         base = CommentPublic.model_validate(c).model_dump()
-        post = c.post  # joinedload in crud.search_comments
+        post = c.post  # joinedload in search_service.search_comments
         items.append(
             {
                 **base,

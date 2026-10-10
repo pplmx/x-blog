@@ -447,8 +447,8 @@ async def test_sitemap_pages_through_all_published_posts(client, auth_headers, m
     is exercised with a handful of posts: a single-fetch implementation only
     ever sees the first page and the final posts fail to appear, while the
     fixed loop keeps fetching until a short page (DEC-318/TASK-387)."""
-    from app import crud as crud_module
     from app.routers import rss as rss_module
+    from app.services import rss as crud_module
 
     real_get_posts = crud_module.get_posts
 

@@ -7,12 +7,13 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, models
+from app import auth, models
 from app.auth import get_current_superuser
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, client_rate_key, limiter
 from app.middleware import get_logger
 from app.schemas import NonNulStr
+from app.services import admin as admin_service
 from app.webpush import (
     MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE,
     _b64url_decode,
@@ -132,7 +133,10 @@ async def subscribe(
     # A category-scoped new-post follow must reference an existing category:
     # the fan-out matches on the category id, so an unknown id would silently
     # never notify (DEC-076, TASK-147).
-    if data.new_post_category_id is not None and await crud.get_category(db, data.new_post_category_id) is None:
+    if (
+        data.new_post_category_id is not None
+        and await admin_service.get_category(db, data.new_post_category_id) is None
+    ):
         raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
 
     # Bind the subscription to the reader account when the subscribe request

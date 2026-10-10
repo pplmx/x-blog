@@ -1849,7 +1849,7 @@ class TestAdminPostPublishAtPreservation:
         from datetime import timedelta
 
         from app import models
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         scheduled = utc_now_naive() + timedelta(days=1)
         post = models.Post(
@@ -1874,7 +1874,7 @@ class TestAdminPostPublishAtPreservation:
         from datetime import timedelta
 
         from app import models
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         scheduled = utc_now_naive() + timedelta(days=2)
         post = models.Post(
@@ -1916,7 +1916,7 @@ class TestAdminPostStatusFilters:
     async def test_admin_list_posts_scheduled_includes_future_publish_at(self, client, auth_headers, db_session):
         from datetime import timedelta
 
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         now_naive = utc_now_naive()
         scheduled = models.Post(
@@ -1944,7 +1944,7 @@ class TestAdminPostStatusFilters:
         assert "Live" in published_titles
 
     async def test_admin_list_posts_published_includes_boundary_exact_now(self, client, auth_headers, db_session):
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         now_naive = utc_now_naive()
         boundary = models.Post(

@@ -30,7 +30,7 @@ _slug_counter = 0
 
 async def _create_post(db_session, *, title="Likeable post", excerpt=None, content="# Hello\n\nWorld"):
     """Create a published post directly via crud (bypasses the admin API)."""
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
@@ -143,7 +143,7 @@ class TestLikesSearch:
     async def test_search_does_not_leak_unpublished_post(self, client, db_session):
         """Visibility gate holds under q: a liked post that turned draft must not
         match — the filter must compose with the public-visibility WHERE."""
-        from app.crud import update_post
+        from app.repositories import update_post
         from app.schemas import PostUpdate
 
         token = await _token(client)

@@ -50,7 +50,8 @@ class TestSearchLogging:
         an atomic SQL expression, never a read-modify-write that can drop
         increments under concurrent searches (round 278).
         """
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         await crud.log_search_query(db_session, "async rust")
         await crud.log_search_query(db_session, "async rust")

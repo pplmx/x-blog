@@ -7,7 +7,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from app import auth, cache, crud, models, schemas
+from app import auth, cache, models, schemas
+from app import repositories as crud
 
 
 class TestEffectivePublishTs:
@@ -353,7 +354,7 @@ class TestCreatePost:
             content="Post content",
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert post.id is not None
@@ -375,7 +376,7 @@ class TestCreatePost:
             category_id=category.id,
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert post.category_id == category.id
@@ -391,7 +392,7 @@ class TestCreatePost:
 
         with (
             pytest.raises(ValueError) as exc_info,
-            patch("app.crud.clear_tags_cache"),
+            patch("app.repositories.clear_tags_cache"),
         ):
             await crud.create_post(db_session, post_data)
         assert "Category" in str(exc_info.value)
@@ -406,7 +407,7 @@ class TestCreatePost:
             tags=["python", "fastapi"],
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 2
@@ -427,7 +428,7 @@ class TestCreatePost:
             tags=["reuse-tag"],
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 1
@@ -451,7 +452,7 @@ class TestCreatePost:
             tags=["full", "test"],
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert post.published is True
@@ -481,7 +482,7 @@ class TestUpdatePost:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(title="New Title")
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -504,7 +505,7 @@ class TestUpdatePost:
             content="Updated content",
             published=True,
         )
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result.title == "Updated Title"
@@ -528,7 +529,7 @@ class TestUpdatePost:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -551,7 +552,7 @@ class TestUpdatePost:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(category_id=category2.id)
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result.category_id == category2.id
@@ -608,7 +609,7 @@ class TestCategories:
     async def test_create_category(self, db_session):
         """Test create_category creates new category."""
         category_data = schemas.CategoryCreate(name="New Category")
-        with patch("app.crud.clear_categories_cache"):
+        with patch("app.repositories.clear_categories_cache"):
             category = await crud.create_category(db_session, category_data)
 
         assert category.id is not None
@@ -621,7 +622,7 @@ class TestCategories:
         await db_session.commit()
 
         update_data = schemas.CategoryCreate(name="Updated Name")
-        with patch("app.crud.clear_categories_cache"):
+        with patch("app.repositories.clear_categories_cache"):
             result = await crud.update_category(db_session, category.id, update_data)
 
         assert result is not None
@@ -640,7 +641,7 @@ class TestCategories:
         await db_session.commit()
         cat_id = category.id
 
-        with patch("app.crud.clear_categories_cache"):
+        with patch("app.repositories.clear_categories_cache"):
             result = await crud.delete_category(db_session, cat_id)
 
         assert result is True
@@ -683,7 +684,7 @@ class TestTags:
     async def test_create_tag(self, db_session):
         """Test create_tag creates new tag."""
         tag_data = schemas.TagCreate(name="New Tag")
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             tag = await crud.create_tag(db_session, tag_data)
 
         assert tag.id is not None
@@ -696,7 +697,7 @@ class TestTags:
         await db_session.commit()
 
         update_data = schemas.TagCreate(name="Updated Tag Name")
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_tag(db_session, tag.id, update_data)
 
         assert result is not None
@@ -709,7 +710,7 @@ class TestTags:
         await db_session.commit()
         tag_id = tag.id
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.delete_tag(db_session, tag_id)
 
         assert result is True
@@ -928,7 +929,7 @@ class TestComments:
         db_session.add(models.CategoryFollow(reader_id=reader.id, category_id=category.id))
         await db_session.commit()
 
-        with patch("app.crud.clear_categories_cache"):
+        with patch("app.repositories.clear_categories_cache"):
             assert await crud.delete_category(db_session, category.id) is True
 
         remaining = (
@@ -958,7 +959,7 @@ class TestComments:
         db_session.add(models.TagFollow(reader_id=reader.id, tag_id=tag.id))
         await db_session.commit()
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             assert await crud.delete_tag(db_session, tag.id) is True
 
         remaining = (
@@ -988,8 +989,8 @@ class TestComments:
         await db_session.commit()
 
         with (
-            patch("app.crud.clear_series_cache"),
-            patch("app.crud.clear_posts_list_cache"),
+            patch("app.repositories.clear_series_cache"),
+            patch("app.repositories.clear_posts_list_cache"),
         ):
             assert await crud.delete_series(db_session, series.id) is True
 
@@ -1115,7 +1116,7 @@ class TestSearchPosts:
         must stay on the substring path for consistent cross-backend results
         (TASK-246, PG-harness finding).
         """
-        from app.crud import _has_searchable_token
+        from app.repositories import _has_searchable_token
 
         assert _has_searchable_token("python asyncio")
         assert _has_searchable_token("c++ 40%")
@@ -1655,7 +1656,7 @@ class TestDeleteCategoryForeignKey:
         await db_session.commit()
         cat_id = category.id
 
-        with patch("app.crud.clear_categories_cache"):
+        with patch("app.repositories.clear_categories_cache"):
             result = await crud.delete_category(db_session, cat_id)
 
         assert result is True
@@ -1690,7 +1691,7 @@ class TestDeleteTagForeignKey:
         await db_session.commit()
         tag_id = tag.id
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.delete_tag(db_session, tag_id)
 
         assert result is True
@@ -1716,7 +1717,7 @@ class TestUpdatePostTagIds:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1744,7 +1745,7 @@ class TestUpdatePostTagIds:
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[new_tag.id])
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1769,7 +1770,7 @@ class TestUpdatePostTagIds:
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[])
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
@@ -1807,7 +1808,7 @@ class TestUpdatePostValidation:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(author_id=user.id)
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
         assert result is not None
         assert result.author_id == user.id
@@ -1840,7 +1841,7 @@ class TestUpdatePostValidation:
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[])
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
         assert result is not None
         assert len(result.tags) == 0
@@ -1857,7 +1858,7 @@ class TestIntegrityErrorHandling:
 
         category_data = schemas.CategoryCreate(name="Duplicate Cat")
         with (
-            patch("app.crud.clear_categories_cache"),
+            patch("app.repositories.clear_categories_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.create_category(db_session, category_data)
@@ -1871,7 +1872,7 @@ class TestIntegrityErrorHandling:
 
         update_data = schemas.CategoryCreate(name="Category One")
         with (
-            patch("app.crud.clear_categories_cache"),
+            patch("app.repositories.clear_categories_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.update_category(db_session, cat2.id, update_data)
@@ -1884,7 +1885,7 @@ class TestIntegrityErrorHandling:
 
         tag_data = schemas.TagCreate(name="Duplicate Tag")
         with (
-            patch("app.crud.clear_tags_cache"),
+            patch("app.repositories.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.create_tag(db_session, tag_data)
@@ -1898,7 +1899,7 @@ class TestIntegrityErrorHandling:
 
         update_data = schemas.TagCreate(name="Tag One")
         with (
-            patch("app.crud.clear_tags_cache"),
+            patch("app.repositories.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.update_tag(db_session, tag2.id, update_data)
@@ -1911,7 +1912,7 @@ class TestIntegrityErrorHandling:
 
         post_data = schemas.PostCreate(title="Duplicate Post", slug="duplicate-slug-test", content="Other content")
         with (
-            patch("app.crud.clear_tags_cache"),
+            patch("app.repositories.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.create_post(db_session, post_data)
@@ -1926,7 +1927,7 @@ class TestIntegrityErrorHandling:
 
         update_data = schemas.PostUpdate(slug="post-one-slug")
         with (
-            patch("app.crud.clear_tags_cache"),
+            patch("app.repositories.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
             await crud.update_post(db_session, post2.id, update_data)
@@ -1944,7 +1945,7 @@ class TestCreatePostCoverImage:
             cover_image="https://example.com/cover.jpg",
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert post.cover_image == "https://example.com/cover.jpg"
@@ -1957,7 +1958,7 @@ class TestCreatePostCoverImage:
             content="Content",
         )
 
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             post = await crud.create_post(db_session, post_data)
 
         assert post.cover_image is None
@@ -1977,7 +1978,7 @@ class TestUpdatePostCoverImage:
         await db_session.commit()
 
         update_data = schemas.PostUpdate(cover_image="https://example.com/updated.jpg")
-        with patch("app.crud.clear_tags_cache"):
+        with patch("app.repositories.clear_tags_cache"):
             result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None

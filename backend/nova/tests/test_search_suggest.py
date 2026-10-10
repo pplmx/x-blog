@@ -17,7 +17,7 @@ public post titles) with plain Python edit distance. Key properties:
 from datetime import UTC, datetime, timedelta
 
 from app import models, schemas
-from app.crud import create_post
+from app.repositories import create_post
 from app.suggest import (
     SUGGEST_MIN_SCORE,
     build_search_vocabulary,

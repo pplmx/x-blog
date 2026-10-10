@@ -26,7 +26,7 @@ from app.schemas import PostCreate
 
 
 async def _create_post(db_session, slug="reply-notif-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,
@@ -168,7 +168,7 @@ class TestReplyNotification:
 
     async def _parent(self, client, db_session, email=None):
         """Approved root comment by a reader. Returns (post, parent_id, token)."""
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         self._COUNTER += 1
         email = email or f"reply-a{self._COUNTER}@example.com"
@@ -273,7 +273,7 @@ class TestReplyNotification:
             assert not mock_send.called
 
     async def test_approving_reply_to_anonymous_comment_no_push(self, client, db_session, auth_headers):
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(db_session, slug=f"reply-notif-anon-{self._COUNTER}")
         anon = await client.post(

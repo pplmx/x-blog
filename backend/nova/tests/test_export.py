@@ -100,7 +100,8 @@ class TestExportPostsCsv:
         (RIL ISS-290)."""
         from datetime import timedelta
 
-        from app import crud, models
+        from app import models
+        from app import repositories as crud
 
         future = crud.utc_now_naive() + timedelta(days=2)
         db_session.add_all(

@@ -41,7 +41,7 @@ async def _category(db, name):
 
 
 async def _post(db, title, category=None, tags=(), published=True):
-    from app.crud import create_post
+    from app.repositories import create_post
     from app.schemas import PostCreate
 
     global _slug_counter

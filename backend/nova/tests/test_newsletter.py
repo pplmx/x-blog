@@ -43,7 +43,7 @@ async def _create_post(db_session, slug="newsletter-post"):
     from app.emailer import dispatch_newsletter_new_post
     from app.middleware import get_logger
 
-    # NOTE: not via app.crud.create_post — under the async test harness's
+    # NOTE: not via repositories.create_post — under the async test harness's
     # connection-bound session, create_post's internal
     # record_new_post_notifications expunges the just-created post (its
     # swallowed-exception rollback wipes every attribute), so the subsequent
@@ -545,7 +545,7 @@ async def test_scheduled_post_crossing_emails_newsletter(client, db_session, smt
     exactly once via the fire-on-read sweep."""
     from datetime import UTC, datetime, timedelta
 
-    from app import crud
+    import app.repositories.notifications as _notifications
 
     # Under the async harness's connection-bound session, the sweep's internal
     # record_new_post_notifications / dispatch_new_post read post.tags (a lazy
@@ -556,8 +556,8 @@ async def test_scheduled_post_crossing_emails_newsletter(client, db_session, smt
     async def _noop(_db, *_args, **_kwargs):
         return None
 
-    monkeypatch.setattr(crud, "record_new_post_notifications", _noop)
-    monkeypatch.setattr(crud, "dispatch_new_post", _noop)
+    monkeypatch.setattr(_notifications, "record_new_post_notifications", _noop)
+    monkeypatch.setattr(_notifications, "dispatch_new_post", _noop)
 
     await client.post("/api/newsletter/subscribe", json={"email": "sweep@example.com"})
     token = _confirm_token(smtp_sink, "sweep@example.com")
@@ -565,7 +565,7 @@ async def test_scheduled_post_crossing_emails_newsletter(client, db_session, smt
 
     # Create with a FUTURE publish_at (scheduled): the immediate write fan-out
     # must NOT email anything yet.
-    from app.crud import create_post
+    from app.repositories import create_post
 
     future = datetime.now(UTC) + timedelta(hours=1)
     post = await create_post(
@@ -585,10 +585,10 @@ async def test_scheduled_post_crossing_emails_newsletter(client, db_session, smt
     # emails the newsletter subscriber exactly once.
     post.publish_at = (datetime.now(UTC) - timedelta(minutes=5)).replace(tzinfo=None)
     await db_session.commit()
-    claimed = await crud.maybe_notify_due_scheduled_posts(db_session)
+    claimed = await _notifications.maybe_notify_due_scheduled_posts(db_session)
     assert claimed == 1
     assert len(_new_post_messages(smtp_sink, "sweep@example.com")) == 1
 
     # A second sweep pass finds nothing new (exactly-once stamp) — no duplicate.
-    assert await crud.maybe_notify_due_scheduled_posts(db_session) == 0
+    assert await _notifications.maybe_notify_due_scheduled_posts(db_session) == 0
     assert len(_new_post_messages(smtp_sink, "sweep@example.com")) == 1

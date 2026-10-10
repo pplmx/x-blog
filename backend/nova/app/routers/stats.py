@@ -6,9 +6,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
-from app.crud import utc_now_naive
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, limiter
+from app.services.analytics import utc_now_naive
 
 
 class BlogStatsResponse(BaseModel):

@@ -11,7 +11,7 @@ and the idempotent profile shape even with zero comments.
 from sqlalchemy import select
 
 from app.auth import ReaderAccount
-from app.crud import approve_comment
+from app.repositories import approve_comment
 
 PROFILE = "/api/readers/{rid}"
 _n = 0
@@ -115,7 +115,7 @@ class TestReaderProfile:
         # Comments on a draft are rejected at create (post not publicly visible) —
         # write directly to the DB to prove the profile gate also drops drafts.
         from app import schemas
-        from app.crud import create_comment
+        from app.repositories import create_comment
 
         created = await create_comment(
             db_session,

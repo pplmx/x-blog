@@ -15,10 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import crud
 from app.auth import User, get_current_superuser
 from app.database import get_db
 from app.limiter import RATE_LIMIT_EXPORT, limiter
+from app.services import backup as backup_service
 
 router = APIRouter(prefix="/api/admin/backup", tags=["export"])
 
@@ -52,7 +52,7 @@ async def get_backup(
     _current_user: User = Depends(get_current_superuser),
 ):
     """The whole blog as a portable ``x-blog-backup`` v1 JSON snapshot."""
-    return await crud.build_backup_snapshot(db)
+    return await backup_service.build_backup_snapshot(db)
 
 
 @router.post("/restore")
@@ -74,6 +74,6 @@ async def restore_backup(
     if total_comments > MAX_RESTORE_COMMENTS:
         raise HTTPException(status_code=422, detail=f"Too many comments (max {MAX_RESTORE_COMMENTS})")
     try:
-        return await crud.restore_backup(db, data.model_dump())
+        return await backup_service.restore_backup(db, data.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

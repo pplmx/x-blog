@@ -23,7 +23,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, emailer, models, schemas
+from app import auth, emailer, models, schemas
 from app.database import get_db
 from app.image_validation import (
     ALLOWED_TYPES,
@@ -37,6 +37,7 @@ from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER,
 from app.middleware import get_logger
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import IdInt, NonNulStr, PageInt
+from app.services import reader as reader_service
 
 logger = get_logger("reader")
 router = APIRouter(prefix="/api/reader", tags=["reader"])
@@ -243,7 +244,7 @@ class FolderCreate(BaseModel):
     @classmethod
     def strip_name(cls, value: object) -> object:
         # Whitespace-only name passed min_length=1 and was later stored as ""
-        # by crud.create_bookmark_folder's strip (a blank folder in the list,
+        # by reader_service.create_bookmark_folder's strip (a blank folder in the list,
         # ISS-456). Strip at the boundary like every other name field so
         # "   " is rejected as 422 before it can reach storage.
         return schemas._strip_blank(value) if isinstance(value, str) else value
@@ -716,7 +717,7 @@ async def register(
         raise HTTPException(status_code=400, detail="Email already registered")
     await db.refresh(reader)
 
-    reader.last_login_at = crud.utc_now_naive()
+    reader.last_login_at = reader_service.utc_now_naive()
     await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -758,7 +759,7 @@ async def login(
             "two_factor_required": True,
             "mfa_token": auth.create_reader_2fa_token(reader.id, token_version=reader.token_version or 0),
         }
-    reader.last_login_at = crud.utc_now_naive()
+    reader.last_login_at = reader_service.utc_now_naive()
     await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -797,7 +798,7 @@ async def login_2fa(
             detail="Invalid or expired login attempt",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    reader.last_login_at = crud.utc_now_naive()
+    reader.last_login_at = reader_service.utc_now_naive()
     await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -1218,7 +1219,7 @@ async def request_email_change(
     token = token_urlsafe(32)
     current_reader.email_change_token = token
     current_reader.email_change_pending = new_email
-    current_reader.email_change_requested_at = crud.utc_now_naive()
+    current_reader.email_change_requested_at = reader_service.utc_now_naive()
     # Persist BEFORE sending (round 393): an email sent in front of an
     # uncommitted token leaves the reader holding a dead link if the commit
     # then fails (transient DB error) — the confirm step would find no row by
@@ -1291,7 +1292,7 @@ async def confirm_email_change(
     if reader is None or reader.email_change_pending is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
 
-    now = crud.utc_now_naive()
+    now = reader_service.utc_now_naive()
     if reader.email_change_requested_at is None or now - reader.email_change_requested_at > timedelta(
         minutes=EMAIL_CHANGE_TTL_MINUTES
     ):
@@ -1468,7 +1469,7 @@ async def confirm_password_reset(
     reader.token_version = (reader.token_version or 0) + 1
     await db.commit()
     await db.refresh(reader)
-    reader.last_login_at = crud.utc_now_naive()
+    reader.last_login_at = reader_service.utc_now_naive()
     await db.commit()
 
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
@@ -1507,7 +1508,7 @@ async def delete_my_account(
     # which a lazy refresh of the account object would throw).
     avatar_url = current_reader.avatar_url
     try:
-        deleted = await crud.delete_reader_account(db, current_reader.id)
+        deleted = await reader_service.delete_reader_account(db, current_reader.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
@@ -1582,7 +1583,10 @@ async def update_my_push_subscription_prefs(
     ).scalar_one_or_none()
     if not sub:
         raise HTTPException(status_code=404, detail="Push subscription not found")
-    if payload.new_post_category_id is not None and (await crud.get_category(db, payload.new_post_category_id)) is None:
+    if (
+        payload.new_post_category_id is not None
+        and (await reader_service.get_category(db, payload.new_post_category_id)) is None
+    ):
         raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
     sub.want_new_posts = payload.want_new_posts
     sub.new_post_category_id = payload.new_post_category_id
@@ -1649,7 +1653,7 @@ async def list_bookmarks(
     (page/limit, max 100) keeps setup/merge calls from loading every row
     (ISS-142); clients that need the full set page through ``total_pages``.
     """
-    rows, total = await crud.list_reader_bookmarks(
+    rows, total = await reader_service.list_reader_bookmarks(
         db, current_reader.id, folder_id=folder_id, done=done, page=page, limit=limit
     )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
@@ -1676,7 +1680,7 @@ async def list_my_post_subscriptions(
     reader unsubscribes from the post page). Newest follow first. Bounded
     paging like the bookmark list (ISS-142).
     """
-    posts, total = await crud.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
+    posts, total = await reader_service.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return SubscribedThreadListResponse(
         items=[SubscribedThreadItem.from_post(p) for p in posts],
@@ -1704,9 +1708,9 @@ async def add_bookmark(
     oracle (same guard as the public comment-create path).
     """
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not reader_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    bookmark, created = await crud.add_reader_bookmark(db, current_reader.id, post.id)
+    bookmark, created = await reader_service.add_reader_bookmark(db, current_reader.id, post.id)
     response.status_code = 201 if created else 200
     return AddBookmarkResponse(post_id=bookmark.post_id, already_existed=not created)
 
@@ -1726,7 +1730,7 @@ async def clear_bookmarks(
     and the next cloud merge resurrected the list). Idempotent 204 even when
     there was nothing to clear."""
 
-    await crud.clear_reader_bookmarks(db, current_reader.id)
+    await reader_service.clear_reader_bookmarks(db, current_reader.id)
     return None
 
 
@@ -1740,7 +1744,7 @@ async def remove_bookmark(
 ):
     """Remove a bookmark. Idempotent: deleting a non-existent bookmark is a
     204 no-op (merge-friendly)."""
-    await crud.remove_reader_bookmark(db, current_reader.id, post_id)
+    await reader_service.remove_reader_bookmark(db, current_reader.id, post_id)
     return None
 
 
@@ -1767,7 +1771,7 @@ async def list_my_likes(
     ``q`` (optional) filters to liked posts matching title/excerpt
     (escape-aware — DEC-413/TASK-432, recall-search like history DEC-148).
     """
-    posts, total = await crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
+    posts, total = await reader_service.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
@@ -1800,9 +1804,9 @@ async def like_post(
     oracle, same guard as bookmark/comment-create paths).
     """
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not reader_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    like, created = await crud.add_reader_post_like(db, current_reader.id, post.id)
+    like, created = await reader_service.add_reader_post_like(db, current_reader.id, post.id)
     # The counter bump is INSIDE add_reader_post_like's transaction (ISS-574):
     # row + badge commit together, so a crash between them can't leave a liked
     # post with an unbumped count. Do not bump again here — that would double it.
@@ -1825,7 +1829,7 @@ async def unlike_post(
     # The counter decrement is INSIDE remove_reader_post_like's transaction
     # (ISS-574): row delete + badge decrement commit together, so a crash can't
     # leave an unliked post still counting the reader. Do not decrement here.
-    await crud.remove_reader_post_like(db, current_reader.id, post_id)
+    await reader_service.remove_reader_post_like(db, current_reader.id, post_id)
     return None
 
 
@@ -1839,7 +1843,7 @@ async def list_bookmark_folders(
     db: AsyncSession = Depends(get_db),
 ):
     """List the reader's bookmark folders with their saved-post counts."""
-    folders = await crud.list_reader_bookmark_folders(db, current_reader.id)
+    folders = await reader_service.list_reader_bookmark_folders(db, current_reader.id)
     return BookmarkFolderListResponse(
         items=[BookmarkFolderItem(id=f.id, name=f.name, count=c) for f, c in folders],
         total=len(folders),
@@ -1857,7 +1861,7 @@ async def create_bookmark_folder(
 ):
     """Create a bookmark folder. Idempotent: a same-named folder already
     existing returns 200 with created=False semantics (no error)."""
-    folder, created = await crud.create_bookmark_folder(db, current_reader.id, body.name)
+    folder, created = await reader_service.create_bookmark_folder(db, current_reader.id, body.name)
     response.status_code = 201 if created else 200
     return BookmarkFolderResponse(id=folder.id, name=folder.name)
 
@@ -1873,10 +1877,10 @@ async def rename_bookmark_folder(
 ):
     """Rename a folder. 404 if it doesn't belong to the reader; 409 if the new
     name collides with another of the reader's folders."""
-    folder = await crud.rename_bookmark_folder(db, current_reader.id, folder_id, body.name)
+    folder = await reader_service.rename_bookmark_folder(db, current_reader.id, folder_id, body.name)
     if not folder:
         # Distinguish not-found vs duplicate-name.
-        existing = await crud.get_bookmark_folder(db, current_reader.id, folder_id)
+        existing = await reader_service.get_bookmark_folder(db, current_reader.id, folder_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Folder not found")
         raise HTTPException(status_code=409, detail="Folder name already exists")
@@ -1892,7 +1896,7 @@ async def delete_bookmark_folder(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a folder (its bookmarks become uncategorized). Idempotent 204."""
-    await crud.delete_bookmark_folder(db, current_reader.id, folder_id)
+    await reader_service.delete_bookmark_folder(db, current_reader.id, folder_id)
     return None
 
 
@@ -1909,7 +1913,7 @@ async def assign_bookmark_folder(
 
     404 if the post isn't bookmarked by the reader or the folder isn't theirs.
     """
-    bookmark = await crud.set_bookmark_folder(db, current_reader.id, post_id, body.folder_id)
+    bookmark = await reader_service.set_bookmark_folder(db, current_reader.id, post_id, body.folder_id)
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark or folder not found")
     return AssignFolderResponse(post_id=bookmark.post_id, folder_id=bookmark.folder_id)
@@ -1930,7 +1934,7 @@ async def set_bookmark_done(
     To-read queue) and back To-read otherwise. Idempotent; 404 if the post
     isn't bookmarked by this reader.
     """
-    bookmark = await crud.set_reader_bookmark_done(db, current_reader.id, post_id, body.done)
+    bookmark = await reader_service.set_reader_bookmark_done(db, current_reader.id, post_id, body.done)
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return BookmarkDoneResponse(post_id=bookmark.post_id, done=bookmark.done)
@@ -1947,10 +1951,10 @@ async def series_reading_progress(
     Reads are posts present in the reader's reading_history among the series'
     ordered publicly-visible posts. 404 if the series slug is unknown.
     """
-    series = await crud.get_series_by_slug(db, slug)
+    series = await reader_service.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    prog = await crud.reader_series_progress(db, current_reader.id, series)
+    prog = await reader_service.reader_series_progress(db, current_reader.id, series)
     return SeriesProgressResponse(
         series_slug=series.slug,
         series_title=series.title,
@@ -1972,7 +1976,7 @@ async def export_my_data(
     the bundle assembles every comment + history row, so an unthrottled reader
     token could otherwise serialize large payloads on demand (security review).
     """
-    return DataExportResponse(**await crud.export_reader_data(db, current_reader.id))
+    return DataExportResponse(**await reader_service.export_reader_data(db, current_reader.id))
 
 
 @router.get("/me/recommendations", response_model=list[schemas.PostList])
@@ -1982,7 +1986,7 @@ async def my_recommendations(
     db: AsyncSession = Depends(get_db),
 ):
     """Personalized post recommendations for the signed-in reader (DEC-128)."""
-    recommended = await crud.recommend_posts(db, current_reader.id, limit=limit)
+    recommended = await reader_service.recommend_posts(db, current_reader.id, limit=limit)
     return [schemas.PostList.model_validate(p) for p in recommended]
 
 
@@ -2003,8 +2007,10 @@ async def my_follows_feed(
     # notice a crossed scheduled post — so it must trigger the same exactly-
     # once announce as the other public surfaces (round-331 sweep). Cheap
     # indexed no-op when nothing crossed; the durable stamp prevents duplicates.
-    await crud.maybe_notify_due_scheduled_posts(db)
-    posts, total = await crud.follows_feed_posts(db, current_reader.id, limit=limit, offset=(page - 1) * limit)
+    await reader_service.maybe_notify_due_scheduled_posts(db)
+    posts, total = await reader_service.follows_feed_posts(
+        db, current_reader.id, limit=limit, offset=(page - 1) * limit
+    )
     total_pages = (total + limit - 1) // limit
     return schemas.PostListResponse.model_validate(
         {
@@ -2025,7 +2031,7 @@ async def list_series_follows(
     db: AsyncSession = Depends(get_db),
 ):
     """The series the reader follows, with per-follow notification state."""
-    follows = await crud.list_reader_series_follows(db, current_reader.id)
+    follows = await reader_service.list_reader_series_follows(db, current_reader.id)
     return FollowedSeriesListResponse(
         items=[
             FollowedSeriesItem(
@@ -2054,7 +2060,7 @@ async def follow_series(
     series = await db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    follow, created = await crud.add_series_follow(db, current_reader.id, series_id)
+    follow, created = await reader_service.add_series_follow(db, current_reader.id, series_id)
     response.status_code = 201 if created else 200
     return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
 
@@ -2078,7 +2084,7 @@ async def set_series_follow_notify(
     series = await db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    follow = await crud.set_series_follow_notify(db, current_reader.id, series_id, payload.notify)
+    follow = await reader_service.set_series_follow_notify(db, current_reader.id, series_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this series")
     return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
@@ -2093,7 +2099,7 @@ async def unfollow_series(
     db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a series. Idempotent 204."""
-    await crud.remove_series_follow(db, current_reader.id, series_id)
+    await reader_service.remove_series_follow(db, current_reader.id, series_id)
     return None
 
 
@@ -2103,7 +2109,7 @@ async def list_category_follows(
     db: AsyncSession = Depends(get_db),
 ):
     """The categories the reader follows, with per-follow notification state."""
-    follows = await crud.list_reader_category_follows(db, current_reader.id)
+    follows = await reader_service.list_reader_category_follows(db, current_reader.id)
     return FollowedCategoryListResponse(
         items=[
             FollowedCategoryItem(
@@ -2130,7 +2136,7 @@ async def follow_category(
     category = await db.get(models.Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    follow, created = await crud.add_category_follow(db, current_reader.id, category_id)
+    follow, created = await reader_service.add_category_follow(db, current_reader.id, category_id)
     response.status_code = 201 if created else 200
     return CategoryFollowResponse(
         category_id=category.id,
@@ -2153,7 +2159,7 @@ async def set_category_follow_notify(
     category = await db.get(models.Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    follow = await crud.set_category_follow_notify(db, current_reader.id, category_id, payload.notify)
+    follow = await reader_service.set_category_follow_notify(db, current_reader.id, category_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this category")
     return CategoryFollowResponse(
@@ -2173,7 +2179,7 @@ async def unfollow_category(
     db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a category. Idempotent 204."""
-    await crud.remove_category_follow(db, current_reader.id, category_id)
+    await reader_service.remove_category_follow(db, current_reader.id, category_id)
     return None
 
 
@@ -2183,7 +2189,7 @@ async def list_tag_follows(
     db: AsyncSession = Depends(get_db),
 ):
     """The tags the reader follows, with per-follow notification state."""
-    follows = await crud.list_reader_tag_follows(db, current_reader.id)
+    follows = await reader_service.list_reader_tag_follows(db, current_reader.id)
     return FollowedTagListResponse(
         items=[
             FollowedTagItem(
@@ -2210,7 +2216,7 @@ async def follow_tag(
     tag = await db.get(models.Tag, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    follow, created = await crud.add_tag_follow(db, current_reader.id, tag_id)
+    follow, created = await reader_service.add_tag_follow(db, current_reader.id, tag_id)
     response.status_code = 201 if created else 200
     return TagFollowResponse(
         tag_id=tag.id,
@@ -2233,7 +2239,7 @@ async def set_tag_follow_notify(
     tag = await db.get(models.Tag, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    follow = await crud.set_tag_follow_notify(db, current_reader.id, tag_id, payload.notify)
+    follow = await reader_service.set_tag_follow_notify(db, current_reader.id, tag_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this tag")
     return TagFollowResponse(
@@ -2253,7 +2259,7 @@ async def unfollow_tag(
     db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a tag. Idempotent 204."""
-    await crud.remove_tag_follow(db, current_reader.id, tag_id)
+    await reader_service.remove_tag_follow(db, current_reader.id, tag_id)
     return None
 
 
@@ -2276,7 +2282,7 @@ async def list_author_follows(
     db: AsyncSession = Depends(get_db),
 ):
     """The writers the reader follows, with per-follow notification state."""
-    follows = await crud.list_reader_author_follows(db, current_reader.id)
+    follows = await reader_service.list_reader_author_follows(db, current_reader.id)
     items = []
     for f in follows:
         author = f.author
@@ -2303,7 +2309,7 @@ async def follow_author(
 ):
     """Follow a writer for new-post push (idempotent: 201 on first, 200 on re-follow)."""
     author = await _get_followable_author(db, author_id)
-    follow, created = await crud.add_author_follow(db, current_reader.id, author_id)
+    follow, created = await reader_service.add_author_follow(db, current_reader.id, author_id)
     response.status_code = 201 if created else 200
     return AuthorFollowResponse(
         author_id=int(author.id),
@@ -2324,7 +2330,7 @@ async def set_author_follow_notify(
 ):
     """Toggle new-post notifications for a followed author. 404 if not following."""
     author = await _get_followable_author(db, author_id)
-    follow = await crud.set_author_follow_notify(db, current_reader.id, author_id, payload.notify)
+    follow = await reader_service.set_author_follow_notify(db, current_reader.id, author_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this author")
     return AuthorFollowResponse(
@@ -2344,7 +2350,7 @@ async def unfollow_author(
     db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a writer. Idempotent 204."""
-    await crud.remove_author_follow(db, current_reader.id, author_id)
+    await reader_service.remove_author_follow(db, current_reader.id, author_id)
     return None
 
 
@@ -2363,7 +2369,7 @@ async def list_reader_follows(
     db: AsyncSession = Depends(get_db),
 ):
     """The readers the reader follows, newest first, for /account management."""
-    rows = await crud.list_reader_follows(db, current_reader.id)
+    rows = await reader_service.list_reader_follows(db, current_reader.id)
     items = []
     for f in rows:
         followed = f.followed
@@ -2402,7 +2408,7 @@ async def follow_reader(
     target = await _get_followable_reader(db, reader_id)
     if target is None or target.is_active is False:
         raise HTTPException(status_code=404, detail="Reader not found")
-    follow, created = await crud.add_reader_follow(db, current_reader.id, reader_id)
+    follow, created = await reader_service.add_reader_follow(db, current_reader.id, reader_id)
     response.status_code = 201 if created else 200
     return ReaderFollowResponse(
         reader_id=reader_id,
@@ -2421,7 +2427,7 @@ async def unfollow_reader(
     db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a reader. Idempotent 204."""
-    await crud.remove_reader_follow(db, current_reader.id, reader_id)
+    await reader_service.remove_reader_follow(db, current_reader.id, reader_id)
     return None
 
 
@@ -2441,7 +2447,7 @@ async def list_reader_blocks(
     usable public identity, so it is dropped rather than showing a dead row
     (same rule as list_reader_follows).
     """
-    rows = await crud.list_reader_blocks(db, current_reader.id)
+    rows = await reader_service.list_reader_blocks(db, current_reader.id)
     # Batch-load the blocked profiles in ONE query instead of a per-row
     # primary-key fetch (N+1) — a reader with hundreds of blocks was issuing
     # that many sequential round-trips on a list they directly control
@@ -2490,7 +2496,7 @@ async def block_reader(
     target = await _get_followable_reader(db, reader_id)
     if target is None or target.is_active is False:
         raise HTTPException(status_code=404, detail="Reader not found")
-    block, created = await crud.add_reader_block(db, current_reader.id, reader_id)
+    block, created = await reader_service.add_reader_block(db, current_reader.id, reader_id)
     response.status_code = 201 if created else 200
     return BlockedReaderItem(
         reader_id=reader_id,
@@ -2509,7 +2515,7 @@ async def unblock_reader(
     db: AsyncSession = Depends(get_db),
 ):
     """Unblock a reader. Idempotent 204; restores their notifications."""
-    await crud.remove_reader_block(db, current_reader.id, reader_id)
+    await reader_service.remove_reader_block(db, current_reader.id, reader_id)
     return None
 
 
@@ -2537,7 +2543,7 @@ async def list_reading_history(
     invariant as bookmarks/subs: a viewed post that went dark stops appearing
     (row kept).
     """
-    rows, total = await crud.list_reader_history(db, current_reader.id, page=page, limit=limit, q=q)
+    rows, total = await reader_service.list_reader_history(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return ReadingHistoryListResponse(
         items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
@@ -2562,7 +2568,7 @@ async def list_in_progress(
     below). Same auth + non-leak invariants as the history list: guests/admin
     tokens 401, a post that went dark stops appearing (row kept).
     """
-    rows, total = await crud.list_reader_in_progress(db, current_reader.id, limit=limit)
+    rows, total = await reader_service.list_reader_in_progress(db, current_reader.id, limit=limit)
     return ReadingHistoryListResponse(
         items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
         total=total,
@@ -2600,7 +2606,7 @@ async def reading_history_stats(
             tz_info = ZoneInfo(tz)
         except ZoneInfoNotFoundError as exc:
             raise HTTPException(status_code=422, detail="Unknown timezone") from exc
-    stats = await crud.reader_history_stats(db, current_reader.id, recent_limit=6, tz=tz_info)
+    stats = await reader_service.reader_history_stats(db, current_reader.id, recent_limit=6, tz=tz_info)
     return ReadingStatsResponse(
         total_posts=stats["total_posts"],
         total_reading_minutes=stats["total_reading_minutes"],
@@ -2625,7 +2631,7 @@ async def reading_history_insights(
     public-visibility invariant as every history read path — un-published and
     scheduled posts neither leak nor count.
     """
-    return ReadingInsightsResponse(**await crud.reader_history_insights(db, current_reader.id))
+    return ReadingInsightsResponse(**await reader_service.reader_history_insights(db, current_reader.id))
 
 
 class HistoryImportItem(BaseModel):
@@ -2689,7 +2695,7 @@ async def import_reading_history(
     imports publicly visible posts (drafts/scheduled never leak — the same
     invariant as every other history read path).
     """
-    imported, skipped = await crud.import_reader_history(
+    imported, skipped = await reader_service.import_reader_history(
         db,
         current_reader.id,
         [(item.slug, item.viewed_at) for item in body.items],
@@ -2712,9 +2718,9 @@ async def reading_position(
     auth-scoped to the reader; it never appears in the public post payload.
     """
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not reader_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row = await crud.get_reading_history(db, current_reader.id, post.id)
+    row = await reader_service.get_reading_history(db, current_reader.id, post.id)
     return ReadingPositionResponse(
         post_id=post_id,
         scroll_position=row.scroll_position if row else None,
@@ -2741,11 +2747,11 @@ async def record_reading_view(
     no draft-existence oracle (same guard as the bookmark/comment paths).
     """
     post = await db.get(models.Post, post_id)
-    if not post or not crud.is_publicly_visible(post):
+    if not post or not reader_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     scroll_position = body.scroll_position if body is not None else None
     scroll_fraction = body.scroll_fraction if body is not None else None
-    row, created = await crud.record_reading_history(
+    row, created = await reader_service.record_reading_history(
         db,
         current_reader.id,
         post.id,
@@ -2763,7 +2769,7 @@ async def clear_reading_history(
     db: AsyncSession = Depends(get_db),
 ):
     """Clear the reader's entire reading history. Idempotent (no-op if empty)."""
-    await crud.clear_reader_history(db, current_reader.id)
+    await reader_service.clear_reader_history(db, current_reader.id)
     return None
 
 
@@ -2818,7 +2824,9 @@ async def list_my_comments(
     """
     if status not in VALID_READER_COMMENT_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
-    comments, total = await crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit, q=q)
+    comments, total = await reader_service.get_reader_comments(
+        db, current_reader.id, status=status, page=page, limit=limit, q=q
+    )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     # Batch-load the posts once in a single query instead of db.get per comment
     # (many comments share a post; ISS-140) — one in_() query, not up to 100.
@@ -2862,11 +2870,11 @@ async def delete_my_comment(
     Scoped to the caller: another reader's comment (or a missing id) is a 404,
     indistinguishable from a non-existent resource so comment ids are not
     enumerable. Admin delete (DELETE /api/comments/{id}) is unchanged. When the
-    comment has replies they are reparented (crud.delete_reader_comment) so the
+    comment has replies they are reparented (reader_service.delete_reader_comment) so the
     thread stays coherent (DEC-096, TASK-160).
     """
     try:
-        deleted = await crud.delete_reader_comment(db, comment_id, current_reader.id)
+        deleted = await reader_service.delete_reader_comment(db, comment_id, current_reader.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
@@ -2918,13 +2926,13 @@ async def edit_my_comment(
     publication and a mere edit must not re-fan out reply + thread
     notifications (RIL ISS-404).
     """
-    updated, was_public = await crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
+    updated, was_public = await reader_service.update_reader_comment(db, comment_id, current_reader.id, edit.content)
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
-    if updated.reader_id is not None and await crud.boolean_setting(
+    if updated.reader_id is not None and await reader_service.boolean_setting(
         db, "auto_approve_reader_comments", AUTO_APPROVE_READER_COMMENTS
     ):
-        approved = await crud.approve_comment(db, updated.id, approved=True)
+        approved = await reader_service.approve_comment(db, updated.id, approved=True)
         if approved is not None:
             if not was_public:
                 await _notify_comment_approved(db, approved)
@@ -2979,10 +2987,10 @@ async def list_my_notifications(
     filter. Auth-scoped; the global middleware defaults these to no-store.
     (DEC-160, TASK-192)
     """
-    items, total = await crud.list_reader_notifications(
+    items, total = await reader_service.list_reader_notifications(
         db, current_reader.id, page=page, limit=limit, unread_only=unread
     )
-    unread_count = await crud.unread_notification_count(db, current_reader.id)
+    unread_count = await reader_service.unread_notification_count(db, current_reader.id)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return NotificationListResponse(
         items=[
@@ -3014,7 +3022,7 @@ async def mark_notification_read(
     db: AsyncSession = Depends(get_db),
 ):
     """Mark one of the reader's notifications read. 404 if not theirs."""
-    ok = await crud.mark_reader_notification_read(db, current_reader.id, notification_id)
+    ok = await reader_service.mark_reader_notification_read(db, current_reader.id, notification_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Notification not found")
     row = await db.get(models.ReaderNotification, notification_id)
@@ -3050,7 +3058,7 @@ async def delete_notification(
     table), so an unknown or another reader's id is a 404, never a cross-reader
     delete. (DEC-312, TASK-384)
     """
-    ok = await crud.delete_reader_notification(db, current_reader.id, notification_id)
+    ok = await reader_service.delete_reader_notification(db, current_reader.id, notification_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Notification not found")
 
@@ -3063,7 +3071,7 @@ async def mark_all_notifications_read(
     db: AsyncSession = Depends(get_db),
 ):
     """Mark every unread notification read; returns the count updated."""
-    updated = await crud.mark_all_reader_notifications_read(db, current_reader.id)
+    updated = await reader_service.mark_all_reader_notifications_read(db, current_reader.id)
     return {"updated": updated}
 
 
@@ -3118,7 +3126,7 @@ async def get_my_notification_prefs(
     (per-reader data). Materializes an all-on row on first read so the response
     is always the full object.
     """
-    prefs = await crud.get_reader_notification_prefs(db, current_reader.id)
+    prefs = await reader_service.get_reader_notification_prefs(db, current_reader.id)
     return NotificationPrefs(
         new_post=prefs.new_post,
         reply=prefs.reply,
@@ -3147,7 +3155,7 @@ async def set_my_notification_pref(
     a durable inbox row nor a browser push for that kind. Returns the full
     updated preferences.
     """
-    prefs = await crud.set_reader_notification_kind(db, current_reader.id, payload.kind, payload.enabled)
+    prefs = await reader_service.set_reader_notification_kind(db, current_reader.id, payload.kind, payload.enabled)
     if prefs is None:
         raise HTTPException(status_code=422, detail=f"Unknown notification kind: {payload.kind}")
     return NotificationPrefs(
@@ -3189,5 +3197,5 @@ async def set_my_reader_locale(
     this when a signed-in reader changes their language, so an English reader
     stops receiving 新文章发布 / 系列更新 rows and emails immediately.
     """
-    await crud.set_reader_locale(db, current_reader.id, payload.locale)
+    await reader_service.set_reader_locale(db, current_reader.id, payload.locale)
     return payload

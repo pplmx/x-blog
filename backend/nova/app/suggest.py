@@ -23,7 +23,9 @@ categories APIs serve.
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import crud, models
+from app.repositories import _effective_publish_col, get_categories, get_tags, utc_now_naive
+
+from . import models
 
 # Minimum normalized similarity for a candidate to be offered. 0.5 admits a
 # single-edit miss even in a short CJK term (2-char "前段" → "前端" is 0.5),
@@ -125,17 +127,17 @@ async def build_search_vocabulary(db: AsyncSession) -> list[dict]:
     # Tag/category names with their public post counts — the payloads the tags
     # and categories APIs already serve (cached; ISS-362 guards count the
     # published+effective-publish-passed posts that a tag listing returns).
-    for tag in await crud.get_tags(db):
+    for tag in await get_tags(db):
         if tag["post_count"] > 0:
             vocab.append({"text": tag["name"], "kind": "tag", "hits": tag["post_count"]})
-    for cat in await crud.get_categories(db):
+    for cat in await get_categories(db):
         if cat["post_count"] > 0:
             vocab.append({"text": cat["name"], "kind": "category", "hits": cat["post_count"]})
 
     # Bounded recent POST TITLES (titles only — no content leaves the DB, and
     # every row is public: published + effective publish time passed). Ordered
     # newest-first exactly like the home list so the freshest topics win ties.
-    now = crud.utc_now_naive()
+    now = utc_now_naive()
     rows = (
         await db.scalars(
             select(models.Post.title)
@@ -143,7 +145,7 @@ async def build_search_vocabulary(db: AsyncSession) -> list[dict]:
                 models.Post.published.is_(True),
                 or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
             )
-            .order_by(crud._effective_publish_col().desc(), models.Post.id.desc())
+            .order_by(_effective_publish_col().desc(), models.Post.id.desc())
             .limit(VOCAB_TITLE_LIMIT)
         )
     ).all()

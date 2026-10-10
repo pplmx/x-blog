@@ -18,8 +18,8 @@ from email.message import EmailMessage
 
 from sqlalchemy import select
 
-from app.crud import utc_now_naive
 from app.digest import build_digest_message
+from app.repositories import utc_now_naive
 
 NOTIFS = "/api/reader/me/notifications"
 LOCALE = "/api/reader/me/locale"
@@ -128,7 +128,7 @@ class TestNotificationCopyMatrix:
     """Direct unit matrix for every kind × locale (DEC-338/DEC-340)."""
 
     def test_matrix(self):
-        from app.crud import notification_copy
+        from app.repositories import notification_copy
 
         # (kind, post_title, locale, commenter, zh_title, zh_body, en_title, en_body)
         cases = [
@@ -221,7 +221,7 @@ class TestCommentKindCopy:
         zh_token = await _register(client, "thr-zh@example.com")
         assert (await _set_locale(client, en_token, "en")).status_code == 200
 
-        from app.crud import create_post
+        from app.repositories import create_post
         from app.schemas import PostCreate
 
         post = await create_post(
@@ -257,7 +257,7 @@ class TestCommentKindCopy:
         zh_token = await _register(client, "men-zh@example.com", display_name="张伟")
         assert (await _set_locale(client, en_token, "en")).status_code == 200
 
-        from app.crud import create_post
+        from app.repositories import create_post
         from app.schemas import PostCreate
 
         post = await create_post(
@@ -290,7 +290,7 @@ class TestCommentKindCopy:
     async def _parent_comments(self, client, db_session, auth_headers):
         """Two approved reader root comments (one en, one zh default). Returns
         both emails, both tokens, and a {en: id, zh: id} parent-id map."""
-        from app.crud import approve_comment, create_post
+        from app.repositories import approve_comment, create_post
         from app.schemas import PostCreate
 
         post = await create_post(

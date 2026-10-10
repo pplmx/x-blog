@@ -58,7 +58,7 @@ def _body(endpoint: str, p256dh=None, auth_=None) -> dict:
 
 
 async def _create_post(db_session, slug="moderation-push-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,
@@ -330,7 +330,7 @@ class TestModerationDispatch:
         assert created.status_code == 201, "moderation must never break comment create"
 
     async def test_comment_on_draft_post_404_no_push(self, client, db_session, auth_headers):
-        from app.crud import create_post
+        from app.repositories import create_post
 
         draft = await create_post(
             db_session,

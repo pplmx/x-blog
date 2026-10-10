@@ -22,7 +22,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import joinedload
 
 from app import models
-from app.crud import create_post
+from app.repositories import create_post
 from app.schemas import PostCreate
 
 
@@ -277,7 +277,7 @@ class TestBackupRestore:
         carries no per-day breakdown — the pre-restore post_views_daily rows must
         be dropped so the admin trend chart agrees with the restored counter
         instead of permanently disagreeing (round-292 deep-dive)."""
-        from app.crud import utc_now_naive
+        from app.repositories import utc_now_naive
 
         await _seed_blog(db_session)
         # Live instance has accumulated daily view rows, and the snapshot was

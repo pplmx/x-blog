@@ -12,10 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, crud, models, schemas
+from app import auth, models, schemas
 from app.conditional import conditional_json
 from app.database import get_db
 from app.schemas import IdInt, PageInt
+from app.services import posts as posts_service
 
 router = APIRouter(prefix="/api/authors", tags=["authors"])
 
@@ -72,13 +73,13 @@ async def get_author_posts(
     # Fire the scheduled-post publish-time fan-out on this surface too (the
     # round-331 sweep: every surface that can show a crossed scheduled post
     # announces it exactly once).
-    await crud.maybe_notify_due_scheduled_posts(db)
+    await posts_service.maybe_notify_due_scheduled_posts(db)
     author_result = await db.execute(select(auth.User).where(auth.User.id == author_id))
     author = author_result.scalar_one_or_none()
     if author is None or not author.display_name:
         raise HTTPException(status_code=404, detail="Author not found")
 
-    posts, total = await crud.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
+    posts, total = await posts_service.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
     total_pages = (total + limit - 1) // limit
     # The top-level author envelope lets the archive page title itself by pen
     # name even when the writer has no published posts yet (DEC-359/TASK-405).

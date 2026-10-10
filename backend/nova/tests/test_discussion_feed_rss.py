@@ -122,7 +122,7 @@ class TestRssFeed:
         refuses to echo the stored nickname for a nameless reader — so even a
         legacy row that still holds the email renders as a generic label.
         """
-        from app.crud import approve_comment
+        from app.repositories import approve_comment
 
         post = await _create_post(client, auth_headers)
         email = "nameless-reader@example.com"

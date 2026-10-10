@@ -37,7 +37,7 @@ from app.schemas import PostCreate
 
 
 async def _create_post(db_session, slug="guest-reply-post"):
-    from app.crud import create_post
+    from app.repositories import create_post
 
     return await create_post(
         db_session,

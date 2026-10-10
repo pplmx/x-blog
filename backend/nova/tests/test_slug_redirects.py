@@ -8,7 +8,7 @@ moves more than once), and that an unknown slug carries no redirect.
 """
 
 from app import models
-from app.crud import record_slug_redirect, resolve_slug_redirect
+from app.repositories import record_slug_redirect, resolve_slug_redirect
 
 
 async def test_post_reeslug_redirects_old_slug(client, auth_headers, db_session):
