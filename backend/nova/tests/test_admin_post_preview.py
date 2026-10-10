@@ -8,7 +8,7 @@ draft or scheduled post will render before it goes live.
 _n = 0
 
 
-def _create_post(client, auth_headers, title, slug, published=False, publish_at=None):
+async def _create_post(client, auth_headers, title, slug, published=False, publish_at=None):
     global _n
     _n += 1
     body = {
@@ -20,18 +20,18 @@ def _create_post(client, auth_headers, title, slug, published=False, publish_at=
     }
     if publish_at is not None:
         body["publish_at"] = publish_at
-    resp = client.post("/api/posts", json=body, headers=auth_headers)
+    resp = await client.post("/api/posts", json=body, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
 class TestAdminPostPreview:
-    def test_detail_requires_admin(self, client):
-        assert client.get("/api/admin/posts/1").status_code == 401
+    async def test_detail_requires_admin(self, client):
+        assert (await client.get("/api/admin/posts/1")).status_code == 401
 
-    def test_draft_detail_readable_by_admin(self, client, auth_headers):
-        post = _create_post(client, auth_headers, "Draft Preview", "draft-preview")
-        detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers)
+    async def test_draft_detail_readable_by_admin(self, client, auth_headers):
+        post = await _create_post(client, auth_headers, "Draft Preview", "draft-preview")
+        detail = await client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers)
         assert detail.status_code == 200, detail.text
         data = detail.json()
         assert data["published"] is False
@@ -39,12 +39,12 @@ class TestAdminPostPreview:
         assert "# Heading" in data["content"]
         assert data["excerpt"] == "preview excerpt"
 
-    def test_scheduled_detail_readable_by_admin(self, client, auth_headers):
+    async def test_scheduled_detail_readable_by_admin(self, client, auth_headers):
         future = "2099-01-01T00:00:00"
-        post = _create_post(
+        post = await _create_post(
             client, auth_headers, "Scheduled Preview", "sched-preview", published=True, publish_at=future
         )
-        detail = client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers)
+        detail = await client.get(f"/api/admin/posts/{post['id']}", headers=auth_headers)
         assert detail.status_code == 200, detail.text
         data = detail.json()
         assert data["published"] is True

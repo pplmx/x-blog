@@ -7,22 +7,22 @@ commenter email + ip_address, so they must require admin auth).
 
 
 class TestExportPostsCsv:
-    def test_export_posts_csv(self, client, auth_headers):
-        response = client.get("/api/export/posts.csv", headers=auth_headers)
+    async def test_export_posts_csv(self, client, auth_headers):
+        response = await client.get("/api/export/posts.csv", headers=auth_headers)
         assert response.status_code == 200
         assert "text/csv" in response.headers["content-type"]
         assert "attachment" in response.headers["content-disposition"]
         assert "posts.csv" in response.headers["content-disposition"]
 
-    def test_export_posts_csv_has_headers(self, client, auth_headers):
-        response = client.get("/api/export/posts.csv", headers=auth_headers)
+    async def test_export_posts_csv_has_headers(self, client, auth_headers):
+        response = await client.get("/api/export/posts.csv", headers=auth_headers)
         assert response.status_code == 200
         lines = response.text.strip().split("\n")
         assert len(lines) >= 1  # At least header row
         headers = lines[0].split(",")
         assert len(headers) > 0
 
-    def test_export_posts_csv_is_deterministically_ordered(self, client, auth_headers, db_session):
+    async def test_export_posts_csv_is_deterministically_ordered(self, client, auth_headers, db_session):
         """The LIMIT-bound subset must be deterministic (id desc), not chosen by
         the query plan — past the cap the exported rows would otherwise be
         unreproducible and the remainder unreachable (round-292 deep-dive #5)."""
@@ -37,10 +37,10 @@ class TestExportPostsCsv:
                     published=True,
                 )
             )
-        db_session.commit()
+        await db_session.commit()
 
         # First data row (after the header) must be the highest id created last.
-        rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        rows = (await client.get("/api/export/posts.csv", headers=auth_headers)).text.strip().split("\n")
         assert len(rows) >= 6  # header + 5 ordered posts
         data = rows[1:]
         slugs = ["ordered-export-1", "ordered-export-2", "ordered-export-3", "ordered-export-4", "ordered-export-5"]
@@ -48,12 +48,12 @@ class TestExportPostsCsv:
         # id desc => post 5 (last created) comes first, post 1 last.
         assert indices == sorted(indices, reverse=True)
 
-    def test_export_posts_csv_requires_auth(self, client):
+    async def test_export_posts_csv_requires_auth(self, client):
         """Export endpoints expose post data and must require admin auth."""
-        response = client.get("/api/export/posts.csv")
+        response = await client.get("/api/export/posts.csv")
         assert response.status_code == 401
 
-    def test_export_posts_csv_uses_admin_style_filters(self, client, auth_headers, db_session):
+    async def test_export_posts_csv_uses_admin_style_filters(self, client, auth_headers, db_session):
         """status/date filters shape the exported row set (RIL TASK-079)."""
         from app import models
 
@@ -66,30 +66,34 @@ class TestExportPostsCsv:
         )
         draft = models.Post(title="Draft Export", slug="draft-export", content="C", published=False)
         db_session.add_all([published, draft])
-        db_session.commit()
+        await db_session.commit()
 
-        all_rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        all_rows = (await client.get("/api/export/posts.csv", headers=auth_headers)).text.strip().split("\n")
         assert any("published-export" in r for r in all_rows)
         # status=None ("all") includes the draft too
         assert any("draft-export" in r for r in all_rows)
 
-        draft_rows = client.get("/api/export/posts.csv?status=draft", headers=auth_headers).text.strip().split("\n")
+        draft_rows = (
+            (await client.get("/api/export/posts.csv?status=draft", headers=auth_headers)).text.strip().split("\n")
+        )
         assert any("draft-export" in r for r in draft_rows)
         assert not any("published-export" in r for r in draft_rows)
 
         published_rows = (
-            client.get("/api/export/posts.csv?status=published", headers=auth_headers).text.strip().split("\n")
+            (await client.get("/api/export/posts.csv?status=published", headers=auth_headers)).text.strip().split("\n")
         )
         assert any("published-export" in r for r in published_rows)
         assert not any("draft-export" in r for r in published_rows)
 
-    def test_export_posts_csv_includes_status_columns(self, client, auth_headers):
+    async def test_export_posts_csv_includes_status_columns(self, client, auth_headers):
         """Posts CSV carries Status/Pinned/Publish At columns (RIL TASK-079)."""
-        response = client.get("/api/export/posts.csv", headers=auth_headers)
+        response = await client.get("/api/export/posts.csv", headers=auth_headers)
         headers = response.text.strip().split("\n")[0].split(",")
         assert "Status" in headers and "Pinned" in headers and "Publish At" in headers
 
-    def test_future_scheduled_post_labels_scheduled_and_filters_consistently(self, client, auth_headers, db_session):
+    async def test_future_scheduled_post_labels_scheduled_and_filters_consistently(
+        self, client, auth_headers, db_session
+    ):
         """A published post whose publish_at is still in the future reads
         "scheduled" in the Status column (it is not live yet), and only such
         posts — never future-publish_at drafts — appear under status=scheduled
@@ -118,45 +122,47 @@ class TestExportPostsCsv:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
         def find(all_rows, slug):
             return next(r for r in all_rows if slug in r)
 
         # Status is column index 8 (0-based) in the posts CSV header row.
-        all_rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        all_rows = (await client.get("/api/export/posts.csv", headers=auth_headers)).text.strip().split("\n")
         assert find(all_rows, "live-export").split(",")[8] == "published"
         assert find(all_rows, "scheduled-export").split(",")[8] == "scheduled"
         assert find(all_rows, "sched-draft-export").split(",")[8] == "draft"
 
-        sched_rows = client.get("/api/export/posts.csv?status=scheduled", headers=auth_headers).text.strip().split("\n")
+        sched_rows = (
+            (await client.get("/api/export/posts.csv?status=scheduled", headers=auth_headers)).text.strip().split("\n")
+        )
         assert any("scheduled-export" in r for r in sched_rows)
         assert not any("sched-draft-export" in r for r in sched_rows)  # a draft never goes live
         assert not any("live-export" in r for r in sched_rows)
 
 
 class TestExportCommentsCsv:
-    def test_export_comments_csv(self, client, auth_headers):
-        response = client.get("/api/export/comments.csv", headers=auth_headers)
+    async def test_export_comments_csv(self, client, auth_headers):
+        response = await client.get("/api/export/comments.csv", headers=auth_headers)
         assert response.status_code == 200
         assert "text/csv" in response.headers["content-type"]
         assert "attachment" in response.headers["content-disposition"]
         assert "comments.csv" in response.headers["content-disposition"]
 
-    def test_export_comments_csv_has_headers(self, client, auth_headers):
-        response = client.get("/api/export/comments.csv", headers=auth_headers)
+    async def test_export_comments_csv_has_headers(self, client, auth_headers):
+        response = await client.get("/api/export/comments.csv", headers=auth_headers)
         assert response.status_code == 200
         lines = response.text.strip().split("\n")
         assert len(lines) >= 1  # At least header row
 
-    def test_export_comments_csv_requires_auth(self, client):
+    async def test_export_comments_csv_requires_auth(self, client):
         """Comments CSV exposes PII (email + ip_address) and must NOT be public."""
-        response = client.get("/api/export/comments.csv")
+        response = await client.get("/api/export/comments.csv")
         assert response.status_code == 401
 
-    def test_export_comments_csv_neutralizes_formula_injection(self, client, auth_headers):
+    async def test_export_comments_csv_neutralizes_formula_injection(self, client, auth_headers):
         """Attacker-controlled comment fields must not become spreadsheet formulas."""
-        create_post = client.post(
+        create_post = await client.post(
             "/api/posts",
             json={
                 "title": "CSV Test Post",
@@ -167,7 +173,7 @@ class TestExportCommentsCsv:
             headers=auth_headers,
         )
         post_id = create_post.json()["id"]
-        client.post(
+        await client.post(
             f"/api/comments/post/{post_id}",
             json={
                 "nickname": "=cmd|' /C calc'!A0",
@@ -177,7 +183,7 @@ class TestExportCommentsCsv:
                 "content": '=HYPERLINK("https://evil.example","click")',
             },
         )
-        response = client.get("/api/export/comments.csv", headers=auth_headers)
+        response = await client.get("/api/export/comments.csv", headers=auth_headers)
         assert response.status_code == 200
         body = response.text
         # Neutralized cells start with a single quote so Excel renders them as text
@@ -185,7 +191,7 @@ class TestExportCommentsCsv:
         assert "'=cmd@evil.example" in body
         assert "'=HYPERLINK(" in body
 
-    def test_export_comments_csv_filters_by_status_and_has_status_column(self, client, auth_headers, db_session):
+    async def test_export_comments_csv_filters_by_status_and_has_status_column(self, client, auth_headers, db_session):
         """comments.csv supports is_approved filter + a Status column (RIL TASK-079)."""
         from datetime import UTC, datetime
 
@@ -193,7 +199,7 @@ class TestExportCommentsCsv:
 
         post = models.Post(title="Export Comments", slug="export-comments", content="C", published=True)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         approved = models.Comment(
             post_id=post.id,
             nickname="ApprovedCommenter",
@@ -209,15 +215,17 @@ class TestExportCommentsCsv:
             created_at=datetime(2026, 2, 1, tzinfo=UTC),
         )
         db_session.add_all([approved, pending])
-        db_session.commit()
+        await db_session.commit()
 
-        all_rows = client.get("/api/export/comments.csv", headers=auth_headers).text.strip().split("\n")
+        all_rows = (await client.get("/api/export/comments.csv", headers=auth_headers)).text.strip().split("\n")
         assert all_rows[0].split(",")[-2] == "Status" or "Status" in all_rows[0]
         assert any("ApprovedCommenter" in r for r in all_rows)
         assert any("PendingCommenter" in r for r in all_rows)
 
         pending_rows = (
-            client.get("/api/export/comments.csv?is_approved=false", headers=auth_headers).text.strip().split("\n")
+            (await client.get("/api/export/comments.csv?is_approved=false", headers=auth_headers))
+            .text.strip()
+            .split("\n")
         )
         assert any("PendingCommenter" in r for r in pending_rows)
         assert not any("ApprovedCommenter" in r for r in pending_rows)
@@ -230,7 +238,7 @@ class TestExportDateOnlyInclusive:
     row created later that day. The export dashboard uses date inputs for both
     posts and comments, so the to-bound must widen to end-of-day."""
 
-    def test_posts_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
+    async def test_posts_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
         from datetime import UTC, datetime
 
         from app import models
@@ -243,20 +251,20 @@ class TestExportDateOnlyInclusive:
             created_at=datetime.now(UTC).replace(microsecond=0),
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         day = post.created_at.strftime("%Y-%m-%d")
-        rows = client.get(f"/api/export/posts.csv?date_to={day}", headers=auth_headers).text.strip().split("\n")
+        rows = (await client.get(f"/api/export/posts.csv?date_to={day}", headers=auth_headers)).text.strip().split("\n")
         assert any("today-export" in r for r in rows)
 
-    def test_comments_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
+    async def test_comments_csv_date_only_date_to_includes_same_day(self, client, auth_headers, db_session):
         from datetime import UTC, datetime
 
         from app import models
 
         post = models.Post(title="C", slug="c-date-exp", content="C", published=True)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         comment = models.Comment(
             post_id=post.id,
             nickname="TodayComment",
@@ -264,17 +272,19 @@ class TestExportDateOnlyInclusive:
             created_at=datetime.now(UTC).replace(microsecond=0),
         )
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
 
         day = comment.created_at.strftime("%Y-%m-%d")
-        rows = client.get(f"/api/export/comments.csv?date_to={day}", headers=auth_headers).text.strip().split("\n")
+        rows = (
+            (await client.get(f"/api/export/comments.csv?date_to={day}", headers=auth_headers)).text.strip().split("\n")
+        )
         assert any("TodayComment" in r for r in rows)
 
-    def test_malformed_bound_still_422(self, client, auth_headers):
-        resp = client.get("/api/export/posts.csv?date_to=not-a-date", headers=auth_headers)
+    async def test_malformed_bound_still_422(self, client, auth_headers):
+        resp = await client.get("/api/export/posts.csv?date_to=not-a-date", headers=auth_headers)
         assert resp.status_code == 422
 
-    def test_export_posts_csv_streams_across_pages(self, client, auth_headers, db_session):
+    async def test_export_posts_csv_streams_across_pages(self, client, auth_headers, db_session):
         """round 439 (ISS-637): the id-keyset paging must cross the page
         boundary (EXPORT_PAGE_SIZE=500) and still return EVERY row in id-desc
         order — the streaming refactor must not drop or duplicate rows."""
@@ -284,30 +294,30 @@ class TestExportDateOnlyInclusive:
             db_session.add(
                 models.Post(title=f"Page Post {i + 1}", slug=f"page-export-{i + 1}", content="C", published=True)
             )
-        db_session.commit()
+        await db_session.commit()
 
-        rows = client.get("/api/export/posts.csv", headers=auth_headers).text.strip().split("\n")
+        rows = (await client.get("/api/export/posts.csv", headers=auth_headers)).text.strip().split("\n")
         assert len(rows) == 503 + 1  # header + all 503 posts (no drops across pages)
         data = rows[1:]
         # id desc: the last created (slug page-export-503) is the first data row.
         assert data[0].split(",")[1] == "Page Post 503"
         assert data[-1].split(",")[1] == "Page Post 1"
 
-    def test_export_comments_csv_streams_via_yield_per(self, client, auth_headers, db_session):
+    async def test_export_comments_csv_streams_via_yield_per(self, client, auth_headers, db_session):
         """round 439 (ISS-637): the scalar comments query must stream via
         yield_per without missing rows across batches."""
         from app import models
 
         post = models.Post(title="C", slug="comment-page-export", content="C", published=True)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         for i in range(503):
             db_session.add(
                 models.Comment(post_id=post.id, nickname=f"StreamComment {i + 1}", content="x", is_approved=True)
             )
-        db_session.commit()
+        await db_session.commit()
 
-        rows = client.get("/api/export/comments.csv", headers=auth_headers).text.strip().split("\n")
+        rows = (await client.get("/api/export/comments.csv", headers=auth_headers)).text.strip().split("\n")
         # Header + all 503 comments.
         assert len(rows) == 504, len(rows)
         # Columns: ID, Post ID, Nickname, ... — nickname is the 3rd column.

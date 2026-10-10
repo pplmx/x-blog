@@ -16,14 +16,14 @@ LOGIN = "/api/reader/login"
 ME = "/api/reader/me"
 
 
-def _register(client, email="reader@example.com", password="readerpass123", **extra):
+async def _register(client, email="reader@example.com", password="readerpass123", **extra):
     body = {"email": email, "password": password, **extra}
-    return client.post(REGISTER, json=body)
+    return await client.post(REGISTER, json=body)
 
 
 class TestRegister:
-    def test_register_returns_token_and_profile(self, client):
-        resp = _register(client)
+    async def test_register_returns_token_and_profile(self, client):
+        resp = await _register(client)
         assert resp.status_code == 201, resp.text
         data = resp.json()
         assert data["access_token"]
@@ -34,80 +34,80 @@ class TestRegister:
         assert data["reader"]["display_name"] is None
         assert "password" not in data["reader"]
 
-    def test_register_with_display_name(self, client):
-        resp = _register(client, display_name="Riki")
+    async def test_register_with_display_name(self, client):
+        resp = await _register(client, display_name="Riki")
         assert resp.status_code == 201, resp.text
         assert resp.json()["reader"]["display_name"] == "Riki"
 
-    def test_register_duplicate_email_rejected(self, client):
-        assert _register(client).status_code == 201
-        resp = _register(client)  # same email
+    async def test_register_duplicate_email_rejected(self, client):
+        assert (await _register(client)).status_code == 201
+        resp = await _register(client)  # same email
         assert resp.status_code == 400
         assert "already" in resp.json()["error"]["message"].lower()
 
-    def test_register_email_is_case_insensitive_unique(self, client):
+    async def test_register_email_is_case_insensitive_unique(self, client):
         """Email is normalized to lowercase: a differently-cased variant of an
         existing email must be rejected (not a second account), keeping login
         (which compares lowercased) unambiguous."""
-        assert _register(client).status_code == 201
-        resp = _register(client, email="Reader@Example.COM")
+        assert (await _register(client)).status_code == 201
+        resp = await _register(client, email="Reader@Example.COM")
         assert resp.status_code == 400
         assert "already" in resp.json()["error"]["message"].lower()
 
-    def test_register_normalizes_email_case_for_login(self, client):
-        resp = _register(client, email="Reader@Example.com")
+    async def test_register_normalizes_email_case_for_login(self, client):
+        resp = await _register(client, email="Reader@Example.com")
         assert resp.status_code == 201, resp.text
         # login is case-insensitive; profile echoes the normalized form
-        login = client.post(LOGIN, json={"email": "reader@example.com", "password": "readerpass123"})
+        login = await client.post(LOGIN, json={"email": "reader@example.com", "password": "readerpass123"})
         assert login.status_code == 200, login.text
         assert login.json()["reader"]["email"] == "reader@example.com"
 
-    def test_register_invalid_email_rejected(self, client):
-        resp = _register(client, email="not-an-email")
+    async def test_register_invalid_email_rejected(self, client):
+        resp = await _register(client, email="not-an-email")
         assert resp.status_code == 422
 
-    def test_register_short_password_rejected(self, client):
-        resp = _register(client, password="short")
+    async def test_register_short_password_rejected(self, client):
+        resp = await _register(client, password="short")
         assert resp.status_code == 422
 
-    def test_register_email_with_nul_rejected_422(self, client):
+    async def test_register_email_with_nul_rejected_422(self, client):
         """A NUL byte in the registration email used to crash psycopg at bind
         time -> uncaught 500 on a public endpoint (ISS-454, TASK-351)."""
-        resp = client.post(REGISTER, json={"email": "reader\x00@example.com", "password": "readerpass123"})
+        resp = await client.post(REGISTER, json={"email": "reader\x00@example.com", "password": "readerpass123"})
         assert resp.status_code == 422, resp.text
 
-    def test_register_display_name_with_nul_rejected_422(self, client):
-        resp = client.post(
+    async def test_register_display_name_with_nul_rejected_422(self, client):
+        resp = await client.post(
             REGISTER, json={"email": "dnul@example.com", "password": "readerpass123", "display_name": "n\x00ame"}
         )
         assert resp.status_code == 422, resp.text
 
-    def test_register_trailing_newline_email_rejected(self, client):
+    async def test_register_trailing_newline_email_rejected(self, client):
         """A trailing newline after the email must not sneak past the regex
         anchor (uses Rust-regex \\z, not $)."""
-        resp = _register(client, email="reader@example.com\n")
+        resp = await _register(client, email="reader@example.com\n")
         assert resp.status_code == 422
 
 
 class TestLogin:
-    def test_login_returns_token(self, client):
-        _register(client)
-        resp = client.post(LOGIN, json={"email": "reader@example.com", "password": "readerpass123"})
+    async def test_login_returns_token(self, client):
+        await _register(client)
+        resp = await client.post(LOGIN, json={"email": "reader@example.com", "password": "readerpass123"})
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["access_token"]
         assert data["reader"]["email"] == "reader@example.com"
 
-    def test_login_wrong_password_rejected(self, client):
-        _register(client)
-        resp = client.post(LOGIN, json={"email": "reader@example.com", "password": "wrongpass123"})
+    async def test_login_wrong_password_rejected(self, client):
+        await _register(client)
+        resp = await client.post(LOGIN, json={"email": "reader@example.com", "password": "wrongpass123"})
         assert resp.status_code == 401
 
-    def test_login_unknown_email_rejected(self, client):
-        resp = client.post(LOGIN, json={"email": "nobody@example.com", "password": "readerpass123"})
+    async def test_login_unknown_email_rejected(self, client):
+        resp = await client.post(LOGIN, json={"email": "nobody@example.com", "password": "readerpass123"})
         assert resp.status_code == 401
 
-    def test_login_unknown_email_still_runs_bcrypt(self, client, monkeypatch):
+    async def test_login_unknown_email_still_runs_bcrypt(self, client, monkeypatch):
         """Timing guard: unknown emails must not short-circuit before bcrypt,
         or response timing would leak whether an email exists."""
         from app.routers import reader as reader_module
@@ -119,7 +119,7 @@ class TestLogin:
             return True
 
         monkeypatch.setattr(reader_module.auth, "verify_password", spy)
-        resp = client.post(LOGIN, json={"email": "nobody@example.com", "password": "readerpass123"})
+        resp = await client.post(LOGIN, json={"email": "nobody@example.com", "password": "readerpass123"})
         assert resp.status_code == 401
         # bcrypt was called with the fake dummy hash, not skipped entirely
         assert len(calls) == 1
@@ -127,28 +127,28 @@ class TestLogin:
 
 
 class TestMe:
-    def test_me_with_valid_token(self, client):
-        reg = _register(client)
+    async def test_me_with_valid_token(self, client):
+        reg = await _register(client)
         token = reg.json()["access_token"]
-        resp = client.get(ME, headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get(ME, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200, resp.text
         assert resp.json()["email"] == "reader@example.com"
 
-    def test_me_without_token_rejected(self, client):
-        resp = client.get(ME)
+    async def test_me_without_token_rejected(self, client):
+        resp = await client.get(ME)
         assert resp.status_code == 401
         # FastAPI's OAuth2PasswordBearer raises "Not authenticated" when no
         # Authorization header is present at all (distinct from an invalid
         # token, which reaches our own "Could not validate credentials").
         assert resp.json()["error"]["code"] == "UNAUTHORIZED"
 
-    def test_me_with_garbage_token_rejected(self, client):
-        resp = client.get(ME, headers={"Authorization": "Bearer not.a.jwt"})
+    async def test_me_with_garbage_token_rejected(self, client):
+        resp = await client.get(ME, headers={"Authorization": "Bearer not.a.jwt"})
         assert resp.status_code == 401
 
-    def test_me_with_admin_token_rejected(self, client, admin_token):
+    async def test_me_with_admin_token_rejected(self, client, admin_token):
         """An admin JWT must not authenticate as a reader (audience separation)."""
-        resp = client.get(ME, headers={"Authorization": f"Bearer {admin_token}"})
+        resp = await client.get(ME, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 401
 
 
@@ -162,25 +162,25 @@ class TestAudienceSeparation:
     reject them outright.
     """
 
-    def test_reader_token_rejected_by_admin_endpoint(self, client, admin_user):
-        reg = _register(client)
+    async def test_reader_token_rejected_by_admin_endpoint(self, client, admin_user):
+        reg = await _register(client)
         reader_token = reg.json()["access_token"]
 
         # Force the collision scenario: reader_account.id == admin users.id.
         # admin_user fixture flushes (id assigned); reader got id=1 in a fresh
         # DB too, making the sub collision real in this test DB.
-        resp = client.get("/api/admin/me", headers={"Authorization": f"Bearer {reader_token}"})
+        resp = await client.get("/api/admin/me", headers={"Authorization": f"Bearer {reader_token}"})
         assert resp.status_code in (401, 403)
         # Never expose the admin profile through a reader token.
         assert "username" not in resp.json()
 
-    def test_admin_token_cannot_be_forged_as_reader_with_same_sub(self, client):
+    async def test_admin_token_cannot_be_forged_as_reader_with_same_sub(self, client):
         """A reader-created token with an admin sub is rejected by the reader guard."""
         token = create_reader_token({"sub": 1, "ver": 0})
-        resp = client.get(ME, headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get(ME, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 401
 
-    def test_list_form_reader_aud_rejected_by_admin_endpoint(self, client, admin_user):
+    async def test_list_form_reader_aud_rejected_by_admin_endpoint(self, client, admin_user):
         """Defense-in-depth (security review L3): even a list-form aud claim
         (["x-blog-reader", ...]) must never authenticate as an admin."""
         token = pyjwt.encode(
@@ -188,13 +188,13 @@ class TestAudienceSeparation:
             SECRET_KEY,
             algorithm=ALGORITHM,
         )
-        resp = client.get("/api/admin/me", headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get("/api/admin/me", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code in (401, 403)
         assert "username" not in resp.json()
 
-    def test_reader_token_has_reader_aud_claim(self, client):
+    async def test_reader_token_has_reader_aud_claim(self, client):
         payload = pyjwt.decode(
-            _register(client).json()["access_token"],
+            (await _register(client)).json()["access_token"],
             SECRET_KEY,
             algorithms=[ALGORITHM],
             audience="x-blog-reader",
@@ -204,8 +204,8 @@ class TestAudienceSeparation:
 
 
 class TestTokenRevocation:
-    def test_old_token_rejected_after_password_change(self, client, db_session):
-        reg = _register(client)
+    async def test_old_token_rejected_after_password_change(self, client, db_session):
+        reg = await _register(client)
         token = reg.json()["access_token"]
         reader_id = reg.json()["reader"]["id"]
 
@@ -213,9 +213,9 @@ class TestTokenRevocation:
         # change would) and confirm the previously-issued token is dead.
         from app.auth import ReaderAccount
 
-        reader = db_session.get(ReaderAccount, reader_id)
+        reader = await db_session.get(ReaderAccount, reader_id)
         reader.token_version = (reader.token_version or 0) + 1
-        db_session.commit()
+        await db_session.commit()
 
-        resp = client.get(ME, headers={"Authorization": f"Bearer {token}"})
+        resp = await client.get(ME, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 401

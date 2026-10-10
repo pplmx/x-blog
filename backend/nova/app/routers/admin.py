@@ -10,9 +10,10 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.security import OAuth2PasswordRequestForm
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app import auth, crud, models
 from app.auth import ROLE_EDITOR, get_current_admin, get_current_superuser
@@ -124,10 +125,10 @@ _FAKE_ADMIN_BCRYPT_HASH = "$2b$12$K7LqkVaQ1OiOsahF1P17/uM5UQi7QkS5d8ZqS3mDzW0yPj
 
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def login(
+async def login(
     request: Request,  # noqa: ARG001
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     # Reject NUL before it reaches the SQL bind: psycopg cannot bind a string
     # containing \x00 and raises (uncaught) -> 500 on a public login endpoint
@@ -137,7 +138,7 @@ def login(
     # past this cheap shape check (a NUL username can never be a real user).
     if "\x00" in form_data.username or "\x00" in form_data.password:
         raise HTTPException(status_code=422, detail="Invalid login")
-    user = db.query(auth.User).filter(auth.User.username == form_data.username).first()
+    user = (await db.execute(select(auth.User).where(auth.User.username == form_data.username))).scalar_one_or_none()
     if not user:
         # Time the miss like a real verification so a known username is not
         # distinguishable from an unknown one by response latency.
@@ -167,13 +168,15 @@ def get_current_user_profile(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/users", response_model=UserResponse)
-def create_user(
+async def create_user(
     request: Request,  # noqa: ARG001
     user_data: UserCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
-    existing = db.query(auth.User).filter(auth.User.username == user_data.username).first()
+    existing = (
+        await db.execute(select(auth.User).where(auth.User.username == user_data.username))
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
@@ -191,11 +194,11 @@ def create_user(
     )
     db.add(user)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Username already exists")
-    db.refresh(user)
+    await db.refresh(user)
     return user
 
 
@@ -226,11 +229,11 @@ class UserUpdate(BaseModel):
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.patch("/users/{user_id}", response_model=UserResponse)
-def update_user(
+async def update_user(
     request: Request,  # noqa: ARG001
     user_id: IdInt,
     user_data: UserUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     """Edit an admin user's public pen name and "about this writer" bio (superuser).
@@ -240,7 +243,7 @@ def update_user(
     a public identity. An explicit ``display_name: null`` clears the byline,
     an explicit ``bio: null`` clears the bio.
     """
-    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     updates = user_data.model_dump(exclude_unset=True)
@@ -248,8 +251,8 @@ def update_user(
         user.display_name = updates["display_name"]
     if "bio" in updates:
         user.bio = updates["bio"]
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     # The pen name/bio render on post bylines, series details and the RSS/Atom
     # posts feed (AuthorBrief from cached objects) — a rename must not linger
     # as the old name in lists/feeds for the cache TTL (ISS-607/TASK-529).
@@ -298,7 +301,7 @@ async def upload_user_avatar(
     request: Request,  # noqa: ARG001
     user_id: IdInt,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     """Set an admin user's public profile picture (superuser, round 358).
@@ -331,7 +334,7 @@ async def upload_user_avatar(
 
     # Resolve the target user BEFORE writing anything to disk so an unknown id
     # 404s without orphaning a file in static/avatars.
-    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -343,8 +346,8 @@ async def upload_user_avatar(
 
     previous = user.avatar_url
     user.avatar_url = f"/static/avatars/{filename}"
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     _delete_author_avatar_file(previous)
     # Avatar swaps are visible on cached post bylines / series details / feeds
     # (AuthorBrief.avatar_url) — clear so the new face appears immediately
@@ -355,21 +358,21 @@ async def upload_user_avatar(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/users/{user_id}/avatar", response_model=UserResponse)
-def remove_user_avatar(
+async def remove_user_avatar(
     request: Request,  # noqa: ARG001
     user_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     """Remove an admin user's public profile picture (stored file + DB row)."""
-    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     previous = user.avatar_url
     if previous:
         user.avatar_url = None
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
         _delete_author_avatar_file(previous)
         # Removing the face changes every byline that showed it; clear so the
         # cached post lists / series / feeds drop the deleted avatar (ISS-607).
@@ -378,17 +381,17 @@ def remove_user_avatar(
 
 
 @router.get("/users", response_model=list[UserResponse])
-def list_users(
-    db: Session = Depends(get_db),
+async def list_users(
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
-    users = db.query(auth.User).all()
+    users = (await db.execute(select(auth.User))).scalars().all()
     return users
 
 
 @router.get("/authors", response_model=list[AuthorBrief])
-def list_pennamed_authors(
-    db: Session = Depends(get_db),
+async def list_pennamed_authors(
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """The post editor's author picker (DEC-359, TASK-406).
@@ -401,22 +404,26 @@ def list_pennamed_authors(
     login username never appears (admin login is no-oracle; /users stays
     superuser-only for the credential-adjacent surface).
     """
-    users = db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name).all()
+    users = (
+        (await db.execute(select(auth.User).where(auth.User.display_name.isnot(None)).order_by(auth.User.display_name)))
+        .scalars()
+        .all()
+    )
     return users
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(
+async def delete_user(
     request: Request,  # noqa: ARG001
     user_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     if user_id == _current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
 
-    user = db.query(auth.User).filter(auth.User.id == user_id).first()
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -425,14 +432,14 @@ def delete_user(
     # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
     # later user (same orphan class as category/tag/series follows — deep-dive
     # finding).
-    db.query(models.AuthorFollow).filter(models.AuthorFollow.author_id == user_id).delete(synchronize_session=False)
-    db.delete(user)
-    db.commit()
+    await db.execute(delete(models.AuthorFollow).where(models.AuthorFollow.author_id == user_id))
+    await db.delete(user)
+    await db.commit()
 
 
 @router.get("/posts")
-def admin_list_posts(
-    db: Session = Depends(get_db),
+async def admin_list_posts(
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -442,49 +449,55 @@ def admin_list_posts(
         Query(description="published | draft | scheduled"),
     ] = None,
 ):
-    query = db.query(models.Post)
+    stmt = select(models.Post)
 
     if q:
-        query = query.filter(models.Post.title.ilike(f"%{crud.escape_like_pattern(q)}%", escape="\\"))
+        stmt = stmt.where(models.Post.title.ilike(f"%{crud.escape_like_pattern(q)}%", escape="\\"))
 
     if status == "published":
         now = utc_now_naive()
-        query = query.filter(
+        stmt = stmt.where(
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     elif status == "draft":
-        query = query.filter(models.Post.published == False)  # noqa: E712
+        stmt = stmt.where(models.Post.published == False)  # noqa: E712
     elif status == "scheduled":
         # A "scheduled" post is one that is published=True but not yet live
         # (its publish_at is in the future) — matching the stats endpoint. A
         # draft with a future publish_at is still a draft, not scheduled.
         now = utc_now_naive()
-        query = query.filter(
+        stmt = stmt.where(
             models.Post.published.is_(True),
             models.Post.publish_at > now,
         )
 
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
 
     posts = (
-        query.options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
+        (
+            await db.execute(
+                stmt.options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                # id tiebreak: imported/bulk-restored rows share created_at; without a
+                # unique final sort key, offset pages can skip/duplicate across page
+                # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
+                # COALESCE pinned like crud.get_posts (TASK-535 parity): a raw-import
+                # NULL-pinned row must sort with the unpinned group, not first.
+                .order_by(
+                    func.coalesce(models.Post.pinned, False).desc(),
+                    models.Post.created_at.desc(),
+                    models.Post.id.desc(),
+                )
+                .offset(skip)
+                .limit(limit)
+            )
         )
-        # id tiebreak: imported/bulk-restored rows share created_at; without a
-        # unique final sort key, offset pages can skip/duplicate across page
-        # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
-        # COALESCE pinned like crud.get_posts (TASK-535 parity): a raw-import
-        # NULL-pinned row must sort with the unpinned group, not first.
-        .order_by(
-            func.coalesce(models.Post.pinned, False).desc(),
-            models.Post.created_at.desc(),
-            models.Post.id.desc(),
-        )
-        .offset(skip)
-        .limit(limit)
+        .unique()
+        .scalars()
         .all()
     )
     # Approved comment_count per post for this page (single grouped query, no
@@ -494,14 +507,15 @@ def admin_list_posts(
     if posts:
         post_ids = [p.id for p in posts]
         rows = (
-            db.query(models.Comment.post_id, func.count(models.Comment.id))
-            .filter(
-                models.Comment.post_id.in_(post_ids),
-                models.Comment.is_approved.is_(True),
+            await db.execute(
+                select(models.Comment.post_id, func.count(models.Comment.id))
+                .where(
+                    models.Comment.post_id.in_(post_ids),
+                    models.Comment.is_approved.is_(True),
+                )
+                .group_by(models.Comment.post_id)
             )
-            .group_by(models.Comment.post_id)
-            .all()
-        )
+        ).all()
         comment_counts = {post_id: int(count) for post_id, count in rows}
     return {
         "items": [
@@ -539,9 +553,9 @@ def admin_list_posts(
 
 
 @router.get("/calendar", response_model=dict)
-def admin_calendar(
+async def admin_calendar(
     month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="Month to view, YYYY-MM"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
@@ -577,20 +591,25 @@ def admin_calendar(
         return "draft", p.publish_at
 
     posts = (
-        db.query(models.Post)
-        .options(joinedload(models.Post.category))
-        .filter(
-            or_(
-                and_(
-                    models.Post.publish_at.isnot(None),
-                    models.Post.publish_at >= window_start,
-                ),
-                and_(
-                    models.Post.created_at.isnot(None),
-                    models.Post.created_at >= window_start,
-                ),
+        (
+            await db.execute(
+                select(models.Post)
+                .options(joinedload(models.Post.category))
+                .where(
+                    or_(
+                        and_(
+                            models.Post.publish_at.isnot(None),
+                            models.Post.publish_at >= window_start,
+                        ),
+                        and_(
+                            models.Post.created_at.isnot(None),
+                            models.Post.created_at >= window_start,
+                        ),
+                    )
+                )
             )
         )
+        .scalars()
         .all()
     )
 
@@ -630,20 +649,25 @@ def admin_calendar(
 
 
 @router.get("/posts/{post_id}", response_model=dict)
-def admin_get_post(
+async def admin_get_post(
     post_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     post = (
-        db.query(models.Post)
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
+        (
+            await db.execute(
+                select(models.Post)
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .where(models.Post.id == post_id)
+            )
         )
-        .filter(models.Post.id == post_id)
-        .first()
+        .unique()
+        .scalar_one_or_none()
     )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -678,16 +702,16 @@ def admin_get_post(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/posts", response_model=dict, status_code=status.HTTP_201_CREATED)
-def admin_create_post(
+async def admin_create_post(
     request: Request,  # noqa: ARG001
     post_data: PostCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     try:
         # Author attribution (DEC-359/TASK-405): default to the writing admin;
         # an editor may explicitly attribute the post to another admin.
-        post = crud.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
+        post = await crud.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
@@ -695,22 +719,22 @@ def admin_create_post(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/posts/{post_id}/clone", response_model=dict)
-def admin_clone_post(
+async def admin_clone_post(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     _current_user: auth.User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Duplicate a post into a fresh draft (round 349): same content +
     taxonomy + attribution, a new unique slug, and every publication-
     metadata field cleared (unpublished, unscheduled, unpinned, zeroed
     views/likes) — so an editor can seed a sibling post from a template
     without the copy-paste dance and without leaking a live post."""
-    source = db.query(models.Post).filter(models.Post.id == post_id).first()
+    source = (await db.execute(select(models.Post).where(models.Post.id == post_id))).scalar_one_or_none()
     if not source:
         raise HTTPException(status_code=404, detail="Post not found")
     try:
-        post = crud.clone_post(db, source)
+        post = await crud.clone_post(db, source)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"id": post.id}
@@ -718,14 +742,19 @@ def admin_clone_post(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/posts/{post_id}", response_model=dict)
-def admin_update_post(
+async def admin_update_post(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     post_data: PostUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    post = (
+        (await db.execute(select(models.Post).options(joinedload(models.Post.tags)).where(models.Post.id == post_id)))
+        .unique()
+        .scalars()
+        .first()
+    )
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -740,7 +769,7 @@ def admin_update_post(
     if post_data.slug is not None and post_data.slug != post.slug:
         # Slug-change redirect (round 350): an old URL that was shared/indexed
         # must keep pointing at this post after the rename (see crud.record_*).
-        crud.record_slug_redirect(db, "post", post.slug, post_data.slug)
+        await crud.record_slug_redirect(db, "post", post.slug, post_data.slug)
         post.slug = post_data.slug
     if post_data.content is not None:
         post.content = post_data.content
@@ -760,7 +789,7 @@ def admin_update_post(
         # explicit reassignment — and an id that no longer exists must 400 like
         # the sibling FK fields (author: null, 404 writer archive/RSS, missed
         # author-follow fan-out otherwise).
-        author = db.query(auth.User).filter(auth.User.id == post_data.author_id).first()
+        author = (await db.execute(select(auth.User).where(auth.User.id == post_data.author_id))).scalar_one_or_none()
         if not author:
             raise HTTPException(
                 status_code=400,
@@ -778,7 +807,9 @@ def admin_update_post(
 
     if "category_id" in update_fields:
         if post_data.category_id is not None:
-            category = db.query(models.Category).filter(models.Category.id == post_data.category_id).first()
+            category = (
+                await db.execute(select(models.Category).where(models.Category.id == post_data.category_id))
+            ).scalar_one_or_none()
             if not category:
                 raise HTTPException(status_code=400, detail=f"Category with id {post_data.category_id} not found")
             post.category_id = post_data.category_id
@@ -790,7 +821,9 @@ def admin_update_post(
     # bare title/slug update must never silently drop the post out of its series.
     if "series_id" in update_fields:
         if post_data.series_id is not None:
-            series = db.query(models.Series).filter(models.Series.id == post_data.series_id).first()
+            series = (
+                await db.execute(select(models.Series).where(models.Series.id == post_data.series_id))
+            ).scalar_one_or_none()
             if not series:
                 raise HTTPException(status_code=400, detail=f"Series with id {post_data.series_id} not found")
             post.series_id = post_data.series_id
@@ -806,28 +839,28 @@ def admin_update_post(
         # unknown tag_ids were silently filtered out while the same handler 400'd
         # on an unknown category/series id, so a deleted tag vanished from a save.)
         tag_id_list = post_data.tag_ids
-        tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all()
+        tags = (await db.execute(select(models.Tag).where(models.Tag.id.in_(tag_id_list)))).scalars().all()
         if len(tags) != len(tag_id_list):
             missing = [tid for tid in tag_id_list if tid not in {t.id for t in tags}]
             raise HTTPException(
                 status_code=400,
                 detail=f"Tag(s) with id {missing} not found",
             )
-        post.tags = tags
+        post.tags = list(tags)
 
     if "publish_at" in update_fields:
         post.publish_at = post_data.publish_at
 
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Slug already exists")
-    db.refresh(post)
+    await db.refresh(post)
     # Snapshot the updated state into version history (DEC-158, TASK-191).
     # This route updates fields directly (it doesn't use crud.update_post), so
     # the capture is invoked here explicitly.
-    crud.capture_post_revision(db, post)
+    await crud.capture_post_revision(db, post)
     clear_tags_cache()
     clear_categories_cache()
     clear_posts_list_cache()
@@ -843,26 +876,26 @@ def admin_update_post(
         # checks — otherwise the first public read of a crossed scheduled post
         # edited here would re-announce it.
         post.new_post_notified_at = crud.utc_now_naive()
-        db.commit()
-        crud.record_new_post_notifications(db, post)
-        dispatch_new_post(db, post, logger)
-        crud.dispatch_newsletter_new_post(db, post, logger)
+        await db.commit()
+        await crud.record_new_post_notifications(db, post)
+        await dispatch_new_post(db, post, logger)
+        await crud.dispatch_newsletter_new_post(db, post, logger)
     return {"id": post.id}
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-def admin_delete_post(
+async def admin_delete_post(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     # crud.delete_post purges the DEC-009 child tables (bookmarks/history/
     # subscriptions/daily views) along with the post and its cascaded comments
     # and revisions — keep the admin route on the same code path (RIL ISS-296).
     try:
-        success = crud.delete_post(db, post_id)
+        success = await crud.delete_post(db, post_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:
@@ -870,25 +903,25 @@ def admin_delete_post(
 
 
 @router.get("/posts/{post_id}/revisions", response_model=list[PostRevisionSummary])
-def admin_list_post_revisions(
+async def admin_list_post_revisions(
     post_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    post = (await db.execute(select(models.Post).where(models.Post.id == post_id))).scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return crud.get_post_revisions(db, post_id)
+    return await crud.get_post_revisions(db, post_id)
 
 
 @router.get("/posts/{post_id}/revisions/{revision_id}", response_model=PostRevisionDetail)
-def admin_get_post_revision(
+async def admin_get_post_revision(
     post_id: IdInt,
     revision_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    revision = crud.get_post_revision(db, post_id, revision_id)
+    revision = await crud.get_post_revision(db, post_id, revision_id)
     if not revision:
         raise HTTPException(status_code=404, detail="Revision not found")
     return revision
@@ -896,15 +929,15 @@ def admin_get_post_revision(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/posts/{post_id}/revisions/{revision_id}/restore", response_model=Post)
-def admin_restore_post_revision(
+async def admin_restore_post_revision(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     revision_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     try:
-        return crud.restore_post_revision(db, post_id, revision_id)
+        return await crud.restore_post_revision(db, post_id, revision_id)
     except ValueError as e:
         msg = str(e)
         code = 404 if "not found" in msg else 400
@@ -912,65 +945,66 @@ def admin_restore_post_revision(
 
 
 @router.get("/categories", response_model=list[dict])
-def admin_list_categories(
-    db: Session = Depends(get_db),
+async def admin_list_categories(
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    categories = db.query(models.Category).all()
+    categories = (await db.execute(select(models.Category))).scalars().all()
     # Post count per category in a single grouped query (no N+1).
     rows = (
-        db.query(models.Post.category_id, func.count(models.Post.id))
-        .filter(models.Post.category_id.isnot(None))
-        .group_by(models.Post.category_id)
-        .all()
-    )
+        await db.execute(
+            select(models.Post.category_id, func.count(models.Post.id))
+            .where(models.Post.category_id.isnot(None))
+            .group_by(models.Post.category_id)
+        )
+    ).all()
     counts = {cat_id: int(count) for cat_id, count in rows}
     return [{"id": c.id, "name": c.name, "post_count": counts.get(c.id, 0)} for c in categories]
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/categories", response_model=dict)
-def admin_create_category(
+async def admin_create_category(
     request: Request,  # noqa: ARG001
     body: NameRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     name = body.name
-    existing = db.query(models.Category).filter(models.Category.name == name).first()
+    existing = (await db.execute(select(models.Category).where(models.Category.name == name))).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
 
     category = models.Category(name=name)
     db.add(category)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Category already exists")
-    db.refresh(category)
+    await db.refresh(category)
     clear_categories_cache()
     return {"id": category.id, "name": category.name}
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/categories/{category_id}", response_model=dict)
-def admin_update_category(
+async def admin_update_category(
     request: Request,  # noqa: ARG001
     category_id: IdInt,
     body: NameRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    category = (await db.execute(select(models.Category).where(models.Category.id == category_id))).scalar_one_or_none()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
     category.name = body.name
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Category already exists")
     clear_categories_cache()
     # Renamed name is embedded in cached public post lists and feeds (ISS-057).
@@ -980,29 +1014,31 @@ def admin_update_category(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-def admin_delete_category(
+async def admin_delete_category(
     request: Request,  # noqa: ARG001
     category_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    category = (await db.execute(select(models.Category).where(models.Category.id == category_id))).scalar_one_or_none()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
 
     # Check for posts referencing this category
-    post_count = db.query(models.Post).filter(models.Post.category_id == category_id).count()
+    post_count = (
+        await db.execute(select(func.count()).select_from(models.Post).where(models.Post.category_id == category_id))
+    ).scalar() or 0
     if post_count > 0:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot delete category: {post_count} post(s) reference it",
         )
 
-    db.delete(category)
+    await db.delete(category)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Cannot delete category: it is referenced by posts",
@@ -1011,64 +1047,66 @@ def admin_delete_category(
 
 
 @router.get("/tags", response_model=list[dict])
-def admin_list_tags(
-    db: Session = Depends(get_db),
+async def admin_list_tags(
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    tags = db.query(models.Tag).all()
+    tags = (await db.execute(select(models.Tag))).scalars().all()
     # Post count per tag through the many-to-many join table, one grouped query.
     rows = (
-        db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
-        .group_by(models.post_tags.c.tag_id)
-        .all()
-    )
+        await db.execute(
+            select(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id)).group_by(
+                models.post_tags.c.tag_id
+            )
+        )
+    ).all()
     counts = {tag_id: int(count) for tag_id, count in rows}
     return [{"id": t.id, "name": t.name, "post_count": counts.get(t.id, 0)} for t in tags]
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/tags", response_model=dict)
-def admin_create_tag(
+async def admin_create_tag(
     request: Request,  # noqa: ARG001
     body: NameRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     name = body.name
-    existing = db.query(models.Tag).filter(models.Tag.name == name).first()
+    existing = (await db.execute(select(models.Tag).where(models.Tag.name == name))).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
     tag = models.Tag(name=name)
     db.add(tag)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Tag already exists")
-    db.refresh(tag)
+    await db.refresh(tag)
     clear_tags_cache()
     return {"id": tag.id, "name": tag.name}
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/tags/{tag_id}", response_model=dict)
-def admin_update_tag(
+async def admin_update_tag(
     request: Request,  # noqa: ARG001
     tag_id: IdInt,
     body: NameRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    tag = (await db.execute(select(models.Tag).where(models.Tag.id == tag_id))).scalar_one_or_none()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
     tag.name = body.name
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Tag already exists")
     clear_tags_cache()
     # Renamed name is embedded in cached public post lists and feeds (ISS-057).
@@ -1078,29 +1116,31 @@ def admin_update_tag(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
-def admin_delete_tag(
+async def admin_delete_tag(
     request: Request,  # noqa: ARG001
     tag_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    tag = (await db.execute(select(models.Tag).where(models.Tag.id == tag_id))).scalar_one_or_none()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
 
     # Check for posts referencing this tag
-    post_count = db.query(models.Post).filter(models.Post.tags.any(id=tag_id)).count()
+    post_count = (
+        await db.execute(select(func.count()).select_from(models.Post).where(models.Post.tags.any(id=tag_id)))
+    ).scalar() or 0
     if post_count > 0:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot delete tag: {post_count} post(s) reference it",
         )
 
-    db.delete(tag)
+    await db.delete(tag)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Cannot delete tag: it is referenced by posts",
@@ -1110,7 +1150,7 @@ def admin_delete_tag(
 
 # Comments management
 @router.get("/comments")
-def admin_list_comments(
+async def admin_list_comments(
     post_id: IdInt | None = None,
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
     q: Annotated[NonNulStr | None, Query(description="Search nickname/email/content")] = None,
@@ -1121,18 +1161,18 @@ def admin_list_comments(
     flagged: bool | None = Query(None, description="Filter to comments that have reader flags"),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """List comments with pagination + filters (bounded response, issue #20)."""
-    query = db.query(models.Comment, models.Post.title).join(models.Post, models.Post.id == models.Comment.post_id)
+    stmt = select(models.Comment, models.Post.title).join(models.Post, models.Post.id == models.Comment.post_id)
     if post_id:
-        query = query.filter(models.Comment.post_id == post_id)
+        stmt = stmt.where(models.Comment.post_id == post_id)
     if is_approved is not None:
-        query = query.filter(models.Comment.is_approved.is_(is_approved))
+        stmt = stmt.where(models.Comment.is_approved.is_(is_approved))
     if q:
         like = f"%{crud.escape_like_pattern(q)}%"
-        query = query.filter(
+        stmt = stmt.where(
             or_(
                 models.Comment.nickname.ilike(like, escape="\\"),
                 models.Comment.email.ilike(like, escape="\\"),
@@ -1147,31 +1187,34 @@ def admin_list_comments(
         start = parse_bound(date_from)
         end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
         if start is not None:
-            query = query.filter(models.Comment.created_at >= start)
+            stmt = stmt.where(models.Comment.created_at >= start)
         if end is not None:
-            query = query.filter(models.Comment.created_at <= end)
+            stmt = stmt.where(models.Comment.created_at <= end)
     if flagged is not None:
-        flagged_ids = db.query(models.CommentFlag.comment_id)
+        flagged_ids = select(models.CommentFlag.comment_id)
         if flagged:
-            query = query.filter(models.Comment.id.in_(flagged_ids))
+            stmt = stmt.where(models.Comment.id.in_(flagged_ids))
         else:
-            query = query.filter(models.Comment.id.notin_(flagged_ids))
-    total = query.count()
+            stmt = stmt.where(models.Comment.id.notin_(flagged_ids))
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
     # Global moderation backlog, independent of the page's post/q/status filters:
     # the header's "N pending" must not be the current page's pending rows (which
     # reads 0 on an approved-heavy page while the queue still has work), nor the
     # filter-scoped total. Same authoritative pending_count the dashboard uses
     # (round 276); a tiny COUNT over one boolean-filtered column.
-    pending_count = db.query(models.Comment).filter(models.Comment.is_approved.is_(False)).count()
+    pending_count = (
+        await db.execute(select(func.count()).select_from(models.Comment).where(models.Comment.is_approved.is_(False)))
+    ).scalar() or 0
 
     comment_rows = (
-        query.order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+        await db.execute(
+            stmt.order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+    ).all()
     page_ids = [c.id for c, _ in comment_rows]
-    flag_counts = crud.flag_counts_for_comments(db, page_ids)
+    flag_counts = await crud.flag_counts_for_comments(db, page_ids)
     # Reader account identity for the MODERATION queue (admin-only signal).
     # reader-attributed comments never put the account email in comment.email
     # (DEC-062), and round-427 stopped the old nickname fallback from leaking
@@ -1183,10 +1226,10 @@ def admin_list_comments(
     reader_ids = [c.reader_id for c, _ in comment_rows if c.reader_id is not None]
     if reader_ids:
         reader_rows = (
-            db.query(auth.ReaderAccount.id, auth.ReaderAccount.email)
-            .filter(auth.ReaderAccount.id.in_(reader_ids))
-            .all()
-        )
+            await db.execute(
+                select(auth.ReaderAccount.id, auth.ReaderAccount.email).where(auth.ReaderAccount.id.in_(reader_ids))
+            )
+        ).all()
         # C416: ruff prefers `dict(reader_rows)`, but pyright cannot type a
         # SQLAlchemy Row list into dict(); the explicit comprehension keeps
         # both green (`dict` on rows mis-infers bytes keys).
@@ -1232,16 +1275,16 @@ class BatchApproveRequest(BaseModel):
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/comments/batch-approve")
-def admin_batch_approve_comments(
+async def admin_batch_approve_comments(
     request: Request,  # noqa: ARG001
     body: BatchApproveRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     # Superuser-only by design (test_role_tiers: "a non-superuser editor CANNOT
     # ... batch-approve"): bulk-approve touches many comments at once and is a
     # privileged bulk action, unlike the point moderation peers.
     _current_user: auth.User = Depends(get_current_superuser),
 ):
-    comments = db.query(models.Comment).filter(models.Comment.id.in_(body.ids)).all()
+    comments = (await db.execute(select(models.Comment).where(models.Comment.id.in_(body.ids)))).scalars().all()
     # Idempotent: a comment already in the requested reviewed state (correct
     # is_approved AND reviewed_at stamped) is a no-op, so a re-approve of
     # already-approved comments must not re-fan out reply + thread
@@ -1259,7 +1302,7 @@ def admin_batch_approve_comments(
         # ISS-452 keeps these writes consistent with the naive column).
         c.reviewed_at = utc_now_naive()
     if changed:
-        db.commit()
+        await db.commit()
         # Approving/rejecting changes the approved comment_count embedded in the
         # cached public post list, so invalidate it (ISS-056).
         clear_posts_list_cache()
@@ -1268,7 +1311,7 @@ def admin_batch_approve_comments(
     # for comments that genuinely transitioned.
     if body.approved:
         for c in changed:
-            _notify_comment_approved(db, c)
+            await _notify_comment_approved(db, c)
     return {"message": f"{len(comments)} comments updated"}
 
 
@@ -1279,10 +1322,10 @@ class BatchDeleteRequest(BaseModel):
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/comments/batch-delete")
-def admin_batch_delete_comments(
+async def admin_batch_delete_comments(
     request: Request,  # noqa: ARG001
     body: BatchDeleteRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Bulk-delete selected comments (own-user, spam cleanup). DEC-110.
@@ -1291,7 +1334,7 @@ def admin_batch_delete_comments(
     so the thread is never orphaned. Returns the number deleted.
     """
     try:
-        deleted = crud.bulk_delete_comments(db, body.ids)
+        deleted = await crud.bulk_delete_comments(db, body.ids)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"deleted": deleted}
@@ -1305,26 +1348,26 @@ class PasswordChangeRequest(BaseModel):
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/comments/{comment_id}/flags")
-def dismiss_comment_flags(
+async def dismiss_comment_flags(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Clear all reader flags on a comment (moderator dismissed the reports)."""
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    removed = crud.dismiss_comment_flags(db, comment_id)
+    removed = await crud.dismiss_comment_flags(db, comment_id)
     return {"comment_id": comment_id, "removed": removed}
 
 
 @router.post("/password")
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def change_password(
+async def change_password(
     request: Request,  # noqa: ARG001
     body: PasswordChangeRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: auth.User = Depends(get_current_admin),
 ):
     if not auth.verify_password(body.current_password, current_user.password):
@@ -1333,19 +1376,19 @@ def change_password(
     # Invalidate every previously-issued JWT for this admin: bump the token
     # version checked in get_current_user. (RIL round 16 security audit)
     current_user.token_version = (current_user.token_version or 0) + 1
-    db.commit()
+    await db.commit()
     return {"message": "Password updated"}
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def admin_delete_comment(
+async def admin_delete_comment(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalar_one_or_none()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
@@ -1355,9 +1398,9 @@ def admin_delete_comment(
         # refuses on Postgres — mirrors crud.bulk_delete_comments (DEC-110).
         # The old db.delete()+commit here orphaned replies on SQLite and 400'd
         # on Postgres whenever the comment had replies (backend deep-dive).
-        deleted = crud.delete_comment_reparent(db, comment_id)
+        deleted = await crud.delete_comment_reparent(db, comment_id)
     except ValueError as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
         raise HTTPException(status_code=404, detail="Comment not found")
@@ -1378,11 +1421,11 @@ class AdminReplyRequest(BaseModel):
 
 @router.post("/comments/{comment_id}/reply", response_model=Comment, status_code=status.HTTP_201_CREATED)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_reply_comment(
+async def admin_reply_comment(
     request: Request,
     comment_id: IdInt,
     body: AdminReplyRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Reply to a comment as the blog author (DEC-192, TASK-212).
@@ -1396,7 +1439,7 @@ def admin_reply_comment(
     CommentBase; rendering sanitization stays where it is for every comment
     (render-time, DEC-088).
     """
-    comment = db.get(models.Comment, comment_id)
+    comment = await db.get(models.Comment, comment_id)
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
 
@@ -1415,14 +1458,14 @@ def admin_reply_comment(
     )
     db.add(reply)
     try:
-        db.commit()
-        db.refresh(reply)
+        await db.commit()
+        await db.refresh(reply)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Failed to create reply")
     # Immediately public -> notify the replied-to reader + thread followers,
     # exactly as an approved comment would (no double paths to maintain).
-    _notify_comment_approved(db, reply)
+    await _notify_comment_approved(db, reply)
     return reply
 
 
@@ -1442,30 +1485,30 @@ class SettingUpdate(BaseModel):
     value: str
 
 
-def _effective_boolean_setting(db: Session, key: str, env_default: bool) -> bool:
-    return crud.boolean_setting(db, key, env_default)
+async def _effective_boolean_setting(db: AsyncSession, key: str, env_default: bool) -> bool:
+    return await crud.boolean_setting(db, key, env_default)
 
 
 @router.get("/settings/{key}", response_model=SettingRead)
-def get_site_setting_ep(
+async def get_site_setting_ep(
     key: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Read a runtime site setting (admin only). Unknown keys are 404."""
     if key not in KNOWN_BOOLEAN_SETTINGS:
         raise HTTPException(status_code=404, detail="Unknown setting")
-    effective = _effective_boolean_setting(db, key, AUTO_APPROVE_READER_COMMENTS)
+    effective = await _effective_boolean_setting(db, key, AUTO_APPROVE_READER_COMMENTS)
     return SettingRead(key=key, value="true" if effective else "false")
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.put("/settings/{key}", response_model=SettingRead)
-def put_site_setting_ep(
+async def put_site_setting_ep(
     request: Request,  # noqa: ARG001
     key: str,
     body: SettingUpdate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Persist a runtime site setting (admin only). Unknown keys / bad values 404/422."""
@@ -1475,7 +1518,7 @@ def put_site_setting_ep(
     if normalized not in {"true", "false", "1", "0", "yes", "no", "on", "off"}:
         raise HTTPException(status_code=422, detail="value must be a boolean string")
     canonical = "true" if normalized in {"1", "true", "yes", "on"} else "false"
-    crud.upsert_site_setting(db, key, canonical)
+    await crud.upsert_site_setting(db, key, canonical)
     return SettingRead(key=key, value=canonical)
 
 
@@ -1511,11 +1554,11 @@ class AdminReaderStatusResponse(BaseModel):
 
 
 @router.get("/readers")
-def admin_list_readers(
+async def admin_list_readers(
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     q: Annotated[NonNulStr | None, Query(description="Search email / display name")] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """List registered reader accounts with moderation aggregates (admin only).
@@ -1524,20 +1567,25 @@ def admin_list_readers(
     moderation responsibility like the comment queue, not the superuser-only
     admin-users provisioning surface.
     """
-    query = db.query(auth.ReaderAccount)
+    stmt = select(auth.ReaderAccount)
     if q:
         like = f"%{crud.escape_like_pattern(q)}%"
-        query = query.filter(
+        stmt = stmt.where(
             or_(
                 auth.ReaderAccount.email.ilike(like, escape="\\"),
                 auth.ReaderAccount.display_name.ilike(like, escape="\\"),
             )
         )
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
     rows = (
-        query.order_by(auth.ReaderAccount.created_at.desc(), auth.ReaderAccount.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
+        (
+            await db.execute(
+                stmt.order_by(auth.ReaderAccount.created_at.desc(), auth.ReaderAccount.id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        )
+        .scalars()
         .all()
     )
     # Aggregate counts for the page rows in two grouped queries (no N+1).
@@ -1549,18 +1597,20 @@ def admin_list_readers(
         # dict(row_list) idiom resolves rows to bytes, ISS-123). Comment
         # reader_id is nullable (anonymous comments) -> drop None keys.
         comment_rows = (
-            db.query(models.Comment.reader_id, func.count(models.Comment.id))
-            .filter(models.Comment.reader_id.in_(reader_ids))
-            .group_by(models.Comment.reader_id)
-            .all()
-        )
+            await db.execute(
+                select(models.Comment.reader_id, func.count(models.Comment.id))
+                .where(models.Comment.reader_id.in_(reader_ids))
+                .group_by(models.Comment.reader_id)
+            )
+        ).all()
         comment_counts = {rid: int(n) for rid, n in comment_rows if rid is not None}
         bookmark_rows = (
-            db.query(models.ReaderBookmark.reader_id, func.count(models.ReaderBookmark.id))
-            .filter(models.ReaderBookmark.reader_id.in_(reader_ids))
-            .group_by(models.ReaderBookmark.reader_id)
-            .all()
-        )
+            await db.execute(
+                select(models.ReaderBookmark.reader_id, func.count(models.ReaderBookmark.id))
+                .where(models.ReaderBookmark.reader_id.in_(reader_ids))
+                .group_by(models.ReaderBookmark.reader_id)
+            )
+        ).all()
         bookmark_counts = {rid: int(n) for rid, n in bookmark_rows}
     items = [
         AdminReaderSummary(
@@ -1586,8 +1636,8 @@ def admin_list_readers(
     }
 
 
-def _get_reader_or_404(db: Session, reader_id: int) -> auth.ReaderAccount:
-    reader = db.get(auth.ReaderAccount, reader_id)
+async def _get_reader_or_404(db: AsyncSession, reader_id: int) -> auth.ReaderAccount:
+    reader = await db.get(auth.ReaderAccount, reader_id)
     if reader is None:
         raise HTTPException(status_code=404, detail="Reader not found")
     return reader
@@ -1595,10 +1645,10 @@ def _get_reader_or_404(db: Session, reader_id: int) -> auth.ReaderAccount:
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/readers/{reader_id}/deactivate", response_model=AdminReaderStatusResponse)
-def admin_deactivate_reader(
+async def admin_deactivate_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Deactivate a reader account (admin only).
@@ -1610,11 +1660,11 @@ def admin_deactivate_reader(
     through a deactivated account. Idempotent: an already-inactive reader is
     not re-bumped.
     """
-    reader = _get_reader_or_404(db, reader_id)
+    reader = await _get_reader_or_404(db, reader_id)
     if reader.is_active:
         reader.is_active = False
         reader.token_version = (reader.token_version or 0) + 1
-        db.commit()
+        await db.commit()
     return AdminReaderStatusResponse(
         id=reader.id,
         email=reader.email,
@@ -1625,10 +1675,10 @@ def admin_deactivate_reader(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/readers/{reader_id}/activate", response_model=AdminReaderStatusResponse)
-def admin_activate_reader(
+async def admin_activate_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
     """Reactivate a deactivated reader account (admin only).
@@ -1637,10 +1687,10 @@ def admin_activate_reader(
     deactivation, so the reader must obtain a fresh token (old ones remain
     revoked).
     """
-    reader = _get_reader_or_404(db, reader_id)
+    reader = await _get_reader_or_404(db, reader_id)
     if not reader.is_active:
         reader.is_active = True
-        db.commit()
+        await db.commit()
     return AdminReaderStatusResponse(
         id=reader.id,
         email=reader.email,
@@ -1651,11 +1701,11 @@ def admin_activate_reader(
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/digests/send-weekly", response_model=dict)
-def admin_send_weekly_digest(
+async def admin_send_weekly_digest(
     request: Request,  # noqa: ARG001
     dry_run: bool = Query(False, description="Build + report without sending mail or stamping digest_sent_at"),
     _current_user: auth.User = Depends(get_current_superuser),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Trigger the weekly email digest job on demand (DEC-201, TASK-222).
 
@@ -1666,4 +1716,4 @@ def admin_send_weekly_digest(
     """
     from app.digest import send_weekly_digest
 
-    return send_weekly_digest(db, dry_run=dry_run)
+    return await send_weekly_digest(db, dry_run=dry_run)

@@ -22,6 +22,7 @@ Key properties:
 from email.message import EmailMessage
 
 import pytest
+from sqlalchemy import select
 
 from app import models
 
@@ -62,18 +63,18 @@ def smtp_sink(monkeypatch: pytest.MonkeyPatch) -> type[FakeSMTP]:
     return FakeSMTP
 
 
-def _subscribe(client, email: str) -> None:
-    r = client.post("/api/newsletter/subscribe", json={"email": email})
+async def _subscribe(client, email: str) -> None:
+    r = await client.post("/api/newsletter/subscribe", json={"email": email})
     assert r.status_code == 202
 
 
-def test_requires_admin(client):
+async def test_requires_admin(client):
     """Anonymous / non-admin calls are 401 (the list and the delete)."""
-    assert client.get("/api/admin/newsletter/subscribers").status_code == 401
-    assert client.delete("/api/admin/newsletter/subscribers/1").status_code == 401
+    assert (await client.get("/api/admin/newsletter/subscribers")).status_code == 401
+    assert (await client.delete("/api/admin/newsletter/subscribers/1")).status_code == 401
 
 
-def test_non_admin_role_rejected(client, db_session):
+async def test_non_admin_role_rejected(client, db_session):
     """An authenticated account outside the admin tiers is 403 on list + delete.
 
     Mirrors the push-moderation guard test: a User whose role is not an admin
@@ -88,26 +89,30 @@ def test_non_admin_role_rejected(client, db_session):
         is_superuser=False,
     )
     db_session.add(viewer)
-    db_session.flush()
+    await db_session.flush()
     token = create_access_token({"sub": viewer.id}, token_version=viewer.token_version or 0)
     headers = {"Authorization": f"Bearer {token}"}
 
-    assert client.get("/api/admin/newsletter/subscribers", headers=headers).status_code == 403
-    assert client.delete("/api/admin/newsletter/subscribers/1", headers=headers).status_code == 403
+    assert (await client.get("/api/admin/newsletter/subscribers", headers=headers)).status_code == 403
+    assert (await client.delete("/api/admin/newsletter/subscribers/1", headers=headers)).status_code == 403
 
 
-def test_list_subscribers_filters_and_paginates(client, db_session, admin_token):
+async def test_list_subscribers_filters_and_paginates(client, db_session, admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
     for email in ("a@example.com", "b@example.com", "c@example.com"):
-        _subscribe(client, email)
+        await _subscribe(client, email)
     # Confirm two of the three so the status filter has something to split.
-    subs = db_session.query(models.NewsletterSubscriber).order_by(models.NewsletterSubscriber.email).all()
+    subs = (
+        (await db_session.execute(select(models.NewsletterSubscriber).order_by(models.NewsletterSubscriber.email)))
+        .scalars()
+        .all()
+    )
     for sub in subs[:2]:
         sub.is_confirmed = True
-    db_session.commit()
+    await db_session.commit()
 
     # Unfiltered list shows all three, newest... email order for determinism.
-    r = client.get("/api/admin/newsletter/subscribers", headers=headers)
+    r = await client.get("/api/admin/newsletter/subscribers", headers=headers)
     assert r.status_code == 200
     body = r.json()
     assert body["pagination"]["total"] == 3
@@ -123,7 +128,7 @@ def test_list_subscribers_filters_and_paginates(client, db_session, admin_token)
     assert item["created_at"] is not None
 
     # Pagination ceil: limit=2 over 3 rows -> two pages, two rows on page 1.
-    r = client.get(
+    r = await client.get(
         "/api/admin/newsletter/subscribers",
         headers=headers,
         params={"limit": 2},
@@ -136,7 +141,7 @@ def test_list_subscribers_filters_and_paginates(client, db_session, admin_token)
     assert len(body["items"]) == 2
 
     # Status filter narrows.
-    r = client.get(
+    r = await client.get(
         "/api/admin/newsletter/subscribers",
         headers=headers,
         params={"status": "pending"},
@@ -146,7 +151,7 @@ def test_list_subscribers_filters_and_paginates(client, db_session, admin_token)
     assert body["pagination"]["total"] == 1
     assert [i["email"] for i in body["items"]] == ["c@example.com"]
 
-    r = client.get(
+    r = await client.get(
         "/api/admin/newsletter/subscribers",
         headers=headers,
         params={"status": "confirmed"},
@@ -155,7 +160,7 @@ def test_list_subscribers_filters_and_paginates(client, db_session, admin_token)
     assert r.json()["pagination"]["total"] == 2
 
     # Email search narrows case-insensitively.
-    r = client.get(
+    r = await client.get(
         "/api/admin/newsletter/subscribers",
         headers=headers,
         params={"q": "B@EXAMPLE"},
@@ -166,16 +171,16 @@ def test_list_subscribers_filters_and_paginates(client, db_session, admin_token)
     assert body["items"][0]["email"] == "b@example.com"
 
 
-def test_email_search_escapes_like_wildcards(client, admin_token):
+async def test_email_search_escapes_like_wildcards(client, admin_token):
     """Search terms match the literal substring — `%`/`_` in the term are
     escaped (readers-list convention, crud.escape_like_pattern). A raw `_`
     would also match `trickyxdup`; the escaped one finds only the address
     with a real underscore."""
     headers = {"Authorization": f"Bearer {admin_token}"}
-    _subscribe(client, "tricky_dup@example.com")
-    _subscribe(client, "trickyxdup@example.com")
+    await _subscribe(client, "tricky_dup@example.com")
+    await _subscribe(client, "trickyxdup@example.com")
 
-    r = client.get(
+    r = await client.get(
         "/api/admin/newsletter/subscribers",
         headers=headers,
         params={"q": "tricky_dup"},
@@ -186,22 +191,22 @@ def test_email_search_escapes_like_wildcards(client, admin_token):
     assert body["items"][0]["email"] == "tricky_dup@example.com"
 
 
-def test_admin_list_exposes_cadence(client, admin_token):
+async def test_admin_list_exposes_cadence(client, admin_token):
     """The admin list reports each subscriber's cadence so an operator can see
     why a confirmed address is NOT in the per-post fan-out (it opted into the
     weekly digest) — DEC-355."""
-    client.post(
+    await client.post(
         "/api/newsletter/subscribe",
         json={"email": "weekly@example.com", "digest_weekly": True},
     )
     headers = {"Authorization": f"Bearer {admin_token}"}
-    r = client.get("/api/admin/newsletter/subscribers", headers=headers)
+    r = await client.get("/api/admin/newsletter/subscribers", headers=headers)
     assert r.status_code == 200
     item = next(i for i in r.json()["items"] if i["email"] == "weekly@example.com")
     assert item["digest_weekly"] is True
 
 
-def test_list_rejects_invalid_query_params(client, admin_token):
+async def test_list_rejects_invalid_query_params(client, admin_token):
     """Boundary-refusing query params are 422 (status pattern, q length/NUL,
     page/limit bounds)."""
     headers = {"Authorization": f"Bearer {admin_token}"}
@@ -213,45 +218,54 @@ def test_list_rejects_invalid_query_params(client, admin_token):
         {"q": "ab\x00c"},  # NUL byte refused everywhere
     ]
     for params in cases:
-        r = client.get("/api/admin/newsletter/subscribers", headers=headers, params=params)
+        r = await client.get("/api/admin/newsletter/subscribers", headers=headers, params=params)
         assert r.status_code == 422, f"{params!r} -> {r.status_code}"
 
 
-def test_delete_removes_subscriber(client, db_session, admin_token):
+async def test_delete_removes_subscriber(client, db_session, admin_token):
     headers = {"Authorization": f"Bearer {admin_token}"}
-    _subscribe(client, "gone@example.com")
+    await _subscribe(client, "gone@example.com")
     sub = (
-        db_session.query(models.NewsletterSubscriber)
-        .filter(models.NewsletterSubscriber.email == "gone@example.com")
+        (
+            await db_session.execute(
+                select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.email == "gone@example.com")
+            )
+        )
+        .scalars()
         .one()
     )
 
-    assert client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers).status_code == 204
+    assert (await client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers)).status_code == 204
     assert (
-        db_session.query(models.NewsletterSubscriber)
-        .filter(models.NewsletterSubscriber.email == "gone@example.com")
-        .first()
-        is None
-    )
+        await db_session.execute(
+            select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.email == "gone@example.com")
+        )
+    ).scalars().first() is None
     # A deleted / unknown id is 404 (idempotent removal can't be claimed twice).
-    assert client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers).status_code == 404
+    assert (await client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers)).status_code == 404
 
 
-def test_admin_delete_does_not_touch_public_surface(client, db_session, admin_token):
+async def test_admin_delete_does_not_touch_public_surface(client, db_session, admin_token):
     """Admin delete is separate from the public unsubscribe: removing a row via
     admin removes the token too, so the public confirm/unsubscribe then answer
     404 for that token (indistinguishable from never-existed, no oracle)."""
     headers = {"Authorization": f"Bearer {admin_token}"}
-    client.post("/api/newsletter/subscribe", json={"email": "admin-delete@example.com"})
+    await client.post("/api/newsletter/subscribe", json={"email": "admin-delete@example.com"})
     sub = (
-        db_session.query(models.NewsletterSubscriber)
-        .filter(models.NewsletterSubscriber.email == "admin-delete@example.com")
+        (
+            await db_session.execute(
+                select(models.NewsletterSubscriber).where(
+                    models.NewsletterSubscriber.email == "admin-delete@example.com"
+                )
+            )
+        )
+        .scalars()
         .one()
     )
     token = sub.token
 
-    assert client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers).status_code == 204
+    assert (await client.delete(f"/api/admin/newsletter/subscribers/{sub.id}", headers=headers)).status_code == 204
 
     # Public confirm/unsubscribe against the now-removed row are 404.
-    assert client.post("/api/newsletter/confirm", json={"token": token}).status_code == 404
-    assert client.post("/api/newsletter/unsubscribe", json={"token": token}).status_code == 404
+    assert (await client.post("/api/newsletter/confirm", json={"token": token})).status_code == 404
+    assert (await client.post("/api/newsletter/unsubscribe", json={"token": token})).status_code == 404

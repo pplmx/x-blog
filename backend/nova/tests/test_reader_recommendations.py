@@ -6,17 +6,19 @@ posts they have already read or bookmarked, capped and stably ordered. Cold
 start (no interests) yields an empty list; results are isolated per reader.
 """
 
+from sqlalchemy import select
+
 RECOMMEND = "/api/reader/me/recommendations"
 HISTORY = "/api/reader/me/history"
 BOOKMARKS = "/api/reader/me/bookmarks"
 
 
-def _register(client, email="rec@example.com", password="readerpass123"):
-    return client.post("/api/reader/register", json={"email": email, "password": password})
+async def _register(client, email="rec@example.com", password="readerpass123"):
+    return await client.post("/api/reader/register", json={"email": email, "password": password})
 
 
-def _token(client, email="rec@example.com"):
-    return _register(client, email=email).json()["access_token"]
+async def _token(client, email="rec@example.com"):
+    return (await _register(client, email=email)).json()["access_token"]
 
 
 def _auth(token):
@@ -26,25 +28,25 @@ def _auth(token):
 _slug_counter = 0
 
 
-def _category(db, name):
+async def _category(db, name):
     from app.models import Category
 
-    c = db.query(Category).filter(Category.name == name).first()
+    c = (await db.execute(select(Category).where(Category.name == name))).scalars().first()
     if not c:
         c = Category(name=name)
         db.add(c)
-        db.commit()
-        db.refresh(c)
+        await db.commit()
+        await db.refresh(c)
     return c
 
 
-def _post(db, title, category=None, tags=(), published=True):
+async def _post(db, title, category=None, tags=(), published=True):
     from app.crud import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
     _slug_counter += 1
-    return create_post(
+    return await create_post(
         db,
         PostCreate(
             title=title,
@@ -57,94 +59,94 @@ def _post(db, title, category=None, tags=(), published=True):
     )
 
 
-def _read(client, token, post_id):
-    return client.post(f"{HISTORY}/{post_id}", headers=_auth(token))
+async def _read(client, token, post_id):
+    return await client.post(f"{HISTORY}/{post_id}", headers=_auth(token))
 
 
-def _bookmark(client, token, post_id):
-    return client.put(f"{BOOKMARKS}/{post_id}", headers=_auth(token))
+async def _bookmark(client, token, post_id):
+    return await client.put(f"{BOOKMARKS}/{post_id}", headers=_auth(token))
 
 
-def _recs(client, token, **params):
-    resp = client.get(RECOMMEND, params=params, headers=_auth(token))
+async def _recs(client, token, **params):
+    resp = await client.get(RECOMMEND, params=params, headers=_auth(token))
     assert resp.status_code == 200, resp.text
     return resp.json()
 
 
 class TestAuthRequired:
-    def test_recommendations_require_reader_token(self, client):
-        assert client.get(RECOMMEND).status_code == 401
+    async def test_recommendations_require_reader_token(self, client):
+        assert (await client.get(RECOMMEND)).status_code == 401
 
-    def test_admin_token_rejected(self, client, admin_token):
-        resp = client.get(RECOMMEND, headers={"Authorization": f"Bearer {admin_token}"})
+    async def test_admin_token_rejected(self, client, admin_token):
+        resp = await client.get(RECOMMEND, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 401
 
 
 class TestRecommendations:
-    def test_cold_start_empty(self, client, db_session):
-        token = _token(client)
-        _post(db_session, "Any", category=_category(db_session, "AI"))
-        assert _recs(client, token) == []
+    async def test_cold_start_empty(self, client, db_session):
+        token = await _token(client)
+        await _post(db_session, "Any", category=await _category(db_session, "AI"))
+        assert await _recs(client, token) == []
 
-    def test_category_affinity_excludes_read(self, client, db_session):
-        token = _token(client)
-        ai = _category(db_session, "AI")
-        dev = _category(db_session, "DevOps")
-        a1 = _post(db_session, "A1", category=ai)
-        a2 = _post(db_session, "A2", category=ai)
-        b1 = _post(db_session, "B1", category=dev)
-        b2 = _post(db_session, "B2", category=dev)
-        _read(client, token, a1.id)
+    async def test_category_affinity_excludes_read(self, client, db_session):
+        token = await _token(client)
+        ai = await _category(db_session, "AI")
+        dev = await _category(db_session, "DevOps")
+        a1 = await _post(db_session, "A1", category=ai)
+        a2 = await _post(db_session, "A2", category=ai)
+        b1 = await _post(db_session, "B1", category=dev)
+        b2 = await _post(db_session, "B2", category=dev)
+        await _read(client, token, a1.id)
 
-        recs = _recs(client, token)
+        recs = await _recs(client, token)
         slugs = [r["slug"] for r in recs]
         # Only the same-category unread post is recommended.
         assert slugs == [a2.slug]
         assert a1.slug not in slugs  # excluded: already read
         assert b1.slug not in slugs and b2.slug not in slugs  # no affinity
 
-    def test_excludes_bookmarked_posts(self, client, db_session):
-        token = _token(client)
-        ai = _category(db_session, "AI")
-        source = _post(db_session, "Source", category=ai)
-        candidate = _post(db_session, "Candidate", category=ai)
-        bookmarked = _post(db_session, "Bookmarked", category=ai)
-        _read(client, token, source.id)
-        _bookmark(client, token, bookmarked.id)
+    async def test_excludes_bookmarked_posts(self, client, db_session):
+        token = await _token(client)
+        ai = await _category(db_session, "AI")
+        source = await _post(db_session, "Source", category=ai)
+        candidate = await _post(db_session, "Candidate", category=ai)
+        bookmarked = await _post(db_session, "Bookmarked", category=ai)
+        await _read(client, token, source.id)
+        await _bookmark(client, token, bookmarked.id)
 
-        slugs = [r["slug"] for r in _recs(client, token)]
+        slugs = [r["slug"] for r in await _recs(client, token)]
         assert candidate.slug in slugs
         assert bookmarked.slug not in slugs  # excluded: already bookmarked
 
-    def test_tag_affinity(self, client, db_session):
-        token = _token(client)
-        source = _post(db_session, "Source", tags=["python"])
-        other = _post(db_session, "Other", tags=["python"])
-        unrelated = _post(db_session, "Unrelated", tags=["go"])
-        _read(client, token, source.id)
+    async def test_tag_affinity(self, client, db_session):
+        token = await _token(client)
+        source = await _post(db_session, "Source", tags=["python"])
+        other = await _post(db_session, "Other", tags=["python"])
+        unrelated = await _post(db_session, "Unrelated", tags=["go"])
+        await _read(client, token, source.id)
 
-        slugs = [r["slug"] for r in _recs(client, token)]
+        slugs = [r["slug"] for r in await _recs(client, token)]
         assert other.slug in slugs
         assert unrelated.slug not in slugs
         assert source.slug not in slugs
 
-    def test_cap_and_order(self, client, db_session):
-        token = _token(client)
-        ai = _category(db_session, "AI")
-        source = _post(db_session, "Source", category=ai)
-        posts = [_post(db_session, f"C{i}", category=ai) for i in range(4)]
-        _read(client, token, source.id)
+    async def test_cap_and_order(self, client, db_session):
+        token = await _token(client)
+        ai = await _category(db_session, "AI")
+        source = await _post(db_session, "Source", category=ai)
+        posts = [await _post(db_session, f"C{i}", category=ai) for i in range(4)]
+        await _read(client, token, source.id)
 
-        recs = _recs(client, token, limit=2)
+        recs = await _recs(client, token, limit=2)
         assert len(recs) == 2
 
-        all_recs = _recs(client, token)
+        all_recs = await _recs(client, token)
         assert len(all_recs) == 4
         # Recency ordering (newest first), all same affinity.
         rev = [p.slug for p in reversed(posts)]
         assert [r["slug"] for r in all_recs] == rev
 
-    def test_candidate_scan_is_bounded(self, client, db_session):
+    async def test_candidate_scan_is_bounded(self, client, db_session):
         """The Python-side candidate pool is capped (round 278 perf): an
         unbounded retrieve would materialize every public post per request.
         Shrinking the cap to 2 must limit recommendations to the two newest
@@ -156,20 +158,20 @@ class TestRecommendations:
         original = crud.CANDIDATE_SCAN_LIMIT
         crud.CANDIDATE_SCAN_LIMIT = 2
         try:
-            token = _token(client)
-            ai = _category(db_session, "AI")
-            source = _post(db_session, "Source", category=ai)
-            posts = [_post(db_session, f"Cap{i}", category=ai) for i in range(5)]
-            _read(client, token, source.id)
+            token = await _token(client)
+            ai = await _category(db_session, "AI")
+            source = await _post(db_session, "Source", category=ai)
+            posts = [await _post(db_session, f"Cap{i}", category=ai) for i in range(5)]
+            await _read(client, token, source.id)
 
             # Make the created_at order explicit (recency is the cap's axis):
             # posts[0] oldest … posts[4] newest.
             base = datetime(2024, 9, 1)
             for i, p in enumerate(posts):
                 p.created_at = base + timedelta(minutes=i)
-            db_session.commit()
+            await db_session.commit()
 
-            recs = _recs(client, token)
+            recs = await _recs(client, token)
             # Only the two most-recent candidates survive the capped scan — the
             # older same-affinity posts are beyond the window, proving the cap
             # binds rather than scanning the whole table.
@@ -177,18 +179,18 @@ class TestRecommendations:
         finally:
             crud.CANDIDATE_SCAN_LIMIT = original
 
-    def test_isolated_between_readers(self, client, db_session):
-        ai = _category(db_session, "AI")
-        dev = _category(db_session, "DevOps")
-        a1 = _post(db_session, "AI1", category=ai)
-        a2 = _post(db_session, "AI2", category=ai)
-        d1 = _post(db_session, "DEV1", category=dev)
-        d2 = _post(db_session, "DEV2", category=dev)
+    async def test_isolated_between_readers(self, client, db_session):
+        ai = await _category(db_session, "AI")
+        dev = await _category(db_session, "DevOps")
+        a1 = await _post(db_session, "AI1", category=ai)
+        a2 = await _post(db_session, "AI2", category=ai)
+        d1 = await _post(db_session, "DEV1", category=dev)
+        d2 = await _post(db_session, "DEV2", category=dev)
 
-        t1 = _token(client, email="rec1@example.com")
-        t2 = _token(client, email="rec2@example.com")
-        _read(client, t1, a1.id)
-        _read(client, t2, d1.id)
+        t1 = await _token(client, email="rec1@example.com")
+        t2 = await _token(client, email="rec2@example.com")
+        await _read(client, t1, a1.id)
+        await _read(client, t2, d1.id)
 
-        assert [r["slug"] for r in _recs(client, t1)] == [a2.slug]
-        assert [r["slug"] for r in _recs(client, t2)] == [d2.slug]
+        assert [r["slug"] for r in await _recs(client, t1)] == [a2.slug]
+        assert [r["slug"] for r in await _recs(client, t2)] == [d2.slug]

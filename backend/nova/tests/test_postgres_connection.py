@@ -26,7 +26,7 @@ def _get_test_url() -> str:
 
 
 @skip_postgres
-def test_postgres_connection_established():
+async def test_postgres_connection_established():
     """Verify we can establish a connection to the PostgreSQL instance."""
     engine = create_engine(_get_test_url())
     with engine.connect() as conn:
@@ -36,7 +36,7 @@ def test_postgres_connection_established():
 
 
 @skip_postgres
-def test_postgres_version_returned():
+async def test_postgres_version_returned():
     """Verify PostgreSQL version is returned and is a PostgreSQL server."""
     engine = create_engine(_get_test_url())
     with engine.connect() as conn:
@@ -47,7 +47,7 @@ def test_postgres_version_returned():
 
 
 @skip_postgres
-def test_postgres_database_name():
+async def test_postgres_database_name():
     """Verify the correct database name is connected."""
     engine = create_engine(_get_test_url())
     with engine.connect() as conn:
@@ -57,7 +57,7 @@ def test_postgres_database_name():
 
 
 @skip_postgres
-def test_postgres_schema_creation():
+async def test_postgres_schema_creation():
     """Verify SQLAlchemy can create schema (tables) in PostgreSQL.
 
     Isolation: created/dropped inside a dedicated temp schema via search_path so
@@ -103,7 +103,7 @@ def test_postgres_schema_creation():
 
 
 @skip_postgres
-def test_postgres_transaction_rollback():
+async def test_postgres_transaction_rollback():
     """Verify transactions can be rolled back in PostgreSQL."""
     engine = create_engine(_get_test_url())
     with engine.connect() as conn:
@@ -122,7 +122,7 @@ def test_postgres_transaction_rollback():
 
 
 @skip_postgres
-def test_postgres_basic_crud():
+async def test_postgres_basic_crud():
     """Verify basic CRUD operations work in PostgreSQL."""
     engine = create_engine(_get_test_url())
     with engine.connect() as conn:
@@ -152,7 +152,7 @@ def test_postgres_basic_crud():
 
 
 @skip_postgres
-def test_postgres_engine_creation():
+async def test_postgres_engine_creation():
     """Verify SQLAlchemy engine can be created from the PostgreSQL URL."""
     engine: Engine = create_engine(_get_test_url())
     assert engine is not None
@@ -162,7 +162,7 @@ def test_postgres_engine_creation():
 
 
 @skip_postgres
-def test_postgres_concurrent_connections():
+async def test_postgres_concurrent_connections():
     """Verify PostgreSQL can handle multiple concurrent connections."""
     engines = [create_engine(_get_test_url()) for _ in range(3)]
     try:

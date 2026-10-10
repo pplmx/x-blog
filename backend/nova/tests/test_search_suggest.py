@@ -109,7 +109,7 @@ class TestShouldSuggest:
 # ---------------------------------------------------------------------------
 
 
-def _seed_blog(db_session):
+async def _seed_blog(db_session):
     """Two posts with taxonomy across two categories/tags, one draft-only tag."""
     tech = models.Category(name="技术")
     life = models.Category(name="生活")
@@ -117,9 +117,9 @@ def _seed_blog(db_session):
     py_tag = models.Tag(name="python")
     draft_tag = models.Tag(name="草稿话题")
     db_session.add_all([py_tag, draft_tag])
-    db_session.flush()
+    await db_session.flush()
 
-    p1 = create_post(
+    p1 = await create_post(
         db_session,
         schemas.PostCreate(title="python 异步实践", slug="py-async", content="# python 异步", published=True),
     )
@@ -127,107 +127,107 @@ def _seed_blog(db_session):
     p1.tags = [py_tag]
     p1.created_at = datetime.now(UTC) - timedelta(days=3)
 
-    p2 = create_post(
+    p2 = await create_post(
         db_session,
         schemas.PostCreate(title="响应式设计入门", slug="responsive", content="# 响应式设计", published=True),
     )
     p2.category = tech
     p2.created_at = datetime.now(UTC)
-    db_session.flush()
+    await db_session.flush()
     return {"p1": p1, "p2": p2, "py_tag": py_tag, "draft_tag": draft_tag}
 
 
 class TestVocabulary:
-    def test_taxonomy_and_titles_entered(self, client, db_session):
-        _seed_blog(db_session)
-        vocab = build_search_vocabulary(db_session)
+    async def test_taxonomy_and_titles_entered(self, client, db_session):
+        await _seed_blog(db_session)
+        vocab = await build_search_vocabulary(db_session)
         texts = {v["text"].lower(): v for v in vocab}
         assert "python" in texts and texts["python"]["kind"] == "tag"
         assert "技术" in texts and texts["技术"]["kind"] == "category"
         assert "响应式设计入门" in texts and texts["响应式设计入门"]["kind"] == "post"
 
-    def test_zero_hit_taxonomy_and_drafts_excluded(self, client, db_session):
+    async def test_zero_hit_taxonomy_and_drafts_excluded(self, client, db_session):
         # draft_tag has no PUBLIC post; nothing with it may be suggested and
         # post titles only come from published posts.
-        _seed_blog(db_session)
-        vocab = build_search_vocabulary(db_session)
+        await _seed_blog(db_session)
+        vocab = await build_search_vocabulary(db_session)
         texts = {v["text"].lower(): v for v in vocab}
         assert "草稿话题" not in texts
         assert "python" in texts  # published tag stays
         assert texts["python"]["hits"] == 1  # only p1 carries it
 
-    def test_vocabulary_bounded_title_count(self, client, db_session):
+    async def test_vocabulary_bounded_title_count(self, client, db_session):
         # Seed more post titles than the vocab cap; the fetch must not return
         # them all (bounded memory/latency on the suggest path).
         for i in range(180):
-            create_post(
+            await create_post(
                 db_session,
                 schemas.PostCreate(title=f"批量文章 {i:03d}", slug=f"bulk-{i}", content="# x", published=True),
             )
-        db_session.flush()
-        vocab = build_search_vocabulary(db_session)
+        await db_session.flush()
+        vocab = await build_search_vocabulary(db_session)
         titles = [v for v in vocab if v["kind"] == "post"]
         assert len(titles) <= 150
 
 
 class TestSuggestEndpoint:
-    def test_ascii_typo_returns_tag_suggestion(self, client, db_session):
-        _seed_blog(db_session)
-        resp = client.get(BASE, params={"q": "pythn"})
+    async def test_ascii_typo_returns_tag_suggestion(self, client, db_session):
+        await _seed_blog(db_session)
+        resp = await client.get(BASE, params={"q": "pythn"})
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["query"] == "pythn"
         assert any(s["text"].lower() == "python" for s in body["suggestions"])
 
-    def test_cjk_typo_returns_category_suggestion(self, client, db_session):
-        _seed_blog(db_session)
+    async def test_cjk_typo_returns_category_suggestion(self, client, db_session):
+        await _seed_blog(db_session)
         # "机" is one edit from "技" — the canonical 2-char CJK category typo.
-        resp = client.get(BASE, params={"q": "机术"})
+        resp = await client.get(BASE, params={"q": "机术"})
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert any(s["text"] == "技术" for s in body["suggestions"])
         assert all(s["hits"] > 0 for s in body["suggestions"])
 
-    def test_title_typo_suggests_the_post(self, client, db_session):
-        _seed_blog(db_session)
-        resp = client.get(BASE, params={"q": "响应式设计门"})
+    async def test_title_typo_suggests_the_post(self, client, db_session):
+        await _seed_blog(db_session)
+        resp = await client.get(BASE, params={"q": "响应式设计门"})
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert any(s["text"] == "响应式设计入门" for s in body["suggestions"])
 
-    def test_no_suggestions_for_noise(self, client, db_session):
-        _seed_blog(db_session)
-        resp = client.get(BASE, params={"q": "zzzzzzzz"})
+    async def test_no_suggestions_for_noise(self, client, db_session):
+        await _seed_blog(db_session)
+        resp = await client.get(BASE, params={"q": "zzzzzzzz"})
         assert resp.status_code == 200, resp.text
         assert resp.json()["suggestions"] == []
 
-    def test_exact_match_is_not_a_suggestion(self, client, db_session):
+    async def test_exact_match_is_not_a_suggestion(self, client, db_session):
         # If the query already matches a vocabulary term, there is nothing to
         # suggest (real results exist).
-        _seed_blog(db_session)
-        resp = client.get(BASE, params={"q": "python"})
+        await _seed_blog(db_session)
+        resp = await client.get(BASE, params={"q": "python"})
         assert resp.status_code == 200, resp.text
         assert all(s["text"].lower() != "python" for s in resp.json()["suggestions"])
 
-    def test_limit_bounds(self, client, db_session):
-        _seed_blog(db_session)
+    async def test_limit_bounds(self, client, db_session):
+        await _seed_blog(db_session)
         # "python 异步" matches both the tag and the title — limit must cap it.
-        resp = client.get(BASE, params={"q": "python 异步", "limit": 2})
+        resp = await client.get(BASE, params={"q": "python 异步", "limit": 2})
         assert resp.status_code == 200, resp.text
         assert 1 <= len(resp.json()["suggestions"]) <= 2
 
-    def test_whitespace_query_is_422(self, client, db_session):
-        resp = client.get(BASE, params={"q": "   "})
+    async def test_whitespace_query_is_422(self, client, db_session):
+        resp = await client.get(BASE, params={"q": "   "})
         assert resp.status_code == 422
 
-    def test_max_length_cap(self, client, db_session):
-        resp = client.get(BASE, params={"q": "x" * 201})
+    async def test_max_length_cap(self, client, db_session):
+        resp = await client.get(BASE, params={"q": "x" * 201})
         assert resp.status_code == 422
 
-    def test_draft_only_tag_never_suggested_even_close(self, client, db_session):
+    async def test_draft_only_tag_never_suggested_even_close(self, client, db_session):
         # "草稿话题" has zero public posts → excluded by build_search_vocabulary;
         # a near-query must not resurrect it.
-        _seed_blog(db_session)
-        resp = client.get(BASE, params={"q": "草稿话题"})
+        await _seed_blog(db_session)
+        resp = await client.get(BASE, params={"q": "草稿话题"})
         assert resp.status_code == 200, resp.text
         assert all(s["text"] != "草稿话题" for s in resp.json()["suggestions"])

@@ -17,6 +17,8 @@ import base64
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+from sqlalchemy import func, select
+
 from app import webpush
 
 ENDPOINT = "https://updates.push.services.mozilla.com/wpush/v2/AAAAAAAAAAAAAAAAAAAA"
@@ -33,13 +35,13 @@ def _subscribe_body(endpoint: str = ENDPOINT, prefix: int = 4, **extra) -> dict:
     return {"endpoint": endpoint, "keys": keys, **extra}
 
 
-def _create_category(client, auth_headers, name: str) -> int:
-    resp = client.post("/api/categories", json={"name": name, "slug": name.lower()}, headers=auth_headers)
+async def _create_category(client, auth_headers, name: str) -> int:
+    resp = await client.post("/api/categories", json={"name": name, "slug": name.lower()}, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
 
-def _create_post(client, auth_headers, slug: str = "np-post", **payload) -> None:
+async def _create_post(client, auth_headers, slug: str = "np-post", **payload) -> None:
     body = {
         "title": f"T {slug}",
         "slug": slug,
@@ -48,127 +50,127 @@ def _create_post(client, auth_headers, slug: str = "np-post", **payload) -> None
         "published": True,
         **payload,
     }
-    resp = client.post("/api/posts", json=body, headers=auth_headers)
+    resp = await client.post("/api/posts", json=body, headers=auth_headers)
     assert resp.status_code == 201, resp.text
 
 
-def _update_post(client, auth_headers, post_id: int, **payload) -> None:
-    resp = client.put(f"/api/posts/{post_id}", json=payload, headers=auth_headers)
+async def _update_post(client, auth_headers, post_id: int, **payload) -> None:
+    resp = await client.put(f"/api/posts/{post_id}", json=payload, headers=auth_headers)
     assert resp.status_code == 200, resp.text
 
 
 class TestSubscribePrefs:
-    def test_defaults_to_off(self, client, db_session):
+    async def test_defaults_to_off(self, client, db_session):
         from app import models
 
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        row = db_session.query(models.PushSubscription).one()
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        row = (await db_session.execute(select(models.PushSubscription))).scalar_one()
         assert row.want_new_posts is False
         assert row.new_post_category_id is None
 
-    def test_stores_new_post_prefs(self, client, db_session, auth_headers):
+    async def test_stores_new_post_prefs(self, client, db_session, auth_headers):
         from app import models
 
-        cat_id = _create_category(client, auth_headers, "推送分类")
-        client.post(
+        cat_id = await _create_category(client, auth_headers, "推送分类")
+        await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_id),
         )
-        row = db_session.query(models.PushSubscription).one()
+        row = (await db_session.execute(select(models.PushSubscription))).scalar_one()
         assert row.want_new_posts is True
         assert row.new_post_category_id == cat_id
 
-    def test_rejects_unknown_category(self, client):
-        resp = client.post(
+    async def test_rejects_unknown_category(self, client):
+        resp = await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(want_new_posts=True, new_post_category_id=999999),
         )
         assert resp.status_code == 422
 
-    def test_resubscribe_upserts_prefs(self, client, db_session, auth_headers):
+    async def test_resubscribe_upserts_prefs(self, client, db_session, auth_headers):
         from app import models
 
-        cat_id = _create_category(client, auth_headers, "再订阅")
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        first = db_session.query(models.PushSubscription).one().id
-        client.post(
+        cat_id = await _create_category(client, auth_headers, "再订阅")
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        first = (await db_session.execute(select(models.PushSubscription))).scalar_one().id
+        await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_id),
         )
-        assert db_session.query(models.PushSubscription).count() == 1
-        row = db_session.query(models.PushSubscription).one()
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 1
+        row = (await db_session.execute(select(models.PushSubscription))).scalar_one()
         assert row.id == first
         assert row.want_new_posts is True
         assert row.new_post_category_id == cat_id
 
 
 class TestPublishFanOut:
-    def test_publishes_to_opted_in_only(self, client, auth_headers, db_session):
+    async def test_publishes_to_opted_in_only(self, client, auth_headers, db_session):
         # One all-posts subscriber, one who never opted in.
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
-        client.post("/api/push/subscribe", json=_subscribe_body(endpoint=OTHER, prefix=8))
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=OTHER, prefix=8))
 
         captured = []
         with patch("app.webpush.send_push") as mock_send:
             mock_send.side_effect = lambda **kw: captured.append(kw["payload"])
-            _create_post(client, auth_headers, slug="np-only-opted")
+            await _create_post(client, auth_headers, slug="np-only-opted")
 
         assert mock_send.call_count == 1
         assert captured[0]["title"] == webpush.POST_NOTIF_TITLE
         assert captured[0]["url"] == "/posts/np-only-opted"
 
-    def test_category_scope_matches_only_followed_category(self, client, auth_headers, db_session):
-        cat_a = _create_category(client, auth_headers, "A类")
-        cat_b = _create_category(client, auth_headers, "B类")
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_a))
-        client.post(
+    async def test_category_scope_matches_only_followed_category(self, client, auth_headers, db_session):
+        cat_a = await _create_category(client, auth_headers, "A类")
+        cat_b = await _create_category(client, auth_headers, "B类")
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_a))
+        await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(endpoint=OTHER, prefix=8, want_new_posts=True, new_post_category_id=cat_b),
         )
 
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="in-cat-a", category_id=cat_a)
+            await _create_post(client, auth_headers, slug="in-cat-a", category_id=cat_a)
         assert mock_send.call_count == 1
         call = mock_send.call_args.kwargs["payload"]
         assert call["url"] == "/posts/in-cat-a"
 
-    def test_category_scope_also_receives_from_all_posts_subscriber(self, client, auth_headers):
-        cat_a = _create_category(client, auth_headers, "C类")
+    async def test_category_scope_also_receives_from_all_posts_subscriber(self, client, auth_headers):
+        cat_a = await _create_category(client, auth_headers, "C类")
         # Followed-category (cat_a) + a global all-posts subscriber.
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_a))
-        client.post(
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=cat_a))
+        await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(endpoint=OTHER, prefix=8, want_new_posts=True),
         )
 
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="in-cat-c", category_id=cat_a)
+            await _create_post(client, auth_headers, slug="in-cat-c", category_id=cat_a)
         assert mock_send.call_count == 2
 
-    def test_category_less_post_reaches_only_all_posts_subscribers(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=777))
-        client.post(
+    async def test_category_less_post_reaches_only_all_posts_subscribers(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True, new_post_category_id=777))
+        await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(endpoint=OTHER, prefix=8, want_new_posts=True),
         )
 
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="no-category")
+            await _create_post(client, auth_headers, slug="no-category")
         assert mock_send.call_count == 1
         assert mock_send.call_args.kwargs["payload"]["url"] == "/posts/no-category"
 
-    def test_reader_bound_subscriber_with_new_post_pref_off_is_skipped(self, client, auth_headers):
+    async def test_reader_bound_subscriber_with_new_post_pref_off_is_skipped(self, client, auth_headers):
         # A reader-bound push subscription is dropped when that reader turns
         # the 'new_post' notification kind off (DEC-171, TASK-202): the opt-out
         # gates both the durable inbox row and the browser push.
-        reg = client.post(
+        reg = await client.post(
             "/api/reader/register",
             json={"email": "push-pref-off@example.com", "password": "readerpass123"},
         )
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
-        resp = client.patch(
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
+        resp = await client.patch(
             "/api/reader/me/notification-preferences",
             json={"kind": "new_post", "enabled": False},
             headers=headers,
@@ -176,40 +178,40 @@ class TestPublishFanOut:
         assert resp.status_code == 200, resp.text
 
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="pref-off-post")
+            await _create_post(client, auth_headers, slug="pref-off-post")
         assert mock_send.call_count == 0
 
-    def test_reader_bound_subscriber_with_pref_on_still_receives(self, client, auth_headers):
+    async def test_reader_bound_subscriber_with_pref_on_still_receives(self, client, auth_headers):
         # Positive control: the default (all-on) pref keeps the reader-bound
         # subscription in the fan-out — the opt-out is opt-in to opt out.
-        reg = client.post(
+        reg = await client.post(
             "/api/reader/register",
             json={"email": "push-pref-on@example.com", "password": "readerpass123"},
         )
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True), headers=headers)
 
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="pref-on-post")
+            await _create_post(client, auth_headers, slug="pref-on-post")
         assert mock_send.call_count == 1
 
-    def test_draft_create_does_not_notify(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+    async def test_draft_create_does_not_notify(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="draft", published=False)
+            await _create_post(client, auth_headers, slug="draft", published=False)
         assert mock_send.call_count == 0
 
-    def test_scheduled_future_post_does_not_notify(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+    async def test_scheduled_future_post_does_not_notify(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
         future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="scheduled", publish_at=future)
+            await _create_post(client, auth_headers, slug="scheduled", publish_at=future)
         assert mock_send.call_count == 0
 
-    def test_draft_to_published_transition_notifies(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
-        resp = client.post(
+    async def test_draft_to_published_transition_notifies(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = await client.post(
             "/api/posts",
             json={
                 "title": "draft later",
@@ -221,30 +223,30 @@ class TestPublishFanOut:
         )
         post_id = resp.json()["id"]
         with patch("app.webpush.send_push") as mock_send:
-            _update_post(client, auth_headers, post_id, published=True)
+            await _update_post(client, auth_headers, post_id, published=True)
         assert mock_send.call_count == 1
 
-    def test_edit_of_published_post_does_not_re_notify(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
-        resp = client.post(
+    async def test_edit_of_published_post_does_not_re_notify(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = await client.post(
             "/api/posts",
             json={"title": "pub", "slug": "pub-post", "content": "c", "published": True},
             headers=auth_headers,
         )
         post_id = resp.json()["id"]
         with patch("app.webpush.send_push") as mock_send:
-            _update_post(client, auth_headers, post_id, content="edited")
+            await _update_post(client, auth_headers, post_id, content="edited")
         assert mock_send.call_count == 0
 
-    def test_admin_editor_publish_fans_out(self, client, auth_headers):
+    async def test_admin_editor_publish_fans_out(self, client, auth_headers):
         """The admin editor's PUT /api/admin/posts/{id} is the primary publish
         path — a draft→published transition made there must fan out exactly like
         the /api/posts update path (regression: it used to skip the fan-out, so
         an editor-published post notified nobody)."""
         # auth_headers is the ADMIN token; the admin editor publishes via PUT
         # /api/admin/posts/{id}, not /api/posts/{id}.
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
-        resp = client.post(
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = await client.post(
             "/api/admin/posts",
             json={"title": "editor draft", "slug": "editor-draft", "content": "c", "published": False},
             headers=auth_headers,
@@ -252,7 +254,7 @@ class TestPublishFanOut:
         assert resp.status_code == 201, resp.text
         post_id = resp.json()["id"]
         with patch("app.webpush.send_push") as mock_send:
-            publish = client.put(
+            publish = await client.put(
                 f"/api/admin/posts/{post_id}",
                 json={"published": True},
                 headers=auth_headers,
@@ -260,16 +262,16 @@ class TestPublishFanOut:
             assert publish.status_code == 200, publish.text
         assert mock_send.call_count == 1
 
-    def test_admin_editor_edit_of_published_does_not_re_notify(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
-        resp = client.post(
+    async def test_admin_editor_edit_of_published_does_not_re_notify(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        resp = await client.post(
             "/api/admin/posts",
             json={"title": "editor pub", "slug": "editor-pub", "content": "c", "published": True},
             headers=auth_headers,
         )
         post_id = resp.json()["id"]
         with patch("app.webpush.send_push") as mock_send:
-            edit = client.put(
+            edit = await client.put(
                 f"/api/admin/posts/{post_id}",
                 json={"content": "edited"},
                 headers=auth_headers,
@@ -277,12 +279,12 @@ class TestPublishFanOut:
             assert edit.status_code == 200, edit.text
         assert mock_send.call_count == 0
 
-    def test_dead_endpoint_retired_on_publish(self, client, auth_headers, db_session):
+    async def test_dead_endpoint_retired_on_publish(self, client, auth_headers, db_session):
         from pywebpush import WebPushException
 
         from app import models
 
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
 
         def _gone(**_):  # noqa: ARG001
             class _R:  # noqa: N801
@@ -291,13 +293,13 @@ class TestPublishFanOut:
             raise WebPushException("gone", response=_R())
 
         with patch("app.webpush.send_push", side_effect=_gone):
-            _create_post(client, auth_headers, slug="dead-sub")
-        assert db_session.query(models.PushSubscription).count() == 0
+            await _create_post(client, auth_headers, slug="dead-sub")
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 0
 
-    def test_fails_closed_when_unconfigured(self, client, auth_headers, monkeypatch):
-        client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
+    async def test_fails_closed_when_unconfigured(self, client, auth_headers, monkeypatch):
+        await client.post("/api/push/subscribe", json=_subscribe_body(want_new_posts=True))
         monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
         with patch("app.webpush.send_push") as mock_send:
-            _create_post(client, auth_headers, slug="unconfigured")
+            await _create_post(client, auth_headers, slug="unconfigured")
         assert mock_send.call_count == 0

@@ -1,9 +1,10 @@
 import pytest
+from sqlalchemy import select, update
 
 
 @pytest.fixture(scope="function")
-def post(client, auth_headers):
-    response = client.post(
+async def post(client, auth_headers):
+    response = await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -16,8 +17,8 @@ def post(client, auth_headers):
     return response.json()
 
 
-def test_create_comment(client, post):
-    response = client.post(
+async def test_create_comment(client, post):
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -33,7 +34,7 @@ def test_create_comment(client, post):
     assert data["post_id"] == post["id"]
 
 
-def test_create_comment_nul_rejected_422(client, post):
+async def test_create_comment_nul_rejected_422(client, post):
     """A NUL byte in any comment string must be a 422 gate, not an uncaught
     psycopg bind error -> 500 (ISS-454, TASK-351)."""
     for field in ("nickname", "email", "content"):
@@ -43,16 +44,16 @@ def test_create_comment_nul_rejected_422(client, post):
             "content": "Test comment",
         }
         payload[field] = "xx\x00yy"
-        response = client.post(
+        response = await client.post(
             f"/api/comments/post/{post['id']}",
             json=payload,
         )
         assert response.status_code == 422, f"{field} should be 422, got {response.status_code}"
 
 
-def test_create_comment_honeypot_rejected(client, post):
+async def test_create_comment_honeypot_rejected(client, post):
     """A non-empty `website` honeypot field must be rejected (bot signal)."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Bot",
@@ -64,9 +65,9 @@ def test_create_comment_honeypot_rejected(client, post):
     assert response.status_code == 422
 
 
-def test_create_comment_honeypot_empty_passes(client, post):
+async def test_create_comment_honeypot_empty_passes(client, post):
     """An empty honeypot field (normal human form) does not break submission."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -78,45 +79,47 @@ def test_create_comment_honeypot_empty_passes(client, post):
     assert response.status_code == 201
 
 
-def test_posts_list_includes_comment_count(client, post, auth_headers):
+async def test_posts_list_includes_comment_count(client, post, auth_headers):
     """PostList should expose comment_count, counting approved comments only.
 
     Comment create/approve must auto-invalidate the cached posts list (RIL
     TASK-073, ISS-041); no manual cache clears here.
     """
     # No comments yet -> 0
-    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
+    assert (await client.get("/api/posts")).json()["items"][0]["comment_count"] == 0
 
     # Add an unapproved comment -> still 0 (not counted)
-    unapproved = client.post(
-        f"/api/comments/post/{post['id']}",
-        json={
-            "nickname": "Spammer",
-            "email": "spam@example.com",
-            "content": "Buy now!",
-        },
+    unapproved = (
+        await client.post(
+            f"/api/comments/post/{post['id']}",
+            json={
+                "nickname": "Spammer",
+                "email": "spam@example.com",
+                "content": "Buy now!",
+            },
+        )
     ).json()
-    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 0
+    assert (await client.get("/api/posts")).json()["items"][0]["comment_count"] == 0
 
     # Approve it -> count becomes 1 (posts list cache invalidated on approve)
-    client.patch(
+    await client.patch(
         f"/api/comments/{unapproved['id']}/approve",
         json={"approved": True},
         headers=auth_headers,
     )
-    assert client.get("/api/posts").json()["items"][0]["comment_count"] == 1
+    assert (await client.get("/api/posts")).json()["items"][0]["comment_count"] == 1
 
 
-def test_list_comments_unknown_post_404(client):
+async def test_list_comments_unknown_post_404(client):
     """An unknown post id must 404 on the list, not return an empty page (ISS-144)."""
-    list_response = client.get("/api/comments/post/999999")
+    list_response = await client.get("/api/comments/post/999999")
     assert list_response.status_code == 404
     assert list_response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_create_comment_rejects_malformed_email(client, post):
+async def test_create_comment_rejects_malformed_email(client, post):
     """A non-email 'email' is rejected with 422 instead of being persisted (ISS-145)."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Garbage",
@@ -127,9 +130,9 @@ def test_create_comment_rejects_malformed_email(client, post):
     assert response.status_code == 422
 
 
-def test_create_comment_requires_moderation(client, post, auth_headers):
+async def test_create_comment_requires_moderation(client, post, auth_headers):
     """Comments can never self-approve: is_approved is server-controlled."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Spammer",
@@ -143,10 +146,10 @@ def test_create_comment_requires_moderation(client, post, auth_headers):
     assert data["is_approved"] is False
 
     # Not visible publicly until an admin approves it
-    list_response = client.get(f"/api/comments/post/{post['id']}")
+    list_response = await client.get(f"/api/comments/post/{post['id']}")
     assert len(list_response.json()["items"]) == 0
 
-    approve_response = client.patch(
+    approve_response = await client.patch(
         f"/api/comments/{data['id']}/approve",
         json={"approved": True},
         headers=auth_headers,
@@ -155,8 +158,8 @@ def test_create_comment_requires_moderation(client, post, auth_headers):
 
 
 @pytest.fixture(scope="function")
-def draft_post(client, auth_headers):
-    response = client.post(
+async def draft_post(client, auth_headers):
+    response = await client.post(
         "/api/posts",
         json={
             "title": "Draft Post",
@@ -169,15 +172,15 @@ def draft_post(client, auth_headers):
     return response.json()
 
 
-def test_create_comment_on_draft_post_returns_404(client, draft_post):
+async def test_create_comment_on_draft_post_returns_404(client, draft_post):
     """Draft posts are invisible publicly, so commenting on them must 404.
 
     Without this guard the comment endpoint leaked that a hidden post exists
     (201 for drafts vs 400 "Post not found" for unknown ids) and let visitors
     queue comments on drafts that surface once the post goes public.
     """
-    assert client.get(f"/api/posts/{draft_post['id']}").status_code == 404
-    response = client.post(
+    assert (await client.get(f"/api/posts/{draft_post['id']}")).status_code == 404
+    response = await client.post(
         f"/api/comments/post/{draft_post['id']}",
         json={
             "nickname": "Probe",
@@ -190,13 +193,13 @@ def test_create_comment_on_draft_post_returns_404(client, draft_post):
     assert data["error"]["code"] == "NOT_FOUND"
     # The draft must not be discoverable via the comment list either — listing
     # 404s like create/like so draft ids are not an existence oracle (ISS-144).
-    assert client.get(f"/api/comments/post/{draft_post['id']}").status_code == 404
+    assert (await client.get(f"/api/comments/post/{draft_post['id']}")).status_code == 404
 
 
-def test_create_comment_on_scheduled_future_post_returns_404(client, auth_headers):
+async def test_create_comment_on_scheduled_future_post_returns_404(client, auth_headers):
     """A scheduled post is not public before publish_at, so comments must 404."""
     future = "2099-01-01T00:00:00"
-    response = client.post(
+    response = await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Post",
@@ -210,8 +213,8 @@ def test_create_comment_on_scheduled_future_post_returns_404(client, auth_header
     assert response.status_code == 201
     post_id = response.json()["id"]
 
-    assert client.get(f"/api/posts/{post_id}").status_code == 404
-    comment = client.post(
+    assert (await client.get(f"/api/posts/{post_id}")).status_code == 404
+    comment = await client.post(
         f"/api/comments/post/{post_id}",
         json={
             "nickname": "Probe",
@@ -223,8 +226,8 @@ def test_create_comment_on_scheduled_future_post_returns_404(client, auth_header
     assert comment.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_list_comments(client, post, auth_headers):
-    create_response = client.post(
+async def test_list_comments(client, post, auth_headers):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -233,12 +236,12 @@ def test_list_comments(client, post, auth_headers):
         },
     )
     # Comments require moderation before appearing publicly
-    client.patch(
+    await client.patch(
         f"/api/comments/{create_response.json()['id']}/approve",
         json={"approved": True},
         headers=auth_headers,
     )
-    response = client.get(f"/api/comments/post/{post['id']}")
+    response = await client.get(f"/api/comments/post/{post['id']}")
     assert response.status_code == 200
     data = response.json()
     assert "items" in data
@@ -249,9 +252,9 @@ def test_list_comments(client, post, auth_headers):
     assert data["limit"] == 20
 
 
-def test_list_comments_omits_pii(client, post, auth_headers):
+async def test_list_comments_omits_pii(client, post, auth_headers):
     """Public comment list must not leak ip_address / email (RIL TASK-100, ISS-080)."""
-    create_response = client.post(
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Private User",
@@ -261,7 +264,7 @@ def test_list_comments_omits_pii(client, post, auth_headers):
     )
     assert create_response.status_code == 201
     comment_id = create_response.json()["id"]
-    client.patch(
+    await client.patch(
         f"/api/comments/{comment_id}/approve",
         json={"approved": True},
         headers=auth_headers,
@@ -269,7 +272,7 @@ def test_list_comments_omits_pii(client, post, auth_headers):
 
     # The created comment stores an IP (derived from the request); the list
     # endpoint must not surface it or the commenter's email.
-    response = client.get(f"/api/comments/post/{post['id']}")
+    response = await client.get(f"/api/comments/post/{post['id']}")
     assert response.status_code == 200
     item = response.json()["items"][0]
     assert "ip_address" not in item
@@ -279,11 +282,11 @@ def test_list_comments_omits_pii(client, post, auth_headers):
     assert item["id"] == comment_id
 
 
-def test_list_comments_pagination(client, post, auth_headers):
+async def test_list_comments_pagination(client, post, auth_headers):
     # Create 5 comments
     comment_ids = []
     for i in range(5):
-        create_response = client.post(
+        create_response = await client.post(
             f"/api/comments/post/{post['id']}",
             json={
                 "nickname": f"User {i}",
@@ -295,14 +298,14 @@ def test_list_comments_pagination(client, post, auth_headers):
 
     # Approve all comments so they appear publicly
     for comment_id in comment_ids:
-        client.patch(
+        await client.patch(
             f"/api/comments/{comment_id}/approve",
             json={"approved": True},
             headers=auth_headers,
         )
 
     # Get first page with limit 2
-    response = client.get(f"/api/comments/post/{post['id']}?page=1&limit=2")
+    response = await client.get(f"/api/comments/post/{post['id']}?page=1&limit=2")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 2
@@ -312,13 +315,13 @@ def test_list_comments_pagination(client, post, auth_headers):
     assert data["total_pages"] == 3
 
     # Get second page
-    response = client.get(f"/api/comments/post/{post['id']}?page=2&limit=2")
+    response = await client.get(f"/api/comments/post/{post['id']}?page=2&limit=2")
     data = response.json()
     assert len(data["items"]) == 2
     assert data["page"] == 2
 
 
-def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session, post, auth_headers):
+async def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session, post, auth_headers):
     """Offset paging must never repeat/skip comments when many share a created_at.
 
     A bulk-restore (restore_backup stamps created_at verbatim from the snapshot)
@@ -332,13 +335,17 @@ def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session
     from app import models
 
     for i in range(7):
-        _create_approved_comment(client, db_session, post["id"], f"Tie{i}", f"tied {i}", auth_headers)
+        await _create_approved_comment(client, db_session, post["id"], f"Tie{i}", f"tied {i}", auth_headers)
     # Collapse every comment into a single instant (the tied-timestamp scenario).
     stamp = datetime(2024, 5, 1, 12, 0, 0)
-    db_session.query(models.Comment).update({models.Comment.created_at: stamp}, synchronize_session=False)
-    db_session.commit()
+    await db_session.execute(
+        update(models.Comment).values({models.Comment.created_at: stamp}).execution_options(synchronize_session=False)
+    )
+    await db_session.commit()
     # The 7 comment ids in insertion order — the deterministic tiebreak axis.
-    comment_ids = [row[0] for row in db_session.query(models.Comment.id).order_by(models.Comment.id).all()]
+    comment_ids = [
+        row[0] for row in (await db_session.execute(select(models.Comment.id).order_by(models.Comment.id))).all()
+    ]
     assert len(comment_ids) == 7
 
     expected = {
@@ -351,9 +358,11 @@ def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session
         seen: list[int] = []
         page = 1
         for _ in range(10):
-            data = client.get(
-                f"/api/comments/post/{post['id']}",
-                params={"sort": sort, "page": page, "limit": 3},
+            data = (
+                await client.get(
+                    f"/api/comments/post/{post['id']}",
+                    params={"sort": sort, "page": page, "limit": 3},
+                )
             ).json()
             seen.extend(c["id"] for c in data["items"])
             if page >= data["total_pages"]:
@@ -363,30 +372,30 @@ def test_list_comments_pagination_stable_with_tied_timestamps(client, db_session
         assert seen == order, f"{sort}: expected deterministic order {order}, got {seen}"
 
 
-def test_list_comments_keyword_filters_within_thread(client, post, auth_headers):
+async def test_list_comments_keyword_filters_within_thread(client, post, auth_headers):
     """A q param on the thread list narrows to matching approved comments —
     the "search inside this thread" gap (DEC-442, TASK-452)."""
     contents = ["Docker is the key", "An unrelated topic", "Docker compose too"]
     ids = []
     for content in contents:
-        created = client.post(
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"nickname": "User", "email": f"u{len(ids)}@example.com", "content": content},
         )
         cid = created.json()["id"]
         ids.append(cid)
-        client.patch(
+        await client.patch(
             f"/api/comments/{cid}/approve",
             json={"approved": True},
             headers=auth_headers,
         )
 
     # Unscoped list returns all three.
-    full = client.get(f"/api/comments/post/{post['id']}")
+    full = await client.get(f"/api/comments/post/{post['id']}")
     assert len(full.json()["items"]) == 3
 
     # Scoped to "Docker": only the two matching rows, total reflects the filter.
-    filtered = client.get(f"/api/comments/post/{post['id']}", params={"q": "Docker"})
+    filtered = await client.get(f"/api/comments/post/{post['id']}", params={"q": "Docker"})
     assert filtered.status_code == 200
     items = filtered.json()["items"]
     assert len(items) == 2
@@ -394,37 +403,37 @@ def test_list_comments_keyword_filters_within_thread(client, post, auth_headers)
     assert {c["content"] for c in items} == {"Docker is the key", "Docker compose too"}
 
     # Case-insensitive substring: "docker" matches the same two.
-    lower = client.get(f"/api/comments/post/{post['id']}", params={"q": "docker"})
+    lower = await client.get(f"/api/comments/post/{post['id']}", params={"q": "docker"})
     assert len(lower.json()["items"]) == 2
 
     # No match is an empty result that still paginates sanely.
-    empty = client.get(f"/api/comments/post/{post['id']}", params={"q": "zzz-no-such-term"})
+    empty = await client.get(f"/api/comments/post/{post['id']}", params={"q": "zzz-no-such-term"})
     assert empty.json()["items"] == []
     assert empty.json()["total"] == 0
 
 
-def test_list_comments_keyword_escapes_like_metacharacters(client, post, auth_headers):
+async def test_list_comments_keyword_escapes_like_metacharacters(client, post, auth_headers):
     """A q of '%' or '_' must be treated literally, not as SQL wildcards —
     else one % returns every comment (DEC-442 follow-on, search_posts parity)."""
     for content in ["literal percent", "literal underscore"]:
-        created = client.post(
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"nickname": "User", "email": "m@example.com", "content": content},
         )
-        client.patch(
+        await client.patch(
             f"/api/comments/{created.json()['id']}/approve",
             json={"approved": True},
             headers=auth_headers,
         )
 
     # '%' as a literal search term matches nothing (not everything).
-    response = client.get(f"/api/comments/post/{post['id']}", params={"q": "%"})
+    response = await client.get(f"/api/comments/post/{post['id']}", params={"q": "%"})
     assert response.json()["items"] == []
     assert response.json()["total"] == 0
 
 
-def test_delete_comment(client, post, auth_headers):
-    create_response = client.post(
+async def test_delete_comment(client, post, auth_headers):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -433,17 +442,17 @@ def test_delete_comment(client, post, auth_headers):
         },
     )
     comment_id = create_response.json()["id"]
-    response = client.delete(
+    response = await client.delete(
         f"/api/comments/{comment_id}",
         headers=auth_headers,
     )
     assert response.status_code == 204
-    list_response = client.get(f"/api/comments/post/{post['id']}")
+    list_response = await client.get(f"/api/comments/post/{post['id']}")
     assert len(list_response.json()["items"]) == 0
 
 
-def test_delete_comment_not_found(client, auth_headers):
-    response = client.delete(
+async def test_delete_comment_not_found(client, auth_headers):
+    response = await client.delete(
         "/api/comments/99999",
         headers=auth_headers,
     )
@@ -451,8 +460,8 @@ def test_delete_comment_not_found(client, auth_headers):
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_delete_comment_requires_auth(client, post):
-    create_response = client.post(
+async def test_delete_comment_requires_auth(client, post):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -461,12 +470,12 @@ def test_delete_comment_requires_auth(client, post):
         },
     )
     comment_id = create_response.json()["id"]
-    response = client.delete(f"/api/comments/{comment_id}")
+    response = await client.delete(f"/api/comments/{comment_id}")
     assert response.status_code == 401
 
 
-def test_approve_comment(client, post, auth_headers):
-    create_response = client.post(
+async def test_approve_comment(client, post, auth_headers):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -475,7 +484,7 @@ def test_approve_comment(client, post, auth_headers):
         },
     )
     comment_id = create_response.json()["id"]
-    response = client.patch(
+    response = await client.patch(
         f"/api/comments/{comment_id}/approve",
         json={"approved": True},
         headers=auth_headers,
@@ -484,8 +493,8 @@ def test_approve_comment(client, post, auth_headers):
     assert response.json()["is_approved"] is True
 
 
-def test_approve_comment_not_found(client, auth_headers):
-    response = client.patch(
+async def test_approve_comment_not_found(client, auth_headers):
+    response = await client.patch(
         "/api/comments/99999/approve",
         json={"approved": True},
         headers=auth_headers,
@@ -494,8 +503,8 @@ def test_approve_comment_not_found(client, auth_headers):
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_approve_comment_unauthorized(client, post):
-    create_response = client.post(
+async def test_approve_comment_unauthorized(client, post):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Test User",
@@ -504,7 +513,7 @@ def test_approve_comment_unauthorized(client, post):
         },
     )
     comment_id = create_response.json()["id"]
-    response = client.patch(
+    response = await client.patch(
         f"/api/comments/{comment_id}/approve",
         json={"approved": True},
     )
@@ -514,65 +523,65 @@ def test_approve_comment_unauthorized(client, post):
 # --- Comment likes (DEC-092, TASK-158) ---
 
 
-def test_like_comment(client, post):
-    create_response = client.post(
+async def test_like_comment(client, post):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={"nickname": "Test User", "email": "test@example.com", "content": "Nice snippet"},
     )
     comment_id = create_response.json()["id"]
-    response = client.post(f"/api/comments/{comment_id}/like")
+    response = await client.post(f"/api/comments/{comment_id}/like")
     assert response.status_code == 201  # first like from this source creates
     data = response.json()
     assert data["id"] == comment_id
     assert data["likes"] == 1
 
 
-def test_like_comment_is_idempotent_per_source(client, post):
+async def test_like_comment_is_idempotent_per_source(client, post):
     """A second like from the same source is a no-op (security review).
 
     Comments ranking by 'most helpful' must count distinct supporters, not
     click spam: the same dedupe semantics as flags, so one caller (or many
     calls from one IP) cannot inflate the count.
     """
-    create_response = client.post(
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={"nickname": "Test User", "email": "test@example.com", "content": "Again"},
     )
     comment_id = create_response.json()["id"]
-    first = client.post(f"/api/comments/{comment_id}/like")
+    first = await client.post(f"/api/comments/{comment_id}/like")
     assert first.status_code == 201  # new like from this source
     assert first.json()["likes"] == 1
-    second = client.post(f"/api/comments/{comment_id}/like")
+    second = await client.post(f"/api/comments/{comment_id}/like")
     assert second.status_code == 200  # idempotent no-op
     assert second.json()["likes"] == 1
 
 
-def test_like_comment_exposes_likes_on_public_list(client, post, auth_headers):
-    create_response = client.post(
+async def test_like_comment_exposes_likes_on_public_list(client, post, auth_headers):
+    create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={"nickname": "Test User", "email": "test@example.com", "content": "Snippet"},
     )
     comment_id = create_response.json()["id"]
-    liked = client.post(f"/api/comments/{comment_id}/like")
+    liked = await client.post(f"/api/comments/{comment_id}/like")
     assert liked.status_code == 201  # first like from this source creates
     # The public list only exposes approved comments — approve before listing.
-    approved = client.patch(
+    approved = await client.patch(
         f"/api/comments/{comment_id}/approve",
         json={"approved": True},
         headers=auth_headers,
     )
     assert approved.status_code == 200
-    listed = client.get(f"/api/comments/post/{post['id']}").json()["items"]
+    listed = (await client.get(f"/api/comments/post/{post['id']}")).json()["items"]
     assert [c["likes"] for c in listed if c["id"] == comment_id] == [1]
 
 
-def test_like_comment_not_found(client):
-    response = client.post("/api/comments/99999/like")
+async def test_like_comment_not_found(client):
+    response = await client.post("/api/comments/99999/like")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def test_huge_comment_id_is_422_not_500(client):
+async def test_huge_comment_id_is_422_not_500(client):
     """An out-of-range comment id must be a 422, never a 500.
 
     Mirrors the posts fix (round 276): an unbounded ``comment_id: int`` path
@@ -580,12 +589,12 @@ def test_huge_comment_id_is_422_not_500(client):
     the public like route. The IdInt bound turns it into the repo-standard 422.
     """
     huge = "9" * 25
-    response = client.post(f"/api/comments/{huge}/like")
+    response = await client.post(f"/api/comments/{huge}/like")
     assert response.status_code == 422
     assert "error" in response.json()
 
 
-def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_post):
+async def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_post):
     """A comment on a hidden post must 404 like an unknown id."""
     from app import models
 
@@ -596,13 +605,13 @@ def test_like_comment_on_non_public_post_returns_404(client, db_session, draft_p
         content="hidden comment",
     )
     db_session.add(comment)
-    db_session.flush()
-    response = client.post(f"/api/comments/{comment.id}/like")
+    await db_session.flush()
+    response = await client.post(f"/api/comments/{comment.id}/like")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"
 
 
-def _create_approved_comment(client, db_session, post_id, nickname, content, auth_headers, likes=0):
+async def _create_approved_comment(client, db_session, post_id, nickname, content, auth_headers, likes=0):
     """Create a comment, seed it with likes from DISTINCT sources, approve it.
 
     Likes are per-(comment, ip_key), so seeding them through repeated same-IP
@@ -612,7 +621,7 @@ def _create_approved_comment(client, db_session, post_id, nickname, content, aut
     """
     from app import models
 
-    created = client.post(
+    created = await client.post(
         f"/api/comments/post/{post_id}",
         json={"nickname": nickname, "email": f"{nickname}@example.com", "content": content},
     )
@@ -621,63 +630,67 @@ def _create_approved_comment(client, db_session, post_id, nickname, content, aut
     for i in range(likes):
         db_session.add(models.CommentLike(comment_id=cid, ip_key=f"127.0.0.{i + 2}"))
     if likes:
-        db_session.query(models.Comment).filter(models.Comment.id == cid).update(
-            {models.Comment.likes: likes},
-            synchronize_session=False,
+        await db_session.execute(
+            update(models.Comment)
+            .where(models.Comment.id == cid)
+            .values({models.Comment.likes: likes})
+            .execution_options(synchronize_session=False)
         )
-        db_session.commit()
-    approved = client.patch(f"/api/comments/{cid}/approve", json={"approved": True}, headers=auth_headers)
+        await db_session.commit()
+    approved = await client.patch(f"/api/comments/{cid}/approve", json={"approved": True}, headers=auth_headers)
     assert approved.status_code == 200
     return cid
 
 
-def test_list_comments_sort_likes_most_helpful_first(client, db_session, post, auth_headers):
+async def test_list_comments_sort_likes_most_helpful_first(client, db_session, post, auth_headers):
     """sort=likes orders approved comments by like count desc (DEC-094, TASK-159)."""
-    low = _create_approved_comment(client, db_session, post["id"], "Low", "not as helpful", auth_headers, likes=1)
-    high = _create_approved_comment(client, db_session, post["id"], "High", "the helpful answer", auth_headers, likes=5)
-    mid = _create_approved_comment(client, db_session, post["id"], "Mid", "kinda helpful", auth_headers, likes=3)
+    low = await _create_approved_comment(client, db_session, post["id"], "Low", "not as helpful", auth_headers, likes=1)
+    high = await _create_approved_comment(
+        client, db_session, post["id"], "High", "the helpful answer", auth_headers, likes=5
+    )
+    mid = await _create_approved_comment(client, db_session, post["id"], "Mid", "kinda helpful", auth_headers, likes=3)
 
-    items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "likes"}).json()["items"]
+    items = (await client.get(f"/api/comments/post/{post['id']}", params={"sort": "likes"})).json()["items"]
     ids = [c["id"] for c in items]
     # Most helpful first; the 5-like comment leads.
     assert [c for c in ids if c in {low, high, mid}] == [high, mid, low]
 
 
-def test_list_comments_sort_oldest_first(client, db_session, post, auth_headers):
+async def test_list_comments_sort_oldest_first(client, db_session, post, auth_headers):
     """sort=oldest returns approved comments by created_at asc (DEC-094, TASK-159)."""
-    first = _create_approved_comment(client, db_session, post["id"], "First", "first comment", auth_headers)
-    second = _create_approved_comment(client, db_session, post["id"], "Second", "second comment", auth_headers)
-    third = _create_approved_comment(client, db_session, post["id"], "Third", "third comment", auth_headers)
+    first = await _create_approved_comment(client, db_session, post["id"], "First", "first comment", auth_headers)
+    second = await _create_approved_comment(client, db_session, post["id"], "Second", "second comment", auth_headers)
+    third = await _create_approved_comment(client, db_session, post["id"], "Third", "third comment", auth_headers)
 
-    items = client.get(f"/api/comments/post/{post['id']}", params={"sort": "oldest"}).json()["items"]
+    items = (await client.get(f"/api/comments/post/{post['id']}", params={"sort": "oldest"})).json()["items"]
     ids = [c["id"] for c in items]
     assert [c for c in ids if c in {first, second, third}] == [first, second, third]
 
 
-def test_list_comments_default_sort_newest_first(client, db_session, post, auth_headers):
+async def test_list_comments_default_sort_newest_first(client, db_session, post, auth_headers):
     """With no sort param, comments return newest-first (backwards compatible)."""
-    first = _create_approved_comment(client, db_session, post["id"], "Old", "older comment", auth_headers)
-    second = _create_approved_comment(client, db_session, post["id"], "New", "newer comment", auth_headers)
+    first = await _create_approved_comment(client, db_session, post["id"], "Old", "older comment", auth_headers)
+    second = await _create_approved_comment(client, db_session, post["id"], "New", "newer comment", auth_headers)
 
-    items = client.get(f"/api/comments/post/{post['id']}").json()["items"]
+    items = (await client.get(f"/api/comments/post/{post['id']}")).json()["items"]
     ids = [c["id"] for c in items]
     assert [c for c in ids if c in {first, second}] == [second, first]
 
 
-def test_list_comments_rejects_invalid_sort(client, post):
+async def test_list_comments_rejects_invalid_sort(client, post):
     """An unknown sort value is rejected with 422 (validated at the boundary)."""
-    response = client.get(f"/api/comments/post/{post['id']}", params={"sort": "random"})
+    response = await client.get(f"/api/comments/post/{post['id']}", params={"sort": "random"})
     assert response.status_code == 422
 
 
-def test_create_comment_on_nonexistent_post(client):
+async def test_create_comment_on_nonexistent_post(client):
     """Creating a comment on a non-existent post should return 404.
 
     404 (not 400) matches the visibility guard: hidden drafts, scheduled
     posts and nonexistent ids all answer the same way, so the endpoint no
     longer leaks whether a hidden post exists.
     """
-    response = client.post(
+    response = await client.post(
         "/api/comments/post/99999",
         json={
             "nickname": "Test User",
@@ -689,10 +702,10 @@ def test_create_comment_on_nonexistent_post(client):
     assert "not found" in response.json()["error"]["message"]
 
 
-def test_create_comment_with_parent_from_different_post(client, post, auth_headers):
+async def test_create_comment_with_parent_from_different_post(client, post, auth_headers):
     """Replying to a parent comment from a different post should return 400."""
     # Create a second post
-    other_post = client.post(
+    other_post = await client.post(
         "/api/posts",
         json={
             "title": "Another Post",
@@ -705,7 +718,7 @@ def test_create_comment_with_parent_from_different_post(client, post, auth_heade
     assert other_post.status_code in (200, 201), f"Failed to create second post: {other_post.json()}"
 
     # Create a comment on the original post
-    parent_response = client.post(
+    parent_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Parent",
@@ -716,7 +729,7 @@ def test_create_comment_with_parent_from_different_post(client, post, auth_heade
     parent_id = parent_response.json()["id"]
 
     # Try to create a reply on the other post referencing the parent
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{other_post.json()['id']}",
         json={
             "nickname": "Child",
@@ -729,9 +742,9 @@ def test_create_comment_with_parent_from_different_post(client, post, auth_heade
     assert "Parent comment does not belong to this post" in response.json()["error"]["message"]
 
 
-def test_create_comment_with_nonexistent_parent(client, post):
+async def test_create_comment_with_nonexistent_parent(client, post):
     """Replying to a non-existent parent comment should return 400."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Child",
@@ -744,14 +757,14 @@ def test_create_comment_with_nonexistent_parent(client, post):
     assert "Parent comment with id 99999 not found" in response.json()["error"]["message"]
 
 
-def test_create_comment_rejects_reply_to_unapproved_parent(client, post):
+async def test_create_comment_rejects_reply_to_unapproved_parent(client, post):
     """A reply to a pending (awaiting-approval) parent comment must return 400.
 
     API-created comments are never auto-approved, so a pending parent is not
     publicly visible; allowing a reply could orphan an approved reply under a
     parent a moderator later rejects.
     """
-    parent_response = client.post(
+    parent_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Pending Parent",
@@ -762,7 +775,7 @@ def test_create_comment_rejects_reply_to_unapproved_parent(client, post):
     assert parent_response.status_code == 201
     pending_parent_id = parent_response.json()["id"]
 
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "Child",
@@ -775,29 +788,29 @@ def test_create_comment_rejects_reply_to_unapproved_parent(client, post):
     assert "Cannot reply to a comment awaiting approval" in response.json()["error"]["message"]
 
 
-def test_list_comments_rejects_invalid_pagination(client, post):
+async def test_list_comments_rejects_invalid_pagination(client, post):
     """Negative/zero/oversized limits must be rejected, not 500."""
-    response = client.get(f"/api/comments/post/{post['id']}?limit=-1")
+    response = await client.get(f"/api/comments/post/{post['id']}?limit=-1")
     assert response.status_code == 422
 
-    response = client.get(f"/api/comments/post/{post['id']}?limit=0")
+    response = await client.get(f"/api/comments/post/{post['id']}?limit=0")
     assert response.status_code == 422
 
-    response = client.get(f"/api/comments/post/{post['id']}?limit=1000")
+    response = await client.get(f"/api/comments/post/{post['id']}?limit=1000")
     assert response.status_code == 422
 
-    response = client.get(f"/api/comments/post/{post['id']}?page=0")
+    response = await client.get(f"/api/comments/post/{post['id']}?page=0")
     assert response.status_code == 422
 
 
-def test_create_comment_rejects_overlong_nickname(client, post):
+async def test_create_comment_rejects_overlong_nickname(client, post):
     """Over-length nickname must be rejected as 422, never stored or 500.
 
     Regresses the schema/column mismatch: on PostgreSQL an over-length
     nickname used to surface as an uncaught DataError -> 500; the max_length
     boundary now rejects it consistently on every backend.
     """
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "n" * 51,
@@ -807,17 +820,17 @@ def test_create_comment_rejects_overlong_nickname(client, post):
     )
     assert response.status_code == 422
 
-    list_response = client.get(f"/api/comments/post/{post['id']}")
+    list_response = await client.get(f"/api/comments/post/{post['id']}")
     assert len(list_response.json()["items"]) == 0
 
 
-def test_create_comment_rejects_overlong_content(client, post):
+async def test_create_comment_rejects_overlong_content(client, post):
     """Over-length comment content is rejected as 422 (bounded CommentBase.content).
 
     The public comment endpoint is unauthenticated, so an unbounded content field
     would let anyone bloat the DB/response with multi-MB bodies.
     """
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "tester",
@@ -828,9 +841,9 @@ def test_create_comment_rejects_overlong_content(client, post):
     assert response.status_code == 422
 
 
-def test_create_comment_accepts_boundary_length_content(client, post):
+async def test_create_comment_accepts_boundary_length_content(client, post):
     """Exactly max_length (5000) content is accepted."""
-    response = client.post(
+    response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
             "nickname": "tester",

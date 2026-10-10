@@ -9,9 +9,9 @@ Credentials: username="testadmin", password="testpass123"
 # ============ Login Tests ============
 
 
-def test_login_success(client, admin_user):
+async def test_login_success(client, admin_user):
     """Valid credentials should return token."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={
             "username": "testadmin",
@@ -24,9 +24,9 @@ def test_login_success(client, admin_user):
     assert data["token_type"] == "bearer"
 
 
-def test_login_wrong_password(client, admin_user):
+async def test_login_wrong_password(client, admin_user):
     """Wrong password should return 401."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={
             "username": "testadmin",
@@ -36,9 +36,9 @@ def test_login_wrong_password(client, admin_user):
     assert response.status_code == 401
 
 
-def test_login_wrong_username(client):
+async def test_login_wrong_username(client):
     """Wrong username should return 401."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={
             "username": "wronguser",
@@ -48,33 +48,33 @@ def test_login_wrong_username(client):
     assert response.status_code == 401
 
 
-def test_login_empty_credentials(client):
+async def test_login_empty_credentials(client):
     """Empty credentials should return 422."""
-    response = client.post("/api/admin/login", data={})
+    response = await client.post("/api/admin/login", data={})
     assert response.status_code == 422
 
 
-def test_login_missing_password(client):
+async def test_login_missing_password(client):
     """Missing password should return 422."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testadmin"},
     )
     assert response.status_code == 422
 
 
-def test_login_missing_username(client):
+async def test_login_missing_username(client):
     """Missing username should return 422."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"password": "testpass123"},
     )
     assert response.status_code == 422
 
 
-def test_login_invalid_content_type(client, admin_user):
+async def test_login_invalid_content_type(client, admin_user):
     """Invalid content type should return 422."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         json={"username": "testadmin", "password": "testpass123"},
     )
@@ -84,9 +84,9 @@ def test_login_invalid_content_type(client, admin_user):
 # ============ Token Tests ============
 
 
-def test_token_format(client, admin_user):
+async def test_token_format(client, admin_user):
     """Token should be a non-empty string."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
@@ -95,33 +95,33 @@ def test_token_format(client, admin_user):
     assert len(token) > 0
 
 
-def test_protected_endpoint_without_token(client):
+async def test_protected_endpoint_without_token(client):
     """Protected endpoints without token should return 401."""
-    response = client.get("/api/admin/posts")
+    response = await client.get("/api/admin/posts")
     assert response.status_code == 401
 
 
-def test_protected_endpoint_with_invalid_token(client):
+async def test_protected_endpoint_with_invalid_token(client):
     """Protected endpoints with invalid token should return 401."""
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers={"Authorization": "Bearer invalid_token"},
     )
     assert response.status_code == 401
 
 
-def test_protected_endpoint_with_malformed_header(client):
+async def test_protected_endpoint_with_malformed_header(client):
     """Malformed Authorization header should return 401."""
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers={"Authorization": "invalid_header"},
     )
     assert response.status_code == 401
 
 
-def test_protected_endpoint_with_partial_token(client):
+async def test_protected_endpoint_with_partial_token(client):
     """Incomplete token should return 401."""
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers={"Authorization": "Bearer "},
     )
@@ -131,15 +131,15 @@ def test_protected_endpoint_with_partial_token(client):
 # ============ Admin CRUD Authorization ============
 
 
-def test_admin_list_posts_requires_auth(client):
+async def test_admin_list_posts_requires_auth(client):
     """Admin posts list requires authentication."""
-    response = client.get("/api/admin/posts")
+    response = await client.get("/api/admin/posts")
     assert response.status_code == 401
 
 
-def test_admin_create_post_requires_auth(client):
+async def test_admin_create_post_requires_auth(client):
     """Creating posts requires authentication."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/posts",
         json={
             "title": "Unauthorized Post",
@@ -150,45 +150,45 @@ def test_admin_create_post_requires_auth(client):
     assert response.status_code == 401
 
 
-def test_admin_delete_post_requires_auth(client):
+async def test_admin_delete_post_requires_auth(client):
     """Deleting posts requires authentication."""
-    response = client.delete("/api/admin/posts/1")
+    response = await client.delete("/api/admin/posts/1")
     assert response.status_code == 401
 
 
-def test_admin_list_categories_requires_auth(client):
+async def test_admin_list_categories_requires_auth(client):
     """Admin categories list requires authentication."""
-    response = client.get("/api/admin/categories")
+    response = await client.get("/api/admin/categories")
     assert response.status_code == 401
 
 
-def test_admin_create_category_requires_auth(client):
+async def test_admin_create_category_requires_auth(client):
     """Creating categories requires authentication."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/categories",
         json={"name": "Unauthorized Category"},
     )
     assert response.status_code == 401
 
 
-def test_admin_list_tags_requires_auth(client):
+async def test_admin_list_tags_requires_auth(client):
     """Admin tags list requires authentication."""
-    response = client.get("/api/admin/tags")
+    response = await client.get("/api/admin/tags")
     assert response.status_code == 401
 
 
-def test_admin_comments_requires_auth(client):
+async def test_admin_comments_requires_auth(client):
     """Admin comments requires authentication."""
-    response = client.get("/api/admin/comments")
+    response = await client.get("/api/admin/comments")
     assert response.status_code == 401
 
 
 # ============ Authenticated Operations (uses shared auth_headers) ============
 
 
-def test_admin_list_posts_with_auth(client, auth_headers):
+async def test_admin_list_posts_with_auth(client, auth_headers):
     """Admin posts list works with valid token."""
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers=auth_headers,
     )
@@ -197,9 +197,9 @@ def test_admin_list_posts_with_auth(client, auth_headers):
     assert isinstance(data["items"], list)
 
 
-def test_admin_create_post_with_auth(client, auth_headers):
+async def test_admin_create_post_with_auth(client, auth_headers):
     """Creating posts works with valid token."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/posts",
         headers={
             **auth_headers,
@@ -217,9 +217,9 @@ def test_admin_create_post_with_auth(client, auth_headers):
     assert "id" in data
 
 
-def test_admin_create_category_with_auth(client, auth_headers):
+async def test_admin_create_category_with_auth(client, auth_headers):
     """Creating categories works with valid token."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/categories",
         json={"name": "Auth Category"},
         headers=auth_headers,
@@ -229,9 +229,9 @@ def test_admin_create_category_with_auth(client, auth_headers):
     assert "id" in data
 
 
-def test_admin_create_tag_with_auth(client, auth_headers):
+async def test_admin_create_tag_with_auth(client, auth_headers):
     """Creating tags works with valid token."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/tags",
         json={"name": "AuthTag"},
         headers=auth_headers,
@@ -241,10 +241,10 @@ def test_admin_create_tag_with_auth(client, auth_headers):
     assert "id" in data
 
 
-def test_admin_delete_category_with_auth(client, auth_headers):
+async def test_admin_delete_category_with_auth(client, auth_headers):
     """Deleting categories works with valid token."""
     # Create a category first
-    create_response = client.post(
+    create_response = await client.post(
         "/api/admin/categories",
         json={"name": "DeleteMe"},
         headers=auth_headers,
@@ -253,17 +253,17 @@ def test_admin_delete_category_with_auth(client, auth_headers):
     category_id = create_response.json()["id"]
 
     # Delete it
-    response = client.delete(
+    response = await client.delete(
         f"/api/admin/categories/{category_id}",
         headers=auth_headers,
     )
     assert response.status_code in [204, 200]
 
 
-def test_admin_delete_tag_with_auth(client, auth_headers):
+async def test_admin_delete_tag_with_auth(client, auth_headers):
     """Deleting tags works with valid token."""
     # Create a tag first
-    create_response = client.post(
+    create_response = await client.post(
         "/api/admin/tags",
         json={"name": "DeleteMeTag"},
         headers=auth_headers,
@@ -272,7 +272,7 @@ def test_admin_delete_tag_with_auth(client, auth_headers):
     tag_id = create_response.json()["id"]
 
     # Delete it
-    response = client.delete(
+    response = await client.delete(
         f"/api/admin/tags/{tag_id}",
         headers=auth_headers,
     )
@@ -282,32 +282,32 @@ def test_admin_delete_tag_with_auth(client, auth_headers):
 # ============ Token Expiration / Invalidity ============
 
 
-def test_token_with_extra_characters(client, admin_user):
+async def test_token_with_extra_characters(client, admin_user):
     """Token with extra characters should be invalid."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
     token = response.json()["access_token"]
     invalid_token = token + "x"
 
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers={"Authorization": f"Bearer {invalid_token}"},
     )
     assert response.status_code == 401
 
 
-def test_token_with_truncated_value(client, admin_user):
+async def test_token_with_truncated_value(client, admin_user):
     """Truncated token should be invalid."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
     token = response.json()["access_token"]
     invalid_token = token[: len(token) // 2]
 
-    response = client.get(
+    response = await client.get(
         "/api/admin/posts",
         headers={"Authorization": f"Bearer {invalid_token}"},
     )
@@ -317,13 +317,13 @@ def test_token_with_truncated_value(client, admin_user):
 # ============ Multiple Auth Scenarios ============
 
 
-def test_multiple_login_requests(client, admin_user):
+async def test_multiple_login_requests(client, admin_user):
     """Multiple login requests should each return valid token."""
-    response1 = client.post(
+    response1 = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
-    response2 = client.post(
+    response2 = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
@@ -334,11 +334,11 @@ def test_multiple_login_requests(client, admin_user):
     assert "access_token" in response2.json()
 
 
-def test_concurrent_requests_with_same_token(client, auth_headers):
+async def test_concurrent_requests_with_same_token(client, auth_headers):
     """Multiple concurrent requests with same token should all succeed."""
     responses = []
     for _ in range(5):
-        response = client.get(
+        response = await client.get(
             "/api/admin/posts",
             headers=auth_headers,
         )

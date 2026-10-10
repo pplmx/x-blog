@@ -1,11 +1,13 @@
 import csv
 import io
-from collections.abc import Iterator, Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app import crud, models
 from app.auth import User, get_current_superuser
@@ -27,7 +29,7 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 EXPORT_PAGE_SIZE = 500
 
 
-def _csv_chunks(headers: list[str], row_iter: Iterator[list[int | object | str]]) -> Iterator[str]:
+async def _csv_chunks(headers: list[str], row_iter: AsyncIterator[list[int | object | str]]) -> AsyncIterator[str]:
     """Yield the CSV header line, then one chunk per data row.
 
     Each chunk is a complete csv.writer row (``\r\n``-terminated), so a stream
@@ -41,7 +43,7 @@ def _csv_chunks(headers: list[str], row_iter: Iterator[list[int | object | str]]
         return buf.getvalue()
 
     yield _row(headers)
-    for row in row_iter:
+    async for row in row_iter:
         yield _row(row)
 
 
@@ -71,7 +73,7 @@ def _csv_status(post: models.Post, now: datetime) -> str:
 
 @router.get("/posts.csv")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
-def export_posts_csv(
+async def export_posts_csv(
     request: Request,  # noqa: ARG001
     status: str | None = Query(None, description="published | draft | scheduled | all"),
     date_from: str | None = Query(None, max_length=40, description="ISO date: created >= date_from"),
@@ -79,7 +81,7 @@ def export_posts_csv(
         None, max_length=40, description="ISO date: created <= date_to (a bare date includes the whole day)"
     ),
     limit: int = Query(10000, ge=1, le=100000),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
 ):
     """Export posts to CSV, filterable by status and created-date range.
@@ -89,24 +91,24 @@ def export_posts_csv(
     Now status defaults to "all"; add the status/date columns so an admin can
     see each row's moderation state (RIL TASK-079, ISS-048).
     """
-    query = db.query(models.Post)
+    stmt = select(models.Post)
     if status == "published":
-        query = query.filter(models.Post.published.is_(True))
+        stmt = stmt.where(models.Post.published.is_(True))
     elif status == "draft":
-        query = query.filter(models.Post.published == False)  # noqa: E712
+        stmt = stmt.where(models.Post.published == False)  # noqa: E712
     elif status == "scheduled":
         # "Scheduled" means actually going live: published AND not yet its
         # publish time. A future-publish_at DRAFT never goes live, so it does
         # not belong under this filter (RIL ISS-290).
-        query = query.filter(models.Post.published.is_(True), models.Post.publish_at > crud.utc_now_naive())
+        stmt = stmt.where(models.Post.published.is_(True), models.Post.publish_at > crud.utc_now_naive())
     # status None/"all" → every post regardless of state. A bare-date date_to
     # is widened to end-of-day so the picked day is included in the export.
     start = parse_bound(date_from)
     end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
     if start is not None:
-        query = query.filter(models.Post.created_at >= start)
+        stmt = stmt.where(models.Post.created_at >= start)
     if end is not None:
-        query = query.filter(models.Post.created_at <= end)
+        stmt = stmt.where(models.Post.created_at <= end)
 
     # category/tags are read per row below; eager-load so a page of posts stays
     # a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
@@ -114,22 +116,22 @@ def export_posts_csv(
     # the cap is chosen by the query plan — unreproducible, and the remainder is
     # unreachable. Post.id desc is cheap (PK index) and matches the DEC-239
     # tiebreak idiom (the sibling comments export already orders by created_at).
-    def _post_rows() -> Iterator[list[int | object | str]]:
+    async def _post_rows() -> AsyncIterator[list[int | object | str]]:
         # Keyset page by id because the tags eager-load is a joined collection,
-        # which Query.yield_per refuses; id-desc keyset keeps the same
+        # which yield_per refuses; id-desc keyset keeps the same
         # deterministic order and one bounded query per page (ISS-637).
         now = crud.utc_now_naive()
         remaining = limit
         last_id: int | None = None
         while remaining > 0:
-            page_query = query if last_id is None else query.filter(models.Post.id < last_id)
+            page_stmt = stmt if last_id is None else stmt.where(models.Post.id < last_id)
             want = min(EXPORT_PAGE_SIZE, remaining)
-            page = (
-                page_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+            page_stmt = (
+                page_stmt.options(joinedload(models.Post.category), joinedload(models.Post.tags))
                 .order_by(models.Post.id.desc())
                 .limit(want)
-                .all()
             )
+            page = (await db.execute(page_stmt)).unique().scalars().all()
             if not page:
                 return
             for post in page:
@@ -180,7 +182,7 @@ def export_posts_csv(
 
 @router.get("/comments.csv")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
-def export_comments_csv(
+async def export_comments_csv(
     request: Request,  # noqa: ARG001
     is_approved: bool | None = Query(None, description="Filter by moderation status"),
     date_from: str | None = Query(None, max_length=40, description="ISO date: created >= date_from"),
@@ -188,7 +190,7 @@ def export_comments_csv(
         None, max_length=40, description="ISO date: created <= date_to (a bare date includes the whole day)"
     ),
     limit: int = Query(10000, ge=1, le=100000),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
 ):
     """Export comments to CSV, filterable by moderation status and date range.
@@ -197,24 +199,26 @@ def export_comments_csv(
     Now supports is_approved + date filters and surfaces the moderation state
     in a dedicated column (RIL TASK-079, ISS-048).
     """
-    query = db.query(models.Comment)
+    stmt = select(models.Comment)
     if is_approved is not None:
-        query = query.filter(models.Comment.is_approved.is_(is_approved))
+        stmt = stmt.where(models.Comment.is_approved.is_(is_approved))
     start = parse_bound(date_from)
     end = parse_bound(inclusive_end_of_day(date_to)) if date_to else None
     if start is not None:
-        query = query.filter(models.Comment.created_at >= start)
+        stmt = stmt.where(models.Comment.created_at >= start)
     if end is not None:
-        query = query.filter(models.Comment.created_at <= end)
+        stmt = stmt.where(models.Comment.created_at <= end)
 
-    # Scalar-only query (no joined collections), so Query.yield_per batches the
-    # rows instead of materializing the whole result set for the CSV pass (the
-    # posts export keysets by id because its tags eager-load is a collection,
-    # which yield_per refuses). Same created_at-desc order as before.
-    comments = query.order_by(models.Comment.created_at.desc()).limit(limit).yield_per(EXPORT_PAGE_SIZE)
+    # Scalar-only query (no joined collections), so streaming scalar rows via
+    # yield_per batches the result instead of materializing the whole result
+    # set for the CSV pass (the posts export keysets by id because its tags
+    # eager-load is a collection, which yield_per refuses). Same
+    # created_at-desc order as before.
+    stmt = stmt.order_by(models.Comment.created_at.desc()).limit(limit).execution_options(yield_per=EXPORT_PAGE_SIZE)
 
-    def _comment_rows() -> Iterator[list[int | object | str]]:
-        for comment in comments:
+    async def _comment_rows() -> AsyncIterator[list[int | object | str]]:
+        results = await db.stream_scalars(stmt)
+        async for comment in results:
             yield [
                 comment.id,
                 comment.post_id,

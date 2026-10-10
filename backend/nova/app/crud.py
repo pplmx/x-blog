@@ -5,10 +5,11 @@ from collections.abc import Collection, Iterable
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
 
-from sqlalchemy import and_, case, extract, func, or_, select, update
+from sqlalchemy import and_, case, delete, extract, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app import auth, models, schemas
 from app.cache import (
@@ -113,7 +114,7 @@ def effective_publish_ts(post: models.Post, fallback: datetime | None = None) ->
     return ts
 
 
-def _populate_post_metrics(db: Session, posts: list[models.Post]) -> None:
+async def _populate_post_metrics(db: AsyncSession, posts: list[models.Post]) -> None:
     """Fill `comment_count` + `reading_time` on a list of Post in-place.
 
     comment_count is the approved-comment count per post, computed in ONE
@@ -126,14 +127,15 @@ def _populate_post_metrics(db: Session, posts: list[models.Post]) -> None:
         return
     post_ids = [p.id for p in posts]
     rows = (
-        db.query(models.Comment.post_id, func.count(models.Comment.id))
-        .filter(
-            models.Comment.post_id.in_(post_ids),
-            models.Comment.is_approved == True,  # noqa: E712
+        await db.execute(
+            select(models.Comment.post_id, func.count(models.Comment.id))
+            .where(
+                models.Comment.post_id.in_(post_ids),
+                models.Comment.is_approved == True,  # noqa: E712
+            )
+            .group_by(models.Comment.post_id)
         )
-        .group_by(models.Comment.post_id)
-        .all()
-    )
+    ).all()
     comment_counts = {post_id: int(count) for post_id, count in rows}
     for p in posts:
         p.comment_count = comment_counts.get(p.id, 0)
@@ -153,8 +155,8 @@ def _effective_publish_col():
     return func.coalesce(models.Post.publish_at, models.Post.created_at)
 
 
-def get_posts(
-    db: Session,
+async def get_posts(
+    db: AsyncSession,
     skip: int = 0,
     limit: int = 10,
     published: bool = True,
@@ -165,34 +167,34 @@ def get_posts(
     month: int | None = None,
     pinned_first: bool = True,
 ) -> tuple[list[models.Post], int]:
-    query = db.query(models.Post)
+    query = select(models.Post)
 
     if published:
         now = utc_now_naive()
-        query = query.filter(
+        query = query.where(
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
 
     if category_id:
-        query = query.filter(models.Post.category_id == category_id)
+        query = query.where(models.Post.category_id == category_id)
 
     if tag_id:
-        query = query.join(models.Post.tags).filter(models.Tag.id == tag_id).distinct()
+        query = query.join(models.Post.tags).where(models.Tag.id == tag_id).distinct()
 
     if author_id:
-        query = query.filter(models.Post.author_id == author_id)
+        query = query.where(models.Post.author_id == author_id)
 
     # Year/month filters key off the effective publish time, matching the
     # archive buckets and feed ordering — a scheduled post appears under the
     # month it actually went live, not the month it was drafted (RIL ISS-265).
     if year:
-        query = query.filter(extract("year", _effective_publish_col()) == year)
+        query = query.where(extract("year", _effective_publish_col()) == year)
     if month:
-        query = query.filter(extract("month", _effective_publish_col()) == month)
+        query = query.where(extract("month", _effective_publish_col()) == month)
 
     # Count before pagination
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
 
     # Eager load relationships to avoid N+1 queries (series included: every
     # PostList payload serializes Post.series, and without the join a plain
@@ -230,14 +232,14 @@ def get_posts(
     ]
     if not pinned_first:
         order_cols = [_effective_publish_col().desc(), models.Post.id.desc()]
-    posts = query.order_by(*order_cols).offset(skip).limit(limit).all()
+    posts = list((await db.execute(query.order_by(*order_cols).offset(skip).limit(limit))).unique().scalars())
 
     # Populate comment_count (approved) + reading_time in one pass (no N+1).
-    _populate_post_metrics(db, posts)
+    await _populate_post_metrics(db, posts)
     return posts, total
 
 
-def get_archive(db: Session) -> list[tuple[int, int, int]]:
+async def get_archive(db: AsyncSession) -> list[tuple[int, int, int]]:
     """Group publicly-visible posts by (year, month) of their effective
     publish time (scheduled publish_at when set, else created_at).
 
@@ -250,53 +252,97 @@ def get_archive(db: Session) -> list[tuple[int, int, int]]:
     """
     now = utc_now_naive()
     rows = (
-        db.query(
-            extract("year", _effective_publish_col()).label("year"),
-            extract("month", _effective_publish_col()).label("month"),
-            func.count(models.Post.id).label("count"),
+        await db.execute(
+            select(
+                extract("year", _effective_publish_col()).label("year"),
+                extract("month", _effective_publish_col()).label("month"),
+                func.count(models.Post.id).label("count"),
+            )
+            .where(
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .group_by("year", "month")
+            .order_by(
+                extract("year", _effective_publish_col()).desc(),
+                extract("month", _effective_publish_col()).desc(),
+            )
         )
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
-        )
-        .group_by("year", "month")
-        .order_by(
-            extract("year", _effective_publish_col()).desc(),
-            extract("month", _effective_publish_col()).desc(),
-        )
-        .all()
-    )
+    ).all()
     # Positional Row access (year, month, count — the SELECT order): pyright
     # cannot resolve label attributes on an untyped SQLAlchemy Row, and
     # getattr() with a constant trips ruff B009.
     return [(int(r[0]), int(r[1]), int(r[2])) for r in rows]
 
 
-def get_post(db: Session, post_id: int) -> models.Post | None:
+async def get_post(db: AsyncSession, post_id: int) -> models.Post | None:
     return (
-        db.query(models.Post)
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
+        (
+            await db.execute(
+                select(models.Post)
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .where(models.Post.id == post_id)
+            )
         )
-        .filter(models.Post.id == post_id)
+        .unique()
+        .scalars()
         .first()
     )
 
 
-def get_post_by_slug(db: Session, slug: str) -> models.Post | None:
+async def get_post_by_slug(db: AsyncSession, slug: str) -> models.Post | None:
     return (
-        db.query(models.Post)
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
+        (
+            await db.execute(
+                select(models.Post)
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .where(models.Post.slug == slug)
+            )
         )
-        .filter(models.Post.slug == slug)
+        .unique()
+        .scalars()
         .first()
     )
 
 
-def record_slug_redirect(db: Session, kind: str, old_slug: str, new_slug: str) -> None:
+async def _reload_post_eager(db: AsyncSession, post_id: int) -> models.Post | None:
+    """Re-fetch a post with its serialization-needed relationships eager-loaded.
+
+    Mutating functions (create/update/clone) build a Post, commit, and hand it
+    to response serialization (`schemas.Post` reads category/tags/series/author)
+    plus new-post fan-out (webpush reads `post.tags`/`post.series`). In async
+    SQLAlchemy those lazy collections must be loaded inside the session's event
+    loop — a post-commit lazy load otherwise raises MissingGreenlet. Re-querying
+    with the eager options restores the pre-async behavior where the returned
+    object carried its relationships.
+    """
+    return (
+        (
+            await db.execute(
+                select(models.Post)
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .where(models.Post.id == post_id)
+            )
+        )
+        .unique()
+        .scalars()
+        .first()
+    )
+
+
+async def record_slug_redirect(db: AsyncSession, kind: str, old_slug: str, new_slug: str) -> None:
     """Capture an old slug -> new slug after a rename (round 350).
 
     The read routes use this to redirect old URLs to the current location. The
@@ -315,32 +361,40 @@ def record_slug_redirect(db: Session, kind: str, old_slug: str, new_slug: str) -
     # superseded by the rename-back — the stale row is deleted rather than kept
     # (a kept self-loop, or an A->B + B->A pair, would loop a browser forever
     # once the entity is deleted or unpublished).
-    for stale in (
-        db.query(models.SlugRedirect)
-        .filter(
-            models.SlugRedirect.kind == kind,
-            models.SlugRedirect.new_slug == old_slug,
-        )
-        .all()
+    for stale in list(
+        (
+            await db.execute(
+                select(models.SlugRedirect).where(
+                    models.SlugRedirect.kind == kind,
+                    models.SlugRedirect.new_slug == old_slug,
+                )
+            )
+        ).scalars()
     ):
         if stale.old_slug == new_slug:
-            db.delete(stale)
+            await db.delete(stale)
             continue
         stale.new_slug = new_slug
     # Upsert the direct rename, superseding any older redirect from this slug.
     row = (
-        db.query(models.SlugRedirect)
-        .filter(models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug)
+        (
+            await db.execute(
+                select(models.SlugRedirect).where(
+                    models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     if row is not None:
         row.new_slug = new_slug
     else:
         db.add(models.SlugRedirect(kind=kind, old_slug=old_slug, new_slug=new_slug))
-    db.flush()
+    await db.flush()
 
 
-def resolve_slug_redirect(db: Session, kind: str, old_slug: str) -> str | None:
+async def resolve_slug_redirect(db: AsyncSession, kind: str, old_slug: str) -> str | None:
     """The current slug an old ``old_slug`` now lives at, or None (no redirect).
 
     A self-referential row (old_slug == new_slug) resolves to None: it can
@@ -349,8 +403,14 @@ def resolve_slug_redirect(db: Session, kind: str, old_slug: str) -> str | None:
     rename-back; live entities take precedence in the read routes anyway.)
     """
     row = (
-        db.query(models.SlugRedirect)
-        .filter(models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug)
+        (
+            await db.execute(
+                select(models.SlugRedirect).where(
+                    models.SlugRedirect.kind == kind, models.SlugRedirect.old_slug == old_slug
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     if row is None or row.new_slug == old_slug:
@@ -358,25 +418,27 @@ def resolve_slug_redirect(db: Session, kind: str, old_slug: str) -> str | None:
     return row.new_slug
 
 
-def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = None) -> models.Post:
+async def create_post(db: AsyncSession, post: schemas.PostCreate, author_id: int | None = None) -> models.Post:
     category = None
     if post.category_id:
-        category = db.query(models.Category).filter(models.Category.id == post.category_id).first()
+        category = (
+            (await db.execute(select(models.Category).where(models.Category.id == post.category_id))).scalars().first()
+        )
         if not category:
             raise ValueError(f"Category with id {post.category_id} not found")
 
     if post.series_id:
-        series = db.query(models.Series).filter(models.Series.id == post.series_id).first()
+        series = (await db.execute(select(models.Series).where(models.Series.id == post.series_id))).scalars().first()
         if not series:
             raise ValueError(f"Series with id {post.series_id} not found")
 
     tags = []
     for tag_name in post.tags:
-        tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        tag = (await db.execute(select(models.Tag).where(models.Tag.name == tag_name))).scalars().first()
         if not tag:
             tag = models.Tag(name=tag_name)
             db.add(tag)
-            db.flush()
+            await db.flush()
         tags.append(tag)
 
     db_post = models.Post(
@@ -401,15 +463,15 @@ def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = N
         # revision in the SAME transaction as the post, and commit once. A
         # single commit keeps the unit test that mocks commit/refresh valid
         # (clears the tags cache exactly once, no double-flush slug clash).
-        db.flush()
-        _snapshot_revision(db, db_post)
-        db.commit()
-        db.refresh(db_post)
+        await db.flush()
+        await _snapshot_revision(db, db_post)
+        await db.commit()
+        await db.refresh(db_post)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Slug '{post.slug}' already exists")
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
 
     clear_tags_cache()
@@ -424,14 +486,21 @@ def create_post(db: Session, post: schemas.PostCreate, author_id: int | None = N
     # post that is visible the instant it is created must never double-fire.
     if is_publicly_visible(db_post):
         db_post.new_post_notified_at = utc_now_naive()
-        db.commit()
-        record_new_post_notifications(db, db_post)
-        dispatch_new_post(db, db_post, logger)
-        dispatch_newsletter_new_post(db, db_post, logger)
-    return db_post
+        await db.commit()
+        # Re-load relationships inside the session loop before fan-out, which
+        # reads post.tags/series, and response serialization — async lazy load
+        # post-commit raises MissingGreenlet (RIL async migration).
+        db_post = await _reload_post_eager(db, db_post.id) or db_post
+        await record_new_post_notifications(db, db_post)
+        await dispatch_new_post(db, db_post, logger)
+        await dispatch_newsletter_new_post(db, db_post, logger)
+    # Re-load relationships (tags/series/category) inside the session loop for
+    # response serialization — async: post-commit lazy access raises
+    # MissingGreenlet (RIL async migration).
+    return await _reload_post_eager(db, db_post.id) or db_post
 
 
-def clone_post(db: Session, source: models.Post) -> models.Post:
+async def clone_post(db: AsyncSession, source: models.Post) -> models.Post:
     """Duplicate a post into a fresh draft (round 349).
 
     An editor running repeat-shaped content (weekly digests, release notes,
@@ -447,7 +516,7 @@ def clone_post(db: Session, source: models.Post) -> models.Post:
     base = source.slug
     slug = f"{base}-copy"
     n = 2
-    while db.query(models.Post).filter(models.Post.slug == slug).first():
+    while (await db.execute(select(models.Post).where(models.Post.slug == slug))).scalars().first():
         slug = f"{base}-copy-{n}"
         n += 1
 
@@ -474,15 +543,15 @@ def clone_post(db: Session, source: models.Post) -> models.Post:
     try:
         # Same single-commit shape as create_post: flush for the id, snapshot
         # the initial revision in the same transaction, commit once.
-        db.flush()
-        _snapshot_revision(db, db_post)
-        db.commit()
-        db.refresh(db_post)
+        await db.flush()
+        await _snapshot_revision(db, db_post)
+        await db.commit()
+        await db.refresh(db_post)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Slug '{slug}' already exists")
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
 
     clear_tags_cache()
@@ -490,12 +559,14 @@ def clone_post(db: Session, source: models.Post) -> models.Post:
     clear_posts_list_cache()
 
     # The copy is always a draft — no new-post fan-out (unlike create_post,
-    # which announces an immediately-visible post).
-    return db_post
+    # which announces an immediately-visible post). Re-load relationships so
+    # response serialization (tags/series/category) has them in-loop (async:
+    # post-commit lazy access raises MissingGreenlet, RIL async migration).
+    return await _reload_post_eager(db, db_post.id) or db_post
 
 
-def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.Post | None:
-    db_post = get_post(db, post_id)
+async def update_post(db: AsyncSession, post_id: int, post: schemas.PostUpdate) -> models.Post | None:
+    db_post = await get_post(db, post_id)
     if not db_post:
         return None
 
@@ -505,12 +576,20 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     update_data = post.model_dump(exclude_unset=True)
 
     if "category_id" in update_data and update_data["category_id"] is not None:
-        category = db.query(models.Category).filter(models.Category.id == update_data["category_id"]).first()
+        category = (
+            (await db.execute(select(models.Category).where(models.Category.id == update_data["category_id"])))
+            .scalars()
+            .first()
+        )
         if not category:
             raise ValueError(f"Category with id {update_data['category_id']} not found")
 
     if "series_id" in update_data and update_data["series_id"] is not None:
-        series = db.query(models.Series).filter(models.Series.id == update_data["series_id"]).first()
+        series = (
+            (await db.execute(select(models.Series).where(models.Series.id == update_data["series_id"])))
+            .scalars()
+            .first()
+        )
         if not series:
             raise ValueError(f"Series with id {update_data['series_id']} not found")
 
@@ -519,13 +598,17 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
         # no longer exists would serialize author: null, 404 the writer
         # archive/RSS and silently miss the author-follow fan-out — same
         # stale-id contract as category_id/series_id above.
-        author = db.query(auth.User).filter(auth.User.id == update_data["author_id"]).first()
+        author = (await db.execute(select(auth.User).where(auth.User.id == update_data["author_id"]))).scalars().first()
         if not author:
             raise ValueError(f"Author with id {update_data['author_id']} not found")
 
     if "tag_ids" in update_data:
         tag_id_list = update_data.pop("tag_ids")
-        tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_id_list)).all() if tag_id_list else []
+        tags = (
+            list((await db.execute(select(models.Tag).where(models.Tag.id.in_(tag_id_list)))).scalars())
+            if tag_id_list
+            else []
+        )
         if tag_id_list and len(tags) != len(tag_id_list):
             # Same unknown-id contract as the admin route (TASK-479/ISS-556):
             # a deleted/stale selection is an error, not a silent drop from the
@@ -537,7 +620,7 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     if "slug" in update_data and update_data["slug"] != db_post.slug:
         # Slug-change redirect (round 350): an old URL that was shared/indexed
         # must keep pointing at this post after the rename.
-        record_slug_redirect(db, "post", db_post.slug, update_data["slug"])
+        await record_slug_redirect(db, "post", db_post.slug, update_data["slug"])
 
     for field, value in update_data.items():
         setattr(db_post, field, value)
@@ -545,14 +628,14 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     try:
         # Capture the updated state as a new revision in the same transaction
         # as the field changes, then commit once (single-commit pattern).
-        _snapshot_revision(db, db_post)
-        db.commit()
-        db.refresh(db_post)
+        await _snapshot_revision(db, db_post)
+        await db.commit()
+        await db.refresh(db_post)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Slug or unique constraint already exists")
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
 
     clear_tags_cache()
@@ -565,11 +648,18 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
     # stamp is the exactly-once guard shared by both fan-out paths.
     if not was_visible and is_publicly_visible(db_post):
         db_post.new_post_notified_at = utc_now_naive()
-        db.commit()
-        record_new_post_notifications(db, db_post)
-        dispatch_new_post(db, db_post, logger)
-        dispatch_newsletter_new_post(db, db_post, logger)
-    return db_post
+        await db.commit()
+        # Re-load relationships inside the session loop before fan-out, which
+        # reads post.tags/series, and response serialization — async lazy load
+        # post-commit raises MissingGreenlet (RIL async migration).
+        db_post = await _reload_post_eager(db, db_post.id) or db_post
+        await record_new_post_notifications(db, db_post)
+        await dispatch_new_post(db, db_post, logger)
+        await dispatch_newsletter_new_post(db, db_post, logger)
+    # Re-load relationships (tags/series/category) inside the session loop for
+    # response serialization — async: post-commit lazy access raises
+    # MissingGreenlet (RIL async migration).
+    return await _reload_post_eager(db, db_post.id) or db_post
 
 
 # ---- Post revision history (DEC-158, TASK-191) ---------------------------
@@ -577,18 +667,18 @@ def update_post(db: Session, post_id: int, post: schemas.PostUpdate) -> models.P
 MAX_REVISIONS_PER_POST = 100
 
 
-def capture_post_revision(db: Session, db_post: models.Post) -> None:
+async def capture_post_revision(db: AsyncSession, db_post: models.Post) -> None:
     """Snapshot the post's current state as a new revision and commit it.
 
     Public (not underscore-prefixed) because the admin PUT route applies edits
     in the router (it does not call ``crud.update_post``), so it must be able
     to invoke the same capture the crud paths use (DEC-158, TASK-191).
     """
-    _snapshot_revision(db, db_post)
-    db.commit()
+    await _snapshot_revision(db, db_post)
+    await db.commit()
 
 
-def _snapshot_revision(db: Session, db_post: models.Post) -> None:
+async def _snapshot_revision(db: AsyncSession, db_post: models.Post) -> None:
     """Persist an immutable snapshot of the post's editable fields.
 
     Called on every admin create/update (and before a restore, so a restore is
@@ -610,68 +700,84 @@ def _snapshot_revision(db: Session, db_post: models.Post) -> None:
         published=bool(db_post.published),
     )
     db.add(rev)
-    db.flush()
-    _prune_revisions(db, db_post.id)
+    await db.flush()
+    await _prune_revisions(db, db_post.id)
 
 
-def _prune_revisions(db: Session, post_id: int) -> None:
+async def _prune_revisions(db: AsyncSession, post_id: int) -> None:
     """Keep only the most recent MAX_REVISIONS_PER_POST revisions for a post."""
-    total = db.query(models.PostRevision).filter(models.PostRevision.post_id == post_id).count()
+    total = (
+        await db.execute(
+            select(func.count()).select_from(
+                select(models.PostRevision).where(models.PostRevision.post_id == post_id).subquery()
+            )
+        )
+    ).scalar() or 0
     overflow = total - MAX_REVISIONS_PER_POST
     if overflow <= 0:
         return
-    oldest = (
-        db.query(models.PostRevision)
-        .filter(models.PostRevision.post_id == post_id)
-        .order_by(models.PostRevision.id.asc())
-        .limit(overflow)
-        .all()
+    oldest = list(
+        (
+            await db.execute(
+                select(models.PostRevision)
+                .where(models.PostRevision.post_id == post_id)
+                .order_by(models.PostRevision.id.asc())
+                .limit(overflow)
+            )
+        ).scalars()
     )
     for rev in oldest:
-        db.delete(rev)
+        await db.delete(rev)
 
 
-def get_post_revisions(
-    db: Session,
+async def get_post_revisions(
+    db: AsyncSession,
     post_id: int,
     limit: int = 100,
 ) -> list[models.PostRevision]:
     """Newest-first revision history for a post, bounded by ``limit``."""
-    return (
-        db.query(models.PostRevision)
-        .filter(models.PostRevision.post_id == post_id)
-        .order_by(models.PostRevision.id.desc())
-        .limit(limit)
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.PostRevision)
+                .where(models.PostRevision.post_id == post_id)
+                .order_by(models.PostRevision.id.desc())
+                .limit(limit)
+            )
+        ).scalars()
     )
 
 
-def get_post_revision(
-    db: Session,
+async def get_post_revision(
+    db: AsyncSession,
     post_id: int,
     revision_id: int,
 ) -> models.PostRevision | None:
     return (
-        db.query(models.PostRevision)
-        .filter(
-            models.PostRevision.id == revision_id,
-            models.PostRevision.post_id == post_id,
+        (
+            await db.execute(
+                select(models.PostRevision).where(
+                    models.PostRevision.id == revision_id,
+                    models.PostRevision.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def restore_post_revision(
-    db: Session,
+async def restore_post_revision(
+    db: AsyncSession,
     post_id: int,
     revision_id: int,
 ) -> models.Post:
     """Apply a stored revision to the live post, snapshotting the current state
     first so the restore itself is part of the history (undo-able)."""
-    db_post = get_post(db, post_id)
+    db_post = await get_post(db, post_id)
     if not db_post:
         raise ValueError("Post not found")
-    target = get_post_revision(db, post_id, revision_id)
+    target = await get_post_revision(db, post_id, revision_id)
     if not target:
         raise ValueError("Revision not found")
 
@@ -682,7 +788,7 @@ def restore_post_revision(
     # followers un-notified on a legitimate republish (RIL ISS-291).
     was_visible = is_publicly_visible(db_post)
 
-    _snapshot_revision(db, db_post)
+    await _snapshot_revision(db, db_post)
     db_post.title = target.title
     db_post.slug = target.slug
     db_post.content = target.content
@@ -695,10 +801,10 @@ def restore_post_revision(
     db_post.pinned = bool(target.pinned)
     db_post.published = bool(target.published)
     try:
-        db.commit()
-        db.refresh(db_post)
+        await db.commit()
+        await db.refresh(db_post)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Slug or unique constraint already exists")
     clear_tags_cache()
     clear_categories_cache()
@@ -709,15 +815,15 @@ def restore_post_revision(
         # fire-on-read sweep must never re-announce a post the restore path
         # already announced.
         db_post.new_post_notified_at = utc_now_naive()
-        db.commit()
-        record_new_post_notifications(db, db_post)
-        dispatch_new_post(db, db_post, logger)
-        dispatch_newsletter_new_post(db, db_post, logger)
+        await db.commit()
+        await record_new_post_notifications(db, db_post)
+        await dispatch_new_post(db, db_post, logger)
+        await dispatch_newsletter_new_post(db, db_post, logger)
     return db_post
 
 
-def delete_post(db: Session, post_id: int) -> bool:
-    db_post = db.get(models.Post, post_id)
+async def delete_post(db: AsyncSession, post_id: int) -> bool:
+    db_post = await db.get(models.Post, post_id)
     if not db_post:
         return False
     # Dependent tables carry post_id as a plain integer with no DB-level FK and
@@ -727,12 +833,12 @@ def delete_post(db: Session, post_id: int) -> bool:
     # per-day view rows behind (RIL ISS-296). Comments and revisions cascade
     # through Post.comments/Post.revisions, so they are not listed here.
     for model, _col in _POST_CHILD_TABLES:
-        db.query(model).filter(_col == post_id).delete(synchronize_session=False)
-    db.delete(db_post)
+        await db.execute(delete(model).where(_col == post_id))
+    await db.delete(db_post)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete post: it has dependent records")
     clear_tags_cache()
     clear_categories_cache()
@@ -740,14 +846,14 @@ def delete_post(db: Session, post_id: int) -> bool:
     return True
 
 
-def get_categories(db: Session) -> list[dict]:
+async def get_categories(db: AsyncSession) -> list[dict]:
     # Check cache first
     cache_key = "all_categories"
     if cache_key in categories_cache:
         return categories_cache[cache_key]
 
     # Query database
-    categories = db.query(models.Category).all()
+    categories = list((await db.execute(select(models.Category))).scalars())
 
     # Post count per category in a single grouped query (no N+1). Counts only
     # PUBLICLY VISIBLE posts (published + effective publish time passed), the
@@ -759,15 +865,16 @@ def get_categories(db: Session) -> list[dict]:
     # category (deep-dive review, ISS-362).
     now = utc_now_naive()
     rows = (
-        db.query(models.Post.category_id, func.count(models.Post.id))
-        .filter(
-            models.Post.category_id.isnot(None),
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(models.Post.category_id, func.count(models.Post.id))
+            .where(
+                models.Post.category_id.isnot(None),
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .group_by(models.Post.category_id)
         )
-        .group_by(models.Post.category_id)
-        .all()
-    )
+    ).all()
     counts = {cat_id: int(count) for cat_id, count in rows}
 
     # Cache plain dicts, not live ORM objects, so values survive across
@@ -780,7 +887,7 @@ def get_categories(db: Session) -> list[dict]:
     return result
 
 
-def category_visible_post_count(db: Session, category_id: int) -> int:
+async def category_visible_post_count(db: AsyncSession, category_id: int) -> int:
     """Count of publicly visible posts in a category (published + effective
     publish time passed), for the single-item /api/categories/{id} endpoint.
     get_categories computes the same number in one grouped query for the list
@@ -788,50 +895,51 @@ def category_visible_post_count(db: Session, category_id: int) -> int:
     post_count is derived (not a column) and the schema defaulted (ISS-363)."""
     now = utc_now_naive()
     return (
-        db.query(func.count(models.Post.id))
-        .filter(
-            models.Post.category_id == category_id,
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(func.count(models.Post.id)).where(
+                models.Post.category_id == category_id,
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
         )
-        .scalar()
-        or 0
-    )
+    ).scalar() or 0
 
 
-def get_category(db: Session, category_id: int) -> models.Category | None:
-    return db.query(models.Category).filter(models.Category.id == category_id).first()
+async def get_category(db: AsyncSession, category_id: int) -> models.Category | None:
+    return (await db.execute(select(models.Category).where(models.Category.id == category_id))).scalars().first()
 
 
-def get_category_by_name(db: Session, name: str) -> models.Category | None:
-    return db.query(models.Category).filter(models.Category.name == name).first()
+async def get_category_by_name(db: AsyncSession, name: str) -> models.Category | None:
+    return (await db.execute(select(models.Category).where(models.Category.name == name))).scalars().first()
 
 
-def create_category(db: Session, category: schemas.CategoryCreate) -> models.Category:
+async def create_category(db: AsyncSession, category: schemas.CategoryCreate) -> models.Category:
     db_category = models.Category(name=category.name)
     db.add(db_category)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Category with name '{category.name}' already exists")
-    db.refresh(db_category)
+    await db.refresh(db_category)
     # Clear cache
     clear_categories_cache()
     return db_category
 
 
-def update_category(db: Session, category_id: int, category: schemas.CategoryCreate) -> models.Category | None:
-    db_category = get_category(db, category_id)
+async def update_category(
+    db: AsyncSession, category_id: int, category: schemas.CategoryCreate
+) -> models.Category | None:
+    db_category = await get_category(db, category_id)
     if not db_category:
         return None
     db_category.name = category.name
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Category with name '{category.name}' already exists")
-    db.refresh(db_category)
+    await db.refresh(db_category)
     # Clear cache — and the POSTS-list + feed caches too: PostList embeds the
     # category's name and the sitemap/scoped feeds render it, so a rename that
     # only invalidated the enumeration cache left /api/posts cards and
@@ -841,12 +949,18 @@ def update_category(db: Session, category_id: int, category: schemas.CategoryCre
     return db_category
 
 
-def delete_category(db: Session, category_id: int) -> bool:
-    db_category = get_category(db, category_id)
+async def delete_category(db: AsyncSession, category_id: int) -> bool:
+    db_category = await get_category(db, category_id)
     if not db_category:
         return False
     # Check for posts referencing this category (proactive FK check)
-    post_count = db.query(models.Post).filter(models.Post.category_id == category_id).count()
+    post_count = (
+        await db.execute(
+            select(func.count()).select_from(
+                select(models.Post).where(models.Post.category_id == category_id).subquery()
+            )
+        )
+    ).scalar() or 0
     if post_count > 0:
         raise ValueError("Cannot delete category: it is referenced by posts")
     # CategoryFollow is an additive DEC-009 table with no ORM cascade from
@@ -854,28 +968,26 @@ def delete_category(db: Session, category_id: int) -> bool:
     # follows behind that, on SQLite autoincrement id reuse, re-point at an
     # unrelated later category (same orphan class as guest thread subs —
     # deep-dive finding).
-    db.query(models.CategoryFollow).filter(models.CategoryFollow.category_id == category_id).delete(
-        synchronize_session=False
-    )
-    db.delete(db_category)
+    await db.execute(delete(models.CategoryFollow).where(models.CategoryFollow.category_id == category_id))
+    await db.delete(db_category)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete category: it is referenced by posts")
     # Clear cache
     clear_categories_cache()
     return True
 
 
-def get_tags(db: Session) -> list[dict]:
+async def get_tags(db: AsyncSession) -> list[dict]:
     # Check cache first
     cache_key = "all_tags"
     if cache_key in tags_cache:
         return tags_cache[cache_key]
 
     # Query database
-    tags = db.query(models.Tag).all()
+    tags = list((await db.execute(select(models.Tag))).scalars())
 
     # Post count per tag through the many-to-many join, one grouped query.
     # Counts only PUBLICLY VISIBLE posts (published + effective publish time
@@ -885,15 +997,16 @@ def get_tags(db: Session) -> list[dict]:
     # actually returns (deep-dive review, ISS-362; mirrors get_categories).
     now = utc_now_naive()
     rows = (
-        db.query(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
-        .join(models.Post, models.Post.id == models.post_tags.c.post_id)
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(models.post_tags.c.tag_id, func.count(models.post_tags.c.post_id))
+            .join(models.Post, models.Post.id == models.post_tags.c.post_id)
+            .where(
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .group_by(models.post_tags.c.tag_id)
         )
-        .group_by(models.post_tags.c.tag_id)
-        .all()
-    )
+    ).all()
     counts = {tag_id: int(count) for tag_id, count in rows}
 
     # Cache plain dicts, not live ORM objects, so values survive across
@@ -906,57 +1019,57 @@ def get_tags(db: Session) -> list[dict]:
     return result
 
 
-def tag_visible_post_count(db: Session, tag_id: int) -> int:
+async def tag_visible_post_count(db: AsyncSession, tag_id: int) -> int:
     """Count of publicly visible posts with a tag (published + effective publish
     time passed), for the single-item /api/tags/{id} endpoint. Same rationale as
     category_visible_post_count: post_count is derived, and the item endpoint
     used to report 0 unconditionally (ISS-363)."""
     now = utc_now_naive()
     return (
-        db.query(func.count(models.post_tags.c.post_id))
-        .join(models.Post, models.Post.id == models.post_tags.c.post_id)
-        .filter(
-            models.post_tags.c.tag_id == tag_id,
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(func.count(models.post_tags.c.post_id))
+            .join(models.Post, models.Post.id == models.post_tags.c.post_id)
+            .where(
+                models.post_tags.c.tag_id == tag_id,
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
         )
-        .scalar()
-        or 0
-    )
+    ).scalar() or 0
 
 
-def get_tag(db: Session, tag_id: int) -> models.Tag | None:
-    return db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+async def get_tag(db: AsyncSession, tag_id: int) -> models.Tag | None:
+    return (await db.execute(select(models.Tag).where(models.Tag.id == tag_id))).scalars().first()
 
 
-def get_tag_by_name(db: Session, name: str) -> models.Tag | None:
-    return db.query(models.Tag).filter(models.Tag.name == name).first()
+async def get_tag_by_name(db: AsyncSession, name: str) -> models.Tag | None:
+    return (await db.execute(select(models.Tag).where(models.Tag.name == name))).scalars().first()
 
 
-def create_tag(db: Session, tag: schemas.TagCreate) -> models.Tag:
+async def create_tag(db: AsyncSession, tag: schemas.TagCreate) -> models.Tag:
     db_tag = models.Tag(name=tag.name)
     db.add(db_tag)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Tag with name '{tag.name}' already exists")
-    db.refresh(db_tag)
+    await db.refresh(db_tag)
     # Clear cache
     clear_tags_cache()
     return db_tag
 
 
-def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag | None:
-    db_tag = get_tag(db, tag_id)
+async def update_tag(db: AsyncSession, tag_id: int, tag: schemas.TagCreate) -> models.Tag | None:
+    db_tag = await get_tag(db, tag_id)
     if db_tag:
         db_tag.name = tag.name
         try:
-            db.commit()
+            await db.commit()
         except IntegrityError:
-            db.rollback()
+            await db.rollback()
             raise ValueError(f"Tag with name '{tag.name}' already exists")
-        db.refresh(db_tag)
+        await db.refresh(db_tag)
         # Clear cache — and the POSTS-list + feed caches too: PostList embeds
         # this tag's name and the sitemap renders it, so the rename must not
         # leave /api/posts cards and /sitemap.xml showing the old name until the
@@ -966,23 +1079,27 @@ def update_tag(db: Session, tag_id: int, tag: schemas.TagCreate) -> models.Tag |
     return db_tag
 
 
-def delete_tag(db: Session, tag_id: int) -> bool:
-    db_tag = get_tag(db, tag_id)
+async def delete_tag(db: AsyncSession, tag_id: int) -> bool:
+    db_tag = await get_tag(db, tag_id)
     if db_tag:
         # Check for posts referencing this tag (proactive FK check)
-        post_count = db.query(models.Post).filter(models.Post.tags.any(id=tag_id)).count()
+        post_count = (
+            await db.execute(
+                select(func.count()).select_from(select(models.Post).where(models.Post.tags.any(id=tag_id)).subquery())
+            )
+        ).scalar() or 0
         if post_count > 0:
             raise ValueError("Cannot delete tag: it is referenced by posts")
         # TagFollow is an additive DEC-009 table with no ORM cascade from Tag:
         # purge the follow rows too, or a deleted tag leaves stale follows that,
         # on SQLite autoincrement id reuse, re-point at an unrelated later tag
         # (same orphan class as category follows + guest thread subs).
-        db.query(models.TagFollow).filter(models.TagFollow.tag_id == tag_id).delete(synchronize_session=False)
-        db.delete(db_tag)
+        await db.execute(delete(models.TagFollow).where(models.TagFollow.tag_id == tag_id))
+        await db.delete(db_tag)
         try:
-            db.commit()
+            await db.commit()
         except IntegrityError:
-            db.rollback()
+            await db.rollback()
             raise ValueError("Cannot delete tag: it is referenced by posts")
         # Clear cache
         clear_tags_cache()
@@ -990,8 +1107,8 @@ def delete_tag(db: Session, tag_id: int) -> bool:
     return False
 
 
-def get_comments_paginated(
-    db: Session,
+async def get_comments_paginated(
+    db: AsyncSession,
     post_id: int,
     page: int = 1,
     limit: int = 20,
@@ -1014,7 +1131,7 @@ def get_comments_paginated(
     Returns:
         Tuple of (comments list, total count)
     """
-    query = db.query(models.Comment).filter(
+    query = select(models.Comment).where(
         models.Comment.post_id == post_id,
         models.Comment.is_approved == True,  # noqa: E712
     )
@@ -1023,11 +1140,11 @@ def get_comments_paginated(
     if q_terms:
         # Substring AND across terms, mirroring search_comments / the CJK-safe
         # search_posts path (DEC-084) so Chinese terms match partial runs too.
-        query = query.filter(
+        query = query.where(
             *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in q_terms]
         )
 
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     # Every sort appends id as a deterministic tiebreak: offset paging would
     # otherwise repeat/skip rows when two comments share a created_at (e.g. a
     # bulk-restore stamps verbatim timestamps), resolving ties by query plan
@@ -1042,28 +1159,35 @@ def get_comments_paginated(
     # Eager-load the author reader on the page query so serializing
     # CommentPublic (which touches c.reader) doesn't fire one lazy query per
     # reader-attributed comment (ISS-139).
-    comments = (
-        query.options(joinedload(models.Comment.reader)).order_by(*order).offset((page - 1) * limit).limit(limit).all()
+    comments = list(
+        (
+            await db.execute(
+                query.options(joinedload(models.Comment.reader))
+                .order_by(*order)
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        ).scalars()
     )
 
     return comments, total
 
 
-def create_comment(
-    db: Session,
+async def create_comment(
+    db: AsyncSession,
     post_id: int,
     comment: schemas.CommentCreate,
     ip_address: str,
     reader: auth.ReaderAccount | None = None,
 ) -> models.Comment:
     # Validate that the post exists
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post:
         raise ValueError(f"Post with id {post_id} not found")
 
     # Validate parent comment (for threaded replies)
     if comment.parent_id is not None:
-        parent = db.get(models.Comment, comment.parent_id)
+        parent = await db.get(models.Comment, comment.parent_id)
         if not parent:
             raise ValueError(f"Parent comment with id {comment.parent_id} not found")
         if parent.post_id != post_id:
@@ -1121,11 +1245,19 @@ def create_comment(
     )
     db.add(db_comment)
     try:
-        db.commit()
-        db.refresh(db_comment)
+        await db.commit()
+        await db.refresh(db_comment)
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Failed to create comment")
+    # Re-load the author reader eagerly for response serialization (Comment
+    # schema reads comment.reader) — async: post-commit lazy access raises
+    # MissingGreenlet (RIL async migration).
+    db_comment = (
+        await db.execute(
+            select(models.Comment).options(joinedload(models.Comment.reader)).where(models.Comment.id == db_comment.id)
+        )
+    ).scalars().first() or db_comment
     # The public posts list serializes approved comment_count per post; a new
     # (or subsequently approved) comment changes those counts, so invalidate
     # the cached list rather than wait up to 300s TTL (RIL TASK-073, ISS-041).
@@ -1133,7 +1265,7 @@ def create_comment(
     return db_comment
 
 
-def get_guest_comment_by_token(db: Session, token: str) -> models.Comment | None:
+async def get_guest_comment_by_token(db: AsyncSession, token: str) -> models.Comment | None:
     """Fetch an ANONYMOUS comment by its per-comment management token (DEC-332).
 
     ``reply_notify_token`` is the secret only the guest's approval/reply email
@@ -1147,10 +1279,12 @@ def get_guest_comment_by_token(db: Session, token: str) -> models.Comment | None
 
     if not token:
         return None
-    return db.query(models.Comment).filter(models.Comment.reply_notify_token == token).first()
+    return (
+        (await db.execute(select(models.Comment).where(models.Comment.reply_notify_token == token))).scalars().first()
+    )
 
 
-def update_guest_comment(db: Session, token: str, content: str) -> tuple[models.Comment | None, bool]:
+async def update_guest_comment(db: AsyncSession, token: str, content: str) -> tuple[models.Comment | None, bool]:
     """Edit an ANONYMOUS comment proven by its management token (round 385).
 
     Mirror of ``update_reader_comment`` (DEC-096) keyed by the token instead of
@@ -1167,7 +1301,7 @@ def update_guest_comment(db: Session, token: str, content: str) -> tuple[models.
     republishing author-supplied text over a moderator-approved body.
     """
 
-    comment = get_guest_comment_by_token(db, token)
+    comment = await get_guest_comment_by_token(db, token)
     if comment is None:
         return None, False
     was_public = bool(comment.is_approved)
@@ -1175,12 +1309,12 @@ def update_guest_comment(db: Session, token: str, content: str) -> tuple[models.
     comment.edited_at = utc_now_naive()
     comment.is_approved = False
     comment.reviewed_at = None
-    db.commit()
-    db.refresh(comment)
+    await db.commit()
+    await db.refresh(comment)
     return comment, was_public
 
 
-def delete_guest_comment(db: Session, token: str) -> bool:
+async def delete_guest_comment(db: AsyncSession, token: str) -> bool:
     """Delete an ANONYMOUS comment proven by its management token (round 385).
 
     Mirror of ``delete_reader_comment`` (DEC-096): False when the token matches
@@ -1190,19 +1324,20 @@ def delete_guest_comment(db: Session, token: str) -> bool:
     descendants ride along under the promoted reply.
     """
 
-    comment = get_guest_comment_by_token(db, token)
+    comment = await get_guest_comment_by_token(db, token)
     if comment is None:
         return False
     target_parent = comment.parent_id
-    db.query(models.Comment).filter(models.Comment.parent_id == comment.id).update(
-        {models.Comment.parent_id: target_parent},
-        synchronize_session=False,
+    await db.execute(
+        update(models.Comment)
+        .where(models.Comment.parent_id == comment.id)
+        .values({models.Comment.parent_id: target_parent})
     )
-    db.delete(comment)
+    await db.delete(comment)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete comment: it has dependent records")
     # Removing an approved comment changes the approved comment_count surfaced
     # on the cached public posts list (same as reader/admin delete).
@@ -1210,13 +1345,21 @@ def delete_guest_comment(db: Session, token: str) -> bool:
     return True
 
 
-def approve_comment(db: Session, comment_id: int, approved: bool = True) -> models.Comment | None:
+async def approve_comment(db: AsyncSession, comment_id: int, approved: bool = True) -> models.Comment | None:
     """Approve or reject a comment. Idempotent: applying the state the comment
     already has is a no-op (no reviewed_at bump, no cache clear), so a re-approve
     click / batch re-run cannot churn state — routers that fan out notifications
     gate on the transition themselves (round-296 deep-dive; the reader-edit path
     already guards via ``was_public``, ISS-404)."""
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    comment = (
+        (
+            await db.execute(
+                select(models.Comment).options(joinedload(models.Comment.reader)).where(models.Comment.id == comment_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     if not comment:
         return None
     # Already in the requested reviewed state: no-op. reviewed_at must be set
@@ -1231,15 +1374,26 @@ def approve_comment(db: Session, comment_id: int, approved: bool = True) -> mode
     # Naive UTC (ISS-452): reviewed_at is a naive-UTC DateTime column; an aware
     # write is a latent trap if the row is ever cached/serialized pre-flight.
     comment.reviewed_at = utc_now_naive()
-    db.commit()
-    db.refresh(comment)
+    await db.commit()
+    # Async: db.refresh() expires the joinedloaded `reader` relationship, so a
+    # subsequent response-serialization of comment.reader would lazy-load →
+    # MissingGreenlet. Reload the whole row with the reader eagerly loaded.
+    comment = (
+        (
+            await db.execute(
+                select(models.Comment).options(joinedload(models.Comment.reader)).where(models.Comment.id == comment.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     # Approving (or rejecting) a comment changes the approved comment_count
     # surfaced on the cached public posts list (RIL TASK-073, ISS-041).
     clear_posts_list_cache()
     return comment
 
 
-def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
+async def delete_reader_comment(db: AsyncSession, comment_id: int, reader_id: int) -> bool:
     """Delete one of the reader's own comments (any status). False if the
     comment is missing or belongs to a different reader. (DEC-066, TASK-139)
 
@@ -1249,7 +1403,13 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     TASK-160). Deeper descendants ride along under the promoted reply.
     """
     comment = (
-        db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
+        (
+            await db.execute(
+                select(models.Comment).where(models.Comment.id == comment_id, models.Comment.reader_id == reader_id)
+            )
+        )
+        .scalars()
+        .first()
     )
     if not comment:
         return False
@@ -1257,15 +1417,16 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     # SQLAlchemy's bulk update avoids loading each reply; synchronize_session
     # is disabled because we only need the DB state.
     target_parent = comment.parent_id
-    db.query(models.Comment).filter(models.Comment.parent_id == comment_id).update(
-        {models.Comment.parent_id: target_parent},
-        synchronize_session=False,
+    await db.execute(
+        update(models.Comment)
+        .where(models.Comment.parent_id == comment_id)
+        .values({models.Comment.parent_id: target_parent})
     )
-    db.delete(comment)
+    await db.delete(comment)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete comment: it has dependent records")
     # Same as admin delete: removing an approved comment changes the approved
     # comment_count on the cached public posts list.
@@ -1273,8 +1434,8 @@ def delete_reader_comment(db: Session, comment_id: int, reader_id: int) -> bool:
     return True
 
 
-def update_reader_comment(
-    db: Session, comment_id: int, reader_id: int, content: str
+async def update_reader_comment(
+    db: AsyncSession, comment_id: int, reader_id: int, content: str
 ) -> tuple[models.Comment | None, bool]:
     """Edit one of the reader's own comments (any status).
 
@@ -1297,7 +1458,13 @@ def update_reader_comment(
     comments were already not public, so resetting them is a no-op in practice.
     """
     comment = (
-        db.query(models.Comment).filter(models.Comment.id == comment_id, models.Comment.reader_id == reader_id).first()
+        (
+            await db.execute(
+                select(models.Comment).where(models.Comment.id == comment_id, models.Comment.reader_id == reader_id)
+            )
+        )
+        .scalars()
+        .first()
     )
     if not comment:
         return None, False
@@ -1308,8 +1475,8 @@ def update_reader_comment(
     comment.edited_at = utc_now_naive()
     comment.is_approved = False
     comment.reviewed_at = None
-    db.commit()
-    db.refresh(comment)
+    await db.commit()
+    await db.refresh(comment)
     # The public posts list / feeds serialize approved comment_count; an edit
     # that resets an approved comment (comment drops off the public surface,
     # count falls) must invalidate the cached list immediately — create and
@@ -1321,22 +1488,25 @@ def update_reader_comment(
     return comment, was_public
 
 
-def get_pending_comments(db: Session) -> list[models.Comment]:
+async def get_pending_comments(db: AsyncSession) -> list[models.Comment]:
     """Get all pending (unapproved) comments."""
-    return (
-        db.query(models.Comment)
-        .filter(models.Comment.is_approved == False)  # noqa: E712
-        .order_by(models.Comment.created_at.desc())
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.Comment)
+                .where(models.Comment.is_approved == False)  # noqa: E712
+                .order_by(models.Comment.created_at.desc())
+            )
+        ).scalars()
     )
 
 
-def get_all_comments(db: Session) -> list[models.Comment]:
+async def get_all_comments(db: AsyncSession) -> list[models.Comment]:
     """Get all comments for admin review."""
-    return db.query(models.Comment).order_by(models.Comment.created_at.desc()).all()
+    return list((await db.execute(select(models.Comment).order_by(models.Comment.created_at.desc()))).scalars())
 
 
-def bulk_delete_comments(db: Session, ids: list[int]) -> int:
+async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
     """Delete many comments at once, keeping the thread consistent (DEC-110).
 
     Surviving direct replies of a deleted comment are promoted to the nearest
@@ -1345,7 +1515,7 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
     leaves a reply pointing at a deleted parent. Returns the number deleted.
     """
     delete_set = set(ids)
-    comments = db.query(models.Comment).filter(models.Comment.id.in_(delete_set)).all()
+    comments = list((await db.execute(select(models.Comment).where(models.Comment.id.in_(delete_set)))).scalars())
     if not comments:
         return 0
     existing_ids = {c.id for c in comments}
@@ -1359,13 +1529,13 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
     #    parent_id IN (...) query.
     parent_of = {c.id: c.parent_id for c in comments}
     child_rows = (
-        db.query(models.Comment.id, models.Comment.parent_id)
-        .filter(
-            models.Comment.parent_id.in_(existing_ids),
-            models.Comment.id.notin_(existing_ids),
+        await db.execute(
+            select(models.Comment.id, models.Comment.parent_id).where(
+                models.Comment.parent_id.in_(existing_ids),
+                models.Comment.id.notin_(existing_ids),
+            )
         )
-        .all()
-    )
+    ).all()
     children_by_parent: dict[int, list[int]] = {}
     for cid, pid in child_rows:
         children_by_parent.setdefault(pid, []).append(cid)
@@ -1379,9 +1549,10 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
         while eff_parent is not None and eff_parent in existing_ids and eff_parent not in seen:
             seen.add(eff_parent)
             eff_parent = parent_of.get(eff_parent)
-        db.query(models.Comment).filter(models.Comment.id.in_(survivor_ids)).update(
-            {models.Comment.parent_id: eff_parent},
-            synchronize_session=False,
+        await db.execute(
+            update(models.Comment)
+            .where(models.Comment.id.in_(survivor_ids))
+            .values({models.Comment.parent_id: eff_parent})
         )
     # Bulk deletes (ISS-557): the previous per-row `db.delete(c)` walked the
     # self-referential `replies` backref one query per comment (a batch of 100
@@ -1390,17 +1561,13 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
     # the comment set is removed with a single DELETE. The reparent above
     # guarantees no surviving row references a deleted id, so the self-join
     # FK cannot be violated even on PostgreSQL.
-    db.query(models.CommentFlag).filter(models.CommentFlag.comment_id.in_(existing_ids)).delete(
-        synchronize_session=False
-    )
-    db.query(models.CommentLike).filter(models.CommentLike.comment_id.in_(existing_ids)).delete(
-        synchronize_session=False
-    )
-    db.query(models.Comment).filter(models.Comment.id.in_(existing_ids)).delete(synchronize_session=False)
+    await db.execute(delete(models.CommentFlag).where(models.CommentFlag.comment_id.in_(existing_ids)))
+    await db.execute(delete(models.CommentLike).where(models.CommentLike.comment_id.in_(existing_ids)))
+    await db.execute(delete(models.Comment).where(models.Comment.id.in_(existing_ids)))
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete comments: dependent records remain")
     # Deleting approved comments changes the approved comment_count on the
     # cached public posts list (RIL TASK-073, ISS-041).
@@ -1408,15 +1575,15 @@ def bulk_delete_comments(db: Session, ids: list[int]) -> int:
     return len(comments)
 
 
-def delete_comment(db: Session, comment_id: int) -> bool:
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+async def delete_comment(db: AsyncSession, comment_id: int) -> bool:
+    comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalars().first()
     if not comment:
         return False
-    db.delete(comment)
+    await db.delete(comment)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete comment: it has dependent records")
     # Deleting an approved comment changes the approved comment_count surfaced
     # on the cached public posts list (RIL TASK-073, ISS-041).
@@ -1424,7 +1591,7 @@ def delete_comment(db: Session, comment_id: int) -> bool:
     return True
 
 
-def delete_comment_reparent(db: Session, comment_id: int) -> bool:
+async def delete_comment_reparent(db: AsyncSession, comment_id: int) -> bool:
     """Delete one comment, promoting its surviving direct replies to the
     nearest surviving ancestor (or top-level), so a single admin delete never
     orphans a thread or leaves a reply pointing at a deleted parent.
@@ -1434,24 +1601,27 @@ def delete_comment_reparent(db: Session, comment_id: int) -> bool:
     orphans them on SQLite, which left admins unable to remove a spam thread.
     Returns False when the comment does not exist.
     """
-    comment = db.query(models.Comment).filter(models.Comment.id == comment_id).first()
+    comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalars().first()
     if not comment:
         return False
-    has_replies = db.query(models.Comment.id).filter(models.Comment.parent_id == comment_id).first() is not None
+    has_replies = (
+        await db.execute(select(models.Comment.id).where(models.Comment.parent_id == comment_id))
+    ).first() is not None
     if has_replies:
         # Nearest surviving ancestor of the deleted comment: its own parent,
         # which by definition is not in the deletion set (only this one comment
         # is being removed) — single-comment analogue of bulk_delete_comments.
         eff_parent = comment.parent_id
-        db.query(models.Comment).filter(models.Comment.parent_id == comment_id).update(
-            {models.Comment.parent_id: eff_parent},
-            synchronize_session=False,
+        await db.execute(
+            update(models.Comment)
+            .where(models.Comment.parent_id == comment_id)
+            .values({models.Comment.parent_id: eff_parent})
         )
-    db.delete(comment)
+    await db.delete(comment)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete comment: dependent records remain")
     # Deleting an approved comment changes the approved comment_count surfaced
     # on the cached public posts list (RIL TASK-073, ISS-041).
@@ -1499,8 +1669,8 @@ def _has_searchable_token(query: str) -> bool:
     return any(ch.isalnum() for ch in query)
 
 
-def search_posts(
-    db: Session,
+async def search_posts(
+    db: AsyncSession,
     query: str,
     page: int = 1,
     limit: int = 10,
@@ -1631,8 +1801,8 @@ def search_posts(
             .where(*filters)
         )
 
-    posts = list(db.execute(stmt).unique().scalars().all())
-    total = db.execute(count_stmt).scalar()
+    posts = list((await db.execute(stmt)).unique().scalars())
+    total = (await db.execute(count_stmt)).scalar() or 0
     assert total is not None  # COUNT(*) always yields one row
 
     return posts, total
@@ -1652,8 +1822,8 @@ def _term_substring_clauses(terms: list[str], *fields) -> list:
     return [and_(or_(*(field.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for field in fields))) for t in terms]
 
 
-def search_series(
-    db: Session,
+async def search_series(
+    db: AsyncSession,
     query: str,
     limit: int = 10,
     offset: int = 0,
@@ -1668,16 +1838,20 @@ def search_series(
     if not query.strip():
         return [], 0
     terms = [t for t in query.split() if t] or [query]
-    base = db.query(models.Series).filter(
-        *_term_substring_clauses(terms, models.Series.title, models.Series.description)
+    base = select(models.Series).where(*_term_substring_clauses(terms, models.Series.title, models.Series.description))
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                base.order_by(models.Series.created_at.desc(), models.Series.id.desc()).offset(offset).limit(limit)
+            )
+        ).scalars()
     )
-    total = base.count()
-    items = base.order_by(models.Series.created_at.desc(), models.Series.id.desc()).offset(offset).limit(limit).all()
     return items, total
 
 
-def search_pages(
-    db: Session,
+async def search_pages(
+    db: AsyncSession,
     query: str,
     limit: int = 10,
     offset: int = 0,
@@ -1692,17 +1866,23 @@ def search_pages(
         return [], 0
     terms = [t for t in query.split() if t] or [query]
     base = (
-        db.query(models.Page)
-        .filter(models.Page.published.is_(True))
-        .filter(*_term_substring_clauses(terms, models.Page.title, models.Page.content))
+        select(models.Page)
+        .where(models.Page.published.is_(True))
+        .where(*_term_substring_clauses(terms, models.Page.title, models.Page.content))
     )
-    total = base.count()
-    items = base.order_by(models.Page.updated_at.desc(), models.Page.id.desc()).offset(offset).limit(limit).all()
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                base.order_by(models.Page.updated_at.desc(), models.Page.id.desc()).offset(offset).limit(limit)
+            )
+        ).scalars()
+    )
     return items, total
 
 
-def search_authors(
-    db: Session,
+async def search_authors(
+    db: AsyncSession,
     query: str,
     limit: int = 10,
     offset: int = 0,
@@ -1718,16 +1898,22 @@ def search_authors(
         return [], 0
     terms = [t for t in query.split() if t] or [query]
     base = (
-        db.query(auth.User)
-        .filter(auth.User.display_name.isnot(None))
-        .filter(*_term_substring_clauses(terms, auth.User.display_name, auth.User.bio))
+        select(auth.User)
+        .where(auth.User.display_name.isnot(None))
+        .where(*_term_substring_clauses(terms, auth.User.display_name, auth.User.bio))
     )
-    total = base.count()
-    items = base.order_by(auth.User.display_name.asc(), auth.User.id.asc()).offset(offset).limit(limit).all()
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                base.order_by(auth.User.display_name.asc(), auth.User.id.asc()).offset(offset).limit(limit)
+            )
+        ).scalars()
+    )
     return items, total
 
 
-def increment_views(db: Session, post_id: int) -> models.Post | None:
+async def increment_views(db: AsyncSession, post_id: int) -> models.Post | None:
     """Increment the view count for a post using atomic SQL update.
 
     Also upserts today's row in ``post_views_daily`` (DEC-086) so the admin
@@ -1742,7 +1928,7 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     # forever and rank FIRST on Postgres (NULLS FIRST default for DESC) in the
     # popular list. Coalescing makes the increment dialect-parity (TASK-535).
     stmt = update(models.Post).where(models.Post.id == post_id).values(views=func.coalesce(models.Post.views, 0) + 1)
-    db.execute(stmt)
+    await db.execute(stmt)
     # Atomic daily-row increment (round 276 deep-dive): the previous
     # SELECT-then-assign (`daily.views = (daily.views or 0) + 1`) raced — two
     # concurrent pageviews on the same post/day both read the same value, then
@@ -1756,7 +1942,7 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     # generic Result[Any] typing (which has no rowcount) so pyright is quiet.
     daily_updated = cast(
         CursorResult[Any],
-        db.execute(
+        await db.execute(
             update(models.PostViewsDaily)
             .where(
                 models.PostViewsDaily.post_id == post_id,
@@ -1768,18 +1954,18 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
     if daily_updated.rowcount == 0:
         db.add(models.PostViewsDaily(post_id=post_id, day=today, views=1))
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
         # Two concurrent first-view pageviews raced to insert the unique
         # uq_post_views_daily_post_day row (ISS-138): ours lost to the other
         # writer's commit. Re-apply both increments as plain atomic UPDATEs on
         # the now-visible rows, so the view is still counted and this request
         # does not 500 on the public view endpoint.
-        db.rollback()
-        db.execute(
+        await db.rollback()
+        await db.execute(
             update(models.Post).where(models.Post.id == post_id).values(views=func.coalesce(models.Post.views, 0) + 1)
         )
-        db.execute(
+        await db.execute(
             update(models.PostViewsDaily)
             .where(
                 models.PostViewsDaily.post_id == post_id,
@@ -1787,22 +1973,20 @@ def increment_views(db: Session, post_id: int) -> models.Post | None:
             )
             .values(views=models.PostViewsDaily.views + 1)
         )
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     # The cached list payloads embed the view counter — invalidate so a public
     # list never shows stale counts for up to the 5-min TTL (ISS-141). Only the
     # list cache needs to drop; the RSS/Atom/sitemap feeds and series details
     # don't carry views, so a pageview must not tear down the whole stack.
     clear_counter_caches()
-    post = db.get(models.Post, post_id)
-    if post:
-        db.refresh(post)
+    post = await _reload_post_eager(db, post_id)
     return post
 
 
-def _bump_post_likes(db: Session, post_id: int, delta: int) -> None:
+async def _bump_post_likes(db: AsyncSession, post_id: int, delta: int) -> None:
     """Atomic UPDATE of a post's like counter WITHOUT committing.
 
     Shared by increment_likes/decrement_likes (standalone commits) and the
@@ -1827,29 +2011,27 @@ def _bump_post_likes(db: Session, post_id: int, delta: int) -> None:
             .where(models.Post.id == post_id)
             .values(likes=func.coalesce(models.Post.likes, 0) + delta)
         )
-    db.execute(stmt)
+    await db.execute(stmt)
 
 
-def increment_likes(db: Session, post_id: int) -> models.Post | None:
+async def increment_likes(db: AsyncSession, post_id: int) -> models.Post | None:
     """Increment the like count for a post using atomic SQL update.
 
     Invalidates the cached list payloads, which embed the like counter (ISS-141);
     feeds/series don't embed likes, so only the list cache is dropped.
     """
-    _bump_post_likes(db, post_id, 1)
+    await _bump_post_likes(db, post_id, 1)
     try:
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     clear_counter_caches()
-    post = db.get(models.Post, post_id)
-    if post:
-        db.refresh(post)
+    post = await _reload_post_eager(db, post_id)
     return post
 
 
-def decrement_likes(db: Session, post_id: int) -> models.Post | None:
+async def decrement_likes(db: AsyncSession, post_id: int) -> models.Post | None:
     """Decrement the like count for a post using atomic SQL update, floored at 0.
 
     The counter is a rough popularity badge (incrementable by guests too, so it
@@ -1858,20 +2040,18 @@ def decrement_likes(db: Session, post_id: int) -> models.Post | None:
     payloads). Used by the reader unlike path (round 359) when a durable like
     row is actually removed.
     """
-    _bump_post_likes(db, post_id, -1)
+    await _bump_post_likes(db, post_id, -1)
     try:
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     clear_counter_caches()
-    post = db.get(models.Post, post_id)
-    if post:
-        db.refresh(post)
+    post = await _reload_post_eager(db, post_id)
     return post
 
 
-def flag_comment(db: Session, comment_id: int, ip_key: str, reason: str | None = None) -> tuple[bool, int]:
+async def flag_comment(db: AsyncSession, comment_id: int, ip_key: str, reason: str | None = None) -> tuple[bool, int]:
     """Record a reader flag on a comment; idempotent per (comment, ip_key).
 
     Returns (created_new, total_distinct_flags). A second flag from the same
@@ -1879,67 +2059,79 @@ def flag_comment(db: Session, comment_id: int, ip_key: str, reason: str | None =
     reporters, not click spam (DEC-108, TASK-166).
     """
     existing = (
-        db.query(models.CommentFlag)
-        .filter(models.CommentFlag.comment_id == comment_id, models.CommentFlag.ip_key == ip_key)
+        (
+            await db.execute(
+                select(models.CommentFlag).where(
+                    models.CommentFlag.comment_id == comment_id, models.CommentFlag.ip_key == ip_key
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     if existing is None:
         db.add(models.CommentFlag(comment_id=comment_id, ip_key=ip_key, reason=reason))
         try:
-            db.commit()
+            await db.commit()
         except IntegrityError:
-            db.rollback()  # concurrent duplicate → treat as idempotent no-op
-    total = db.query(models.CommentFlag).filter(models.CommentFlag.comment_id == comment_id).count()
+            await db.rollback()  # concurrent duplicate → treat as idempotent no-op
+    total = (
+        await db.execute(
+            select(func.count()).select_from(
+                select(models.CommentFlag).where(models.CommentFlag.comment_id == comment_id).subquery()
+            )
+        )
+    ).scalar() or 0
     return existing is None, total
 
 
-def flag_counts_for_comments(db: Session, comment_ids: list[int]) -> dict[int, int]:
+async def flag_counts_for_comments(db: AsyncSession, comment_ids: list[int]) -> dict[int, int]:
     """Map comment_id -> distinct-flag count for the admin comment list."""
     if not comment_ids:
         return {}
     rows = (
-        db.query(models.CommentFlag.comment_id, func.count(models.CommentFlag.id))
-        .filter(models.CommentFlag.comment_id.in_(comment_ids))
-        .group_by(models.CommentFlag.comment_id)
-        .all()
-    )
+        await db.execute(
+            select(models.CommentFlag.comment_id, func.count(models.CommentFlag.id))
+            .where(models.CommentFlag.comment_id.in_(comment_ids))
+            .group_by(models.CommentFlag.comment_id)
+        )
+    ).all()
     counts: dict[int, int] = {}
     for cid, count in rows:
         counts[int(cid)] = int(count)
     return counts
 
 
-def dismiss_comment_flags(db: Session, comment_id: int) -> int:
+async def dismiss_comment_flags(db: AsyncSession, comment_id: int) -> int:
     """Clear all flags on a comment (moderator dismissed the reports)."""
-    removed = (
-        db.query(models.CommentFlag)
-        .filter(models.CommentFlag.comment_id == comment_id)
-        .delete(synchronize_session=False)
-    )
-    db.commit()
+    removed = cast(
+        CursorResult[Any],
+        await db.execute(delete(models.CommentFlag).where(models.CommentFlag.comment_id == comment_id)),
+    ).rowcount
+    await db.commit()
     return removed
 
 
-def increment_comment_likes(db: Session, comment_id: int, commit: bool = True) -> models.Comment | None:
+async def increment_comment_likes(db: AsyncSession, comment_id: int, commit: bool = True) -> models.Comment | None:
     """Increment the like count for a comment using atomic SQL update.
 
     ``commit=False`` keeps the bump inside the caller's transaction (like_comment
     persists the CommentLike row and the counter in ONE commit, ISS-560).
     """
     stmt = update(models.Comment).where(models.Comment.id == comment_id).values(likes=models.Comment.likes + 1)
-    db.execute(stmt)
+    await db.execute(stmt)
     try:
-        db.flush() if not commit else db.commit()
+        await db.flush() if not commit else await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
-    comment = db.get(models.Comment, comment_id)
+    comment = await db.get(models.Comment, comment_id)
     if comment:
-        db.refresh(comment)
+        await db.refresh(comment)
     return comment
 
 
-def like_comment(db: Session, comment_id: int, ip_key: str) -> tuple[bool, models.Comment]:
+async def like_comment(db: AsyncSession, comment_id: int, ip_key: str) -> tuple[bool, models.Comment]:
     """Register a like from one source; idempotent per (comment, ip_key).
 
     Returns (is_new, updated_comment). Mirrors flag_comment's dedupe (security
@@ -1948,8 +2140,14 @@ def like_comment(db: Session, comment_id: int, ip_key: str) -> tuple[bool, model
     count++ an attacker could inflate to skew the "most helpful" ordering.
     """
     existing = (
-        db.query(models.CommentLike)
-        .filter(models.CommentLike.comment_id == comment_id, models.CommentLike.ip_key == ip_key)
+        (
+            await db.execute(
+                select(models.CommentLike).where(
+                    models.CommentLike.comment_id == comment_id, models.CommentLike.ip_key == ip_key
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     is_new = existing is None
@@ -1962,48 +2160,53 @@ def like_comment(db: Session, comment_id: int, ip_key: str) -> tuple[bool, model
         # concurrent duplicate (IntegrityError at flush) stays an idempotent
         # no-op; any other failure rolls the whole like back.
         try:
-            increment_comment_likes(db, comment_id, commit=False)
-            db.commit()
+            await increment_comment_likes(db, comment_id, commit=False)
+            await db.commit()
         except IntegrityError:
-            db.rollback()  # concurrent duplicate → treat as idempotent no-op
+            await db.rollback()  # concurrent duplicate → treat as idempotent no-op
             is_new = False
         except Exception:
-            db.rollback()
+            await db.rollback()
             raise
-    comment = db.get(models.Comment, comment_id)
+    comment = await db.get(models.Comment, comment_id)
     if comment:
-        db.refresh(comment)
+        await db.refresh(comment)
     return is_new, comment
 
 
-def get_popular_posts(db: Session, limit: int = 5) -> list[models.Post]:
+async def get_popular_posts(db: AsyncSession, limit: int = 5) -> list[models.Post]:
     """Get the most popular posts by view count."""
     now = utc_now_naive()
-    posts = (
-        db.query(models.Post)
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    posts = list(
+        (
+            await db.execute(
+                select(models.Post)
+                .where(
+                    models.Post.published.is_(True),
+                    or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+                )
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                # COALESCE NULL views to 0 in the ORDER BY: Post.views is nullable
+                # (Python-side default only), and Postgres ranks NULLs FIRST on DESC by
+                # default — a raw/legacy NULL-counter row would top the popular list on
+                # PG while SQLite (NULLS LAST) put it bottom. Coalescing makes the
+                # ranking dialect-parity (TASK-535, mirrors increment_views).
+                .order_by(func.coalesce(models.Post.views, 0).desc(), models.Post.id.desc())
+                .limit(limit)
+            )
         )
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
-        )
-        # COALESCE NULL views to 0 in the ORDER BY: Post.views is nullable
-        # (Python-side default only), and Postgres ranks NULLs FIRST on DESC by
-        # default — a raw/legacy NULL-counter row would top the popular list on
-        # PG while SQLite (NULLS LAST) put it bottom. Coalescing makes the
-        # ranking dialect-parity (TASK-535, mirrors increment_views).
-        .order_by(func.coalesce(models.Post.views, 0).desc(), models.Post.id.desc())
-        .limit(limit)
-        .all()
+        .unique()
+        .scalars()
     )
-    _populate_post_metrics(db, posts)
+    await _populate_post_metrics(db, posts)
     return posts
 
 
-def get_trending_posts(db: Session, days: int = 7, limit: int = 5) -> list[models.Post]:
+async def get_trending_posts(db: AsyncSession, days: int = 7, limit: int = 5) -> list[models.Post]:
     """Public time-windowed top posts by in-window views (round 387, DEC-438).
 
     Fresh-content discovery for readers: unlike :func:`get_popular_posts`
@@ -2021,66 +2224,76 @@ def get_trending_posts(db: Session, days: int = 7, limit: int = 5) -> list[model
 
     # In-window sums keyed by post_id (the same table admin analytics reads).
     daily = (
-        db.query(
+        select(
             models.PostViewsDaily.post_id,
             func.sum(models.PostViewsDaily.views).label("window_views"),
         )
-        .filter(models.PostViewsDaily.day >= first)
+        .where(models.PostViewsDaily.day >= first)
         .group_by(models.PostViewsDaily.post_id)
         .subquery()
     )
 
     rows = (
-        db.query(models.Post, daily.c.window_views)
-        .join(daily, models.Post.id == daily.c.post_id)
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        (
+            await db.execute(
+                select(models.Post, daily.c.window_views)
+                .join(daily, models.Post.id == daily.c.post_id)
+                .where(
+                    models.Post.published.is_(True),
+                    or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+                )
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .order_by(daily.c.window_views.desc(), models.Post.id.desc())
+                .limit(limit)
+            )
         )
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
-        )
-        .order_by(daily.c.window_views.desc(), models.Post.id.desc())
-        .limit(limit)
+        .unique()
         .all()
     )
     posts = [p for p, _ in rows]
-    _populate_post_metrics(db, posts)
+    await _populate_post_metrics(db, posts)
     for post, window_views in rows:
         # Transient attribute read by schemas.TrendingPost (from_attributes).
         post.views_window = int(window_views)
     return posts
 
 
-def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.Post]:
+async def get_related_posts(db: AsyncSession, post_id: int, limit: int = 5) -> list[models.Post]:
     """Get related posts based on category and tags.
 
     Uses SQL-based tag matching for better performance.
     """
-    post = get_post(db, post_id)
+    post = await get_post(db, post_id)
     if not post or not post.tags:
         # Fallback: just get recent posts in same category
         now = utc_now_naive()
-        query = db.query(models.Post).filter(
+        query = select(models.Post).where(
             models.Post.published.is_(True),
             models.Post.id != post_id,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
         if post and post.category_id:
-            query = query.filter(models.Post.category_id == post.category_id)
-        posts = (
-            query.options(
-                joinedload(models.Post.category),
-                joinedload(models.Post.tags),
-                joinedload(models.Post.series),
+            query = query.where(models.Post.category_id == post.category_id)
+        posts = list(
+            (
+                await db.execute(
+                    query.options(
+                        joinedload(models.Post.category),
+                        joinedload(models.Post.tags),
+                        joinedload(models.Post.series),
+                    )
+                    .order_by(_effective_publish_col().desc(), models.Post.id.desc())
+                    .limit(limit)
+                )
             )
-            .order_by(_effective_publish_col().desc(), models.Post.id.desc())
-            .limit(limit)
-            .all()
+            .unique()
+            .scalars()
         )
-        _populate_post_metrics(db, posts)
+        await _populate_post_metrics(db, posts)
         return posts
 
     # Get tag IDs of the source post
@@ -2094,8 +2307,8 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     post_tags_table = models.post_tags
 
     tag_match_count_subq = (
-        db.query(post_tags_table.c.post_id, func.count(post_tags_table.c.tag_id).label("match_count"))
-        .filter(post_tags_table.c.tag_id.in_(source_tag_ids))
+        select(post_tags_table.c.post_id, func.count(post_tags_table.c.tag_id).label("match_count"))
+        .where(post_tags_table.c.tag_id.in_(source_tag_ids))
         .group_by(post_tags_table.c.post_id)
         .subquery()
     )
@@ -2103,9 +2316,9 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
     # Build main query with tag match count and eager loading
     now = utc_now_naive()
     query = (
-        db.query(models.Post, tag_match_count_subq.c.match_count)
+        select(models.Post, tag_match_count_subq.c.match_count)
         .outerjoin(tag_match_count_subq, models.Post.id == tag_match_count_subq.c.post_id)
-        .filter(
+        .where(
             models.Post.published.is_(True),
             models.Post.id != post_id,
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
@@ -2151,15 +2364,15 @@ def get_related_posts(db: Session, post_id: int, limit: int = 5) -> list[models.
             models.Post.id.desc(),
         )
 
-    results = query.limit(limit).all()
+    results = (await db.execute(query.limit(limit))).unique().all()
 
     # Extract posts from results (strip the extra columns)
     posts = [row[0] for row in results]
-    _populate_post_metrics(db, posts)
+    await _populate_post_metrics(db, posts)
     return posts
 
 
-def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, models.Post | None]:
+async def get_adjacent_posts(db: AsyncSession, post_id: int) -> tuple[models.Post | None, models.Post | None]:
     """Return the linear previous/next posts around `post_id` in public feed order.
 
     Feed order is pinned desc, then effective publish time desc (publish_at ??
@@ -2183,7 +2396,7 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
     # reader is scanning (round-234 review). Replaces the previous load-all-ids
     # O(n) scan (RIL ISS-295); the existing indexes serve the bounded query.
     ranked = (
-        db.query(
+        select(
             models.Post.id.label("post_id"),
             func.row_number()
             .over(
@@ -2198,37 +2411,43 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
             )
             .label("rn"),
         )
-        .filter(public_filter[0], public_filter[1])
+        .where(public_filter[0], public_filter[1])
         .subquery()
     )
-    my_rank = db.query(ranked.c.rn).filter(ranked.c.post_id == post_id).scalar()
+    my_rank = (await db.execute(select(ranked.c.rn).where(ranked.c.post_id == post_id))).scalar()
     if my_rank is None:
         return None, None
 
     neighbour_rows = (
-        db.query(ranked.c.post_id, ranked.c.rn)
-        .filter(ranked.c.rn.between(my_rank - 1, my_rank + 1))
-        .order_by(ranked.c.rn)
-        .all()
-    )
+        await db.execute(
+            select(ranked.c.post_id, ranked.c.rn)
+            .where(ranked.c.rn.between(my_rank - 1, my_rank + 1))
+            .order_by(ranked.c.rn)
+        )
+    ).all()
     by_rn = {rn: post_id for post_id, rn in neighbour_rows}
     previous_id = by_rn.get(my_rank - 1)
     following_id = by_rn.get(my_rank + 1)
     if previous_id is None and following_id is None:
         return None, None
 
-    rows = (
-        db.query(models.Post)
-        .filter(models.Post.id.in_([pid for pid in (previous_id, following_id) if pid is not None]))
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
+    rows = list(
+        (
+            await db.execute(
+                select(models.Post)
+                .where(models.Post.id.in_([pid for pid in (previous_id, following_id) if pid is not None]))
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+            )
         )
-        .all()
+        .unique()
+        .scalars()
     )
     by_id = {p.id: p for p in rows}
-    _populate_post_metrics(db, list(by_id.values()))
+    await _populate_post_metrics(db, list(by_id.values()))
     previous = by_id.get(previous_id) if previous_id is not None else None
     following = by_id.get(following_id) if following_id is not None else None
     return previous, following
@@ -2237,41 +2456,42 @@ def get_adjacent_posts(db: Session, post_id: int) -> tuple[models.Post | None, m
 # --- Series (DEC-056, TASK-121) -------------------------------------------
 
 
-def get_series(db: Session, series_id: int) -> models.Series | None:
+async def get_series(db: AsyncSession, series_id: int) -> models.Series | None:
     """Fetch a series by id."""
-    return db.query(models.Series).filter(models.Series.id == series_id).first()
+    return (await db.execute(select(models.Series).where(models.Series.id == series_id))).scalars().first()
 
 
-def get_series_by_slug(db: Session, slug: str) -> models.Series | None:
+async def get_series_by_slug(db: AsyncSession, slug: str) -> models.Series | None:
     """Fetch a series by its unique, stable slug."""
-    return db.query(models.Series).filter(models.Series.slug == slug).first()
+    return (await db.execute(select(models.Series).where(models.Series.slug == slug))).scalars().first()
 
 
-def list_series(db: Session) -> list[models.Series]:
+async def list_series(db: AsyncSession) -> list[models.Series]:
     """All series, ordered by title for a stable, predictable admin/public list."""
-    return db.query(models.Series).order_by(models.Series.title).all()
+    return list((await db.execute(select(models.Series).order_by(models.Series.title))).scalars())
 
 
-def visible_series_post_counts(db: Session) -> dict[int, int]:
+async def visible_series_post_counts(db: AsyncSession) -> dict[int, int]:
     """Map series_id -> count of publicly visible posts (drafts/scheduled
     excluded), for ALL series in one grouped query. The public series list
     used a per-series count query (N+1 on an uncached public endpoint — one
     count per series on every anonymous hit, RIL ISS-292)."""
     now = utc_now_naive()
     rows = (
-        db.query(models.Post.series_id, func.count(models.Post.id))
-        .filter(
-            models.Post.series_id.isnot(None),
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(models.Post.series_id, func.count(models.Post.id))
+            .where(
+                models.Post.series_id.isnot(None),
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .group_by(models.Post.series_id)
         )
-        .group_by(models.Post.series_id)
-        .all()
-    )
+    ).all()
     return {row[0]: row[1] for row in rows}
 
 
-def get_series_visible_posts(db: Session, series: models.Series) -> list[models.Post]:
+async def get_series_visible_posts(db: AsyncSession, series: models.Series) -> list[models.Post]:
     """Ordered, publicly visible posts of a series (self-controlled order).
 
     Order is ``series_order`` then ``id`` (see Series.posts relationship) so
@@ -2279,40 +2499,48 @@ def get_series_visible_posts(db: Session, series: models.Series) -> list[models.
     scheduled-future posts are excluded, mirroring the public post list filter.
     """
     now = utc_now_naive()
-    posts = (
-        db.query(models.Post)
-        .filter(
-            models.Post.series_id == series.id,
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+    posts = list(
+        (
+            await db.execute(
+                select(models.Post)
+                .where(
+                    models.Post.series_id == series.id,
+                    models.Post.published.is_(True),
+                    or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+                )
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .order_by(models.Post.series_order, models.Post.id)
+            )
         )
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.series),
-        )
-        .order_by(models.Post.series_order, models.Post.id)
-        .all()
+        .unique()
+        .scalars()
     )
-    _populate_post_metrics(db, posts)
+    await _populate_post_metrics(db, posts)
     return posts
 
 
-def list_series_episodes(db: Session, series: models.Series) -> list[models.Post]:
+async def list_series_episodes(db: AsyncSession, series: models.Series) -> list[models.Post]:
     """All of a series' posts in order (admin view, any status incl. drafts).
 
     Order is ``series_order`` then ``id`` so equal orders resolve to insertion
     order (mirrors get_series_visible_posts).
     """
-    return (
-        db.query(models.Post)
-        .filter(models.Post.series_id == series.id)
-        .order_by(models.Post.series_order, models.Post.id)
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.Post)
+                .where(models.Post.series_id == series.id)
+                .order_by(models.Post.series_order, models.Post.id)
+            )
+        ).scalars()
     )
 
 
-def reorder_series_episodes(db: Session, series: models.Series, post_ids: list[int]) -> list[models.Post]:
+async def reorder_series_episodes(db: AsyncSession, series: models.Series, post_ids: list[int]) -> list[models.Post]:
     """Rewrite a series' episode order (1..n) from an explicit post-id list.
 
     Every id in ``post_ids`` must belong to the series, and the list must not
@@ -2324,24 +2552,25 @@ def reorder_series_episodes(db: Session, series: models.Series, post_ids: list[i
         raise ValueError("Duplicate post ids in reorder")
     posts = []
     for pid in post_ids:
-        post = db.get(models.Post, pid)
+        post = await db.get(models.Post, pid)
         if post is None or post.series_id != series.id:
             raise ValueError(f"Post {pid} is not part of this series")
         posts.append(post)
     for index, post in enumerate(posts):
         post.series_order = index + 1
-    db.commit()
+    await db.commit()
     for post in posts:
-        db.refresh(post)
+        await db.refresh(post)
     return posts
 
 
-def series_post_count(db: Session, series_id: int) -> int:
+async def series_post_count(db: AsyncSession, series_id: int) -> int:
     """Total posts linked to a series (any status), for the admin episode view."""
-    return db.query(models.Post).filter(models.Post.series_id == series_id).count()
+    stmt = select(models.Post).where(models.Post.series_id == series_id)
+    return (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
 
 
-def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
+async def create_series(db: AsyncSession, data: schemas.SeriesCreate) -> models.Series:
     """Create a series. Raises ValueError on a duplicate slug."""
     db_series = models.Series(
         title=data.title,
@@ -2350,11 +2579,11 @@ def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
     )
     db.add(db_series)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Series with slug '{data.slug}' already exists")
-    db.refresh(db_series)
+    await db.refresh(db_series)
     # The sitemap now lists series (DEC-318), so a create must bust the
     # rendered feeds too — clear_posts_list_cache is the superset that also
     # clears series_cache, matching update_series/delete_series.
@@ -2362,51 +2591,53 @@ def create_series(db: Session, data: schemas.SeriesCreate) -> models.Series:
     return db_series
 
 
-def update_series(db: Session, series_id: int, data: schemas.SeriesUpdate) -> models.Series | None:
+async def update_series(db: AsyncSession, series_id: int, data: schemas.SeriesUpdate) -> models.Series | None:
     """Update a series (title/slug/description). None if the series is missing."""
-    db_series = get_series(db, series_id)
+    db_series = await get_series(db, series_id)
     if not db_series:
         return None
     update_data = data.model_dump(exclude_unset=True)
     if "slug" in update_data and update_data["slug"] != db_series.slug:
         # Slug-change redirect (round 350): an old series URL that was shared/
         # indexed must keep pointing at this series after the rename.
-        record_slug_redirect(db, "series", db_series.slug, update_data["slug"])
+        await record_slug_redirect(db, "series", db_series.slug, update_data["slug"])
     for field, value in update_data.items():
         setattr(db_series, field, value)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError(f"Series with slug '{data.slug}' already exists")
-    db.refresh(db_series)
+    await db.refresh(db_series)
     clear_series_cache()
     # Series identity is embedded in public post lists/feeds via SeriesBrief.
     clear_posts_list_cache()
     return db_series
 
 
-def delete_series(db: Session, series_id: int) -> bool:
+async def delete_series(db: AsyncSession, series_id: int) -> bool:
     """Delete a series, unlinking its posts (posts keep existing, series cleared)."""
-    db_series = get_series(db, series_id)
+    db_series = await get_series(db, series_id)
     if not db_series:
         return False
     # Unlink posts first so the FK can't block the delete (no cascade on the
     # posts.series_id relation — deleting a series must never delete posts).
-    db.query(models.Post).filter(models.Post.series_id == series_id).update(
-        {models.Post.series_id: None, models.Post.series_order: 0}
+    await db.execute(
+        update(models.Post)
+        .where(models.Post.series_id == series_id)
+        .values({models.Post.series_id: None, models.Post.series_order: 0})
     )
     # SeriesFollow is an additive DEC-009 table with no ORM cascade from
     # Series: purge the follow rows too, or a deleted series leaves stale
     # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
     # later series (same orphan class as category/tag follows — deep-dive
     # finding).
-    db.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series_id).delete(synchronize_session=False)
-    db.delete(db_series)
+    await db.execute(delete(models.SeriesFollow).where(models.SeriesFollow.series_id == series_id))
+    await db.delete(db_series)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete series: it has dependent records")
     clear_series_cache()
     clear_posts_list_cache()
@@ -2418,7 +2649,7 @@ def delete_series(db: Session, series_id: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _commit_reader_upsert(db: Session) -> bool:
+async def _commit_reader_upsert(db: AsyncSession) -> bool:
     """Commit an additive unique-keyed reader write.
 
     Returns True on success. If a concurrent duplicate won the unique-key race
@@ -2428,65 +2659,68 @@ def _commit_reader_upsert(db: Session) -> bool:
     never 500 on an IntegrityError (ISS-143).
     """
     try:
-        db.commit()
+        await db.commit()
         return True
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         return False
 
 
-def get_reader_bookmark(db: Session, reader_id: int, post_id: int) -> models.ReaderBookmark | None:
+async def get_reader_bookmark(db: AsyncSession, reader_id: int, post_id: int) -> models.ReaderBookmark | None:
     """Return the reader's bookmark for a post, or None."""
     return (
-        db.query(models.ReaderBookmark)
-        .filter(
-            models.ReaderBookmark.reader_id == reader_id,
-            models.ReaderBookmark.post_id == post_id,
+        (
+            await db.execute(
+                select(models.ReaderBookmark).where(
+                    models.ReaderBookmark.reader_id == reader_id,
+                    models.ReaderBookmark.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_reader_bookmark(db: Session, reader_id: int, post_id: int) -> tuple[models.ReaderBookmark, bool]:
+async def add_reader_bookmark(db: AsyncSession, reader_id: int, post_id: int) -> tuple[models.ReaderBookmark, bool]:
     """Create a bookmark; returns (bookmark, created). Idempotent: re-adding
     an existing bookmark returns the existing row with created=False (merge-
     friendly — a localStorage-first client re-PUTs the same set on login)."""
-    existing = get_reader_bookmark(db, reader_id, post_id)
+    existing = await get_reader_bookmark(db, reader_id, post_id)
     if existing:
         return existing, False
     bookmark = models.ReaderBookmark(reader_id=reader_id, post_id=post_id)
     db.add(bookmark)
-    if _commit_reader_upsert(db):
-        db.refresh(bookmark)
+    if await _commit_reader_upsert(db):
+        await db.refresh(bookmark)
         return bookmark, True
-    existing = get_reader_bookmark(db, reader_id, post_id)
+    existing = await get_reader_bookmark(db, reader_id, post_id)
     if existing:
         return existing, False
     raise RuntimeError("bookmark insert lost the unique-key race but no row was found")
 
 
-def remove_reader_bookmark(db: Session, reader_id: int, post_id: int) -> bool:
+async def remove_reader_bookmark(db: AsyncSession, reader_id: int, post_id: int) -> bool:
     """Delete a bookmark; returns True if one was removed. Idempotent."""
-    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    bookmark = await get_reader_bookmark(db, reader_id, post_id)
     if not bookmark:
         return False
-    db.delete(bookmark)
-    db.commit()
+    await db.delete(bookmark)
+    await db.commit()
     return True
 
 
-def clear_reader_bookmarks(db: Session, reader_id: int) -> int:
+async def clear_reader_bookmarks(db: AsyncSession, reader_id: int) -> int:
     """Delete every bookmark the reader has saved. Returns the count removed.
     Idempotent: clearing an already-empty list yields 0 with no error (bulk
     ``delete()`` on a no-op filter commits nothing meaningful). Used by the
     reader's "Clear all bookmarks" action, which must also take effect on the
     cloud copy — not just the localStorage mirror."""
-    deleted = (
-        db.query(models.ReaderBookmark)
-        .filter(models.ReaderBookmark.reader_id == reader_id)
-        .delete(synchronize_session=False)
-    )
-    db.commit()
+    deleted = cast(
+        CursorResult[Any],
+        await db.execute(delete(models.ReaderBookmark).where(models.ReaderBookmark.reader_id == reader_id)),
+    ).rowcount
+    await db.commit()
     return deleted
 
 
@@ -2494,19 +2728,23 @@ def clear_reader_bookmarks(db: Session, reader_id: int) -> int:
 # ---------------------------------------------------------------------------
 
 
-def get_reader_post_like(db: Session, reader_id: int, post_id: int) -> models.ReaderPostLike | None:
+async def get_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -> models.ReaderPostLike | None:
     """Return the reader's like for a post, or None."""
     return (
-        db.query(models.ReaderPostLike)
-        .filter(
-            models.ReaderPostLike.reader_id == reader_id,
-            models.ReaderPostLike.post_id == post_id,
+        (
+            await db.execute(
+                select(models.ReaderPostLike).where(
+                    models.ReaderPostLike.reader_id == reader_id,
+                    models.ReaderPostLike.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_reader_post_like(db: Session, reader_id: int, post_id: int) -> tuple[models.ReaderPostLike, bool]:
+async def add_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -> tuple[models.ReaderPostLike, bool]:
     """Create a like; returns (like, created). Idempotent: re-adding an
     existing like returns the existing row with created=False (merge-friendly —
     the localStorage-first client re-sends the same set on login, mirroring
@@ -2519,54 +2757,54 @@ def add_reader_post_like(db: Session, reader_id: int, post_id: int) -> tuple[mod
     was never bumped, with no re-sync path. A concurrent duplicate
     (IntegrityError at flush) stays an idempotent no-op; any other failure
     rolls the whole like back."""
-    existing = get_reader_post_like(db, reader_id, post_id)
+    existing = await get_reader_post_like(db, reader_id, post_id)
     if existing:
         return existing, False
     like = models.ReaderPostLike(reader_id=reader_id, post_id=post_id)
     db.add(like)
     try:
-        _bump_post_likes(db, post_id, 1)
-        db.commit()
+        await _bump_post_likes(db, post_id, 1)
+        await db.commit()
     except IntegrityError:
-        db.rollback()  # concurrent duplicate → idempotent no-op
-        existing = get_reader_post_like(db, reader_id, post_id)
+        await db.rollback()  # concurrent duplicate → idempotent no-op
+        existing = await get_reader_post_like(db, reader_id, post_id)
         if existing:
             return existing, False
         raise RuntimeError("reader-post-like insert lost the unique-key race but no row was found")
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     # The counter is embedded in the cached post-list payloads (ISS-141);
     # a brand-new like changes it, so drop those caches exactly once per commit.
     clear_counter_caches()
-    db.refresh(like)
+    await db.refresh(like)
     return like, True
 
 
-def remove_reader_post_like(db: Session, reader_id: int, post_id: int) -> bool:
+async def remove_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -> bool:
     """Delete a like; returns True if one was removed. Idempotent.
 
     Row + counter decrement commit in ONE transaction (ISS-574, mirroring
     add_reader_post_like): the old two-commit path could crash between the
     row delete and the counter bump, leaving a vanished like row whose badge
     still counted it — permanently wrong, no re-sync path."""
-    like = get_reader_post_like(db, reader_id, post_id)
+    like = await get_reader_post_like(db, reader_id, post_id)
     if not like:
         return False
-    db.delete(like)
+    await db.delete(like)
     try:
-        _bump_post_likes(db, post_id, -1)
-        db.commit()
+        await _bump_post_likes(db, post_id, -1)
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     # Counter embeds in cached post-list payloads (ISS-141); drop them once.
     clear_counter_caches()
     return True
 
 
-def list_reader_post_likes(
-    db: Session,
+async def list_reader_post_likes(
+    db: AsyncSession,
     reader_id: int,
     page: int = 1,
     limit: int | None = 100,
@@ -2586,9 +2824,9 @@ def list_reader_post_likes(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Post)
+        select(models.Post)
         .join(models.ReaderPostLike, models.ReaderPostLike.post_id == models.Post.id)
-        .filter(
+        .where(
             models.ReaderPostLike.reader_id == reader_id,
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
@@ -2596,23 +2834,25 @@ def list_reader_post_likes(
     )
     if q and q.strip():
         term = f"%{escape_like_pattern(q.strip())}%"
-        query = query.filter(
+        query = query.where(
             or_(
                 models.Post.title.ilike(term, escape="\\"),
                 models.Post.excerpt.ilike(term, escape="\\"),
             )
         )
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
         models.ReaderPostLike.created_at.desc(), models.Post.id.desc()
     )
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
-    rows = query.all()
+    rows = list((await db.execute(query)).unique().scalars())
     return [p for p in rows if is_publicly_visible(p)], total
 
 
-def list_reader_post_likes_for_export(db: Session, reader_id: int) -> list[tuple[models.Post, datetime | None]]:
+async def list_reader_post_likes_for_export(
+    db: AsyncSession, reader_id: int
+) -> list[tuple[models.Post, datetime | None]]:
     """Complete liked-posts list for the reader data export (round 360).
 
     Like list_reader_post_likes but carries each like's ``created_at`` (the
@@ -2624,21 +2864,22 @@ def list_reader_post_likes_for_export(db: Session, reader_id: int) -> list[tuple
     """
     now = utc_now_naive()
     rows = (
-        db.query(models.Post, models.ReaderPostLike.created_at)
-        .join(models.ReaderPostLike, models.ReaderPostLike.post_id == models.Post.id)
-        .filter(
-            models.ReaderPostLike.reader_id == reader_id,
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(models.Post, models.ReaderPostLike.created_at)
+            .join(models.ReaderPostLike, models.ReaderPostLike.post_id == models.Post.id)
+            .where(
+                models.ReaderPostLike.reader_id == reader_id,
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .order_by(models.ReaderPostLike.created_at.desc(), models.Post.id.desc())
         )
-        .order_by(models.ReaderPostLike.created_at.desc(), models.Post.id.desc())
-        .all()
-    )
+    ).all()
     return [(post, liked_at) for post, liked_at in rows if is_publicly_visible(post)]
 
 
-def list_reader_public_bookmarks(
-    db: Session,
+async def list_reader_public_bookmarks(
+    db: AsyncSession,
     reader_id: int,
     page: int = 1,
     limit: int | None = 100,
@@ -2653,38 +2894,42 @@ def list_reader_public_bookmarks(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Post)
+        select(models.Post)
         .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
-        .filter(
+        .where(
             models.ReaderBookmark.reader_id == reader_id,
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
         models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
     )
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
-    rows = query.all()
+    rows = list((await db.execute(query)).unique().scalars())
     return [p for p in rows if is_publicly_visible(p)], total
 
 
-def get_reading_history(db: Session, reader_id: int, post_id: int) -> models.ReadingHistory | None:
+async def get_reading_history(db: AsyncSession, reader_id: int, post_id: int) -> models.ReadingHistory | None:
     """Return the reader's view-history row for a post, or None."""
     return (
-        db.query(models.ReadingHistory)
-        .filter(
-            models.ReadingHistory.reader_id == reader_id,
-            models.ReadingHistory.post_id == post_id,
+        (
+            await db.execute(
+                select(models.ReadingHistory).where(
+                    models.ReadingHistory.reader_id == reader_id,
+                    models.ReadingHistory.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def record_reading_history(
-    db: Session,
+async def record_reading_history(
+    db: AsyncSession,
     reader_id: int,
     post_id: int,
     scroll_position: int | None = None,
@@ -2705,11 +2950,11 @@ def record_reading_history(
     not wipe the reader's place. ``0`` is meaningful (scrolled back to the very
     top) and clears the saved offset.
     """
-    existing = get_reading_history(db, reader_id, post_id)
+    existing = await get_reading_history(db, reader_id, post_id)
     # Denormalized reading-time estimate (ISS-451): recomputed on every upsert
     # so it tracks the content the reader just saw, letting /me/history/stats
     # SUM it in SQL instead of fetching full post content per row.
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     minutes = schemas.reading_minutes(post.content) if post else 1
     if existing:
         # Naive UTC (ISS-452): viewed_at is a naive-UTC DateTime column.
@@ -2720,8 +2965,8 @@ def record_reading_history(
         if scroll_fraction is not None:
             existing.scroll_fraction = scroll_fraction
         db.add(existing)
-        db.commit()
-        db.refresh(existing)
+        await db.commit()
+        await db.refresh(existing)
         return existing, False
     row = models.ReadingHistory(
         reader_id=reader_id,
@@ -2732,17 +2977,17 @@ def record_reading_history(
         scroll_fraction=scroll_fraction,
     )
     db.add(row)
-    if _commit_reader_upsert(db):
-        db.refresh(row)
+    if await _commit_reader_upsert(db):
+        await db.refresh(row)
         return row, True
-    existing = get_reading_history(db, reader_id, post_id)
+    existing = await get_reading_history(db, reader_id, post_id)
     if existing:
         return existing, False
     raise RuntimeError("history insert lost the unique-key race but no row was found")
 
 
-def import_reader_history(
-    db: Session,
+async def import_reader_history(
+    db: AsyncSession,
     reader_id: int,
     items: list[tuple[str, datetime | None]],
 ) -> tuple[int, int]:
@@ -2798,32 +3043,34 @@ def import_reader_history(
     # _commit_reader_upsert).
     for _attempt in range(2):
         try:
-            return _import_reader_history_pass(db, reader_id, by_slug)
+            return await _import_reader_history_pass(db, reader_id, by_slug)
         except IntegrityError:
-            db.rollback()
+            await db.rollback()
     raise RuntimeError("history import lost the unique-key race twice")
 
 
-def _import_reader_history_pass(
-    db: Session,
+async def _import_reader_history_pass(
+    db: AsyncSession,
     reader_id: int,
     by_slug: dict[str, datetime | None],
 ) -> tuple[int, int]:
     """One idempotent merge pass over the folded slug set (see caller)."""
     slugs = list(by_slug)
-    posts = db.query(models.Post).filter(models.Post.slug.in_(slugs)).all()
+    posts = list((await db.execute(select(models.Post).where(models.Post.slug.in_(slugs)))).scalars())
     by_slug_post = {p.slug: p for p in posts}
     resolved_ids = [p.id for p in posts if is_publicly_visible(p)]
 
     existing_by_post: dict[int, models.ReadingHistory] = {}
     if resolved_ids:
-        existing_rows = (
-            db.query(models.ReadingHistory)
-            .filter(
-                models.ReadingHistory.reader_id == reader_id,
-                models.ReadingHistory.post_id.in_(resolved_ids),
-            )
-            .all()
+        existing_rows = list(
+            (
+                await db.execute(
+                    select(models.ReadingHistory).where(
+                        models.ReadingHistory.reader_id == reader_id,
+                        models.ReadingHistory.post_id.in_(resolved_ids),
+                    )
+                )
+            ).scalars()
         )
         existing_by_post = {row.post_id: row for row in existing_rows}
 
@@ -2854,12 +3101,12 @@ def _import_reader_history_pass(
             )
         )
         imported += 1
-    db.commit()
+    await db.commit()
     return imported, skipped
 
 
-def list_reader_history(
-    db: Session, reader_id: int, page: int = 1, limit: int = 20, q: str | None = None
+async def list_reader_history(
+    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 20, q: str | None = None
 ) -> tuple[list[tuple[models.Post, datetime]], int]:
     """Return the reader's viewed posts (publicly visible only) newest-first.
 
@@ -2890,22 +3137,31 @@ def list_reader_history(
         )
 
     total = int(
-        db.query(func.count(models.ReadingHistory.id))
-        .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
-        .filter(*filters)
-        .scalar()
+        (
+            await db.execute(
+                select(func.count(models.ReadingHistory.id))
+                .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
+                .where(*filters)
+            )
+        ).scalar()
+        or 0
         or 0
     )
     query = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
+        select(models.Post, models.ReadingHistory.viewed_at)
         .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(*filters)
+        .where(*filters)
         .options(joinedload(models.Post.category), joinedload(models.Post.tags))
     )
     rows = (
-        query.order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
+        (
+            await db.execute(
+                query.order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        )
+        .unique()
         .all()
     )
     page_items = []
@@ -2915,8 +3171,8 @@ def list_reader_history(
     return page_items, total
 
 
-def list_reader_in_progress(
-    db: Session, reader_id: int, limit: int = 6
+async def list_reader_in_progress(
+    db: AsyncSession, reader_id: int, limit: int = 6
 ) -> tuple[list[tuple[models.Post, datetime]], int]:
     """The reader's posts with a saved resume position, newest-first (DEC-348,
     TASK-400).
@@ -2940,28 +3196,40 @@ def list_reader_in_progress(
         or_(models.Post.publish_at.is_(None), models.Post.publish_at <= utc_now_naive()),
     ]
     total = int(
-        db.query(func.count(models.ReadingHistory.id))
-        .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
-        .filter(*filters)
-        .scalar()
+        (
+            await db.execute(
+                select(func.count(models.ReadingHistory.id))
+                .join(models.Post, models.ReadingHistory.post_id == models.Post.id)
+                .where(*filters)
+            )
+        ).scalar()
+        or 0
         or 0
     )
     rows = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
-        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(*filters)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
-        .limit(limit)
+        (
+            await db.execute(
+                select(models.Post, models.ReadingHistory.viewed_at)
+                .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+                .where(*filters)
+                .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                .order_by(models.ReadingHistory.viewed_at.desc(), models.ReadingHistory.post_id.desc())
+                .limit(limit)
+            )
+        )
+        .unique()
         .all()
     )
     return [(post, viewed_at) for post, viewed_at in rows if viewed_at is not None], total
 
 
-def clear_reader_history(db: Session, reader_id: int) -> int:
+async def clear_reader_history(db: AsyncSession, reader_id: int) -> int:
     """Delete every history row for a reader; returns the number removed."""
-    deleted = db.query(models.ReadingHistory).filter(models.ReadingHistory.reader_id == reader_id).delete()
-    db.commit()
+    deleted = cast(
+        CursorResult[Any],
+        await db.execute(delete(models.ReadingHistory).where(models.ReadingHistory.reader_id == reader_id)),
+    ).rowcount
+    await db.commit()
     return deleted
 
 
@@ -3039,7 +3307,9 @@ def _day_activity(counts: dict, *, today: date) -> list[dict]:
     return out
 
 
-def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, tz: tzinfo | None = None) -> dict:
+async def reader_history_stats(
+    db: AsyncSession, reader_id: int, recent_limit: int = 6, *, tz: tzinfo | None = None
+) -> dict:
     """Aggregate a reader's reading summary from their history (DEC-118).
 
     Returns total visible posts read, the sum of their reading minutes, the
@@ -3068,16 +3338,25 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
         or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
     ]
     base = (
-        db.query(models.ReadingHistory)
+        select(models.ReadingHistory)
         .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
-        .filter(models.ReadingHistory.reader_id == reader_id, *visibility)
+        .where(models.ReadingHistory.reader_id == reader_id, *visibility)
     )
+    _base_subq = base.subquery()
 
     # total_posts / total_reading_minutes / last_viewed_at: one aggregate row.
-    aggregate = base.with_entities(
-        func.count(),
-        func.coalesce(func.sum(models.ReadingHistory.reading_minutes), 0),
-        func.max(models.ReadingHistory.viewed_at),
+    # Aggregate over the subquery's OWN columns (subq.c.*) — referencing
+    # models.ReadingHistory.* on an outer-select whose FROM is the subquery
+    # makes SQLAlchemy cross-join reading_history again (cartesian product:
+    # 3 posts -> count 9), RIL async migration.
+    aggregate = (
+        await db.execute(
+            select(
+                func.count(),
+                func.coalesce(func.sum(_base_subq.c.reading_minutes), 0),
+                func.max(_base_subq.c.viewed_at),
+            ).select_from(_base_subq)
+        )
     ).first()
     count, total_minutes, last_viewed_at = aggregate or (0, 0, None)
     total_posts = int(count or 0)
@@ -3085,13 +3364,16 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
 
     # Streak/activity calendar: narrow per-day read counts from the history
     # timestamps only (no post rows, no content).
-    viewed_rows = base.with_entities(models.ReadingHistory.viewed_at).filter(
-        models.ReadingHistory.viewed_at.is_not(None)
+    viewed_rows = (
+        select(models.ReadingHistory.viewed_at)
+        .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
+        .where(models.ReadingHistory.reader_id == reader_id, *visibility)
+        .where(models.ReadingHistory.viewed_at.is_not(None))
     )
     today = _local_today(tz)
     counts: dict = {}
     dates: set = set()
-    for (viewed_at,) in viewed_rows:
+    for (viewed_at,) in (await db.execute(viewed_rows)).all():
         d = _read_local_date(viewed_at, tz)
         counts[d] = counts.get(d, 0) + 1
         dates.add(d)
@@ -3101,12 +3383,17 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
     # post.tags, so without eager loading that's a lazy SELECT per recent row
     # (round-292 deep-dive).
     recent = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
-        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(models.ReadingHistory.reader_id == reader_id, *visibility)
-        .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
-        .limit(recent_limit)
+        (
+            await db.execute(
+                select(models.Post, models.ReadingHistory.viewed_at)
+                .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+                .where(models.ReadingHistory.reader_id == reader_id, *visibility)
+                .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                .order_by(models.ReadingHistory.viewed_at.desc(), models.Post.id.desc())
+                .limit(recent_limit)
+            )
+        )
+        .unique()
         .all()
     )
 
@@ -3121,7 +3408,7 @@ def reader_history_stats(db: Session, reader_id: int, recent_limit: int = 6, *, 
     }
 
 
-def reader_history_insights(db: Session, reader_id: int, top_categories: int = 5) -> dict:
+async def reader_history_insights(db: AsyncSession, reader_id: int, top_categories: int = 5) -> dict:
     """Aggregate "what and how much" the reader has read (DEC-417/TASK-434).
 
     The streak/heatmap (reader_history_stats, DEC-316) show the calendar shape
@@ -3140,30 +3427,35 @@ def reader_history_insights(db: Session, reader_id: int, top_categories: int = 5
     ]
 
     base = (
-        db.query(models.Post)
+        select(models.Post)
         .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(models.ReadingHistory.reader_id == reader_id)
-        .filter(*visibility)
+        .where(models.ReadingHistory.reader_id == reader_id)
+        .where(*visibility)
     )
-    base = base.filter(models.ReadingHistory.viewed_at.is_not(None))
-    grand_total = base.count()
-    last_30_days = base.filter(models.ReadingHistory.viewed_at >= since_30).count()
+    base = base.where(models.ReadingHistory.viewed_at.is_not(None))
+    grand_total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    last_30_days = (
+        await db.execute(
+            select(func.count()).select_from(base.where(models.ReadingHistory.viewed_at >= since_30).subquery())
+        )
+    ).scalar() or 0
 
     cat_rows = (
-        db.query(models.Category.name, func.count(models.Post.id))
-        .select_from(models.ReadingHistory)
-        .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
-        .join(models.Category, models.Category.id == models.Post.category_id)
-        .filter(
-            models.ReadingHistory.reader_id == reader_id,
-            models.ReadingHistory.viewed_at.is_not(None),
-            *visibility,
+        await db.execute(
+            select(models.Category.name, func.count(models.Post.id))
+            .select_from(models.ReadingHistory)
+            .join(models.Post, models.Post.id == models.ReadingHistory.post_id)
+            .join(models.Category, models.Category.id == models.Post.category_id)
+            .where(
+                models.ReadingHistory.reader_id == reader_id,
+                models.ReadingHistory.viewed_at.is_not(None),
+                *visibility,
+            )
+            .group_by(models.Category.id, models.Category.name)
+            .order_by(func.count(models.Post.id).desc(), models.Category.name.asc())
+            .limit(top_categories)
         )
-        .group_by(models.Category.id, models.Category.name)
-        .order_by(func.count(models.Post.id).desc(), models.Category.name.asc())
-        .limit(top_categories)
-        .all()
-    )
+    ).all()
     return {
         "grand_total": grand_total,
         "last_30_days": last_30_days,
@@ -3171,7 +3463,7 @@ def reader_history_insights(db: Session, reader_id: int, top_categories: int = 5
     }
 
 
-def reader_series_progress(db: Session, reader_id: int, series: models.Series) -> dict:
+async def reader_series_progress(db: AsyncSession, reader_id: int, series: models.Series) -> dict:
     """Compute a reader's progress through a series from their history.
 
     ``posts`` is the series' ordered, publicly visible posts (series_order then
@@ -3181,7 +3473,7 @@ def reader_series_progress(db: Session, reader_id: int, series: models.Series) -
     completion flag. Public-visibility invariants hold via get_series_visible_posts.
     (DEC-122/TASK-173)
     """
-    posts = get_series_visible_posts(db, series)
+    posts = await get_series_visible_posts(db, series)
     if not posts:
         return {
             "total": 0,
@@ -3192,13 +3484,13 @@ def reader_series_progress(db: Session, reader_id: int, series: models.Series) -
         }
     post_ids = [p.id for p in posts]
     read_rows = (
-        db.query(models.ReadingHistory.post_id)
-        .filter(
-            models.ReadingHistory.reader_id == reader_id,
-            models.ReadingHistory.post_id.in_(post_ids),
+        await db.execute(
+            select(models.ReadingHistory.post_id).where(
+                models.ReadingHistory.reader_id == reader_id,
+                models.ReadingHistory.post_id.in_(post_ids),
+            )
         )
-        .all()
-    )
+    ).all()
     read_ids = {row.post_id for row in read_rows}
     next_slug = next((p.slug for p in posts if p.id not in read_ids), None)
     return {
@@ -3210,7 +3502,7 @@ def reader_series_progress(db: Session, reader_id: int, series: models.Series) -
     }
 
 
-def export_reader_data(db: Session, reader_id: int) -> dict:
+async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
     """Assemble a reader's portable data bundle (DEC-126/TASK-175).
 
     Scoped strictly to the caller: profile, public-visible bookmarks (with
@@ -3219,7 +3511,7 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     draft/scheduled-post leakage — bookmarks/history exclude non-visible posts
     (same invariants as the read paths).
     """
-    account = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader_id).first()
+    account = (await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.id == reader_id))).scalars().first()
     account_data = {
         "email": account.email if account else None,
         "display_name": account.display_name if account else None,
@@ -3235,7 +3527,7 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     bookmarks = []
     # limit=None — a backup must be complete, never silently capped at the
     # list endpoint's default 100 bookmarks (RIL ISS-288).
-    rows, _total = list_reader_bookmarks(db, reader_id, limit=None)
+    rows, _total = await list_reader_bookmarks(db, reader_id, limit=None)
     for post, _, folder_name, done in rows:
         bookmarks.append(
             {
@@ -3251,8 +3543,12 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
         )
 
     comments = []
-    comment_rows = (
-        db.query(models.Comment).filter(models.Comment.reader_id == reader_id).order_by(models.Comment.created_at).all()
+    comment_rows = list(
+        (
+            await db.execute(
+                select(models.Comment).where(models.Comment.reader_id == reader_id).order_by(models.Comment.created_at)
+            )
+        ).scalars()
     )
     # One query for all parent posts, not one db.get per comment — a prolific
     # commenter's export was O(comments) round trips on an unbounded endpoint
@@ -3260,7 +3556,10 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     post_by_id: dict[int, models.Post] = {}
     comment_post_ids = {c.post_id for c in comment_rows if c.post_id is not None}
     if comment_post_ids:
-        post_by_id = {p.id: p for p in db.query(models.Post).filter(models.Post.id.in_(comment_post_ids)).all()}
+        post_by_id = {
+            p.id: p
+            for p in (await db.execute(select(models.Post).where(models.Post.id.in_(comment_post_ids)))).scalars().all()
+        }
     for c in comment_rows:
         post = post_by_id.get(c.post_id)
         if c.is_approved is True:
@@ -3283,12 +3582,13 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
 
     history = []
     history_rows = (
-        db.query(models.Post, models.ReadingHistory.viewed_at)
-        .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
-        .filter(models.ReadingHistory.reader_id == reader_id)
-        .order_by(models.ReadingHistory.viewed_at.desc())
-        .all()
-    )
+        await db.execute(
+            select(models.Post, models.ReadingHistory.viewed_at)
+            .join(models.ReadingHistory, models.ReadingHistory.post_id == models.Post.id)
+            .where(models.ReadingHistory.reader_id == reader_id)
+            .order_by(models.ReadingHistory.viewed_at.desc())
+        )
+    ).all()
     for post, viewed_at in history_rows:
         if not is_publicly_visible(post):
             continue
@@ -3308,30 +3608,33 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     # without the name of the thing followed).
     follows = {"categories": [], "tags": [], "series": []}
     cat_rows = (
-        db.query(models.CategoryFollow, models.Category.name)
-        .join(models.Category, models.CategoryFollow.category_id == models.Category.id)
-        .filter(models.CategoryFollow.reader_id == reader_id)
-        .order_by(models.CategoryFollow.id)
-        .all()
-    )
+        await db.execute(
+            select(models.CategoryFollow, models.Category.name)
+            .join(models.Category, models.CategoryFollow.category_id == models.Category.id)
+            .where(models.CategoryFollow.reader_id == reader_id)
+            .order_by(models.CategoryFollow.id)
+        )
+    ).all()
     follows["categories"] = [
         {"category_id": row.category_id, "name": name, "notify": row.notify} for row, name in cat_rows
     ]
     tag_rows = (
-        db.query(models.TagFollow, models.Tag.name)
-        .join(models.Tag, models.TagFollow.tag_id == models.Tag.id)
-        .filter(models.TagFollow.reader_id == reader_id)
-        .order_by(models.TagFollow.id)
-        .all()
-    )
+        await db.execute(
+            select(models.TagFollow, models.Tag.name)
+            .join(models.Tag, models.TagFollow.tag_id == models.Tag.id)
+            .where(models.TagFollow.reader_id == reader_id)
+            .order_by(models.TagFollow.id)
+        )
+    ).all()
     follows["tags"] = [{"tag_id": row.tag_id, "name": name, "notify": row.notify} for row, name in tag_rows]
     series_rows = (
-        db.query(models.SeriesFollow, models.Series.title, models.Series.slug)
-        .join(models.Series, models.SeriesFollow.series_id == models.Series.id)
-        .filter(models.SeriesFollow.reader_id == reader_id)
-        .order_by(models.SeriesFollow.id)
-        .all()
-    )
+        await db.execute(
+            select(models.SeriesFollow, models.Series.title, models.Series.slug)
+            .join(models.Series, models.SeriesFollow.series_id == models.Series.id)
+            .where(models.SeriesFollow.reader_id == reader_id)
+            .order_by(models.SeriesFollow.id)
+        )
+    ).all()
     follows["series"] = [
         {"series_id": row.series_id, "title": title, "slug": slug, "notify": row.notify}
         for row, title, slug in series_rows
@@ -3341,7 +3644,15 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     # reader holding every push/inbox/email kind toggle. A missing row reads as
     # all-defaults — export None so the client can distinguish "no prefs set"
     # from explicit values.
-    pref = db.query(models.ReaderNotificationPref).filter(models.ReaderNotificationPref.reader_id == reader_id).first()
+    pref = (
+        (
+            await db.execute(
+                select(models.ReaderNotificationPref).where(models.ReaderNotificationPref.reader_id == reader_id)
+            )
+        )
+        .scalars()
+        .first()
+    )
     notification_prefs = (
         {
             "new_post": pref.new_post,
@@ -3360,11 +3671,14 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
 
     # Durable inbox rows (DEC-160/TASK-192): the reader's own notification
     # history — kind, title, deep link, read state. No cross-reader data.
-    notification_rows = (
-        db.query(models.ReaderNotification)
-        .filter(models.ReaderNotification.reader_id == reader_id)
-        .order_by(models.ReaderNotification.created_at)
-        .all()
+    notification_rows = list(
+        (
+            await db.execute(
+                select(models.ReaderNotification)
+                .where(models.ReaderNotification.reader_id == reader_id)
+                .order_by(models.ReaderNotification.created_at)
+            )
+        ).scalars()
     )
     notifications = [
         {
@@ -3383,11 +3697,14 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     # reader registered. The endpoint + created_at identify the device;
     # p256dh/auth are the encryption keys and must NOT ride a data bundle
     # (same PII-adjacent bar as a comment's reply-notify token).
-    push_rows = (
-        db.query(models.PushSubscription)
-        .filter(models.PushSubscription.reader_id == reader_id)
-        .order_by(models.PushSubscription.id)
-        .all()
+    push_rows = list(
+        (
+            await db.execute(
+                select(models.PushSubscription)
+                .where(models.PushSubscription.reader_id == reader_id)
+                .order_by(models.PushSubscription.id)
+            )
+        ).scalars()
     )
     push_subscriptions = [
         {
@@ -3415,7 +3732,7 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
                 "slug": post.slug,
                 "liked_at": liked_at.isoformat() if liked_at else None,
             }
-            for post, liked_at in list_reader_post_likes_for_export(db, reader_id)
+            for post, liked_at in await list_reader_post_likes_for_export(db, reader_id)
         ],
         "comments": comments,
         "history": history,
@@ -3426,7 +3743,7 @@ def export_reader_data(db: Session, reader_id: int) -> dict:
     }
 
 
-def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.Post]:
+async def recommend_posts(db: AsyncSession, reader_id: int, limit: int = 6) -> list[models.Post]:
     """Personalized post recommendations from the reader's interests.
 
     Interest signal = the reader's publicly-visible reading history (TASK-170)
@@ -3442,11 +3759,15 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
 
     history_ids = [
         r.post_id
-        for r in db.query(models.ReadingHistory.post_id).filter(models.ReadingHistory.reader_id == reader_id).all()
+        for r in (
+            await db.execute(select(models.ReadingHistory.post_id).where(models.ReadingHistory.reader_id == reader_id))
+        ).all()
     ]
     bookmark_ids = [
         b.post_id
-        for b in db.query(models.ReaderBookmark.post_id).filter(models.ReaderBookmark.reader_id == reader_id).all()
+        for b in (
+            await db.execute(select(models.ReaderBookmark.post_id).where(models.ReaderBookmark.reader_id == reader_id))
+        ).all()
     ]
     known_ids = set(history_ids) | set(bookmark_ids)
 
@@ -3454,11 +3775,16 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
     category_weight: dict[int, int] = {}
     tag_weight: dict[int, int] = {}
     if known_ids:
-        known_posts = (
-            db.query(models.Post)
-            .filter(models.Post.id.in_(list(known_ids)))
-            .options(joinedload(models.Post.category), joinedload(models.Post.tags))
-            .all()
+        known_posts = list(
+            (
+                await db.execute(
+                    select(models.Post)
+                    .where(models.Post.id.in_(list(known_ids)))
+                    .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                )
+            )
+            .unique()
+            .scalars()
         )
         for post in known_posts:
             if not is_publicly_visible(post):
@@ -3478,17 +3804,22 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
     # went live" line every other list uses), which keeps the heuristic's
     # quality identical on blogs under the cap while hard-bounding a
     # pathological install. Already-known posts are excluded before the cap.
-    candidate_query = db.query(models.Post).filter(
+    candidate_query = select(models.Post).where(
         models.Post.published.is_(True),
         or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
     )
     if known_ids:
-        candidate_query = candidate_query.filter(models.Post.id.notin_(list(known_ids)))
-    candidates = (
-        candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(_effective_publish_col().desc(), models.Post.id.desc())
-        .limit(CANDIDATE_SCAN_LIMIT)
-        .all()
+        candidate_query = candidate_query.where(models.Post.id.notin_(list(known_ids)))
+    candidates = list(
+        (
+            await db.execute(
+                candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                .order_by(_effective_publish_col().desc(), models.Post.id.desc())
+                .limit(CANDIDATE_SCAN_LIMIT)
+            )
+        )
+        .unique()
+        .scalars()
     )
 
     def affinity(post: models.Post) -> int:
@@ -3512,329 +3843,378 @@ def recommend_posts(db: Session, reader_id: int, limit: int = 6) -> list[models.
         )
     )
     result = [post for _, post in scored[:limit]]
-    _populate_post_metrics(db, result)
+    await _populate_post_metrics(db, result)
     return result
 
 
-def get_series_follow(db: Session, reader_id: int, series_id: int) -> models.SeriesFollow | None:
+async def get_series_follow(db: AsyncSession, reader_id: int, series_id: int) -> models.SeriesFollow | None:
     """Return the reader's follow for a series, or None."""
     return (
-        db.query(models.SeriesFollow)
-        .filter(models.SeriesFollow.reader_id == reader_id, models.SeriesFollow.series_id == series_id)
+        (
+            await db.execute(
+                select(models.SeriesFollow).where(
+                    models.SeriesFollow.reader_id == reader_id, models.SeriesFollow.series_id == series_id
+                )
+            )
+        )
+        .scalars()
         .first()
     )
 
 
-def add_series_follow(db: Session, reader_id: int, series_id: int) -> tuple[models.SeriesFollow, bool]:
+async def add_series_follow(db: AsyncSession, reader_id: int, series_id: int) -> tuple[models.SeriesFollow, bool]:
     """Follow a series for new-part push; returns (follow, created). Idempotent."""
-    existing = get_series_follow(db, reader_id, series_id)
+    existing = await get_series_follow(db, reader_id, series_id)
     if existing:
         return existing, False
     follow = models.SeriesFollow(reader_id=reader_id, series_id=series_id)
     db.add(follow)
-    if _commit_reader_upsert(db):
-        db.refresh(follow)
+    if await _commit_reader_upsert(db):
+        await db.refresh(follow)
         return follow, True
-    existing = get_series_follow(db, reader_id, series_id)
+    existing = await get_series_follow(db, reader_id, series_id)
     if existing:
         return existing, False
     raise RuntimeError("series follow insert lost the unique-key race but no row was found")
 
 
-def remove_series_follow(db: Session, reader_id: int, series_id: int) -> bool:
+async def remove_series_follow(db: AsyncSession, reader_id: int, series_id: int) -> bool:
     """Unfollow a series; returns True if a follow was removed. Idempotent."""
-    follow = get_series_follow(db, reader_id, series_id)
+    follow = await get_series_follow(db, reader_id, series_id)
     if not follow:
         return False
-    db.delete(follow)
-    db.commit()
+    await db.delete(follow)
+    await db.commit()
     return True
 
 
-def set_series_follow_notify(db: Session, reader_id: int, series_id: int, notify: bool) -> models.SeriesFollow | None:
+async def set_series_follow_notify(
+    db: AsyncSession, reader_id: int, series_id: int, notify: bool
+) -> models.SeriesFollow | None:
     """Toggle whether a follow pushes new-part notifications. Returns None if not following."""
-    follow = get_series_follow(db, reader_id, series_id)
+    follow = await get_series_follow(db, reader_id, series_id)
     if not follow:
         return None
     follow.notify = notify
-    db.commit()
-    db.refresh(follow)
+    await db.commit()
+    await db.refresh(follow)
     return follow
 
 
-def list_reader_series_follows(db: Session, reader_id: int) -> list[models.SeriesFollow]:
+async def list_reader_series_follows(db: AsyncSession, reader_id: int) -> list[models.SeriesFollow]:
     """The reader's follow rows (with ``series`` loaded), newest follow first."""
-    rows = (
-        db.query(models.SeriesFollow)
-        .options(joinedload(models.SeriesFollow.series))
-        .filter(models.SeriesFollow.reader_id == reader_id)
-        .order_by(models.SeriesFollow.created_at.desc(), models.SeriesFollow.id.desc())
-        .all()
+    rows = list(
+        (
+            await db.execute(
+                select(models.SeriesFollow)
+                .options(joinedload(models.SeriesFollow.series))
+                .where(models.SeriesFollow.reader_id == reader_id)
+                .order_by(models.SeriesFollow.created_at.desc(), models.SeriesFollow.id.desc())
+            )
+        ).scalars()
     )
     return rows
 
 
-def list_series_follow_reader_ids(db: Session, series_id: int) -> list[int]:
+async def list_series_follow_reader_ids(db: AsyncSession, series_id: int) -> list[int]:
     """Reader ids following a series with notifications on (for 'new part' push dispatch)."""
     return [
         reader_id
-        for (reader_id,) in db.query(models.SeriesFollow.reader_id)
-        .filter(models.SeriesFollow.series_id == series_id, models.SeriesFollow.notify.is_(True))
-        .all()
+        for (reader_id,) in (
+            await db.execute(
+                select(models.SeriesFollow.reader_id).where(
+                    models.SeriesFollow.series_id == series_id, models.SeriesFollow.notify.is_(True)
+                )
+            )
+        ).all()
     ]
 
 
-def get_category_follow(db: Session, reader_id: int, category_id: int) -> models.CategoryFollow | None:
+async def get_category_follow(db: AsyncSession, reader_id: int, category_id: int) -> models.CategoryFollow | None:
     """Return the reader's follow for a category, or None."""
     return (
-        db.query(models.CategoryFollow)
-        .filter(
-            models.CategoryFollow.reader_id == reader_id,
-            models.CategoryFollow.category_id == category_id,
+        (
+            await db.execute(
+                select(models.CategoryFollow).where(
+                    models.CategoryFollow.reader_id == reader_id,
+                    models.CategoryFollow.category_id == category_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_category_follow(db: Session, reader_id: int, category_id: int) -> tuple[models.CategoryFollow, bool]:
+async def add_category_follow(db: AsyncSession, reader_id: int, category_id: int) -> tuple[models.CategoryFollow, bool]:
     """Follow a category for new-post push; returns (follow, created). Idempotent."""
-    existing = get_category_follow(db, reader_id, category_id)
+    existing = await get_category_follow(db, reader_id, category_id)
     if existing:
         return existing, False
     follow = models.CategoryFollow(reader_id=reader_id, category_id=category_id)
     db.add(follow)
-    if _commit_reader_upsert(db):
-        db.refresh(follow)
+    if await _commit_reader_upsert(db):
+        await db.refresh(follow)
         return follow, True
-    existing = get_category_follow(db, reader_id, category_id)
+    existing = await get_category_follow(db, reader_id, category_id)
     if existing:
         return existing, False
     raise RuntimeError("category follow insert lost the unique-key race but no row was found")
 
 
-def remove_category_follow(db: Session, reader_id: int, category_id: int) -> bool:
+async def remove_category_follow(db: AsyncSession, reader_id: int, category_id: int) -> bool:
     """Unfollow a category; returns True if a follow was removed. Idempotent."""
-    follow = get_category_follow(db, reader_id, category_id)
+    follow = await get_category_follow(db, reader_id, category_id)
     if not follow:
         return False
-    db.delete(follow)
-    db.commit()
+    await db.delete(follow)
+    await db.commit()
     return True
 
 
-def set_category_follow_notify(
-    db: Session, reader_id: int, category_id: int, notify: bool
+async def set_category_follow_notify(
+    db: AsyncSession, reader_id: int, category_id: int, notify: bool
 ) -> models.CategoryFollow | None:
     """Toggle whether a category follow pushes new-posts. Returns None if not following."""
-    follow = get_category_follow(db, reader_id, category_id)
+    follow = await get_category_follow(db, reader_id, category_id)
     if not follow:
         return None
     follow.notify = notify
-    db.commit()
-    db.refresh(follow)
+    await db.commit()
+    await db.refresh(follow)
     return follow
 
 
-def list_reader_category_follows(db: Session, reader_id: int) -> list[models.CategoryFollow]:
+async def list_reader_category_follows(db: AsyncSession, reader_id: int) -> list[models.CategoryFollow]:
     """The reader's category follow rows (with ``category`` loaded), newest first."""
-    rows = (
-        db.query(models.CategoryFollow)
-        .options(joinedload(models.CategoryFollow.category))
-        .filter(models.CategoryFollow.reader_id == reader_id)
-        .order_by(models.CategoryFollow.created_at.desc(), models.CategoryFollow.id.desc())
-        .all()
+    rows = list(
+        (
+            await db.execute(
+                select(models.CategoryFollow)
+                .options(joinedload(models.CategoryFollow.category))
+                .where(models.CategoryFollow.reader_id == reader_id)
+                .order_by(models.CategoryFollow.created_at.desc(), models.CategoryFollow.id.desc())
+            )
+        ).scalars()
     )
     return rows
 
 
-def list_category_follow_reader_ids(db: Session, category_id: int) -> list[int]:
+async def list_category_follow_reader_ids(db: AsyncSession, category_id: int) -> list[int]:
     """Reader ids following a category with notifications on (for new-post dispatch)."""
     return [
         reader_id
-        for (reader_id,) in db.query(models.CategoryFollow.reader_id)
-        .filter(
-            models.CategoryFollow.category_id == category_id,
-            models.CategoryFollow.notify.is_(True),
-        )
-        .all()
+        for (reader_id,) in (
+            await db.execute(
+                select(models.CategoryFollow.reader_id).where(
+                    models.CategoryFollow.category_id == category_id,
+                    models.CategoryFollow.notify.is_(True),
+                )
+            )
+        ).all()
     ]
 
 
-def get_author_follow(db: Session, reader_id: int, author_id: int) -> models.AuthorFollow | None:
+async def get_author_follow(db: AsyncSession, reader_id: int, author_id: int) -> models.AuthorFollow | None:
     """A single reader→author follow row, or None (author-follow, round 353)."""
     return (
-        db.query(models.AuthorFollow)
-        .filter(
-            models.AuthorFollow.reader_id == reader_id,
-            models.AuthorFollow.author_id == author_id,
+        (
+            await db.execute(
+                select(models.AuthorFollow).where(
+                    models.AuthorFollow.reader_id == reader_id,
+                    models.AuthorFollow.author_id == author_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_author_follow(db: Session, reader_id: int, author_id: int) -> tuple[models.AuthorFollow, bool]:
+async def add_author_follow(db: AsyncSession, reader_id: int, author_id: int) -> tuple[models.AuthorFollow, bool]:
     """Follow a writer for new-post fan-out; returns (follow, created). Idempotent."""
-    existing = get_author_follow(db, reader_id, author_id)
+    existing = await get_author_follow(db, reader_id, author_id)
     if existing:
         return existing, False
     follow = models.AuthorFollow(reader_id=reader_id, author_id=author_id)
     db.add(follow)
-    if _commit_reader_upsert(db):
-        db.refresh(follow)
+    if await _commit_reader_upsert(db):
+        await db.refresh(follow)
         return follow, True
-    existing = get_author_follow(db, reader_id, author_id)
+    existing = await get_author_follow(db, reader_id, author_id)
     if existing:
         return existing, False
     raise RuntimeError("author follow insert lost the unique-key race but no row was found")
 
 
-def remove_author_follow(db: Session, reader_id: int, author_id: int) -> bool:
+async def remove_author_follow(db: AsyncSession, reader_id: int, author_id: int) -> bool:
     """Unfollow a writer; returns True if a follow was removed. Idempotent."""
-    follow = get_author_follow(db, reader_id, author_id)
+    follow = await get_author_follow(db, reader_id, author_id)
     if not follow:
         return False
-    db.delete(follow)
-    db.commit()
+    await db.delete(follow)
+    await db.commit()
     return True
 
 
-def set_author_follow_notify(db: Session, reader_id: int, author_id: int, notify: bool) -> models.AuthorFollow | None:
+async def set_author_follow_notify(
+    db: AsyncSession, reader_id: int, author_id: int, notify: bool
+) -> models.AuthorFollow | None:
     """Toggle whether an author follow pushes new posts. Returns None if not following."""
-    follow = get_author_follow(db, reader_id, author_id)
+    follow = await get_author_follow(db, reader_id, author_id)
     if not follow:
         return None
     follow.notify = notify
-    db.commit()
-    db.refresh(follow)
+    await db.commit()
+    await db.refresh(follow)
     return follow
 
 
-def list_reader_author_follows(db: Session, reader_id: int) -> list[models.AuthorFollow]:
+async def list_reader_author_follows(db: AsyncSession, reader_id: int) -> list[models.AuthorFollow]:
     """The reader's author follow rows (with ``author`` loaded), newest first."""
-    rows = (
-        db.query(models.AuthorFollow)
-        .options(joinedload(models.AuthorFollow.author))
-        .filter(models.AuthorFollow.reader_id == reader_id)
-        .order_by(models.AuthorFollow.created_at.desc(), models.AuthorFollow.id.desc())
-        .all()
+    rows = list(
+        (
+            await db.execute(
+                select(models.AuthorFollow)
+                .options(joinedload(models.AuthorFollow.author))
+                .where(models.AuthorFollow.reader_id == reader_id)
+                .order_by(models.AuthorFollow.created_at.desc(), models.AuthorFollow.id.desc())
+            )
+        ).scalars()
     )
     return rows
 
 
-def list_author_follow_reader_ids(db: Session, author_id: int) -> list[int]:
+async def list_author_follow_reader_ids(db: AsyncSession, author_id: int) -> list[int]:
     """Reader ids following an author with notifications on (for new-post dispatch)."""
     return [
         reader_id
-        for (reader_id,) in db.query(models.AuthorFollow.reader_id)
-        .filter(
-            models.AuthorFollow.author_id == author_id,
-            models.AuthorFollow.notify.is_(True),
-        )
-        .all()
+        for (reader_id,) in (
+            await db.execute(
+                select(models.AuthorFollow.reader_id).where(
+                    models.AuthorFollow.author_id == author_id,
+                    models.AuthorFollow.notify.is_(True),
+                )
+            )
+        ).all()
     ]
 
 
 # Reader → reader follow (round 365, DEC-403): the person-shaped axis of the
 # follow wheel. Mirrors AuthorFollow exactly — unique (reader_id, followed_id),
 # notify decouples tracking from fan-out, list-by-relationship for management.
-def get_reader_follow(db: Session, reader_id: int, followed_id: int) -> models.ReaderFollow | None:
+async def get_reader_follow(db: AsyncSession, reader_id: int, followed_id: int) -> models.ReaderFollow | None:
     """A single reader→reader follow row, or None (reader-follow, round 365)."""
     return (
-        db.query(models.ReaderFollow)
-        .filter(
-            models.ReaderFollow.reader_id == reader_id,
-            models.ReaderFollow.followed_id == followed_id,
+        (
+            await db.execute(
+                select(models.ReaderFollow).where(
+                    models.ReaderFollow.reader_id == reader_id,
+                    models.ReaderFollow.followed_id == followed_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_reader_follow(db: Session, reader_id: int, followed_id: int) -> tuple[models.ReaderFollow, bool]:
+async def add_reader_follow(db: AsyncSession, reader_id: int, followed_id: int) -> tuple[models.ReaderFollow, bool]:
     """Follow another reader; returns (follow, created). Idempotent (201/200)."""
-    existing = get_reader_follow(db, reader_id, followed_id)
+    existing = await get_reader_follow(db, reader_id, followed_id)
     if existing:
         return existing, False
     follow = models.ReaderFollow(reader_id=reader_id, followed_id=followed_id)
     db.add(follow)
-    if _commit_reader_upsert(db):
-        db.refresh(follow)
+    if await _commit_reader_upsert(db):
+        await db.refresh(follow)
         return follow, True
-    existing = get_reader_follow(db, reader_id, followed_id)
+    existing = await get_reader_follow(db, reader_id, followed_id)
     if existing:
         return existing, False
     raise RuntimeError("reader follow insert lost the unique-key race but no row was found")
 
 
-def remove_reader_follow(db: Session, reader_id: int, followed_id: int) -> bool:
+async def remove_reader_follow(db: AsyncSession, reader_id: int, followed_id: int) -> bool:
     """Unfollow a reader; returns True if a follow was removed. Idempotent 204."""
-    follow = get_reader_follow(db, reader_id, followed_id)
+    follow = await get_reader_follow(db, reader_id, followed_id)
     if not follow:
         return False
-    db.delete(follow)
-    db.commit()
+    await db.delete(follow)
+    await db.commit()
     return True
 
 
-def list_reader_follows(db: Session, reader_id: int) -> list[models.ReaderFollow]:
+async def list_reader_follows(db: AsyncSession, reader_id: int) -> list[models.ReaderFollow]:
     """The reader's reader-follow rows (with the followed account loaded), newest first."""
-    return (
-        db.query(models.ReaderFollow)
-        .options(joinedload(models.ReaderFollow.followed))
-        .filter(models.ReaderFollow.reader_id == reader_id)
-        .order_by(models.ReaderFollow.created_at.desc(), models.ReaderFollow.id.desc())
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.ReaderFollow)
+                .options(joinedload(models.ReaderFollow.followed))
+                .where(models.ReaderFollow.reader_id == reader_id)
+                .order_by(models.ReaderFollow.created_at.desc(), models.ReaderFollow.id.desc())
+            )
+        ).scalars()
     )
 
 
-def get_reader_block(db: Session, blocker_id: int, blocked_id: int) -> models.ReaderBlock | None:
+async def get_reader_block(db: AsyncSession, blocker_id: int, blocked_id: int) -> models.ReaderBlock | None:
     """A single blocker→blocked row, or None (reader-block, round 379, DEC-425)."""
     return (
-        db.query(models.ReaderBlock)
-        .filter(
-            models.ReaderBlock.blocker_id == blocker_id,
-            models.ReaderBlock.blocked_id == blocked_id,
+        (
+            await db.execute(
+                select(models.ReaderBlock).where(
+                    models.ReaderBlock.blocker_id == blocker_id,
+                    models.ReaderBlock.blocked_id == blocked_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_reader_block(db: Session, blocker_id: int, blocked_id: int) -> tuple[models.ReaderBlock, bool]:
+async def add_reader_block(db: AsyncSession, blocker_id: int, blocked_id: int) -> tuple[models.ReaderBlock, bool]:
     """Block another reader; returns (block, created). Idempotent (201/200)."""
-    existing = get_reader_block(db, blocker_id, blocked_id)
+    existing = await get_reader_block(db, blocker_id, blocked_id)
     if existing:
         return existing, False
     block = models.ReaderBlock(blocker_id=blocker_id, blocked_id=blocked_id)
     db.add(block)
-    if _commit_reader_upsert(db):
-        db.refresh(block)
+    if await _commit_reader_upsert(db):
+        await db.refresh(block)
         return block, True
-    existing = get_reader_block(db, blocker_id, blocked_id)
+    existing = await get_reader_block(db, blocker_id, blocked_id)
     if existing:
         return existing, False
     raise RuntimeError("reader block insert lost the unique-key race but no row was found")
 
 
-def remove_reader_block(db: Session, blocker_id: int, blocked_id: int) -> bool:
+async def remove_reader_block(db: AsyncSession, blocker_id: int, blocked_id: int) -> bool:
     """Unblock a reader; returns True if a block was removed. Idempotent 204."""
-    block = get_reader_block(db, blocker_id, blocked_id)
+    block = await get_reader_block(db, blocker_id, blocked_id)
     if not block:
         return False
-    db.delete(block)
-    db.commit()
+    await db.delete(block)
+    await db.commit()
     return True
 
 
-def list_reader_blocks(db: Session, blocker_id: int) -> list[models.ReaderBlock]:
+async def list_reader_blocks(db: AsyncSession, blocker_id: int) -> list[models.ReaderBlock]:
     """The reader's reader-block rows, newest first (DEC-425)."""
-    return (
-        db.query(models.ReaderBlock)
-        .filter(models.ReaderBlock.blocker_id == blocker_id)
-        .order_by(models.ReaderBlock.created_at.desc(), models.ReaderBlock.id.desc())
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.ReaderBlock)
+                .where(models.ReaderBlock.blocker_id == blocker_id)
+                .order_by(models.ReaderBlock.created_at.desc(), models.ReaderBlock.id.desc())
+            )
+        ).scalars()
     )
 
 
-def readers_who_block(db: Session, commenter_id: int, target_ids: list[int]) -> set[int]:
+async def readers_who_block(db: AsyncSession, commenter_id: int, target_ids: list[int]) -> set[int]:
     """Reader ids in ``target_ids`` who have blocked ``commenter_id``.
 
     Suppression helper for the personal fan-outs (DEC-425, TASK-437): a target
@@ -3847,101 +4227,116 @@ def readers_who_block(db: Session, commenter_id: int, target_ids: list[int]) -> 
     if not commenter_id or not target_ids:
         return set()
     rows = (
-        db.query(models.ReaderBlock.blocker_id)
-        .filter(
-            models.ReaderBlock.blocker_id.in_(target_ids),
-            models.ReaderBlock.blocked_id == commenter_id,
+        await db.execute(
+            select(models.ReaderBlock.blocker_id).where(
+                models.ReaderBlock.blocker_id.in_(target_ids),
+                models.ReaderBlock.blocked_id == commenter_id,
+            )
         )
-        .all()
-    )
+    ).all()
     return {rid for (rid,) in rows}
 
 
-def list_reader_follower_ids(db: Session, followed_id: int) -> list[int]:
+async def list_reader_follower_ids(db: AsyncSession, followed_id: int) -> list[int]:
     """Reader ids following this reader (for the comment-approval fan-out)."""
     return [
         reader_id
-        for (reader_id,) in db.query(models.ReaderFollow.reader_id)
-        .filter(
-            models.ReaderFollow.followed_id == followed_id,
-            models.ReaderFollow.notify.is_(True),
-        )
-        .all()
+        for (reader_id,) in (
+            await db.execute(
+                select(models.ReaderFollow.reader_id).where(
+                    models.ReaderFollow.followed_id == followed_id,
+                    models.ReaderFollow.notify.is_(True),
+                )
+            )
+        ).all()
     ]
 
 
-def count_reader_followers(db: Session, followed_id: int) -> int:
+async def count_reader_followers(db: AsyncSession, followed_id: int) -> int:
     """How many readers follow this reader (public profile surface)."""
-    return db.query(models.ReaderFollow.reader_id).filter(models.ReaderFollow.followed_id == followed_id).count()
+    return (
+        await db.execute(
+            select(func.count()).select_from(
+                select(models.ReaderFollow.reader_id).where(models.ReaderFollow.followed_id == followed_id).subquery()
+            )
+        )
+    ).scalar() or 0
 
 
-def is_following_reader(db: Session, reader_id: int, followed_id: int) -> bool:
+async def is_following_reader(db: AsyncSession, reader_id: int, followed_id: int) -> bool:
     """Whether ``reader_id`` follows ``followed_id`` (auth-gated profile field)."""
-    return get_reader_follow(db, reader_id, followed_id) is not None
+    return await get_reader_follow(db, reader_id, followed_id) is not None
 
 
-def get_tag_follow(db: Session, reader_id: int, tag_id: int) -> models.TagFollow | None:
+async def get_tag_follow(db: AsyncSession, reader_id: int, tag_id: int) -> models.TagFollow | None:
     """Return the reader's follow for a tag, or None."""
     return (
-        db.query(models.TagFollow)
-        .filter(
-            models.TagFollow.reader_id == reader_id,
-            models.TagFollow.tag_id == tag_id,
+        (
+            await db.execute(
+                select(models.TagFollow).where(
+                    models.TagFollow.reader_id == reader_id,
+                    models.TagFollow.tag_id == tag_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_tag_follow(db: Session, reader_id: int, tag_id: int) -> tuple[models.TagFollow, bool]:
+async def add_tag_follow(db: AsyncSession, reader_id: int, tag_id: int) -> tuple[models.TagFollow, bool]:
     """Follow a tag for new-post push; returns (follow, created). Idempotent."""
-    existing = get_tag_follow(db, reader_id, tag_id)
+    existing = await get_tag_follow(db, reader_id, tag_id)
     if existing:
         return existing, False
     follow = models.TagFollow(reader_id=reader_id, tag_id=tag_id)
     db.add(follow)
-    if _commit_reader_upsert(db):
-        db.refresh(follow)
+    if await _commit_reader_upsert(db):
+        await db.refresh(follow)
         return follow, True
-    existing = get_tag_follow(db, reader_id, tag_id)
+    existing = await get_tag_follow(db, reader_id, tag_id)
     if existing:
         return existing, False
     raise RuntimeError("tag follow insert lost the unique-key race but no row was found")
 
 
-def remove_tag_follow(db: Session, reader_id: int, tag_id: int) -> bool:
+async def remove_tag_follow(db: AsyncSession, reader_id: int, tag_id: int) -> bool:
     """Unfollow a tag; returns True if a follow was removed. Idempotent."""
-    follow = get_tag_follow(db, reader_id, tag_id)
+    follow = await get_tag_follow(db, reader_id, tag_id)
     if not follow:
         return False
-    db.delete(follow)
-    db.commit()
+    await db.delete(follow)
+    await db.commit()
     return True
 
 
-def set_tag_follow_notify(db: Session, reader_id: int, tag_id: int, notify: bool) -> models.TagFollow | None:
+async def set_tag_follow_notify(db: AsyncSession, reader_id: int, tag_id: int, notify: bool) -> models.TagFollow | None:
     """Toggle whether a tag follow pushes new-posts. Returns None if not following."""
-    follow = get_tag_follow(db, reader_id, tag_id)
+    follow = await get_tag_follow(db, reader_id, tag_id)
     if not follow:
         return None
     follow.notify = notify
-    db.commit()
-    db.refresh(follow)
+    await db.commit()
+    await db.refresh(follow)
     return follow
 
 
-def list_reader_tag_follows(db: Session, reader_id: int) -> list[models.TagFollow]:
+async def list_reader_tag_follows(db: AsyncSession, reader_id: int) -> list[models.TagFollow]:
     """The reader's tag follow rows (with ``tag`` loaded), newest first."""
-    rows = (
-        db.query(models.TagFollow)
-        .filter(models.TagFollow.reader_id == reader_id)
-        .options(joinedload(models.TagFollow.tag))
-        .order_by(models.TagFollow.created_at.desc(), models.TagFollow.id.desc())
-        .all()
+    rows = list(
+        (
+            await db.execute(
+                select(models.TagFollow)
+                .where(models.TagFollow.reader_id == reader_id)
+                .options(joinedload(models.TagFollow.tag))
+                .order_by(models.TagFollow.created_at.desc(), models.TagFollow.id.desc())
+            )
+        ).scalars()
     )
     return rows
 
 
-def list_tag_follow_reader_ids(db: Session, tag_ids: list[int]) -> list[int]:
+async def list_tag_follow_reader_ids(db: AsyncSession, tag_ids: list[int]) -> list[int]:
     """Reader ids following any of a post's tags with notifications on (new-post dispatch).
 
     Takes the post's whole tag set so the caller makes one query per post rather
@@ -3951,16 +4346,20 @@ def list_tag_follow_reader_ids(db: Session, tag_ids: list[int]) -> list[int]:
         return []
     return [
         reader_id
-        for (reader_id,) in db.query(models.TagFollow.reader_id)
-        .filter(
-            models.TagFollow.tag_id.in_(tag_ids),
-            models.TagFollow.notify.is_(True),
-        )
-        .all()
+        for (reader_id,) in (
+            await db.execute(
+                select(models.TagFollow.reader_id).where(
+                    models.TagFollow.tag_id.in_(tag_ids),
+                    models.TagFollow.notify.is_(True),
+                )
+            )
+        ).all()
     ]
 
 
-def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int = 0) -> tuple[list[models.Post], int]:
+async def follows_feed_posts(
+    db: AsyncSession, reader_id: int, limit: int = 12, offset: int = 0
+) -> tuple[list[models.Post], int]:
     """Recent public posts from the reader's followed categories + series + tags + authors.
 
     The discovery payoff of the follow model (DEC-142/TASK-183; tag dimension
@@ -3975,20 +4374,29 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
     """
     category_ids = [
         cid
-        for (cid,) in db.query(models.CategoryFollow.category_id)
-        .filter(models.CategoryFollow.reader_id == reader_id)
-        .all()
+        for (cid,) in (
+            await db.execute(
+                select(models.CategoryFollow.category_id).where(models.CategoryFollow.reader_id == reader_id)
+            )
+        ).all()
     ]
     series_ids = [
         sid
-        for (sid,) in db.query(models.SeriesFollow.series_id).filter(models.SeriesFollow.reader_id == reader_id).all()
+        for (sid,) in (
+            await db.execute(select(models.SeriesFollow.series_id).where(models.SeriesFollow.reader_id == reader_id))
+        ).all()
     ]
     author_ids = [
         aid
-        for (aid,) in db.query(models.AuthorFollow.author_id).filter(models.AuthorFollow.reader_id == reader_id).all()
+        for (aid,) in (
+            await db.execute(select(models.AuthorFollow.author_id).where(models.AuthorFollow.reader_id == reader_id))
+        ).all()
     ]
     tag_ids = [
-        tid for (tid,) in db.query(models.TagFollow.tag_id).filter(models.TagFollow.reader_id == reader_id).all()
+        tid
+        for (tid,) in (
+            await db.execute(select(models.TagFollow.tag_id).where(models.TagFollow.reader_id == reader_id))
+        ).all()
     ]
     if not category_ids and not series_ids and not tag_ids and not author_ids:
         return [], 0
@@ -4003,12 +4411,12 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
         scope.append(models.Post.author_id.in_(author_ids))
     if tag_ids:
         scope.append(
-            models.Post.id.in_(db.query(models.post_tags.c.post_id).filter(models.post_tags.c.tag_id.in_(tag_ids)))
+            models.Post.id.in_(select(models.post_tags.c.post_id).where(models.post_tags.c.tag_id.in_(tag_ids)))
         )
 
     query = (
-        db.query(models.Post)
-        .filter(
+        select(models.Post)
+        .where(
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
             or_(*scope),
@@ -4016,27 +4424,33 @@ def follows_feed_posts(db: Session, reader_id: int, limit: int = 12, offset: int
         .options(
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
+            joinedload(models.Post.series),
             joinedload(models.Post.author),
         )
     )
 
     # Count before pagination (the global feed pattern) so the reader can page
     # through every follow hit, not just the home-section cap.
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
 
     result = [
         post
-        for post in query.order_by(_effective_publish_col().desc(), models.Post.id.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
+        for post in list(
+            (
+                await db.execute(
+                    query.order_by(_effective_publish_col().desc(), models.Post.id.desc()).offset(offset).limit(limit)
+                )
+            )
+            .unique()
+            .scalars()
+        )
         if is_publicly_visible(post)
     ]
-    _populate_post_metrics(db, result)
+    await _populate_post_metrics(db, result)
     return result, total
 
 
-def get_follow_stats(db: Session, limit: int = 5) -> dict:
+async def get_follow_stats(db: AsyncSession, limit: int = 5) -> dict:
     """Operator-facing follow analytics (DEC-144, TASK-184).
 
     Counts are notify-independent (tracking, not push): they capture how many
@@ -4045,30 +4459,42 @@ def get_follow_stats(db: Session, limit: int = 5) -> dict:
     for stable ordering.
     """
     series_rows = (
-        db.query(models.SeriesFollow.series_id, func.count(models.SeriesFollow.id))
-        .group_by(models.SeriesFollow.series_id)
-        .order_by(func.count(models.SeriesFollow.id).desc(), models.SeriesFollow.series_id.desc())
-        .limit(limit)
-        .all()
-    )
+        await db.execute(
+            select(models.SeriesFollow.series_id, func.count(models.SeriesFollow.id))
+            .group_by(models.SeriesFollow.series_id)
+            .order_by(func.count(models.SeriesFollow.id).desc(), models.SeriesFollow.series_id.desc())
+            .limit(limit)
+        )
+    ).all()
     category_rows = (
-        db.query(models.CategoryFollow.category_id, func.count(models.CategoryFollow.id))
-        .group_by(models.CategoryFollow.category_id)
-        .order_by(func.count(models.CategoryFollow.id).desc(), models.CategoryFollow.category_id.desc())
-        .limit(limit)
-        .all()
-    )
-    total_series = db.query(func.count(models.SeriesFollow.id)).scalar() or 0
-    total_categories = db.query(func.count(models.CategoryFollow.id)).scalar() or 0
+        await db.execute(
+            select(models.CategoryFollow.category_id, func.count(models.CategoryFollow.id))
+            .group_by(models.CategoryFollow.category_id)
+            .order_by(func.count(models.CategoryFollow.id).desc(), models.CategoryFollow.category_id.desc())
+            .limit(limit)
+        )
+    ).all()
+    total_series = (await db.execute(select(func.count(models.SeriesFollow.id)))).scalar() or 0
+    total_categories = (await db.execute(select(func.count(models.CategoryFollow.id)))).scalar() or 0
 
     series_ids = [sid for sid, _ in series_rows]
     series_map = (
-        {s.id: s for s in db.query(models.Series).filter(models.Series.id.in_(series_ids)).all()} if series_ids else {}
+        {
+            s.id: s
+            for s in list((await db.execute(select(models.Series).where(models.Series.id.in_(series_ids)))).scalars())
+        }
+        if series_ids
+        else {}
     )
 
     category_ids = [cid for cid, _ in category_rows]
     category_map = (
-        {c.id: c for c in db.query(models.Category).filter(models.Category.id.in_(category_ids)).all()}
+        {
+            c.id: c
+            for c in list(
+                (await db.execute(select(models.Category).where(models.Category.id.in_(category_ids)))).scalars()
+            )
+        }
         if category_ids
         else {}
     )
@@ -4096,7 +4522,7 @@ def get_follow_stats(db: Session, limit: int = 5) -> dict:
     }
 
 
-def log_search_query(db: Session, query: str | None) -> None:
+async def log_search_query(db: AsyncSession, query: str | None) -> None:
     """Best-effort aggregate of a public search term (DEC-152/TASK-188).
 
     Normalizes to lowercased, trimmed (≤200 chars) and upserts a counter on the
@@ -4113,10 +4539,10 @@ def log_search_query(db: Session, query: str | None) -> None:
     q = (query or "").strip().lower()[:200]
     if not q:
         return
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)
     bumped = cast(
         CursorResult[Any],
-        db.execute(
+        await db.execute(
             update(models.SearchLog)
             .where(models.SearchLog.query == q)
             .values(count=models.SearchLog.count + 1, last_searched_at=now),
@@ -4125,33 +4551,34 @@ def log_search_query(db: Session, query: str | None) -> None:
     try:
         if bumped.rowcount == 0:
             db.add(models.SearchLog(query=q, count=1, last_searched_at=now))
-        db.commit()
+        await db.commit()
     except IntegrityError:
         # Two first-time searches for the same term raced: the other request
         # inserted the row between our UPDATE-miss and INSERT. Roll back and
         # re-apply the atomic increment so the count is never stuck at 0.
-        db.rollback()
-        db.execute(
+        await db.rollback()
+        await db.execute(
             update(models.SearchLog)
             .where(models.SearchLog.query == q)
             .values(count=models.SearchLog.count + 1, last_searched_at=now),
         )
-        db.commit()
+        await db.commit()
 
 
-def get_top_searches(db: Session, limit: int = 10) -> list[dict]:
+async def get_top_searches(db: AsyncSession, limit: int = 10) -> list[dict]:
     """Top public search terms by aggregate count, newest-searched tiebreak."""
     rows = (
-        db.query(models.SearchLog.query, models.SearchLog.count)
-        .order_by(models.SearchLog.count.desc(), models.SearchLog.last_searched_at.desc())
-        .limit(limit)
-        .all()
-    )
+        await db.execute(
+            select(models.SearchLog.query, models.SearchLog.count)
+            .order_by(models.SearchLog.count.desc(), models.SearchLog.last_searched_at.desc())
+            .limit(limit)
+        )
+    ).all()
     return [{"query": q, "count": c} for q, c in rows]
 
 
-def list_reader_bookmarks(
-    db: Session,
+async def list_reader_bookmarks(
+    db: AsyncSession,
     reader_id: int,
     folder_id: int | None = None,
     done: bool | None = None,
@@ -4176,26 +4603,26 @@ def list_reader_bookmarks(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name, models.ReaderBookmark.done)
+        select(models.Post, models.ReaderBookmark.folder_id, models.BookmarkFolder.name, models.ReaderBookmark.done)
         .join(models.ReaderBookmark, models.ReaderBookmark.post_id == models.Post.id)
         .outerjoin(models.BookmarkFolder, models.ReaderBookmark.folder_id == models.BookmarkFolder.id)
-        .filter(
+        .where(
             models.ReaderBookmark.reader_id == reader_id,
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
     if folder_id is not None:
-        query = query.filter(models.ReaderBookmark.folder_id == folder_id)
+        query = query.where(models.ReaderBookmark.folder_id == folder_id)
     if done is not None:
-        query = query.filter(models.ReaderBookmark.done.is_(done))
-    total = query.count()
+        query = query.where(models.ReaderBookmark.done.is_(done))
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
         models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
     )
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
-    rows = query.all()
+    rows = (await db.execute(query)).unique().all()
     # SQL already guarantees visibility; the predicate stays as a belt-and-braces
     # guard against any drift between the SQL filter and is_publicly_visible.
     return [(post, fid, fname, d) for post, fid, fname, d in rows if is_publicly_visible(post)], total
@@ -4205,56 +4632,73 @@ def list_reader_bookmarks(
 # ---------------------------------------------------------------------------
 
 
-def get_bookmark_folder(db: Session, reader_id: int, folder_id: int) -> models.BookmarkFolder | None:
+async def get_bookmark_folder(db: AsyncSession, reader_id: int, folder_id: int) -> models.BookmarkFolder | None:
     """Return one of the reader's folders (ownership-scoped), or None."""
     return (
-        db.query(models.BookmarkFolder)
-        .filter(
-            models.BookmarkFolder.id == folder_id,
-            models.BookmarkFolder.reader_id == reader_id,
+        (
+            await db.execute(
+                select(models.BookmarkFolder).where(
+                    models.BookmarkFolder.id == folder_id,
+                    models.BookmarkFolder.reader_id == reader_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def list_reader_bookmark_folders(db: Session, reader_id: int) -> list[tuple[models.BookmarkFolder, int]]:
+async def list_reader_bookmark_folders(db: AsyncSession, reader_id: int) -> list[tuple[models.BookmarkFolder, int]]:
     """Return (folder, bookmark_count) for the reader's folders, name asc."""
     rows = (
-        db.query(models.BookmarkFolder, func.count(models.ReaderBookmark.id))
-        .outerjoin(
-            models.ReaderBookmark,
-            and_(
-                models.ReaderBookmark.folder_id == models.BookmarkFolder.id,
-                models.ReaderBookmark.reader_id == reader_id,
-            ),
+        await db.execute(
+            select(models.BookmarkFolder, func.count(models.ReaderBookmark.id))
+            .outerjoin(
+                models.ReaderBookmark,
+                and_(
+                    models.ReaderBookmark.folder_id == models.BookmarkFolder.id,
+                    models.ReaderBookmark.reader_id == reader_id,
+                ),
+            )
+            .where(models.BookmarkFolder.reader_id == reader_id)
+            .group_by(models.BookmarkFolder.id)
+            .order_by(models.BookmarkFolder.name.asc())
         )
-        .filter(models.BookmarkFolder.reader_id == reader_id)
-        .group_by(models.BookmarkFolder.id)
-        .order_by(models.BookmarkFolder.name.asc())
-        .all()
-    )
+    ).all()
     return [(folder, count) for folder, count in rows]
 
 
-def create_bookmark_folder(db: Session, reader_id: int, name: str) -> tuple[models.BookmarkFolder, bool]:
+async def create_bookmark_folder(db: AsyncSession, reader_id: int, name: str) -> tuple[models.BookmarkFolder, bool]:
     """Create a folder; returns (folder, created). Idempotent: a folder with
     the same name already existing returns it with created=False."""
     name = name.strip()
     existing = (
-        db.query(models.BookmarkFolder)
-        .filter(models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name)
+        (
+            await db.execute(
+                select(models.BookmarkFolder).where(
+                    models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     if existing:
         return existing, False
     folder = models.BookmarkFolder(reader_id=reader_id, name=name)
     db.add(folder)
-    if _commit_reader_upsert(db):
-        db.refresh(folder)
+    if await _commit_reader_upsert(db):
+        await db.refresh(folder)
         return folder, True
     existing = (
-        db.query(models.BookmarkFolder)
-        .filter(models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name)
+        (
+            await db.execute(
+                select(models.BookmarkFolder).where(
+                    models.BookmarkFolder.reader_id == reader_id, models.BookmarkFolder.name == name
+                )
+            )
+        )
+        .scalars()
         .first()
     )
     if existing:
@@ -4262,139 +4706,163 @@ def create_bookmark_folder(db: Session, reader_id: int, name: str) -> tuple[mode
     raise RuntimeError("bookmark folder insert lost the unique-key race but no row was found")
 
 
-def rename_bookmark_folder(db: Session, reader_id: int, folder_id: int, name: str) -> models.BookmarkFolder | None:
+async def rename_bookmark_folder(
+    db: AsyncSession, reader_id: int, folder_id: int, name: str
+) -> models.BookmarkFolder | None:
     """Rename a folder; returns the folder, or None if not found or the new
     name collides with another of the reader's folders."""
-    folder = get_bookmark_folder(db, reader_id, folder_id)
+    folder = await get_bookmark_folder(db, reader_id, folder_id)
     if not folder:
         return None
     name = name.strip()
     if name != folder.name:
         dup = (
-            db.query(models.BookmarkFolder)
-            .filter(
-                models.BookmarkFolder.reader_id == reader_id,
-                models.BookmarkFolder.name == name,
-                models.BookmarkFolder.id != folder_id,
+            (
+                await db.execute(
+                    select(models.BookmarkFolder).where(
+                        models.BookmarkFolder.reader_id == reader_id,
+                        models.BookmarkFolder.name == name,
+                        models.BookmarkFolder.id != folder_id,
+                    )
+                )
             )
+            .scalars()
             .first()
         )
         if dup:
             return None
     folder.name = name
     db.add(folder)
-    db.commit()
-    db.refresh(folder)
+    await db.commit()
+    await db.refresh(folder)
     return folder
 
 
-def delete_bookmark_folder(db: Session, reader_id: int, folder_id: int) -> bool:
+async def delete_bookmark_folder(db: AsyncSession, reader_id: int, folder_id: int) -> bool:
     """Delete a folder; unassigns its bookmarks (sets folder_id=None).
     Returns True if a folder was removed, False if not found. Idempotent."""
-    folder = get_bookmark_folder(db, reader_id, folder_id)
+    folder = await get_bookmark_folder(db, reader_id, folder_id)
     if not folder:
         return False
-    db.query(models.ReaderBookmark).filter(
-        models.ReaderBookmark.folder_id == folder_id,
-        models.ReaderBookmark.reader_id == reader_id,
-    ).update({"folder_id": None})
-    db.delete(folder)
-    db.commit()
+    await db.execute(
+        update(models.ReaderBookmark)
+        .where(
+            models.ReaderBookmark.folder_id == folder_id,
+            models.ReaderBookmark.reader_id == reader_id,
+        )
+        .values({"folder_id": None})
+    )
+    await db.delete(folder)
+    await db.commit()
     return True
 
 
-def set_bookmark_folder(
-    db: Session, reader_id: int, post_id: int, folder_id: int | None
+async def set_bookmark_folder(
+    db: AsyncSession, reader_id: int, post_id: int, folder_id: int | None
 ) -> models.ReaderBookmark | None:
     """File a bookmark into a folder (or clear it with folder_id=None).
     Ownership-scoped: the folder must belong to the reader. Returns the
     updated bookmark, or None if the bookmark doesn't exist or the folder is
     not the reader's."""
-    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    bookmark = await get_reader_bookmark(db, reader_id, post_id)
     if not bookmark:
         return None
-    if folder_id is not None and not get_bookmark_folder(db, reader_id, folder_id):
+    if folder_id is not None and not await get_bookmark_folder(db, reader_id, folder_id):
         return None
     bookmark.folder_id = folder_id
     db.add(bookmark)
-    db.commit()
-    db.refresh(bookmark)
+    await db.commit()
+    await db.refresh(bookmark)
     return bookmark
 
 
-def set_reader_bookmark_done(db: Session, reader_id: int, post_id: int, done: bool) -> models.ReaderBookmark | None:
+async def set_reader_bookmark_done(
+    db: AsyncSession, reader_id: int, post_id: int, done: bool
+) -> models.ReaderBookmark | None:
     """Move a bookmark between To-read and Done (round 361, DEC-395).
 
     Ownership-scoped: only the reader's own bookmark. Returns the updated
     bookmark, or None if the post isn't bookmarked by this reader (404).
     Idempotent — setting Done when it already is Done is a no-op.
     """
-    bookmark = get_reader_bookmark(db, reader_id, post_id)
+    bookmark = await get_reader_bookmark(db, reader_id, post_id)
     if not bookmark:
         return None
     bookmark.done = done
     db.add(bookmark)
-    db.commit()
-    db.refresh(bookmark)
+    await db.commit()
+    await db.refresh(bookmark)
     return bookmark
 
 
-def get_comment_subscription(db: Session, reader_id: int, post_id: int) -> models.CommentSubscription | None:
+async def get_comment_subscription(db: AsyncSession, reader_id: int, post_id: int) -> models.CommentSubscription | None:
     """Return the reader's thread subscription for a post, or None."""
     return (
-        db.query(models.CommentSubscription)
-        .filter(
-            models.CommentSubscription.reader_id == reader_id,
-            models.CommentSubscription.post_id == post_id,
+        (
+            await db.execute(
+                select(models.CommentSubscription).where(
+                    models.CommentSubscription.reader_id == reader_id,
+                    models.CommentSubscription.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_comment_subscription(db: Session, reader_id: int, post_id: int) -> tuple[models.CommentSubscription, bool]:
+async def add_comment_subscription(
+    db: AsyncSession, reader_id: int, post_id: int
+) -> tuple[models.CommentSubscription, bool]:
     """Follow a post's comment thread; returns (subscription, created).
 
     Idempotent: re-subscribing an existing follow returns the existing row
     with created=False (mirrors add_reader_bookmark's merge-friendly contract).
     """
-    existing = get_comment_subscription(db, reader_id, post_id)
+    existing = await get_comment_subscription(db, reader_id, post_id)
     if existing:
         return existing, False
     subscription = models.CommentSubscription(reader_id=reader_id, post_id=post_id)
     db.add(subscription)
-    if _commit_reader_upsert(db):
-        db.refresh(subscription)
+    if await _commit_reader_upsert(db):
+        await db.refresh(subscription)
         return subscription, True
-    existing = get_comment_subscription(db, reader_id, post_id)
+    existing = await get_comment_subscription(db, reader_id, post_id)
     if existing:
         return existing, False
     raise RuntimeError("thread subscription insert lost the unique-key race but no row was found")
 
 
-def remove_comment_subscription(db: Session, reader_id: int, post_id: int) -> bool:
+async def remove_comment_subscription(db: AsyncSession, reader_id: int, post_id: int) -> bool:
     """Unfollow a post's comment thread; returns True if one was removed."""
-    subscription = get_comment_subscription(db, reader_id, post_id)
+    subscription = await get_comment_subscription(db, reader_id, post_id)
     if not subscription:
         return False
-    db.delete(subscription)
-    db.commit()
+    await db.delete(subscription)
+    await db.commit()
     return True
 
 
-def get_guest_comment_subscription(db: Session, email: str, post_id: int) -> models.GuestCommentSubscription | None:
+async def get_guest_comment_subscription(
+    db: AsyncSession, email: str, post_id: int
+) -> models.GuestCommentSubscription | None:
     """Return the guest thread-subscription row for an (email, post), or None."""
     return (
-        db.query(models.GuestCommentSubscription)
-        .filter(
-            models.GuestCommentSubscription.email == email,
-            models.GuestCommentSubscription.post_id == post_id,
+        (
+            await db.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == email,
+                    models.GuestCommentSubscription.post_id == post_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
 
 
-def add_guest_comment_subscription(
-    db: Session, email: str, post_id: int, digest_weekly: bool = False
+async def add_guest_comment_subscription(
+    db: AsyncSession, email: str, post_id: int, digest_weekly: bool = False
 ) -> tuple[models.GuestCommentSubscription, bool, bool]:
     """Record a guest's intent to follow a post's thread.
 
@@ -4413,7 +4881,7 @@ def add_guest_comment_subscription(
     """
     from secrets import token_urlsafe
 
-    existing = get_guest_comment_subscription(db, email, post_id)
+    existing = await get_guest_comment_subscription(db, email, post_id)
     if existing:
         if existing.unsubscribed_at is not None:
             existing.is_confirmed = False
@@ -4421,29 +4889,39 @@ def add_guest_comment_subscription(
             existing.unsubscribed_at = None
             existing.digest_weekly = digest_weekly
             existing.token = token_urlsafe(32)
-            db.commit()
-            db.refresh(existing)
+            await db.commit()
+            await db.refresh(existing)
             return existing, True, True
         return existing, False, False
     row = models.GuestCommentSubscription(
         email=email, post_id=post_id, token=token_urlsafe(32), digest_weekly=digest_weekly
     )
     db.add(row)
-    if _commit_reader_upsert(db):
-        db.refresh(row)
+    if await _commit_reader_upsert(db):
+        await db.refresh(row)
         return row, True, True
-    existing = get_guest_comment_subscription(db, email, post_id)
+    existing = await get_guest_comment_subscription(db, email, post_id)
     if existing:
         return existing, False, False
     raise RuntimeError("guest thread subscription insert lost the unique-key race but no row was found")
 
 
-def get_guest_comment_subscription_by_token(db: Session, token: str) -> models.GuestCommentSubscription | None:
+async def get_guest_comment_subscription_by_token(
+    db: AsyncSession, token: str
+) -> models.GuestCommentSubscription | None:
     """The guest thread-subscription row owning ``token``, or None (no oracle)."""
-    return db.query(models.GuestCommentSubscription).filter(models.GuestCommentSubscription.token == token).first()
+    return (
+        (
+            await db.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.token == token)
+            )
+        )
+        .scalars()
+        .first()
+    )
 
 
-def confirm_guest_comment_subscription(db: Session, token: str) -> bool:
+async def confirm_guest_comment_subscription(db: AsyncSession, token: str) -> bool:
     """Flip a guest thread-subscription to confirmed via its token. Idempotent.
 
     Consent restart gate (TASK-485/ISS-561, mirroring the newsletter round 393):
@@ -4453,21 +4931,21 @@ def confirm_guest_comment_subscription(db: Session, token: str) -> bool:
     ValueError so the router answers 400 like the newsletter; an unknown token
     stays the no-oracle False (404).
     """
-    row = get_guest_comment_subscription_by_token(db, token)
+    row = await get_guest_comment_subscription_by_token(db, token)
     if row is None:
         return False
     if not row.is_confirmed:
         if row.unsubscribed_at is not None:
             raise ValueError("This address was unsubscribed. Please subscribe again to reactivate")
         row.is_confirmed = True
-        row.confirmed_at = datetime.now(UTC)
-        db.commit()
+        row.confirmed_at = datetime.now(UTC).replace(tzinfo=None)
+        await db.commit()
     return True
 
 
-def unsubscribe_guest_comment_subscription(db: Session, token: str) -> bool:
+async def unsubscribe_guest_comment_subscription(db: AsyncSession, token: str) -> bool:
     """Flip a guest thread-subscription's consent off via its token. Idempotent."""
-    row = get_guest_comment_subscription_by_token(db, token)
+    row = await get_guest_comment_subscription_by_token(db, token)
     if row is None:
         return False
     if row.is_confirmed:
@@ -4475,56 +4953,62 @@ def unsubscribe_guest_comment_subscription(db: Session, token: str) -> bool:
         row.confirmed_at = None
         # Consent-restart marker (TASK-485/ISS-561): the holder cancelled it, so
         # a replayed confirm link must never flip this back on.
-        row.unsubscribed_at = datetime.now(UTC)
-        db.commit()
+        row.unsubscribed_at = datetime.now(UTC).replace(tzinfo=None)
+        await db.commit()
     return True
 
 
-def list_confirmed_guest_comment_subscribers(db: Session, post_id: int) -> list[models.GuestCommentSubscription]:
+async def list_confirmed_guest_comment_subscribers(
+    db: AsyncSession, post_id: int
+) -> list[models.GuestCommentSubscription]:
     """Confirmed guest followers of a post's thread (for the approval fan-out).
 
     Only per-comment rows are returned: a follower on the weekly digest cadence
     (``digest_weekly``, DEC-429) is excluded here because the weekly job covers
     them, so exactly one channel serves a subscriber (DEC-355 parity).
     """
-    return (
-        db.query(models.GuestCommentSubscription)
-        .filter(
-            models.GuestCommentSubscription.post_id == post_id,
-            models.GuestCommentSubscription.is_confirmed.is_(True),
-            models.GuestCommentSubscription.digest_weekly.is_(False),
-        )
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.post_id == post_id,
+                    models.GuestCommentSubscription.is_confirmed.is_(True),
+                    models.GuestCommentSubscription.digest_weekly.is_(False),
+                )
+            )
+        ).scalars()
     )
 
 
-def set_guest_thread_digest(db: Session, token: str, digest_weekly: bool) -> bool:
+async def set_guest_thread_digest(db: AsyncSession, token: str, digest_weekly: bool) -> bool:
     """Flip a guest thread-subscription's cadence (weekly vs per-comment) via its
     token (round 381, DEC-429). Idempotent; False on an unknown token (no oracle)."""
-    row = get_guest_comment_subscription_by_token(db, token)
+    row = await get_guest_comment_subscription_by_token(db, token)
     if row is None:
         return False
     if row.digest_weekly != digest_weekly:
         row.digest_weekly = digest_weekly
-        db.commit()
+        await db.commit()
     return True
 
 
-def list_confirmed_guest_thread_digest_subs(db: Session) -> list[models.GuestCommentSubscription]:
+async def list_confirmed_guest_thread_digest_subs(db: AsyncSession) -> list[models.GuestCommentSubscription]:
     """Every confirmed guest thread-follower on the weekly cadence, for the
     weekly comment-digest job (round 381, DEC-429)."""
-    return (
-        db.query(models.GuestCommentSubscription)
-        .filter(
-            models.GuestCommentSubscription.is_confirmed.is_(True),
-            models.GuestCommentSubscription.digest_weekly.is_(True),
-        )
-        .all()
+    return list(
+        (
+            await db.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.is_confirmed.is_(True),
+                    models.GuestCommentSubscription.digest_weekly.is_(True),
+                )
+            )
+        ).scalars()
     )
 
 
-def list_reader_comment_subscriptions(
-    db: Session, reader_id: int, page: int = 1, limit: int = 100
+async def list_reader_comment_subscriptions(
+    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 100
 ) -> tuple[list[models.Post], int]:
     """The posts whose threads a reader follows, *publicly visible* only, paginated.
 
@@ -4537,29 +5021,34 @@ def list_reader_comment_subscriptions(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Post)
+        select(models.Post)
         .join(models.CommentSubscription, models.CommentSubscription.post_id == models.Post.id)
-        .filter(
+        .where(
             models.CommentSubscription.reader_id == reader_id,
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
-    total = query.count()
-    rows = (
-        query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
-        .order_by(
-            models.CommentSubscription.created_at.desc(),
-            models.CommentSubscription.id.desc(),  # id tiebreak (round 278)
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+    rows = list(
+        (
+            await db.execute(
+                query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                .order_by(
+                    models.CommentSubscription.created_at.desc(),
+                    models.CommentSubscription.id.desc(),  # id tiebreak (round 278)
+                )
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
         )
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+        .unique()
+        .scalars()
     )
     return [p for p in rows if is_publicly_visible(p)], total
 
 
-def comment_subscription_reader_ids(db: Session, post_id: int) -> list[int]:
+async def comment_subscription_reader_ids(db: AsyncSession, post_id: int) -> list[int]:
     """Distinct reader_ids following a post's comment thread (fan-out target).
 
     Deduplicates in SQL in case future rows ever violate the ORM guard; the
@@ -4567,15 +5056,18 @@ def comment_subscription_reader_ids(db: Session, post_id: int) -> list[int]:
     """
     return [
         row[0]
-        for row in db.query(models.CommentSubscription.reader_id)
-        .filter(models.CommentSubscription.post_id == post_id)
-        .distinct()
-        .all()
+        for row in (
+            await db.execute(
+                select(models.CommentSubscription.reader_id)
+                .where(models.CommentSubscription.post_id == post_id)
+                .distinct()
+            )
+        ).all()
     ]
 
 
-def get_reader_comments(
-    db: Session,
+async def get_reader_comments(
+    db: AsyncSession,
     reader_id: int,
     status: str = "all",
     page: int = 1,
@@ -4596,50 +5088,53 @@ def get_reader_comments(
     Returns:
         Tuple of (page of comments, total count matching the filter).
     """
-    query = db.query(models.Comment).filter(models.Comment.reader_id == reader_id)
+    query = select(models.Comment).where(models.Comment.reader_id == reader_id)
     if status == "approved":
-        query = query.filter(models.Comment.is_approved == True)  # noqa: E712
+        query = query.where(models.Comment.is_approved == True)  # noqa: E712
     elif status == "rejected":
-        query = query.filter(
+        query = query.where(
             models.Comment.is_approved == False,  # noqa: E712
             models.Comment.reviewed_at.isnot(None),
         )
     elif status == "pending":
-        query = query.filter(
+        query = query.where(
             models.Comment.is_approved == False,  # noqa: E712
             models.Comment.reviewed_at.is_(None),
         )
     # "all" -> no filter
     if q and q.strip():
         term = f"%{escape_like_pattern(q.strip())}%"
-        query = query.filter(models.Comment.content.ilike(term, escape="\\"))
+        query = query.where(models.Comment.content.ilike(term, escape="\\"))
 
-    total = query.count()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     # joinedload(reader) — matching get_comments_paginated's ISS-139 fix: the
     # serialized CommentPublic.reader reads c.reader.id/display_name, so without
     # this each attributed comment costs one lazy query (N+1 on the reader's own
     # comment history list).
-    items = (
-        query.options(joinedload(models.Comment.reader))
-        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())  # id tiebreak (round 278)
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+    items = list(
+        (
+            await db.execute(
+                query.options(joinedload(models.Comment.reader))
+                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())  # id tiebreak (round 278)
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        ).scalars()
     )
     return items, total
 
 
-def get_reader_public_profile(db: Session, reader_id: int) -> models.ReaderAccount | None:
+async def get_reader_public_profile(db: AsyncSession, reader_id: int) -> models.ReaderAccount | None:
     """A reader's public identity for the profile page (DEC-294/TASK-376).
 
     Only the fields a public page may show — no email (PII), no last_login.
     Returns None for an unknown reader so the caller can 404.
     """
-    return db.get(auth.ReaderAccount, reader_id)
+    return await db.get(auth.ReaderAccount, reader_id)
 
 
-def list_reader_public_comments(
-    db: Session, reader_id: int, page: int = 1, limit: int = 20
+async def list_reader_public_comments(
+    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 20
 ) -> tuple[list[models.Comment], int]:
     """Approved comments a reader has left on *publicly-visible* posts.
 
@@ -4653,28 +5148,31 @@ def list_reader_public_comments(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Comment)
+        select(models.Comment)
         .join(models.Post, models.Comment.post_id == models.Post.id)
-        .filter(
+        .where(
             models.Comment.reader_id == reader_id,
             models.Comment.is_approved == True,  # noqa: E712
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
-    total = query.count()
-    items = (
-        query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
-        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        ).scalars()
     )
     return items, total
 
 
-def list_public_comment_feed(
-    db: Session,
+async def list_public_comment_feed(
+    db: AsyncSession,
     page: int = 1,
     limit: int = 20,
 ) -> tuple[list[models.Comment], int]:
@@ -4690,27 +5188,30 @@ def list_public_comment_feed(
     """
     now = utc_now_naive()
     query = (
-        db.query(models.Comment)
+        select(models.Comment)
         .join(models.Post, models.Comment.post_id == models.Post.id)
-        .filter(
+        .where(
             models.Comment.is_approved.is_(True),
             models.Post.published.is_(True),
             or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
         )
     )
-    total = query.count()
-    items = (
-        query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
-        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                query.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        ).scalars()
     )
     return items, total
 
 
-def search_comments(
-    db: Session,
+async def search_comments(
+    db: AsyncSession,
     query: str,
     page: int = 1,
     limit: int = 20,
@@ -4744,14 +5245,17 @@ def search_comments(
         # every comment / treat _ as a single-char wildcard.
         *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in terms],
     )
-    stmt = db.query(models.Comment).join(models.Post, models.Comment.post_id == models.Post.id).filter(*query_where)
-    total = stmt.count()
-    items = (
-        stmt.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
-        .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
+    stmt = select(models.Comment).join(models.Post, models.Comment.post_id == models.Post.id).where(*query_where)
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                stmt.options(joinedload(models.Comment.reader), joinedload(models.Comment.post))
+                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        ).scalars()
     )
     return items, total
 
@@ -4761,7 +5265,7 @@ def search_comments(
 # ---------------------------------------------------------------------------
 
 
-def delete_reader_account(db: Session, reader_id: int) -> bool:
+async def delete_reader_account(db: AsyncSession, reader_id: int) -> bool:
     """Permanently delete a reader account and detach their contributed data.
 
     Self-service account deletion (DEC-106, TASK-165): the comment *discussion*
@@ -4770,31 +5274,22 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
     while the reader's cloud-synced bookmarks, comment-thread subscriptions and
     push subscriptions are removed. Returns False if the account does not exist.
     """
-    reader = db.get(auth.ReaderAccount, reader_id)
+    reader = await db.get(auth.ReaderAccount, reader_id)
     if reader is None:
         return False
 
     # Anonymize the reader's comments instead of deleting them, so a public
     # thread isn't destroyed by an account leaving (identity detached; the row
     # keeps its nickname/content, so it renders without the verified badge).
-    db.query(models.Comment).filter(models.Comment.reader_id == reader_id).update(
-        {models.Comment.reader_id: None},
-        synchronize_session=False,
+    await db.execute(
+        update(models.Comment).where(models.Comment.reader_id == reader_id).values({models.Comment.reader_id: None})
     )
     # Cloud-synced bookmarks and per-account subscriptions are account-private:
     # remove them outright.
-    db.query(models.ReaderBookmark).filter(models.ReaderBookmark.reader_id == reader_id).delete(
-        synchronize_session=False
-    )
-    db.query(models.CommentSubscription).filter(models.CommentSubscription.reader_id == reader_id).delete(
-        synchronize_session=False
-    )
-    db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == reader_id).delete(
-        synchronize_session=False
-    )
-    db.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == reader_id).delete(
-        synchronize_session=False
-    )
+    await db.execute(delete(models.ReaderBookmark).where(models.ReaderBookmark.reader_id == reader_id))
+    await db.execute(delete(models.CommentSubscription).where(models.CommentSubscription.reader_id == reader_id))
+    await db.execute(delete(models.PushSubscription).where(models.PushSubscription.reader_id == reader_id))
+    await db.execute(delete(models.ReaderNotification).where(models.ReaderNotification.reader_id == reader_id))
     # Account-private rows the old deletion missed (backend deep-dive): category/
     # tag/series follows, bookmark folders, reading history, notification prefs,
     # post likes, author follows, and both directions of reader-to-reader
@@ -4815,19 +5310,19 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
         models.ReaderPostLike,
         models.AuthorFollow,
     ):
-        db.query(model).filter(model.reader_id == reader_id).delete(synchronize_session=False)
+        await db.execute(delete(model).where(model.reader_id == reader_id))
     for model, col in (
         (models.ReaderFollow, models.ReaderFollow.reader_id),
         (models.ReaderFollow, models.ReaderFollow.followed_id),
         (models.ReaderBlock, models.ReaderBlock.blocker_id),
         (models.ReaderBlock, models.ReaderBlock.blocked_id),
     ):
-        db.query(model).filter(col == reader_id).delete(synchronize_session=False)
-    db.delete(reader)
+        await db.execute(delete(model).where(col == reader_id))
+    await db.delete(reader)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise ValueError("Cannot delete account: it has dependent records")
     return True
 
@@ -4840,7 +5335,7 @@ def delete_reader_account(db: Session, reader_id: int) -> bool:
 MAX_NOTIFICATIONS_PER_READER = 200
 
 
-def _prune_notifications_for_readers(db: Session, reader_ids: set[int]) -> None:
+async def _prune_notifications_for_readers(db: AsyncSession, reader_ids: set[int]) -> None:
     """Keep only the newest ``MAX_NOTIFICATIONS_PER_READER`` rows per reader.
 
     One set-based DELETE over a window function (ROW_NUMBER partitioned by
@@ -4866,13 +5361,11 @@ def _prune_notifications_for_readers(db: Session, reader_ids: set[int]) -> None:
         ).where(models.ReaderNotification.reader_id.in_(reader_ids))
     ).subquery()
     over_cap = select(ranked.c.id).where(ranked.c.rn > MAX_NOTIFICATIONS_PER_READER)
-    db.query(models.ReaderNotification).filter(models.ReaderNotification.id.in_(over_cap)).delete(
-        synchronize_session=False
-    )
+    await db.execute(delete(models.ReaderNotification).where(models.ReaderNotification.id.in_(over_cap)))
 
 
-def record_reader_notification(
-    db: Session,
+async def record_reader_notification(
+    db: AsyncSession,
     reader_id: int,
     kind: str,
     title: str,
@@ -4895,24 +5388,29 @@ def record_reader_notification(
     )
     try:
         db.add(row)
-        db.flush()
+        await db.flush()
         # Prune to the retention cap (keep newest by id).
         recent_ids = [
             rid
-            for (rid,) in db.query(models.ReaderNotification.id)
-            .filter(models.ReaderNotification.reader_id == reader_id)
-            .order_by(models.ReaderNotification.id.desc())
-            .limit(MAX_NOTIFICATIONS_PER_READER)
-            .all()
+            for (rid,) in (
+                await db.execute(
+                    select(models.ReaderNotification.id)
+                    .where(models.ReaderNotification.reader_id == reader_id)
+                    .order_by(models.ReaderNotification.id.desc())
+                    .limit(MAX_NOTIFICATIONS_PER_READER)
+                )
+            ).all()
         ]
         if recent_ids:
-            db.query(models.ReaderNotification).filter(
-                models.ReaderNotification.reader_id == reader_id,
-                models.ReaderNotification.id.notin_(recent_ids),
-            ).delete(synchronize_session=False)
-        db.commit()
+            await db.execute(
+                delete(models.ReaderNotification).where(
+                    models.ReaderNotification.reader_id == reader_id,
+                    models.ReaderNotification.id.notin_(recent_ids),
+                )
+            )
+        await db.commit()
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
-        db.rollback()
+        await db.rollback()
     return row
 
 
@@ -4983,7 +5481,7 @@ def notification_copy(
     return "Notification", post_title
 
 
-def reader_locale_map(db: Session, reader_ids: Collection[int]) -> dict[int, str | None]:
+async def reader_locale_map(db: AsyncSession, reader_ids: Collection[int]) -> dict[int, str | None]:
     """``ReaderAccount.id`` → stored copy locale for the given readers
     (DEC-338, TASK-395), NULL left as the zh site default for callers.
 
@@ -4995,27 +5493,29 @@ def reader_locale_map(db: Session, reader_ids: Collection[int]) -> dict[int, str
     if not reader_ids:
         return {}
     rows = (
-        db.query(auth.ReaderAccount.id, auth.ReaderAccount.locale).filter(auth.ReaderAccount.id.in_(reader_ids)).all()
-    )
+        await db.execute(
+            select(auth.ReaderAccount.id, auth.ReaderAccount.locale).where(auth.ReaderAccount.id.in_(reader_ids))
+        )
+    ).all()
     return {int(row[0]): row[1] for row in rows}
 
 
-def set_reader_locale(db: Session, reader_id: int, locale: str) -> str:
+async def set_reader_locale(db: AsyncSession, reader_id: int, locale: str) -> str:
     """Persist a reader's notification-copy language (DEC-338, TASK-395).
 
     Stores the frontend locale code ("en" / "zh"); the fan-out's
     ``notification_copy`` reads it back at dispatch time. Returns the stored
     value. ``locale`` is validated by the router (Literal["en", "zh"]).
     """
-    acct = db.get(auth.ReaderAccount, reader_id)
+    acct = await db.get(auth.ReaderAccount, reader_id)
     if acct is None:
         raise ValueError("Reader not found")
     acct.locale = locale
-    db.commit()
+    await db.commit()
     return locale
 
 
-def maybe_notify_due_scheduled_posts(db: Session) -> int:
+async def maybe_notify_due_scheduled_posts(db: AsyncSession) -> int:
     """Fire the new-post fan-out for scheduled posts whose ``publish_at`` has
     now passed but that were never announced (DEC-336, TASK-394).
 
@@ -5040,44 +5540,51 @@ def maybe_notify_due_scheduled_posts(db: Session) -> int:
     now = utc_now_naive()
     due_ids = [
         pid
-        for (pid,) in db.query(models.Post.id)
-        .filter(
-            models.Post.published.is_(True),
-            models.Post.publish_at.isnot(None),
-            models.Post.publish_at <= now,
-            models.Post.new_post_notified_at.is_(None),
-        )
-        .all()
+        for (pid,) in (
+            await db.execute(
+                select(models.Post.id).where(
+                    models.Post.published.is_(True),
+                    models.Post.publish_at.isnot(None),
+                    models.Post.publish_at <= now,
+                    models.Post.new_post_notified_at.is_(None),
+                )
+            )
+        ).all()
     ]
     if not due_ids:
         return 0
     claimed: list[int] = []
     for pid in due_ids:
-        won = (
-            db.query(models.Post)
-            .filter(
-                models.Post.id == pid,
-                models.Post.new_post_notified_at.is_(None),
-            )
-            .update({"new_post_notified_at": now}, synchronize_session=False)
-        )
+        won = cast(
+            CursorResult[Any],
+            await db.execute(
+                update(models.Post)
+                .where(
+                    models.Post.id == pid,
+                    models.Post.new_post_notified_at.is_(None),
+                )
+                .values({"new_post_notified_at": now})
+            ),
+        ).rowcount
         if won:
             claimed.append(pid)
     if claimed:
-        db.commit()
+        await db.commit()
     # Dispatch after the stamp commit so a best-effort send failure can never
     # be retried as a duplicate (the stamp already proves the claim happened).
     for pid in claimed:
-        post = db.get(models.Post, pid)
+        # Eager-load relationships (tags/series/category) for the fan-out —
+        # async: post-commit lazy access raises MissingGreenlet.
+        post = await _reload_post_eager(db, pid)
         if post is None:
             continue
-        record_new_post_notifications(db, post)
-        dispatch_new_post(db, post, logger)
-        dispatch_newsletter_new_post(db, post, logger)
+        await record_new_post_notifications(db, post)
+        await dispatch_new_post(db, post, logger)
+        await dispatch_newsletter_new_post(db, post, logger)
     return len(claimed)
 
 
-def record_new_post_notifications(db: Session, post: models.Post) -> None:
+async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> None:
     """Persist a new-post inbox notification for every reader who follows the
     post's series or category (DEC-160, TASK-192).
 
@@ -5108,35 +5615,39 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         if post.series_id is not None:
             series_reader_ids.update(
                 rid
-                for (rid,) in db.query(models.SeriesFollow.reader_id)
-                .filter(
-                    models.SeriesFollow.series_id == post.series_id,
-                    models.SeriesFollow.notify.is_(True),
-                )
-                .all()
+                for (rid,) in (
+                    await db.execute(
+                        select(models.SeriesFollow.reader_id).where(
+                            models.SeriesFollow.series_id == post.series_id,
+                            models.SeriesFollow.notify.is_(True),
+                        )
+                    )
+                ).all()
             )
         # Readers who follow this post's category with notifications on.
         if post.category_id is not None:
             category_reader_ids.update(
                 rid
-                for (rid,) in db.query(models.CategoryFollow.reader_id)
-                .filter(
-                    models.CategoryFollow.category_id == post.category_id,
-                    models.CategoryFollow.notify.is_(True),
-                )
-                .all()
+                for (rid,) in (
+                    await db.execute(
+                        select(models.CategoryFollow.reader_id).where(
+                            models.CategoryFollow.category_id == post.category_id,
+                            models.CategoryFollow.notify.is_(True),
+                        )
+                    )
+                ).all()
             )
         # Readers who follow any of this post's tags with notifications on
         # (DEC-195/TASK-215). One query for the whole tag set.
         tag_ids = [t.id for t in (post.tags or [])]
         if tag_ids:
-            tag_reader_ids.update(list_tag_follow_reader_ids(db, tag_ids))
+            tag_reader_ids.update(await list_tag_follow_reader_ids(db, tag_ids))
         # Readers who follow this post's AUTHOR with notifications on (round
         # 353): a writer follow is the person-shaped umbrella over topic-shaped
         # category/series follows — a reader follows the person, so the person's
         # new posts (topic regardless) reach them under the same new_post kind.
         if post.author_id is not None:
-            author_reader_ids.update(list_author_follow_reader_ids(db, post.author_id))
+            author_reader_ids.update(await list_author_follow_reader_ids(db, post.author_id))
         target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids | author_reader_ids
         # A deactivated reader is a moderation action: they keep their follow
         # rows, but must not still receive the durable inbox row (DEC-194,
@@ -5145,12 +5656,14 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         if target_reader_ids:
             active_ids = {
                 rid
-                for (rid,) in db.query(auth.ReaderAccount.id)
-                .filter(
-                    auth.ReaderAccount.id.in_(target_reader_ids),
-                    auth.ReaderAccount.is_active.is_(True),
-                )
-                .all()
+                for (rid,) in (
+                    await db.execute(
+                        select(auth.ReaderAccount.id).where(
+                            auth.ReaderAccount.id.in_(target_reader_ids),
+                            auth.ReaderAccount.is_active.is_(True),
+                        )
+                    )
+                ).all()
             }
             target_reader_ids &= active_ids
         # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
@@ -5158,7 +5671,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # webpush.dispatch_new_post (which also reaches want_new_posts push
         # subscriptions with no follow), so an opted-out reader gets neither an
         # inbox row here nor a new_post push.
-        prefs = reader_notification_prefs_for(db, target_reader_ids)
+        prefs = await reader_notification_prefs_for(db, target_reader_ids)
         # Batch the fan-out (ISS-113, supersedes DEC-176): build every row up
         # front, add all with one flush + one commit, then prune the whole
         # inbox retention cap for all touched readers with a single set-based
@@ -5169,7 +5682,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
         # Reader language for the copy (DEC-338, TASK-395): one batch query for
         # every target's stored locale (NULL reads as the zh site default). Locale
         # lives on the account, separate from the prefs row, so load it once here.
-        locale_of = reader_locale_map(db, target_reader_ids)
+        locale_of = await reader_locale_map(db, target_reader_ids)
         rows: list[models.ReaderNotification] = []
         email_items: list[EmailItem] = []
         for reader_id in target_reader_ids:
@@ -5203,14 +5716,14 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
                 )
         if rows:
             db.add_all(rows)
-            db.flush()  # assign ids so the prune's id ordering is exact
-            _prune_notifications_for_readers(db, {r.reader_id for r in rows})
-            db.commit()  # inserts + prune land atomically
+            await db.flush()  # assign ids so the prune's id ordering is exact
+            await _prune_notifications_for_readers(db, {r.reader_id for r in rows})
+            await db.commit()  # inserts + prune land atomically
         # Send after the inbox commit so a mail failure can't affect the durable
         # rows; dispatch_notification_emails never raises (best effort).
-        dispatch_notification_emails(db, email_items, logger)
+        await dispatch_notification_emails(db, email_items, logger)
     except Exception:  # noqa: BLE001 — best effort, never fail the publish
-        db.rollback()
+        await db.rollback()
 
 
 # @-mention resolution (DEC-322, TASK-389).
@@ -5221,7 +5734,7 @@ def record_new_post_notifications(db: Session, post: models.Post) -> None:
 MENTION_SCAN_LIMIT = 2000
 
 
-def resolve_mention_reader_ids(db: Session, content: str) -> list[int]:
+async def resolve_mention_reader_ids(db: AsyncSession, content: str) -> list[int]:
     """Reader ids whose display name is @-mentioned verbatim in ``content``.
 
     A mention is ``@<display_name>`` with word boundaries on both sides — so
@@ -5233,11 +5746,12 @@ def resolve_mention_reader_ids(db: Session, content: str) -> list[int]:
     if not content or "@" not in content:
         return []
     rows = (
-        db.query(auth.ReaderAccount.id, auth.ReaderAccount.display_name)
-        .filter(auth.ReaderAccount.display_name.is_not(None))
-        .limit(MENTION_SCAN_LIMIT + 1)
-        .all()
-    )
+        await db.execute(
+            select(auth.ReaderAccount.id, auth.ReaderAccount.display_name)
+            .where(auth.ReaderAccount.display_name.is_not(None))
+            .limit(MENTION_SCAN_LIMIT + 1)
+        )
+    ).all()
     if len(rows) > MENTION_SCAN_LIMIT:
         return []  # beyond resolution scale — never silently partial-match
     hits: list[int] = []
@@ -5250,8 +5764,8 @@ def resolve_mention_reader_ids(db: Session, content: str) -> list[int]:
 MENTION_SUGGEST_LIMIT = 8
 
 
-def suggest_mention_readers(
-    db: Session,
+async def suggest_mention_readers(
+    db: AsyncSession,
     query: str,
     *,
     limit: int = MENTION_SUGGEST_LIMIT,
@@ -5268,29 +5782,29 @@ def suggest_mention_readers(
     has something to show.
     """
     esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    stmt = db.query(
+    stmt = select(
         auth.ReaderAccount.id,
         auth.ReaderAccount.display_name,
         auth.ReaderAccount.avatar_url,
-    ).filter(
+    ).where(
         auth.ReaderAccount.is_active.is_(True),
         auth.ReaderAccount.display_name.is_not(None),
     )
     if esc:
         prefix = auth.ReaderAccount.display_name.ilike(f"{esc}%", escape="\\")
         contains = auth.ReaderAccount.display_name.ilike(f"%{esc}%", escape="\\")
-        stmt = stmt.filter(contains).order_by(
+        stmt = stmt.where(contains).order_by(
             case((prefix, 0), else_=1),
             auth.ReaderAccount.display_name.asc(),
         )
     else:
         stmt = stmt.order_by(auth.ReaderAccount.display_name.asc())
-    rows = stmt.limit(limit + 1).all()
+    rows = (await db.execute(stmt.limit(limit + 1))).all()
     return [{"id": rid, "display_name": name or "", "avatar_url": avatar} for (rid, name, avatar) in rows[:limit]]
 
 
-def _notification_rows(
-    db: Session,
+async def _notification_rows(
+    db: AsyncSession,
     reader_ids: list[int],
     *,
     kind: str,
@@ -5306,7 +5820,7 @@ def _notification_rows(
     batch — one flush, one prune, one commit. ``commenter`` supplies the
     mention body's acting reader label.
     """
-    locale_of = reader_locale_map(db, reader_ids)
+    locale_of = await reader_locale_map(db, reader_ids)
     return [
         models.ReaderNotification(
             reader_id=rid,
@@ -5320,8 +5834,8 @@ def _notification_rows(
     ]
 
 
-def record_reader_follow_notifications(
-    db: Session,
+async def record_reader_follow_notifications(
+    db: AsyncSession,
     reader_ids: list[int],
     *,
     commenter: str,
@@ -5337,7 +5851,7 @@ def record_reader_follow_notifications(
     notification persistence.
     """
     try:
-        rows = _notification_rows(
+        rows = await _notification_rows(
             db,
             reader_ids,
             kind="reader_comment",
@@ -5348,15 +5862,15 @@ def record_reader_follow_notifications(
         if not rows:
             return
         db.add_all(rows)
-        db.flush()
-        _prune_notifications_for_readers(db, set(reader_ids))
-        db.commit()
+        await db.flush()
+        await _prune_notifications_for_readers(db, set(reader_ids))
+        await db.commit()
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
-        db.rollback()
+        await db.rollback()
 
 
-def record_mention_notifications(
-    db: Session,
+async def record_mention_notifications(
+    db: AsyncSession,
     reader_ids: list[int],
     *,
     post_title: str,
@@ -5371,7 +5885,7 @@ def record_mention_notifications(
     Copy is localized per reader (DEC-340/TASK-396).
     """
     try:
-        rows = _notification_rows(
+        rows = await _notification_rows(
             db,
             reader_ids,
             kind="mention",
@@ -5382,15 +5896,15 @@ def record_mention_notifications(
         if not rows:
             return
         db.add_all(rows)
-        db.flush()  # assign ids so the prune's id ordering is exact
-        _prune_notifications_for_readers(db, set(reader_ids))
-        db.commit()  # inserts + prune land atomically
+        await db.flush()  # assign ids so the prune's id ordering is exact
+        await _prune_notifications_for_readers(db, set(reader_ids))
+        await db.commit()  # inserts + prune land atomically
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
-        db.rollback()
+        await db.rollback()
 
 
-def record_thread_comment_notifications(
-    db: Session,
+async def record_thread_comment_notifications(
+    db: AsyncSession,
     reader_ids: list[int],
     *,
     post_title: str,
@@ -5410,7 +5924,7 @@ def record_thread_comment_notifications(
     cannot break the approving write.
     """
     try:
-        rows = _notification_rows(
+        rows = await _notification_rows(
             db,
             reader_ids,
             kind="thread_comment",
@@ -5420,11 +5934,11 @@ def record_thread_comment_notifications(
         if not rows:
             return
         db.add_all(rows)
-        db.flush()  # assign ids so the prune's id ordering is exact
-        _prune_notifications_for_readers(db, set(reader_ids))
-        db.commit()  # inserts + prune land atomically
+        await db.flush()  # assign ids so the prune's id ordering is exact
+        await _prune_notifications_for_readers(db, set(reader_ids))
+        await db.commit()  # inserts + prune land atomically
     except Exception:  # noqa: BLE001 — best effort, never fail the caller
-        db.rollback()
+        await db.rollback()
 
 
 # Notification-kind opt-outs (DEC-171, TASK-202). The preferences surface
@@ -5447,33 +5961,33 @@ EMAIL_KINDS: tuple[str, ...] = (
 PREF_KINDS: tuple[str, ...] = NOTIFICATION_KINDS + EMAIL_KINDS
 
 
-def get_reader_notification_prefs(db: Session, reader_id: int) -> models.ReaderNotificationPref:
+async def get_reader_notification_prefs(db: AsyncSession, reader_id: int) -> models.ReaderNotificationPref:
     """The reader's per-kind notification prefs, materializing an all-on row
     the first time it is read (GET). Dispatch gating must NOT call this — it
     writes; use ``reader_notification_prefs_for`` for fan-out paths.
     (DEC-171, TASK-202)
     """
-    row = db.get(models.ReaderNotificationPref, reader_id)
+    row = await db.get(models.ReaderNotificationPref, reader_id)
     if row is None:
         row = models.ReaderNotificationPref(reader_id=reader_id)
         db.add(row)
         try:
-            db.commit()
+            await db.commit()
         except IntegrityError:
             # Two concurrent first-reads raced to materialize the row (reader_id
             # is that table's PK): we lost the insert. The winner's row is now
             # committed — read it back instead of 500ing (backend deep-dive).
-            db.rollback()
-            row = db.get(models.ReaderNotificationPref, reader_id)
+            await db.rollback()
+            row = await db.get(models.ReaderNotificationPref, reader_id)
             if row is not None:
                 return row
             raise
-        db.refresh(row)
+        await db.refresh(row)
     return row
 
 
-def reader_notification_prefs_for(
-    db: Session, reader_ids: Iterable[int]
+async def reader_notification_prefs_for(
+    db: AsyncSession, reader_ids: Iterable[int]
 ) -> dict[int, models.ReaderNotificationPref | None]:
     """Batch pref lookup for dispatch gating — read-only, never writes.
 
@@ -5485,7 +5999,13 @@ def reader_notification_prefs_for(
     ids = list(reader_ids)
     if not ids:
         return {}
-    rows = db.query(models.ReaderNotificationPref).filter(models.ReaderNotificationPref.reader_id.in_(ids)).all()
+    rows = list(
+        (
+            await db.execute(
+                select(models.ReaderNotificationPref).where(models.ReaderNotificationPref.reader_id.in_(ids))
+            )
+        ).scalars()
+    )
     return {r.reader_id: r for r in rows}
 
 
@@ -5499,8 +6019,8 @@ def notification_kind_enabled(pref: models.ReaderNotificationPref | None, kind: 
     return bool(getattr(pref, kind, True))
 
 
-def set_reader_notification_kind(
-    db: Session, reader_id: int, kind: str, enabled: bool
+async def set_reader_notification_kind(
+    db: AsyncSession, reader_id: int, kind: str, enabled: bool
 ) -> models.ReaderNotificationPref | None:
     """Toggle one notification kind for a reader; returns the updated row.
 
@@ -5510,32 +6030,32 @@ def set_reader_notification_kind(
     """
     if kind not in PREF_KINDS:
         return None
-    row = db.get(models.ReaderNotificationPref, reader_id)
+    row = await db.get(models.ReaderNotificationPref, reader_id)
     if row is None:
         row = models.ReaderNotificationPref(reader_id=reader_id)
         db.add(row)
     setattr(row, kind, enabled)
     row.updated_at = utc_now_naive()
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
         # Same first-materialization race as get_reader_notification_prefs: a
         # concurrent request inserted the row between our get and commit. Its
         # row is now committed — re-read it (all-defaults + the other writer's
         # toggles), apply this toggle, and commit on top instead of 500ing.
-        db.rollback()
-        row = db.get(models.ReaderNotificationPref, reader_id)
+        await db.rollback()
+        row = await db.get(models.ReaderNotificationPref, reader_id)
         if row is None:
             raise
         setattr(row, kind, enabled)
         row.updated_at = utc_now_naive()
-        db.commit()
-        db.refresh(row)
+        await db.commit()
+        await db.refresh(row)
     return row
 
 
-def list_reader_notifications(
-    db: Session, reader_id: int, page: int = 1, limit: int = 20, unread_only: bool = False
+async def list_reader_notifications(
+    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 20, unread_only: bool = False
 ) -> tuple[list[models.ReaderNotification], int]:
     """The reader's notification inbox rows, newest first, paginated.
 
@@ -5544,59 +6064,76 @@ def list_reader_notifications(
     public-visibility check — a notification points at a post that may later be
     unpublished, but the inbox records the *event*, not current visibility.
     """
-    query = db.query(models.ReaderNotification).filter(models.ReaderNotification.reader_id == reader_id)
+    query = select(models.ReaderNotification).where(models.ReaderNotification.reader_id == reader_id)
     if unread_only:
-        query = query.filter(models.ReaderNotification.read_at.is_(None))
-    total = query.count()
-    items = query.order_by(models.ReaderNotification.id.desc()).offset((page - 1) * limit).limit(limit).all()
+        query = query.where(models.ReaderNotification.read_at.is_(None))
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
+    items = list(
+        (
+            await db.execute(
+                query.order_by(models.ReaderNotification.id.desc()).offset((page - 1) * limit).limit(limit)
+            )
+        ).scalars()
+    )
     return items, total
 
 
-def unread_notification_count(db: Session, reader_id: int) -> int:
+async def unread_notification_count(db: AsyncSession, reader_id: int) -> int:
     """How many of the reader's notifications are unread (for a badge)."""
     return (
-        db.query(models.ReaderNotification)
-        .filter(
-            models.ReaderNotification.reader_id == reader_id,
-            models.ReaderNotification.read_at.is_(None),
+        await db.execute(
+            select(func.count()).select_from(
+                select(models.ReaderNotification)
+                .where(
+                    models.ReaderNotification.reader_id == reader_id,
+                    models.ReaderNotification.read_at.is_(None),
+                )
+                .subquery()
+            )
         )
-        .count()
-    )
+    ).scalar() or 0
 
 
-def mark_reader_notification_read(db: Session, reader_id: int, notification_id: int) -> bool:
+async def mark_reader_notification_read(db: AsyncSession, reader_id: int, notification_id: int) -> bool:
     """Mark one of the reader's notifications read. Returns False if not theirs."""
     row = (
-        db.query(models.ReaderNotification)
-        .filter(
-            models.ReaderNotification.id == notification_id,
-            models.ReaderNotification.reader_id == reader_id,
+        (
+            await db.execute(
+                select(models.ReaderNotification).where(
+                    models.ReaderNotification.id == notification_id,
+                    models.ReaderNotification.reader_id == reader_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
     if row is None:
         return False
     if row.read_at is None:
         row.read_at = utc_now_naive()
-        db.commit()
+        await db.commit()
     return True
 
 
-def mark_all_reader_notifications_read(db: Session, reader_id: int) -> int:
+async def mark_all_reader_notifications_read(db: AsyncSession, reader_id: int) -> int:
     """Mark every unread notification of a reader read; returns count updated."""
-    updated = (
-        db.query(models.ReaderNotification)
-        .filter(
-            models.ReaderNotification.reader_id == reader_id,
-            models.ReaderNotification.read_at.is_(None),
-        )
-        .update({models.ReaderNotification.read_at: utc_now_naive()}, synchronize_session=False)
-    )
-    db.commit()
+    updated = cast(
+        CursorResult[Any],
+        await db.execute(
+            update(models.ReaderNotification)
+            .where(
+                models.ReaderNotification.reader_id == reader_id,
+                models.ReaderNotification.read_at.is_(None),
+            )
+            .values({models.ReaderNotification.read_at: utc_now_naive()})
+        ),
+    ).rowcount
+    await db.commit()
     return updated
 
 
-def delete_reader_notification(db: Session, reader_id: int, notification_id: int) -> bool:
+async def delete_reader_notification(db: AsyncSession, reader_id: int, notification_id: int) -> bool:
     """Delete one of the reader's inbox rows. Returns False if not theirs.
 
     The inbox is durable (DEC-160) but had no pruning path — mark-read/read-all
@@ -5606,46 +6143,50 @@ def delete_reader_notification(db: Session, reader_id: int, notification_id: int
     cross-reader delete. (DEC-312, TASK-384)
     """
     row = (
-        db.query(models.ReaderNotification)
-        .filter(
-            models.ReaderNotification.id == notification_id,
-            models.ReaderNotification.reader_id == reader_id,
+        (
+            await db.execute(
+                select(models.ReaderNotification).where(
+                    models.ReaderNotification.id == notification_id,
+                    models.ReaderNotification.reader_id == reader_id,
+                )
+            )
         )
+        .scalars()
         .first()
     )
     if row is None:
         return False
-    db.delete(row)
-    db.commit()
+    await db.delete(row)
+    await db.commit()
     return True
 
 
-def get_site_setting(db: Session, key: str) -> str | None:
+async def get_site_setting(db: AsyncSession, key: str) -> str | None:
     """Read a persisted site setting by key, or None if it has never been set."""
-    row = db.get(models.SiteSetting, key)
+    row = await db.get(models.SiteSetting, key)
     return row.value if row is not None else None
 
 
-def upsert_site_setting(db: Session, key: str, value: str) -> models.SiteSetting:
+async def upsert_site_setting(db: AsyncSession, key: str, value: str) -> models.SiteSetting:
     """Persist (insert or overwrite) a site setting, returning the row."""
-    row = db.get(models.SiteSetting, key)
+    row = await db.get(models.SiteSetting, key)
     if row is None:
         row = models.SiteSetting(key=key, value=value)
         db.add(row)
     else:
         row.value = value
-    db.commit()
-    db.refresh(row)
+    await db.commit()
+    await db.refresh(row)
     return row
 
 
-def boolean_setting(db: Session, key: str, env_fallback: bool) -> bool:
+async def boolean_setting(db: AsyncSession, key: str, env_fallback: bool) -> bool:
     """Resolve a boolean site setting: persisted value wins, else env fallback.
 
     ``env_fallback`` is the operator's env default (e.g. the
     AUTO_APPROVE_READER_COMMENTS flag); a persisted row overrides it so the admin
     can flip policy at runtime (DEC-100, TASK-162)."""
-    raw = get_site_setting(db, key)
+    raw = await get_site_setting(db, key)
     if raw is None:
         return env_fallback
     return raw.strip().lower() in {"1", "true", "yes", "on"}
@@ -5677,7 +6218,7 @@ def _from_iso(value: str | None) -> datetime | None:
     return parsed
 
 
-def build_backup_snapshot(db: Session) -> dict:
+async def build_backup_snapshot(db: AsyncSession) -> dict:
     """Serialize the whole blog into a portable JSON snapshot (DEC-082).
 
     Content only: categories, tags, series, posts (with their category/tags/
@@ -5688,26 +6229,34 @@ def build_backup_snapshot(db: Session) -> dict:
     comments are exported with a ``reader`` marker; on restore they degrade to
     anonymous because reader accounts don't round-trip.
     """
-    categories = [{"name": c.name} for c in db.query(models.Category).order_by(models.Category.name).all()]
-    tags = [{"name": t.name} for t in db.query(models.Tag).order_by(models.Tag.name).all()]
+    categories = [
+        {"name": c.name}
+        for c in list((await db.execute(select(models.Category).order_by(models.Category.name))).scalars())
+    ]
+    tags = [{"name": t.name} for t in list((await db.execute(select(models.Tag).order_by(models.Tag.name))).scalars())]
     series = [
         {"title": s.title, "slug": s.slug, "description": s.description}
-        for s in db.query(models.Series).order_by(models.Series.slug).all()
+        for s in list((await db.execute(select(models.Series).order_by(models.Series.slug))).scalars())
     ]
     posts_out: list[dict] = []
-    for post in (
-        db.query(models.Post)
-        # category/series are read per row below (name/slug); eager-load them
-        # with the joinedloads so a full-blog snapshot stays a handful of
-        # queries, not 2 per post (RIL ISS-289).
-        .options(
-            joinedload(models.Post.category),
-            joinedload(models.Post.series),
-            joinedload(models.Post.tags),
-            joinedload(models.Post.comments),
+    for post in list(
+        (
+            await db.execute(
+                select(models.Post)
+                # category/series are read per row below (name/slug); eager-load them
+                # with the joinedloads so a full-blog snapshot stays a handful of
+                # queries, not 2 per post (RIL ISS-289).
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.series),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.comments),
+                )
+                .order_by(models.Post.slug)
+            )
         )
-        .order_by(models.Post.slug)
-        .all()
+        .unique()
+        .scalars()
     ):
         comments = sorted(post.comments, key=lambda c: (c.created_at or datetime.min, c.id))
         ordinal_by_id = {c.id: i for i, c in enumerate(comments)}
@@ -5761,7 +6310,7 @@ def build_backup_snapshot(db: Session) -> dict:
     }
 
 
-def restore_backup(db: Session, payload: dict) -> dict:
+async def restore_backup(db: AsyncSession, payload: dict) -> dict:
     """Import an ``x-blog-backup`` snapshot via natural-key upserts (DEC-082).
 
     Categories/tags by name, series by slug, posts by slug (existing post:
@@ -5796,7 +6345,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
     try:
         # Categories, tags, series — upsert by natural key, then flush so ids
         # exist for the post FK/relationship assignments below.
-        cat_by_name = {c.name: c for c in db.query(models.Category).all()}
+        cat_by_name = {c.name: c for c in list((await db.execute(select(models.Category))).scalars())}
         for item in payload.get("categories", []):
             name = (item.get("name") or "").strip()
             if not name or name in cat_by_name:
@@ -5805,7 +6354,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
             db.add(cat_by_name[name])
             counts["categories"] += 1
 
-        tag_by_name = {t.name: t for t in db.query(models.Tag).all()}
+        tag_by_name = {t.name: t for t in list((await db.execute(select(models.Tag))).scalars())}
         for item in payload.get("tags", []):
             name = (item.get("name") or "").strip()
             if not name or name in tag_by_name:
@@ -5814,7 +6363,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
             db.add(tag_by_name[name])
             counts["tags"] += 1
 
-        series_by_slug = {s.slug: s for s in db.query(models.Series).all()}
+        series_by_slug = {s.slug: s for s in list((await db.execute(select(models.Series))).scalars())}
         for item in payload.get("series", []):
             slug = (item.get("slug") or "").strip()
             if not slug:
@@ -5828,10 +6377,15 @@ def restore_backup(db: Session, payload: dict) -> dict:
             series.title = item.get("title") or series.title
             series.description = item.get("description")
 
-        db.flush()
+        await db.flush()
 
         # Posts — upsert by slug; tags rebuilt; comments merged by import_key.
-        post_by_slug = {p.slug: p for p in db.query(models.Post).all()}
+        post_by_slug = {
+            p.slug: p
+            for p in list(
+                (await db.execute(select(models.Post).options(joinedload(models.Post.tags)))).unique().scalars()
+            )
+        }
         for item in payload.get("posts", []):
             slug = (item.get("slug") or "").strip()
             if not slug:
@@ -5862,7 +6416,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
             post.series = series_by_slug.get(item.get("series")) if item.get("series") else None
             post.series_order = int(item.get("series_order") or 0)
             post.tags = [tag_by_name[t] for t in (item.get("tags") or []) if t in tag_by_name]
-            db.flush()  # post.id (and ids it links) must exist for the comment pass
+            await db.flush()  # post.id (and ids it links) must exist for the comment pass
 
             new_by_ordinal: dict[int, models.Comment] = {}
             metas = item.get("comments") or []
@@ -5870,8 +6424,14 @@ def restore_backup(db: Session, payload: dict) -> dict:
                 key = cmeta.get("import_key")
                 if key is not None:
                     existing = (
-                        db.query(models.Comment)
-                        .filter(models.Comment.import_key == key, models.Comment.post_id == post.id)
+                        (
+                            await db.execute(
+                                select(models.Comment).where(
+                                    models.Comment.import_key == key, models.Comment.post_id == post.id
+                                )
+                            )
+                        )
+                        .scalars()
                         .first()
                     )
                     if existing is not None:
@@ -5894,7 +6454,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
                 db.add(comment)
                 new_by_ordinal[ordinal] = comment
                 counts["comments_created"] += 1
-            db.flush()  # comment ids for parent re-wiring
+            await db.flush()  # comment ids for parent re-wiring
             for ordinal, cmeta in enumerate(metas):
                 parent_ordinal = cmeta.get("parent_ordinal")
                 if parent_ordinal is not None and parent_ordinal in new_by_ordinal:
@@ -5910,14 +6470,12 @@ def restore_backup(db: Session, payload: dict) -> dict:
         # matches both the fresh-instance case (no rows) and the documented
         # "tracks forward only, no backfill" trend (DEC-086).
         if restored_post_ids:
-            db.query(models.PostViewsDaily).filter(models.PostViewsDaily.post_id.in_(restored_post_ids)).delete(
-                synchronize_session=False
-            )
+            await db.execute(delete(models.PostViewsDaily).where(models.PostViewsDaily.post_id.in_(restored_post_ids)))
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
 
-    db.commit()
+    await db.commit()
     # Restored content is live immediately, so every public cache the restore
     # could have changed must be invalidated: posts lists + feeds + series
     # (clear_posts_list_cache) and the category/tag enumeration (30-min TTL,
@@ -5930,7 +6488,7 @@ def restore_backup(db: Session, payload: dict) -> dict:
     return counts
 
 
-def get_daily_views_stats(db: Session, days: int = 30) -> dict:
+async def get_daily_views_stats(db: AsyncSession, days: int = 30) -> dict:
     """Reading-trend series + in-period top posts for the admin dashboard (DEC-086).
 
     ``series`` is every calendar day in [today-days+1, today] with its total
@@ -5943,11 +6501,12 @@ def get_daily_views_stats(db: Session, days: int = 30) -> dict:
     first = today - timedelta(days=days - 1)
 
     rows = (
-        db.query(models.PostViewsDaily.day, func.sum(models.PostViewsDaily.views))
-        .filter(models.PostViewsDaily.day >= first)
-        .group_by(models.PostViewsDaily.day)
-        .all()
-    )
+        await db.execute(
+            select(models.PostViewsDaily.day, func.sum(models.PostViewsDaily.views))
+            .where(models.PostViewsDaily.day >= first)
+            .group_by(models.PostViewsDaily.day)
+        )
+    ).all()
     by_day = {day: int(total) for day, total in rows}
     day = first
     series = []
@@ -5956,19 +6515,20 @@ def get_daily_views_stats(db: Session, days: int = 30) -> dict:
         day += timedelta(days=1)
 
     top = (
-        db.query(
-            models.Post.id,
-            models.Post.title,
-            models.Post.slug,
-            func.coalesce(func.sum(models.PostViewsDaily.views), 0).label("views"),
+        await db.execute(
+            select(
+                models.Post.id,
+                models.Post.title,
+                models.Post.slug,
+                func.coalesce(func.sum(models.PostViewsDaily.views), 0).label("views"),
+            )
+            .join(models.PostViewsDaily, models.PostViewsDaily.post_id == models.Post.id)
+            .where(models.PostViewsDaily.day >= first)
+            .group_by(models.Post.id, models.Post.title, models.Post.slug)
+            .order_by(func.sum(models.PostViewsDaily.views).desc())
+            .limit(5)
         )
-        .join(models.PostViewsDaily, models.PostViewsDaily.post_id == models.Post.id)
-        .filter(models.PostViewsDaily.day >= first)
-        .group_by(models.Post.id, models.Post.title, models.Post.slug)
-        .order_by(func.sum(models.PostViewsDaily.views).desc())
-        .limit(5)
-        .all()
-    )
+    ).all()
 
     return {
         "days": days,
@@ -5978,7 +6538,7 @@ def get_daily_views_stats(db: Session, days: int = 30) -> dict:
     }
 
 
-def get_post_views_trend(db: Session, post_id: int, days: int = 30) -> dict:
+async def get_post_views_trend(db: AsyncSession, post_id: int, days: int = 30) -> dict:
     """Per-post daily reading series for the admin post editor (DEC-287/TASK-372).
 
     Same zero-filled calendar axis as :func:`get_daily_views_stats`, but scoped
@@ -5991,13 +6551,13 @@ def get_post_views_trend(db: Session, post_id: int, days: int = 30) -> dict:
     first = today - timedelta(days=days - 1)
 
     rows = (
-        db.query(models.PostViewsDaily.day, models.PostViewsDaily.views)
-        .filter(
-            models.PostViewsDaily.post_id == post_id,
-            models.PostViewsDaily.day >= first,
+        await db.execute(
+            select(models.PostViewsDaily.day, models.PostViewsDaily.views).where(
+                models.PostViewsDaily.post_id == post_id,
+                models.PostViewsDaily.day >= first,
+            )
         )
-        .all()
-    )
+    ).all()
     by_day = {day: int(views) for day, views in rows}
     day = first
     series = []
@@ -6013,7 +6573,7 @@ def get_post_views_trend(db: Session, post_id: int, days: int = 30) -> dict:
     }
 
 
-def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
+async def get_comment_activity_stats(db: AsyncSession, days: int = 30) -> dict:
     """Comment-activity series + in-period top posts for the admin dashboard (DEC-154/TASK-189).
 
     The engagement axis (distinct from views/searches/follows): per-day counts of
@@ -6022,19 +6582,25 @@ def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
     """
     today = utc_now_naive().date()
     first = today - timedelta(days=days - 1)
-    first_iso = first.isoformat()
-    today_iso = today.isoformat()
+    # Naive-UTC datetime bounds for the filtered range. Comparing against the
+    # real timestamp (not `date(created_at) >= 'YYYY-MM-DD'` string comparison)
+    # is portable: PG has no `date >= text` operator (SQLite silently coerces).
+    first_dt = datetime(first.year, first.month, first.day)
+    end_dt = datetime(
+        (today + timedelta(days=1)).year, (today + timedelta(days=1)).month, (today + timedelta(days=1)).day
+    )
 
     rows = (
-        db.query(func.date(models.Comment.created_at).label("day"), func.count(models.Comment.id))
-        .filter(
-            models.Comment.is_approved.is_(True),
-            func.date(models.Comment.created_at) >= first_iso,
-            func.date(models.Comment.created_at) <= today_iso,
+        await db.execute(
+            select(func.date(models.Comment.created_at).label("day"), func.count(models.Comment.id))
+            .where(
+                models.Comment.is_approved.is_(True),
+                models.Comment.created_at >= first_dt,
+                models.Comment.created_at < end_dt,
+            )
+            .group_by(func.date(models.Comment.created_at))
         )
-        .group_by(func.date(models.Comment.created_at))
-        .all()
-    )
+    ).all()
     by_day = {str(day): int(count) for day, count in rows}
     day = first
     series = []
@@ -6043,18 +6609,19 @@ def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
         day += timedelta(days=1)
 
     top = (
-        db.query(models.Post.id, models.Post.title, models.Post.slug, func.count(models.Comment.id))
-        .join(models.Comment, models.Comment.post_id == models.Post.id)
-        .filter(
-            models.Comment.is_approved.is_(True),
-            func.date(models.Comment.created_at) >= first_iso,
-            func.date(models.Comment.created_at) <= today_iso,
+        await db.execute(
+            select(models.Post.id, models.Post.title, models.Post.slug, func.count(models.Comment.id))
+            .join(models.Comment, models.Comment.post_id == models.Post.id)
+            .where(
+                models.Comment.is_approved.is_(True),
+                models.Comment.created_at >= first_dt,
+                models.Comment.created_at < end_dt,
+            )
+            .group_by(models.Post.id, models.Post.title, models.Post.slug)
+            .order_by(func.count(models.Comment.id).desc())
+            .limit(5)
         )
-        .group_by(models.Post.id, models.Post.title, models.Post.slug)
-        .order_by(func.count(models.Comment.id).desc())
-        .limit(5)
-        .all()
-    )
+    ).all()
 
     # Authoritative pending-queue count for the dashboard (DEC-154/TASK-189,
     # round 276): this admin-scoped endpoint is where the moderation backlog
@@ -6062,12 +6629,15 @@ def get_comment_activity_stats(db: Session, days: int = 30) -> dict:
     # /api/stats previously exposed the same count to anonymous visitors (a
     # moderation-state oracle) so the public field was dropped (ISS-396/404).
     pending_count = (
-        db.query(func.count(models.Comment.id))
-        .filter(
-            models.Comment.is_approved == False,  # noqa: E712
-            models.Comment.reviewed_at.is_(None),
-        )
-        .scalar()
+        (
+            await db.execute(
+                select(func.count(models.Comment.id)).where(
+                    models.Comment.is_approved == False,  # noqa: E712
+                    models.Comment.reviewed_at.is_(None),
+                )
+            )
+        ).scalar()
+        or 0
         or 0
     )
 

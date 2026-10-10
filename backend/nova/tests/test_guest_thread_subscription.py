@@ -22,15 +22,17 @@ Key properties:
 
 from uuid import uuid4
 
+from sqlalchemy import select
+
 from app.schemas import PostCreate
 
 BASE = "/api/posts/{post_id}/comment-subscription/guest"
 
 
-def _create_post(db_session, slug=None):
+async def _create_post(db_session, slug=None):
     from app.crud import create_post
 
-    return create_post(
+    return await create_post(
         db_session,
         PostCreate(
             title=f"Thread {uuid4().hex[:4]}",
@@ -41,33 +43,33 @@ def _create_post(db_session, slug=None):
     )
 
 
-def _subscribe(client, post_id, email):
-    return client.post(BASE.format(post_id=post_id), json={"email": email})
+async def _subscribe(client, post_id, email):
+    return await client.post(BASE.format(post_id=post_id), json={"email": email})
 
 
-def _confirm(client, token):
-    return client.post("/api/posts/comment-subscription/guest/confirm", json={"token": token})
+async def _confirm(client, token):
+    return await client.post("/api/posts/comment-subscription/guest/confirm", json={"token": token})
 
 
-def _unsubscribe(client, token):
-    return client.post("/api/posts/comment-subscription/guest/unsubscribe", json={"token": token})
+async def _unsubscribe(client, token):
+    return await client.post("/api/posts/comment-subscription/guest/unsubscribe", json={"token": token})
 
 
-def _digest(client, token, digest_weekly):
-    return client.post(
+async def _digest(client, token, digest_weekly):
+    return await client.post(
         "/api/posts/comment-subscription/guest/digest",
         json={"token": token, "digest_weekly": digest_weekly},
     )
 
 
-def _comment(client, post_id, content, token=None, nickname="Guest", email=None):
+async def _comment(client, post_id, content, token=None, nickname="Guest", email=None):
     body = {"content": content, "nickname": nickname, "email": email or "guest@example.com"}
     client_headers = {"Authorization": f"Bearer {token}"} if token else {}
-    return client.post(f"/api/comments/post/{post_id}", json=body, headers=client_headers)
+    return await client.post(f"/api/comments/post/{post_id}", json=body, headers=client_headers)
 
 
-def _approve(client, auth_headers, comment_id):
-    resp = client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
+async def _approve(client, auth_headers, comment_id):
+    resp = await client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
     assert resp.status_code == 200, resp.text
 
 
@@ -124,152 +126,162 @@ def _fanout_to(sink: type[FakeSMTP], address: str) -> list:
 
 
 class TestSubscribeContract:
-    def test_missing_or_invalid_email_is_422(self, client, db_session):
-        post = _create_post(db_session)
+    async def test_missing_or_invalid_email_is_422(self, client, db_session):
+        post = await _create_post(db_session)
         for payload in ({}, {"email": ""}, {"email": "nope"}):
-            r = client.post(BASE.format(post_id=post.id), json=payload)
+            r = await client.post(BASE.format(post_id=post.id), json=payload)
             assert r.status_code == 422, payload
 
-    def test_auth_free_and_generic(self, client, db_session):
-        post = _create_post(db_session)
-        r = _subscribe(client, post.id, "guest@example.com")
+    async def test_auth_free_and_generic(self, client, db_session):
+        post = await _create_post(db_session)
+        r = await _subscribe(client, post.id, "guest@example.com")
         assert r.status_code == 202
         assert r.json()["subscribed"] is True
 
-    def test_confirmation_email_sent_on_new_row_only(self, client, db_session, monkeypatch):
-        post = _create_post(db_session)
+    async def test_confirmation_email_sent_on_new_row_only(self, client, db_session, monkeypatch):
+        post = await _create_post(db_session)
         sink = _sink(monkeypatch)
-        assert _subscribe(client, post.id, "dup@example.com").status_code == 202
-        assert _subscribe(client, post.id, "dup@example.com").status_code == 202
+        assert (await _subscribe(client, post.id, "dup@example.com")).status_code == 202
+        assert (await _subscribe(client, post.id, "dup@example.com")).status_code == 202
         # Exactly ONE confirmation email for the address, whatever the outcome.
         assert len(_to(sink, "dup@example.com")) == 1
         body = _plain(_to(sink, "dup@example.com")[0])
         assert "/comment-subscribe/confirm" in body
 
-    def test_email_normalized_lowercase(self, client, db_session):
+    async def test_email_normalized_lowercase(self, client, db_session):
         from app import models
 
-        post = _create_post(db_session)
-        _subscribe(client, post.id, "   MiXeD@Example.COM ")
+        post = await _create_post(db_session)
+        await _subscribe(client, post.id, "   MiXeD@Example.COM ")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "mixed@example.com")
-            .one()
-        )
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "mixed@example.com"
+                )
+            )
+        ).scalar_one()
         assert row.post_id == post.id
         assert row.is_confirmed is False
 
-    def test_unknown_post_is_uniform_404(self, client):
-        assert _subscribe(client, 999999, "nobody@example.com").status_code == 404
+    async def test_unknown_post_is_uniform_404(self, client):
+        assert (await _subscribe(client, 999999, "nobody@example.com")).status_code == 404
 
-    def test_subscribe_accepts_digest_weekly_cadence(self, client, db_session):
+    async def test_subscribe_accepts_digest_weekly_cadence(self, client, db_session):
         """The subscribe body may pick the weekly cadence up front (DEC-429)."""
         from app import models
 
-        post = _create_post(db_session)
-        r = client.post(
+        post = await _create_post(db_session)
+        r = await client.post(
             BASE.format(post_id=post.id),
             json={"email": "weekly@example.com", "digest_weekly": True},
         )
         assert r.status_code == 202
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "weekly@example.com")
-            .one()
-        )
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "weekly@example.com"
+                )
+            )
+        ).scalar_one()
         assert row.digest_weekly is True
         # Default stays per-comment.
-        r2 = client.post(BASE.format(post_id=post.id), json={"email": "instant@example.com"})
+        r2 = await client.post(BASE.format(post_id=post.id), json={"email": "instant@example.com"})
         assert r2.status_code == 202
         row2 = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "instant@example.com")
-            .one()
-        )
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "instant@example.com"
+                )
+            )
+        ).scalar_one()
         assert row2.digest_weekly is False
 
 
 class TestConfirmAndUnsubscribe:
-    def test_confirm_flips_confirmed_and_is_idempotent(self, client, db_session, monkeypatch):
+    async def test_confirm_flips_confirmed_and_is_idempotent(self, client, db_session, monkeypatch):
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "cf@example.com")
+        await _subscribe(client, post.id, "cf@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "cf@example.com")
-            .one()
-        )
-        assert _confirm(client, row.token).status_code == 200
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == "cf@example.com")
+            )
+        ).scalar_one()
+        assert (await _confirm(client, row.token)).status_code == 200
+        await db_session.refresh(row)
         assert row.is_confirmed is True
         # Second click is a 200, still confirmed.
-        assert _confirm(client, row.token).status_code == 200
+        assert (await _confirm(client, row.token)).status_code == 200
 
-    def test_unsubscribe_flips_off_and_is_idempotent(self, client, db_session, monkeypatch):
+    async def test_unsubscribe_flips_off_and_is_idempotent(self, client, db_session, monkeypatch):
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "un@example.com")
+        await _subscribe(client, post.id, "un@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "un@example.com")
-            .one()
-        )
-        _confirm(client, row.token)
-        assert _unsubscribe(client, row.token).status_code == 200
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == "un@example.com")
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
+        assert (await _unsubscribe(client, row.token)).status_code == 200
+        await db_session.refresh(row)
         assert row.is_confirmed is False
-        assert _unsubscribe(client, row.token).status_code == 200
+        assert (await _unsubscribe(client, row.token)).status_code == 200
 
-    def test_unknown_token_is_404(self, client):
-        assert _confirm(client, "bogus").status_code == 404
-        assert _unsubscribe(client, "bogus").status_code == 404
-        assert _digest(client, "bogus", True).status_code == 404
+    async def test_unknown_token_is_404(self, client):
+        assert (await _confirm(client, "bogus")).status_code == 404
+        assert (await _unsubscribe(client, "bogus")).status_code == 404
+        assert (await _digest(client, "bogus", True)).status_code == 404
 
-    def test_unsubscribe_stamps_unsubscribed_at(self, client, db_session, monkeypatch):
+    async def test_unsubscribe_stamps_unsubscribed_at(self, client, db_session, monkeypatch):
         """Unsubscribing marks the row's consent as cancelled (TASK-485)."""
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "stamp@example.com")
+        await _subscribe(client, post.id, "stamp@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "stamp@example.com")
-            .one()
-        )
-        _confirm(client, row.token)
-        _unsubscribe(client, row.token)
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "stamp@example.com"
+                )
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
+        await _unsubscribe(client, row.token)
+        await db_session.refresh(row)
         assert row.is_confirmed is False
         assert row.unsubscribed_at is not None
 
-    def test_replaying_old_confirm_link_after_unsubscribe_is_400(self, client, db_session, monkeypatch):
+    async def test_replaying_old_confirm_link_after_unsubscribe_is_400(self, client, db_session, monkeypatch):
         """The round-393 consent-restart gate must cover the guest thread too
         (TASK-485/ISS-561): replaying the ORIGINAL confirmation link after an
         unsubscribe silently re-subscribed before — now it is a 400."""
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "replay@example.com")
+        await _subscribe(client, post.id, "replay@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "replay@example.com")
-            .one()
-        )
-        _confirm(client, row.token)
-        _unsubscribe(client, row.token)
-        resp = _confirm(client, row.token)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "replay@example.com"
+                )
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
+        await _unsubscribe(client, row.token)
+        resp = await _confirm(client, row.token)
         assert resp.status_code == 400
         assert "unsubscribed" in resp.json()["error"]["message"]
-        db_session.refresh(row)
+        await db_session.refresh(row)
         assert row.is_confirmed is False  # not silently re-subscribed
 
-    def test_resubscribing_unsubscribed_address_restarts_opt_in(self, client, db_session, monkeypatch):
+    async def test_resubscribing_unsubscribed_address_restarts_opt_in(self, client, db_session, monkeypatch):
         """Re-subscribing a cancelled address rotates the token and sends a
         FRESH double-opt-in email (TASK-485) — no more dead-end that claimed
         success while no mail would ever arrive."""
@@ -277,22 +289,22 @@ class TestConfirmAndUnsubscribe:
 
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         sink = _sink(monkeypatch)
         email = f"again-{uuid4().hex[:6]}@example.com"
-        _subscribe(client, post.id, email)
+        await _subscribe(client, post.id, email)
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == email)
-            .one()
-        )
-        _confirm(client, row.token)
-        _unsubscribe(client, row.token)
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == email)
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
+        await _unsubscribe(client, row.token)
+        await db_session.refresh(row)
         old_token = row.token
 
-        assert _subscribe(client, post.id, email).status_code == 202
-        db_session.refresh(row)
+        assert (await _subscribe(client, post.id, email)).status_code == 202
+        await db_session.refresh(row)
         # Token rotated, consent reset, cancellation cleared — a fresh cycle.
         assert row.token != old_token
         assert row.is_confirmed is False
@@ -304,168 +316,180 @@ class TestConfirmAndUnsubscribe:
         assert "/comment-subscribe/confirm" in _plain(confirm_msgs[0])
         assert "/comment-subscribe/confirm" in _plain(confirm_msgs[1])
 
-    def test_reactivated_row_confirms_with_fresh_token(self, client, db_session, monkeypatch):
+    async def test_reactivated_row_confirms_with_fresh_token(self, client, db_session, monkeypatch):
         """After a re-subscribe rotates the token, only the NEW confirmation
         link confirms; the old token no longer resolves (rotated away -> 404),
         so a stale link from a cancelled cycle can never re-activate."""
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "fresh@example.com")
+        await _subscribe(client, post.id, "fresh@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "fresh@example.com")
-            .one()
-        )
-        _confirm(client, row.token)
-        _unsubscribe(client, row.token)
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "fresh@example.com"
+                )
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
+        await _unsubscribe(client, row.token)
+        await db_session.refresh(row)
         old_token = row.token
-        _subscribe(client, post.id, "fresh@example.com")
-        db_session.refresh(row)
+        await _subscribe(client, post.id, "fresh@example.com")
+        await db_session.refresh(row)
 
         # Old (rotated) link: 404 — gone, no oracle. New link: 200 and confirmed.
-        assert _confirm(client, old_token).status_code == 404
-        assert _confirm(client, row.token).status_code == 200
-        db_session.refresh(row)
+        assert (await _confirm(client, old_token)).status_code == 404
+        assert (await _confirm(client, row.token)).status_code == 200
+        await db_session.refresh(row)
         assert row.is_confirmed is True
 
-    def test_confirm_reports_digest_weekly_cadence(self, client, db_session, monkeypatch):
+    async def test_confirm_reports_digest_weekly_cadence(self, client, db_session, monkeypatch):
         """The confirm response rides the stored cadence back so the confirm page
         can seed its weekly-summary toggle (DEC-429, newsletter parity)."""
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "seed@example.com")
+        await _subscribe(client, post.id, "seed@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "seed@example.com")
-            .one()
-        )
-        body = _confirm(client, row.token).json()
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "seed@example.com"
+                )
+            )
+        ).scalar_one()
+        body = (await _confirm(client, row.token)).json()
         assert body["confirmed"] is True
         assert body["digest_weekly"] is False
-        assert _digest(client, row.token, True).status_code == 200
-        body = _confirm(client, row.token).json()
+        assert (await _digest(client, row.token, True)).status_code == 200
+        body = (await _confirm(client, row.token)).json()
         assert body["digest_weekly"] is True
 
-    def test_digest_flip_is_idempotent(self, client, db_session, monkeypatch):
+    async def test_digest_flip_is_idempotent(self, client, db_session, monkeypatch):
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "flip@example.com")
+        await _subscribe(client, post.id, "flip@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "flip@example.com")
-            .one()
-        )
-        assert _digest(client, row.token, True).json() == {"digest_weekly": True, "updated": True}
-        db_session.refresh(row)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "flip@example.com"
+                )
+            )
+        ).scalar_one()
+        assert (await _digest(client, row.token, True)).json() == {"digest_weekly": True, "updated": True}
+        await db_session.refresh(row)
         assert row.digest_weekly is True
         # Re-flipping to the same value is a 200 (idempotent).
-        assert _digest(client, row.token, True).status_code == 200
-        assert _digest(client, row.token, False).json() == {"digest_weekly": False, "updated": True}
-        db_session.refresh(row)
+        assert (await _digest(client, row.token, True)).status_code == 200
+        assert (await _digest(client, row.token, False)).json() == {"digest_weekly": False, "updated": True}
+        await db_session.refresh(row)
         assert row.digest_weekly is False
 
 
 class TestThreadFanOut:
-    def _setup(self, client, db_session, monkeypatch, guest_email, post=None):
+    async def _setup(self, client, db_session, monkeypatch, guest_email, post=None):
         from app import models
 
-        post = post or _create_post(db_session)
+        post = post or await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, guest_email)
+        await _subscribe(client, post.id, guest_email)
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == guest_email)
-            .one()
-        )
-        _confirm(client, row.token)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == guest_email)
+            )
+        ).scalar_one()
+        await _confirm(client, row.token)
         return post, row
 
-    def test_confirmed_guest_gets_email_per_approved_comment(self, client, db_session, monkeypatch, auth_headers):
-        post, _ = self._setup(client, db_session, monkeypatch, "fan@example.com")
+    async def test_confirmed_guest_gets_email_per_approved_comment(self, client, db_session, monkeypatch, auth_headers):
+        post, _ = await self._setup(client, db_session, monkeypatch, "fan@example.com")
         sink = FakeSMTP
-        created = _comment(client, post.id, "a new thread comment", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        created = await _comment(client, post.id, "a new thread comment", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         msgs = _fanout_to(sink, "fan@example.com")
         assert len(msgs) == 1
         body = _plain(msgs[0])
         assert f"/posts/{post.slug}#comment-" in body  # deep link
         assert "/comment-subscribe/unsubscribe" in body  # one-click unsubscribe
 
-    def test_pending_subscriber_gets_nothing(self, client, db_session, monkeypatch, auth_headers):
-        post = _create_post(db_session)
+    async def test_pending_subscriber_gets_nothing(self, client, db_session, monkeypatch, auth_headers):
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "pending@example.com")  # never confirmed
-        created = _comment(client, post.id, "chatter", email="x@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        await _subscribe(client, post.id, "pending@example.com")  # never confirmed
+        created = await _comment(client, post.id, "chatter", email="x@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         assert _fanout_to(FakeSMTP, "pending@example.com") == []
 
-    def test_unsubscribed_rows_stay_silent(self, client, db_session, monkeypatch, auth_headers):
+    async def test_unsubscribed_rows_stay_silent(self, client, db_session, monkeypatch, auth_headers):
         from app import models
 
-        post, _ = self._setup(client, db_session, monkeypatch, "gone@example.com")
+        post, _ = await self._setup(client, db_session, monkeypatch, "gone@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "gone@example.com")
-            .one()
-        )
-        _unsubscribe(client, row.token)
-        created = _comment(client, post.id, "after unsub", email="x@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "gone@example.com"
+                )
+            )
+        ).scalar_one()
+        await _unsubscribe(client, row.token)
+        created = await _comment(client, post.id, "after unsub", email="x@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         assert _fanout_to(FakeSMTP, "gone@example.com") == []
 
-    def test_commenters_own_guest_email_is_skipped(self, client, db_session, monkeypatch, auth_headers):
-        post, _ = self._setup(client, db_session, monkeypatch, "mine@example.com")
+    async def test_commenters_own_guest_email_is_skipped(self, client, db_session, monkeypatch, auth_headers):
+        post, _ = await self._setup(client, db_session, monkeypatch, "mine@example.com")
         # The same guest who follows the thread comments on it afterward.
-        created = _comment(client, post.id, "also following", email="mine@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        created = await _comment(client, post.id, "also following", email="mine@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         assert _fanout_to(FakeSMTP, "mine@example.com") == []
 
-    def test_digest_weekly_subscriber_gets_no_per_comment_mail(self, client, db_session, monkeypatch, auth_headers):
+    async def test_digest_weekly_subscriber_gets_no_per_comment_mail(
+        self, client, db_session, monkeypatch, auth_headers
+    ):
         """A follower on the weekly cadence is served by the digest only — one
         channel per subscriber (DEC-429), so the approval fan-out stays silent."""
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        _subscribe(client, post.id, "dig@example.com")
+        await _subscribe(client, post.id, "dig@example.com")
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "dig@example.com")
-            .one()
-        )
-        assert _digest(client, row.token, True).status_code == 200
-        _confirm(client, row.token)
-        created = _comment(client, post.id, "for the weekly shrinker", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "dig@example.com"
+                )
+            )
+        ).scalar_one()
+        assert (await _digest(client, row.token, True)).status_code == 200
+        await _confirm(client, row.token)
+        created = await _comment(client, post.id, "for the weekly shrinker", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         assert _fanout_to(FakeSMTP, "dig@example.com") == []
         # They still got exactly ONE mail so far: the double-opt-in confirm.
         assert len(_to(FakeSMTP, "dig@example.com")) == 1
 
-    def test_all_confirmed_subscribers_are_emailed(self, client, db_session, monkeypatch, auth_headers):
+    async def test_all_confirmed_subscribers_are_emailed(self, client, db_session, monkeypatch, auth_headers):
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
         for email in ("one@example.com", "two@example.com", "three@example.com"):
-            _subscribe(client, post.id, email)
+            await _subscribe(client, post.id, email)
             row = (
-                db_session.query(models.GuestCommentSubscription)
-                .filter(models.GuestCommentSubscription.email == email)
-                .one()
-            )
-            _confirm(client, row.token)
+                await db_session.execute(
+                    select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == email)
+                )
+            ).scalar_one()
+            await _confirm(client, row.token)
         # Reset the instance counter so the count below isolates the approval's
         # fan-out from the 3 per-confirmation sessions above.
         FakeSMTP.instances = []
-        created = _comment(client, post.id, "broadcast", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        created = await _comment(client, post.id, "broadcast", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
         assert len(_fanout_to(FakeSMTP, "one@example.com")) == 1
         assert len(_fanout_to(FakeSMTP, "two@example.com")) == 1
         assert len(_fanout_to(FakeSMTP, "three@example.com")) == 1
@@ -476,24 +500,26 @@ class TestThreadFanOut:
         # up exactly one.
         assert len(FakeSMTP.instances) == 1, FakeSMTP.instances
 
-    def test_reader_comment_also_fans_out(self, client, db_session, monkeypatch, auth_headers):
+    async def test_reader_comment_also_fans_out(self, client, db_session, monkeypatch, auth_headers):
         from uuid import uuid4 as _u4
 
-        post, _ = self._setup(client, db_session, monkeypatch, "rfan@example.com")
-        token = client.post(
-            "/api/reader/register",
-            json={"email": f"reader{_u4().hex[:4]}@example.com", "password": "readerpass123"},
+        post, _ = await self._setup(client, db_session, monkeypatch, "rfan@example.com")
+        token = (
+            await client.post(
+                "/api/reader/register",
+                json={"email": f"reader{_u4().hex[:4]}@example.com", "password": "readerpass123"},
+            )
         ).json()["access_token"]
-        created = _comment(client, post.id, "reader take", token=token, nickname="R")
-        _approve(client, auth_headers, created.json()["id"])
+        created = await _comment(client, post.id, "reader take", token=token, nickname="R")
+        await _approve(client, auth_headers, created.json()["id"])
         assert len(_fanout_to(FakeSMTP, "rfan@example.com")) == 1
 
-    def test_smtp_unconfigured_never_breaks_approval(self, client, db_session, monkeypatch, auth_headers):
-        post, _ = self._setup(client, db_session, monkeypatch, "off@example.com")
+    async def test_smtp_unconfigured_never_breaks_approval(self, client, db_session, monkeypatch, auth_headers):
+        post, _ = await self._setup(client, db_session, monkeypatch, "off@example.com")
         monkeypatch.delenv("SMTP_HOST", raising=False)
         monkeypatch.delenv("SMTP_PORT", raising=False)
-        created = _comment(client, post.id, "no email infra", email="x@example.com")
-        resp = client.patch(
+        created = await _comment(client, post.id, "no email infra", email="x@example.com")
+        resp = await client.patch(
             f"/api/comments/{created.json()['id']}/approve",
             json={"approved": True},
             headers=auth_headers,
@@ -507,32 +533,32 @@ class TestThreadWeeklyDigest:
     window's approved comments instead of a mail per comment; the window starts
     at the last send and the job never raises."""
 
-    def _run(self, db_session, **kw):
+    async def _run(self, db_session, **kw):
         from app.digest import send_weekly_digest
 
-        return send_weekly_digest(db_session, **kw)
+        return await send_weekly_digest(db_session, **kw)
 
-    def _confirm_digest_row(self, client, db_session, email, post_id):
+    async def _confirm_digest_row(self, client, db_session, email, post_id):
         from app import models
 
-        _subscribe(client, post_id, email)
+        await _subscribe(client, post_id, email)
         row = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == email)
-            .one()
-        )
-        assert _digest(client, row.token, True).status_code == 200
-        _confirm(client, row.token)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(models.GuestCommentSubscription.email == email)
+            )
+        ).scalar_one()
+        assert (await _digest(client, row.token, True)).status_code == 200
+        await _confirm(client, row.token)
         return row
 
-    def test_confirmed_weekly_follower_gets_one_digest_email(self, client, db_session, monkeypatch, auth_headers):
-        post = _create_post(db_session)
+    async def test_confirmed_weekly_follower_gets_one_digest_email(self, client, db_session, monkeypatch, auth_headers):
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        row = self._confirm_digest_row(client, db_session, "dwk@example.com", post.id)
-        created = _comment(client, post.id, "digest me", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        row = await self._confirm_digest_row(client, db_session, "dwk@example.com", post.id)
+        created = await _comment(client, post.id, "digest me", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
 
-        summary = self._run(db_session)
+        summary = await self._run(db_session)
         assert summary["thread_subscribers"] == 1
 
         msgs = _to(FakeSMTP, "dwk@example.com")
@@ -541,93 +567,101 @@ class TestThreadWeeklyDigest:
         body = _plain(msgs[1])
         assert f"/posts/{post.slug}#comment-{created.json()['id']}" in body
         assert "/comment-subscribe/unsubscribe" in body
-        db_session.refresh(row)
+        await db_session.refresh(row)
         assert row.digest_sent_at is not None
 
-    def test_digest_aggregates_only_approved_comments_in_window(self, client, db_session, monkeypatch, auth_headers):
+    async def test_digest_aggregates_only_approved_comments_in_window(
+        self, client, db_session, monkeypatch, auth_headers
+    ):
         from datetime import UTC, datetime, timedelta
 
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        self._confirm_digest_row(client, db_session, "scope@example.com", post.id)
+        await self._confirm_digest_row(client, db_session, "scope@example.com", post.id)
         # Approved BEFORE the window (10 days ago) — must not appear.
-        old = _comment(client, post.id, "old news", email="other@example.com")
-        old_row = db_session.get(models.Comment, old.json()["id"])
+        old = await _comment(client, post.id, "old news", email="other@example.com")
+        old_row = await db_session.get(models.Comment, old.json()["id"])
         old_row.created_at = datetime.now(UTC) - timedelta(days=10)
-        db_session.commit()
-        _approve(client, auth_headers, old.json()["id"])
+        await db_session.commit()
+        await _approve(client, auth_headers, old.json()["id"])
         # Still PENDING in the window — must not appear (moderation gate).
-        pending = _comment(client, post.id, "still pending", email="other2@example.com")
+        pending = await _comment(client, post.id, "still pending", email="other2@example.com")
         # Fresh approved comment — appears.
-        fresh = _comment(client, post.id, "fresh news", email="other3@example.com")
-        _approve(client, auth_headers, fresh.json()["id"])
+        fresh = await _comment(client, post.id, "fresh news", email="other3@example.com")
+        await _approve(client, auth_headers, fresh.json()["id"])
 
-        self._run(db_session)
+        await self._run(db_session)
         digest = _to(FakeSMTP, "scope@example.com")[-1]
         body = _plain(digest)
         assert f"#comment-{fresh.json()['id']}" in body
         assert f"#comment-{old.json()['id']}" not in body
         assert f"#comment-{pending.json()['id']}" not in body
 
-    def test_digest_is_idempotent_after_stamp(self, client, db_session, monkeypatch, auth_headers):
-        post = _create_post(db_session)
+    async def test_digest_is_idempotent_after_stamp(self, client, db_session, monkeypatch, auth_headers):
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        self._confirm_digest_row(client, db_session, "once@example.com", post.id)
-        created = _comment(client, post.id, "one summary lap", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        await self._confirm_digest_row(client, db_session, "once@example.com", post.id)
+        created = await _comment(client, post.id, "one summary lap", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
 
-        assert self._run(db_session)["thread_subscribers"] == 1
+        assert (await self._run(db_session))["thread_subscribers"] == 1
         # The window now starts at the stamped send time: no new comments -> no mail.
-        assert self._run(db_session)["thread_subscribers"] == 0
+        assert (await self._run(db_session))["thread_subscribers"] == 0
         assert len(_to(FakeSMTP, "once@example.com")) == 2  # confirm + the one digest
 
-    def test_pending_and_unsubscribed_rows_never_get_a_digest(self, client, db_session, monkeypatch, auth_headers):
+    async def test_pending_and_unsubscribed_rows_never_get_a_digest(
+        self, client, db_session, monkeypatch, auth_headers
+    ):
         from app import models
 
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         _sink(monkeypatch)
         # Weekly cadence but never confirmed — the confirm gate still applies.
-        _subscribe(client, post.id, "pend@example.com")
+        await _subscribe(client, post.id, "pend@example.com")
         pend = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "pend@example.com")
-            .one()
-        )
-        _digest(client, pend.token, True)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "pend@example.com"
+                )
+            )
+        ).scalar_one()
+        await _digest(client, pend.token, True)
         # Confirmed weekly then unsubscribed — consent revoked.
-        _subscribe(client, post.id, "gone@example.com")
+        await _subscribe(client, post.id, "gone@example.com")
         gone = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.email == "gone@example.com")
-            .one()
-        )
-        _digest(client, gone.token, True)
-        _confirm(client, gone.token)
-        _unsubscribe(client, gone.token)
+            await db_session.execute(
+                select(models.GuestCommentSubscription).where(
+                    models.GuestCommentSubscription.email == "gone@example.com"
+                )
+            )
+        ).scalar_one()
+        await _digest(client, gone.token, True)
+        await _confirm(client, gone.token)
+        await _unsubscribe(client, gone.token)
         # One healthy weekly control.
-        self._confirm_digest_row(client, db_session, "ctl@example.com", post.id)
-        created = _comment(client, post.id, "for the control", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        await self._confirm_digest_row(client, db_session, "ctl@example.com", post.id)
+        created = await _comment(client, post.id, "for the control", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
 
-        summary = self._run(db_session)
+        summary = await self._run(db_session)
         assert summary["thread_subscribers"] == 1
         # pend/gone still hold only their subscribe-time confirm email.
         assert len(_to(FakeSMTP, "pend@example.com")) == 1
         assert len(_to(FakeSMTP, "gone@example.com")) == 1
         assert len(_to(FakeSMTP, "ctl@example.com")) == 2  # confirm + digest
 
-    def test_smtp_unconfigured_never_breaks_the_job(self, client, db_session, monkeypatch, auth_headers):
-        post = _create_post(db_session)
+    async def test_smtp_unconfigured_never_breaks_the_job(self, client, db_session, monkeypatch, auth_headers):
+        post = await _create_post(db_session)
         _sink(monkeypatch)
-        row = self._confirm_digest_row(client, db_session, "offwk@example.com", post.id)
-        created = _comment(client, post.id, "no smtp", email="other@example.com")
-        _approve(client, auth_headers, created.json()["id"])
+        row = await self._confirm_digest_row(client, db_session, "offwk@example.com", post.id)
+        created = await _comment(client, post.id, "no smtp", email="other@example.com")
+        await _approve(client, auth_headers, created.json()["id"])
 
         monkeypatch.delenv("SMTP_HOST", raising=False)
         monkeypatch.delenv("SMTP_PORT", raising=False)
-        summary = self._run(db_session)
+        summary = await self._run(db_session)
         assert summary["reason"] == "smtp_not_configured"
-        db_session.refresh(row)
+        await db_session.refresh(row)
         assert row.digest_sent_at is None

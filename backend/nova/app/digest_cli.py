@@ -19,11 +19,19 @@ is best-effort and the cron log is the audit trail.
 """
 
 import argparse
+import asyncio
 import json
 import sys
 
-from app.database import SessionLocal
+from app.database import AsyncSessionLocal
 from app.digest import send_weekly_digest
+
+
+async def main_async(dry_run: bool) -> int:
+    async with AsyncSessionLocal() as db:
+        summary = await send_weekly_digest(db, dry_run=dry_run)
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,14 +42,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Build and report without sending any mail or stamping digest_sent_at.",
     )
     args = parser.parse_args(argv)
-
-    db = SessionLocal()
-    try:
-        summary = send_weekly_digest(db, dry_run=args.dry_run)
-    finally:
-        db.close()
-    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    return 0
+    return asyncio.run(main_async(args.dry_run))
 
 
 if __name__ == "__main__":

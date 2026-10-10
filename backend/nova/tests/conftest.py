@@ -37,16 +37,16 @@ try:
 except Exception:  # pragma: no cover - cryptography is a hard dependency
     pass
 
-import time
-from collections.abc import Generator
+import asyncio
+from collections.abc import AsyncIterator
 from contextlib import suppress
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.cache import (
     clear_categories_cache,
@@ -140,7 +140,7 @@ def isolated_upload_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
 
 
 @pytest.fixture(scope="session")
-def test_engine(worker_id: str):
+def test_engine(worker_id: str) -> AsyncEngine | None:
     """Create the test database: a SQLite file per worker, or — when
     TEST_DATABASE_URL points at a real PostgreSQL server — a per-worker SCHEMA
     on that server.
@@ -150,65 +150,97 @@ def test_engine(worker_id: str):
     digest locks) and any dialect drift (String(N) is not enforced on SQLite,
     naive-UTC storage, unique-NULL semantics) were never exercised. Setting
     TEST_DATABASE_URL runs the whole suite against the deployment dialect.
+
+    This is an async engine (aiosqlite / asyncpg) — the app's data layer is
+    now async (async SQLAlchemy), so every test session + client must go
+    through AsyncSession.
     """
     if TEST_DATABASE_URL and "postgresql" in TEST_DATABASE_URL:
         # Each xdist worker gets its own schema so concurrent workers never
         # collide on the shared server (the SQLite path isolates workers by
         # file; there is no per-worker database here).
         schema = f"xblog_test_{(worker_id or 'master').lower()}"
-        # Cap the per-worker pool so N xdist workers on a many-core box stay
-        # under the server's max_connections (e.g. -n auto on 128 cores with
-        # the default pool would otherwise exhaust a 100-connection PG).
-        engine = create_engine(
-            TEST_DATABASE_URL,
-            pool_pre_ping=True,
-            pool_size=3,
-            max_overflow=5,
-            pool_recycle=3600,
+        url = "postgresql+asyncpg://" + TEST_DATABASE_URL.split("://", 1)[1]
+        # NullPool: every checkout is a fresh connection bound to the current
+        # pytest-asyncio function-scoped event loop. asyncpg pins a connection
+        # to the loop that created it, so reusing a pooled connection across
+        # tests (each on a new loop) raises "attached to a different loop";
+        # aiosqlite tolerates reuse, asyncpg does not. Cap is moot under
+        # NullPool (one live connection at a time per checkout) so N xdist
+        # workers stay well under the server's max_connections.
+        engine = create_async_engine(
+            url,
+            poolclass=NullPool,
         )
     else:
         db_name = f"test_{worker_id}.db" if worker_id else "test.db"
         schema = None
-        engine = create_engine(
-            f"sqlite:///{db_name}",
+        engine = create_async_engine(
+            f"sqlite+aiosqlite:///{db_name}",
             connect_args={"check_same_thread": False},
             pool_pre_ping=True,
         )
 
-    @event.listens_for(engine, "connect")
+    @event.listens_for(engine.sync_engine, "connect")
     def _dialect_connection_setup(dbapi_connection, _connection_record):
         if schema is not None:
             # Point every pooled connection (schema creation + every query) at
             # this worker's schema, and pin the session to UTC so the aware
             # ORM defaults (datetime.now(UTC)) store as naive-UTC wall clock —
             # the DEC-213 storage contract app/database.py enforces in prod.
-            # Without the pin, the server's TimeZone shifts stored datetimes.
             cur = dbapi_connection.cursor()
             cur.execute(f'SET search_path TO "{schema}"')
             cur.execute("SET TIME ZONE 'UTC'")
             cur.close()
         else:
             # Enforce foreign keys so SQLite matches PostgreSQL constraint
-            # semantics. Without this, FK violations (e.g. deleting a comment
-            # that has replies) are silently ignored — exactly the path the
-            # IntegrityError handlers cover.
+            # semantics.
             dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     if schema is not None:
-        # Fresh schema per session: drop leftovers from a previous run, then
-        # let the same ordered connection setup (above) target it on create.
-        with engine.begin() as conn:
-            conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
-            conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+        # asyncpg resets the connection (dropping `SET search_path`) when a
+        # failed transaction is rolled back — the push unique-key race test
+        # exercised this: after IntegrityError + rollback every query landed in
+        # the public schema and `relation does not exist` (PG dialect parity,
+        # async migration). Re-apply the worker schema pin on every transaction
+        # begin so post-rollback statements stay in the worker schema.
+        @event.listens_for(engine.sync_engine, "begin")
+        def _reapply_search_path(conn):
+            conn.exec_driver_sql(f'SET search_path TO "{schema}"')
 
-    # Ensure schema exists once per process
-    Base.metadata.create_all(bind=engine)
+    async def _setup():
+        if schema is not None:
+            # Fresh schema per session: drop leftovers from a previous run,
+            # then let the connection setup target it on create.
+            async with engine.begin() as conn:
+                await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+                await conn.execute(text(f'CREATE SCHEMA "{schema}"'))
+        # Ensure schema exists once per process
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    # pytest-asyncio: schedule async setup on the loop. Because test_engine is
+    # session-scoped and pytest-asyncio's event loop is function-scoped by
+    # default, run the DB schema setup synchronously at fixture-time via a
+    # one-shot loop run.
+    import asyncio
+
+    asyncio.run(_setup())
     yield engine
     if schema is not None:
-        with engine.connect() as conn:
-            conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
-            conn.commit()
-    engine.dispose()
+        import asyncio
+
+        async def _teardown():
+            async with engine.connect() as conn:
+                await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+
+        asyncio.run(_teardown())
+    import asyncio
+
+    async def _dispose():
+        await engine.dispose()
+
+    asyncio.run(_dispose())
     if schema is None:
         with suppress(Exception):
             Path(db_name).unlink()
@@ -220,44 +252,41 @@ def test_engine(worker_id: str):
 
 
 @pytest.fixture
-def db_session(test_engine) -> Generator[Session]:
+async def db_session(test_engine) -> AsyncIterator[AsyncSession]:
     """
     Isolated transaction per test.
     All changes (including fixture commits) are rolled back after the test.
+    Uses an AsyncSession bound to a single connection's transaction, so the
+    ORM work inside a test shares one transaction that is rolled back at the
+    end (matching the old sync behavior).
     """
-    connection = test_engine.connect()
-    connection.begin()
-    session = sessionmaker(bind=connection)()
-    try:
-        yield session
-    finally:
-        session.close()
-        connection.rollback()  # undo everything this test did
-        connection.close()
+    async with test_engine.connect() as connection:
+        await connection.begin()
+        session = AsyncSession(bind=connection, expire_on_commit=False)
+        try:
+            yield session
+        finally:
+            await session.close()
+            await connection.rollback()  # undo everything this test did
 
 
 @pytest.fixture
-def pg_scratch_engine(worker_id: str) -> Generator[Engine | None]:
+async def pg_scratch_engine(worker_id: str) -> AsyncEngine | None:
     """Dedicated per-worker engine for PG-only tests that create/drop whole
     table sets (digest lock contention, CJK search).
 
-    Those tests used ``create_engine(TEST_DATABASE_URL)`` directly, landing
-    their ``create_all``/``drop_all`` in the shared database's PUBLIC schema.
-    That is fine in isolation but a real parallel hazard: under ``-n`` two
-    workers running different scratch-test files both drop/create the same
-    public tables, so one drops a table the other just created ("table
-    comments does not exist", PG-parity red under load). It also touched the
-    public schema the operator's own data lives in. Like ``test_engine``,
-    this points each worker at its own scratch schema (``xblog_pgscratch_gwN``)
-    and pins every pooled connection to it via search_path.
+    Like ``test_engine``, this points each worker at its own scratch schema
+    (``xblog_pgscratch_gwN``) and pins every pooled connection to it via
+    search_path. Async (asyncpg) to match the async data layer.
     """
     if not (TEST_DATABASE_URL and "postgresql" in TEST_DATABASE_URL):
         yield None
         return
     schema = f"xblog_pgscratch_{(worker_id or 'master').lower()}"
-    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True, pool_size=3, max_overflow=5)
+    url = "postgresql+asyncpg://" + TEST_DATABASE_URL.split("://", 1)[1]
+    engine = create_async_engine(url, poolclass=NullPool)
 
-    @event.listens_for(engine, "connect")
+    @event.listens_for(engine.sync_engine, "connect")
     def _pin_scratch(dbapi_connection, _connection_record):
         cur = dbapi_connection.cursor()
         cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
@@ -265,13 +294,20 @@ def pg_scratch_engine(worker_id: str) -> Generator[Engine | None]:
         cur.execute("SET TIME ZONE 'UTC'")
         cur.close()
 
+    # Re-apply the schema pin on transaction begin (asyncpg resets the
+    # connection — dropping SET search_path — after a rolled-back failed
+    # transaction; without this, post-rollback queries hit the public schema).
+    @event.listens_for(engine.sync_engine, "begin")
+    def _reapply_scratch_search_path(conn):
+        conn.exec_driver_sql(f'SET search_path TO "{schema}"')
+
     try:
         yield engine
     finally:
-        with engine.connect() as conn:
-            conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
-            conn.commit()
-        engine.dispose()
+        async with engine.connect() as conn:
+            await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+            await conn.commit()
+        await engine.dispose()
 
 
 # ---------------------------------------------------------------------------
@@ -280,19 +316,27 @@ def pg_scratch_engine(worker_id: str) -> Generator[Engine | None]:
 
 
 @pytest.fixture
-def client(db_session: Session) -> TestClient:
-    """Test client with isolated DB session injected via dependency override."""
+async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """Async test client with isolated DB session injected via dependency override."""
 
-    def override_get_db():
+    async def override_get_db():
         try:
             yield db_session
         finally:
             pass
 
     app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app, raise_server_exceptions=False)
+    # Starlette's ServerErrorMiddleware sends the 500/error-envelope response,
+    # then unconditionally re-raises so servers/logs see it. The old sync
+    # TestClient defaulted raise_server_exceptions=False (swallow); httpx's
+    # ASGITransport defaults raise_app_exceptions=True (re-raise). Match the
+    # prior behavior so unhandled-exception tests see the envelope, not the
+    # raw RuntimeError (async migration).
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
     app.dependency_overrides.clear()
-    time.sleep(0.05)  # let connections drain
+    await asyncio.sleep(0.05)  # let connections drain
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +345,7 @@ def client(db_session: Session) -> TestClient:
 
 
 @pytest.fixture
-def admin_user(db_session: Session):
+async def admin_user(db_session: AsyncSession):
     """
     Create admin user within the test's transaction.
     The transaction is rolled back after the test, so no cleanup needed.
@@ -315,17 +359,17 @@ def admin_user(db_session: Session):
         is_superuser=True,
     )
     db_session.add(user)
-    db_session.flush()  # make id available, but stay inside transaction
+    await db_session.flush()  # make id available, but stay inside transaction
     return user
 
 
 @pytest.fixture
-def admin_token(client: TestClient, admin_user) -> str:  # noqa: ARG001
+async def admin_token(client: AsyncClient, admin_user) -> str:  # noqa: ARG001
     """Return a fresh JWT token for the admin user.
 
     admin_user param ensures the test admin exists in the database before login.
     """
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testadmin", "password": "testpass123"},
     )
@@ -340,7 +384,7 @@ def auth_headers(admin_token: str) -> dict:
 
 
 @pytest.fixture
-def editor_user(db_session: Session):
+async def editor_user(db_session: AsyncSession):
     """
     Create a non-superuser editor admin within the test's transaction.
     Editors can moderate content (posts/comments/categories/tags) but cannot
@@ -355,14 +399,14 @@ def editor_user(db_session: Session):
         is_superuser=False,
     )
     db_session.add(user)
-    db_session.flush()
+    await db_session.flush()
     return user
 
 
 @pytest.fixture
-def editor_headers(client: TestClient, editor_user) -> dict:  # noqa: ARG001
+async def editor_headers(client: AsyncClient, editor_user) -> dict:  # noqa: ARG001
     """Authorization header dict for the editor (non-superuser) account."""
-    response = client.post(
+    response = await client.post(
         "/api/admin/login",
         data={"username": "testeditor", "password": "editorpass123"},
     )

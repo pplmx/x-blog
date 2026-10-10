@@ -6,8 +6,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.auth import User, get_current_admin
@@ -102,7 +102,7 @@ async def upload_image(
     return {"url": f"/static/uploads/{now.year}/{now.month:02d}/{filename}"}
 
 
-def _collect_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
+async def _collect_upload_references(db: AsyncSession) -> dict[str, list[tuple[int, str]]]:
     """Map `/static/uploads/...` URL -> [(post id, post title)] for every post
     whose content or cover_image embeds that URL.
 
@@ -111,17 +111,16 @@ def _collect_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
     scan is over the exact upload URL form, so a post counts as referencing an
     image whether it appears inline (content) or as the cover.
     """
+    result = await db.execute(select(models.Post.id, models.Post.title, models.Post.content, models.Post.cover_image))
     refs: dict[str, list[tuple[int, str]]] = {}
-    for post_id, title, content, cover_image in db.query(
-        models.Post.id, models.Post.title, models.Post.content, models.Post.cover_image
-    ).all():
+    for post_id, title, content, cover_image in result.all():
         joined = " ".join(text for text in (content, cover_image) if text)
         for url in _UPLOAD_URL_RE.findall(joined):
             refs.setdefault(f"/static/uploads/{url[0]}/{url[1]}/{url[2]}", []).append((post_id, title))
     return refs
 
 
-def _get_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
+async def _get_upload_references(db: AsyncSession) -> dict[str, list[tuple[int, str]]]:
     """Cached media-library reference map (TASK-333/ISS-432).
 
     The listing used to run the full _collect_upload_references scan — a regex
@@ -137,12 +136,12 @@ def _get_upload_references(db: Session) -> dict[str, list[tuple[int, str]]]:
     cached = upload_refs_cache.get("all")
     if cached is not None:
         return cached
-    refs = _collect_upload_references(db)
+    refs = await _collect_upload_references(db)
     upload_refs_cache["all"] = refs
     return refs
 
 
-def _referencing_posts(db: Session, url: str) -> list[tuple[int, str]]:
+async def _referencing_posts(db: AsyncSession, url: str) -> list[tuple[int, str]]:
     """Posts whose content or cover_image embed ``url`` (targeted, bounded).
 
     The delete guards used to share the media-listing scan
@@ -155,17 +154,15 @@ def _referencing_posts(db: Session, url: str) -> list[tuple[int, str]]:
     exact upload shape (4-digit year / zero-padded month / uuid.ext), so it
     cannot contain LIKE wildcards and needs no escaping.
     """
-    return [
-        (post_id, title)
-        for post_id, title in db.query(models.Post.id, models.Post.title)
-        .filter(
+    result = await db.execute(
+        select(models.Post.id, models.Post.title).filter(
             or_(
                 models.Post.content.contains(url),
                 models.Post.cover_image.contains(url),
             )
         )
-        .all()
-    ]
+    )
+    return [(post_id, title) for post_id, title in result.all()]
 
 
 def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -> UploadFileInfo:
@@ -202,8 +199,8 @@ def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -
 
 
 @router.get("/files", response_model=UploadListResponse)
-def list_uploaded_files(
-    db: Session = Depends(get_db),
+async def list_uploaded_files(
+    db: AsyncSession = Depends(get_db),
     q: str | None = Query(None, max_length=200, description="Filename substring filter (case-insensitive)"),
     page: PageInt = 1,
     page_size: int = Query(100, ge=1, le=500),
@@ -223,7 +220,7 @@ def list_uploaded_files(
             items=[], pagination=PaginationMeta(total=0, page=page, limit=page_size, total_pages=0)
         )
 
-    refs = _get_upload_references(db)
+    refs = await _get_upload_references(db)
     needle = q.lower() if q else None
 
     files: list[tuple[datetime, Path]] = []
@@ -256,12 +253,12 @@ def list_uploaded_files(
 
 @router.delete("/files/{year}/{month}/{filename}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_uploaded_file(
+async def delete_uploaded_file(
     request: Request,  # noqa: ARG001
     year: str,
     month: str,
     filename: str,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
     """Delete one uploaded image.
@@ -275,7 +272,7 @@ def delete_uploaded_file(
     if not _YEAR_RE.match(year) or not _MONTH_RE.match(month) or not _FILENAME_RE.match(filename):
         raise HTTPException(status_code=400, detail="Invalid upload path")
     url = f"/static/uploads/{year}/{month}/{filename}"
-    referencing = _referencing_posts(db, url)
+    referencing = await _referencing_posts(db, url)
     if referencing:
         titles = ", ".join(title for _, title in referencing)
         raise HTTPException(
@@ -314,10 +311,10 @@ def _parse_upload_url(url: str) -> tuple[str, str, str] | None:
 
 @router.post("/files/batch-delete", response_model=dict[str, int])
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_uploaded_files_batch(
+async def delete_uploaded_files_batch(
     request: Request,  # noqa: ARG001
     body: UploadBatchDeleteRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
     """Delete many uploaded images in one action (media bulk delete, DEC-191).
@@ -350,7 +347,7 @@ def delete_uploaded_files_batch(
     referenced: dict[str, list[tuple[int, str]]] = {}
     for year, month, filename in parsed:
         url = f"/static/uploads/{year}/{month}/{filename}"
-        posts = _referencing_posts(db, url)
+        posts = await _referencing_posts(db, url)
         if posts:
             referenced[url] = posts
     if referenced:

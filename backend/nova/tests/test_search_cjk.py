@@ -24,10 +24,10 @@ from app.schemas import PostCreate
 CJK_CONTENT = "# 标题\n评论系统支持楼中楼回复，回复通知走 Web Push。"
 
 
-def _create_post(db_session, title, slug, content="body", excerpt="excerpt"):
+async def _create_post(db_session, title, slug, content="body", excerpt="excerpt"):
     from app.crud import create_post
 
-    return create_post(
+    return await create_post(
         db_session,
         PostCreate(title=title, slug=slug, content=content, excerpt=excerpt, published=True),
     )
@@ -55,39 +55,39 @@ class TestChineseSearchSqlite:
     """Substring matching for CJK on the (default) SQLite test DB — the same
     code path the Postgres CJK fallback now uses."""
 
-    def test_chinese_exact_term_matches_content(self, db_session):
-        post = _create_post(db_session, "中文帖子", "zh-post", CJK_CONTENT)
-        found, total = search_posts(db_session, "评论系统")
+    async def test_chinese_exact_term_matches_content(self, db_session):
+        post = await _create_post(db_session, "中文帖子", "zh-post", CJK_CONTENT)
+        found, total = await search_posts(db_session, "评论系统")
         assert total == 1
         assert found[0].id == post.id
 
-    def test_chinese_partial_prefix_matches(self, db_session):
+    async def test_chinese_partial_prefix_matches(self, db_session):
         """The original Postgres bug: '评' must match content containing
         '评论系统' (opaque-run tokenization would not)."""
-        post = _create_post(db_session, "中文帖子", "zh-post-prefix", CJK_CONTENT)
-        found, total = search_posts(db_session, "评")
+        post = await _create_post(db_session, "中文帖子", "zh-post-prefix", CJK_CONTENT)
+        found, total = await search_posts(db_session, "评")
         assert total >= 1
         assert any(p.id == post.id for p in found)
 
-    def test_chinese_term_in_excerpt_matches(self, db_session):
+    async def test_chinese_term_in_excerpt_matches(self, db_session):
         # The ILIKE path covers excerpt like the tsvector path does.
-        post = _create_post(db_session, "标题", "zh-excerpt", content="正文内容", excerpt="摘要提到评论系统")
-        found, total = search_posts(db_session, "评论系统")
+        post = await _create_post(db_session, "标题", "zh-excerpt", content="正文内容", excerpt="摘要提到评论系统")
+        found, total = await search_posts(db_session, "评论系统")
         assert total == 1
         assert found[0].id == post.id
         # A term entirely absent still returns nothing.
-        found, total = search_posts(db_session, "不存在的词")
+        found, total = await search_posts(db_session, "不存在的词")
         assert total == 0
 
-    def test_ascii_search_unchanged(self, db_session):
-        post = _create_post(db_session, "Python Tutorial", "py-tut", "Learn Python")
-        found, total = search_posts(db_session, "python")
+    async def test_ascii_search_unchanged(self, db_session):
+        post = await _create_post(db_session, "Python Tutorial", "py-tut", "Learn Python")
+        found, total = await search_posts(db_session, "python")
         assert total == 1
         assert found[0].id == post.id
 
-    def test_mixed_query_matches(self, db_session):
-        post = _create_post(db_session, "TypeScript", "ts-post", "类型检查配置指南")
-        found, total = search_posts(db_session, "TypeScript 类型")
+    async def test_mixed_query_matches(self, db_session):
+        post = await _create_post(db_session, "TypeScript", "ts-post", "类型检查配置指南")
+        found, total = await search_posts(db_session, "TypeScript 类型")
         assert total == 1
         assert found[0].id == post.id
 
@@ -103,53 +103,53 @@ class TestSearchSnippet:
     buried deep in a long post never appeared or got highlighted; the fixed
     path windows around the first matched term in the full content."""
 
-    def _post(self, db_session, content, slug, excerpt=None):
-        return _create_post(db_session, f"标题{slug}", slug, content=content, excerpt=excerpt or "摘要")
+    async def _post(self, db_session, content, slug, excerpt=None):
+        return await _create_post(db_session, f"标题{slug}", slug, content=content, excerpt=excerpt or "摘要")
 
-    def test_mid_content_cjk_match_is_highlighted(self, db_session):
+    async def test_mid_content_cjk_match_is_highlighted(self, db_session):
         # The term sits at ~400 chars in a 600+ char body.
-        post = self._post(db_session, LONG_CONTENT, "snippet-mid")
-        snippet = _build_snippet(post, "评论系统", False, db_session)
+        post = await self._post(db_session, LONG_CONTENT, "snippet-mid")
+        snippet = await _build_snippet(post, "评论系统", False, db_session)
         assert snippet is not None
         assert "<mark>评论系统</mark>" in snippet
         assert len(snippet) <= 500
 
-    def test_snippet_prefers_excerpt_that_matches(self, db_session):
-        post = self._post(db_session, "正文内容无关键词", "snippet-excerpt", excerpt="摘要：评论系统很强大")
-        snippet = _build_snippet(post, "评论系统", False, db_session)
+    async def test_snippet_prefers_excerpt_that_matches(self, db_session):
+        post = await self._post(db_session, "正文内容无关键词", "snippet-excerpt", excerpt="摘要：评论系统很强大")
+        snippet = await _build_snippet(post, "评论系统", False, db_session)
         assert snippet is not None
         assert "<mark>评论系统</mark>" in snippet
         assert "正文内容无关键词" not in snippet  # came from the excerpt
 
-    def test_snippet_uses_content_when_excerpt_has_no_match(self, db_session):
-        post = self._post(db_session, LONG_CONTENT, "snippet-content")
-        snippet = _build_snippet(post, "评论系统", False, db_session)
+    async def test_snippet_uses_content_when_excerpt_has_no_match(self, db_session):
+        post = await self._post(db_session, LONG_CONTENT, "snippet-content")
+        snippet = await _build_snippet(post, "评论系统", False, db_session)
         assert "填充甲" in snippet  # content window, not the excerpt
 
-    def test_partial_cjk_term_highlighted(self, db_session):
-        post = self._post(db_session, LONG_CONTENT, "snippet-partial")
-        snippet = _build_snippet(post, "评", False, db_session)
+    async def test_partial_cjk_term_highlighted(self, db_session):
+        post = await self._post(db_session, LONG_CONTENT, "snippet-partial")
+        snippet = await _build_snippet(post, "评", False, db_session)
         assert snippet is not None
         assert "<mark>评</mark>" in snippet
 
-    def test_snippet_is_balanced_and_bounded(self, db_session):
+    async def test_snippet_is_balanced_and_bounded(self, db_session):
         spam = "评论系统 " * 400  # many matches, very long
-        post = self._post(db_session, spam, "snippet-long")
-        snippet = _build_snippet(post, "评论系统", False, db_session)
+        post = await self._post(db_session, spam, "snippet-long")
+        snippet = await _build_snippet(post, "评论系统", False, db_session)
         assert len(snippet) <= 500
         assert snippet.count("<mark>") == snippet.count("</mark>")
 
-    def test_snippet_xss_safe(self, db_session):
+    async def test_snippet_xss_safe(self, db_session):
         malicious = "<script>alert(1)</script> 前面评论系统后面"
-        post = self._post(db_session, malicious, "snippet-xss")
-        snippet = _build_snippet(post, "评论系统", False, db_session)
+        post = await self._post(db_session, malicious, "snippet-xss")
+        snippet = await _build_snippet(post, "评论系统", False, db_session)
         assert snippet is not None
         assert "<script>" not in snippet  # escaped
         assert "<mark>评论系统</mark>" in snippet  # only our markup survives
 
-    def test_ascii_snippet_still_highlights(self, db_session):
-        post = self._post(db_session, "The quick brown fox jumps", "snippet-ascii")
-        snippet = _build_snippet(post, "quick", False, db_session)
+    async def test_ascii_snippet_still_highlights(self, db_session):
+        post = await self._post(db_session, "The quick brown fox jumps", "snippet-ascii")
+        snippet = await _build_snippet(post, "quick", False, db_session)
         assert snippet is not None
         assert "<mark>quick</mark>" in snippet
 
@@ -158,13 +158,13 @@ class TestSearchSnippet:
         out = _highlight_sqlite("Some content here", "")
         assert "Some content here" in out or out == ""
 
-    def test_pg_snippet_fallback_escapes_raw_content(self):
+    async def test_pg_snippet_fallback_escapes_raw_content(self):
         # Regression (ISS-424): when ts_headline yields no scalar for a post,
         # the epilogue used to return the RAW excerpt/content[:200] — breaking
         # the snippet XSS-safety contract that every other branch guarantees.
         # Force that branch with a mocked nil scalar and a non-CJK (ts_headline
         # eligible) query, then assert the fallback output is escaped.
-        from unittest.mock import MagicMock
+        from unittest.mock import AsyncMock, MagicMock
 
         from app import models
 
@@ -175,10 +175,11 @@ class TestSearchSnippet:
             excerpt="<script>alert(1)</script> excerpt only",
             published=True,
         )
-        mock_db = MagicMock()
+        mock_db = AsyncMock()
+        mock_db.execute.return_value = MagicMock()
         mock_db.execute.return_value.scalar.return_value = None  # no headline hit
 
-        snippet = _build_snippet(post, "surely-no-such-term", True, mock_db)
+        snippet = await _build_snippet(post, "surely-no-such-term", True, mock_db)
 
         assert snippet == "&lt;script&gt;alert(1)&lt;/script&gt; excerpt only"
         assert "<script>" not in snippet
@@ -205,24 +206,27 @@ class TestTsvectorGinIndexPostgres:
     bare seq scan + filter).
     """
 
-    def test_tsvector_index_drives_search_plan(self, pg_scratch_engine):
+    async def test_tsvector_index_drives_search_plan(self, pg_scratch_engine):
         from sqlalchemy import event, func, select, text
+        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy.orm import sessionmaker
 
         from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
 
         engine = pg_scratch_engine
-        Session = sessionmaker(bind=engine)
-        db = Session()
+        async_session = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+        db = async_session()
         try:
             from app.database import Base
 
-            Base.metadata.create_all(engine)
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
             # Apply exactly what the migration ships: CREATE INDEX CONCURRENTLY
             # cannot run inside a transaction (the migration wraps it in an
             # autocommit block), so execute on a dedicated autocommit connection.
-            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-                conn.execute(text(migration.INDEX_DDL))
+            async with engine.connect() as conn:
+                await conn.execution_options(isolation_level="AUTOCOMMIT")
+                await conn.execute(text(migration.INDEX_DDL))
 
             query = search_posts.__globals__["models"]
             ts_query = func.plainto_tsquery("english", "python")
@@ -238,34 +242,43 @@ class TestTsvectorGinIndexPostgres:
             )
 
             # Capture the exact SQL the ORM would run, then EXPLAIN it. The
-            # captured statement uses psycopg2 pyformat (%(name)s) parameters,
-            # so EXPLAIN must go through the same raw DBAPI cursor with the same
-            # parameter dict — a SQLAlchemy text() re-bind would mangle it.
+            # captured statement uses DBAPI-parameterized placeholders, so
+            # EXPLAIN must go through the same raw DBAPI cursor with the same
+            # parameter list — a SQLAlchemy text() re-bind would mangle it.
             captured: list[tuple[str, object]] = []
 
             def _capture(_dbapi_conn, _cursor, statement, parameters, _context, _executemany):
                 captured.append((statement, parameters))
 
-            event.listen(engine, "before_cursor_execute", _capture)
-            db.execute(stmt).all()
-            event.remove(engine, "before_cursor_execute", _capture)
+            event.listen(engine.sync_engine, "before_cursor_execute", _capture)
+            (await db.execute(stmt)).all()
+            event.remove(engine.sync_engine, "before_cursor_execute", _capture)
             assert captured, "expected the ORM select to execute"
             captured_sql, captured_params = captured[-1]
 
-            raw = engine.raw_connection()
-            cur = raw.cursor()
-            cur.execute("EXPLAIN (ANALYZE, COSTS OFF) " + captured_sql, captured_params)
-            plan = "\n".join(row[0] for row in cur.fetchall())
-            cur.close()
-            raw.close()
+            # The ORM statement was prepared on an async connection; run EXPLAIN
+            # through the same raw DBAPI cursor on a sync connection so the
+            # captured $n placeholders bind exactly (async has no raw_connection).
+            def _explain(sync_conn):
+                dbapi = sync_conn.connection.dbapi_connection
+                cur = dbapi.cursor()
+                cur.execute("EXPLAIN (ANALYZE, COSTS OFF) " + captured_sql, captured_params)
+                rows = cur.fetchall()
+                cur.close()
+                return rows
+
+            async with engine.connect() as aeconn:
+                plan_rows = await aeconn.run_sync(_explain)
+            plan = "\n".join(row[0] for row in plan_rows)
             assert "ix_posts_tsvector_content" in plan, f"GIN index not in plan:\n{plan}"
             assert "Bitmap Index Scan" in plan or "Index Scan" in plan, f"planner did not use the index:\n{plan}"
         finally:
-            db.close()
+            await db.close()
             from app.database import Base
 
-            Base.metadata.drop_all(bind=engine)
-            engine.dispose()
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+            await engine.dispose()
 
 
 @pytest.mark.skipif(
@@ -278,31 +291,33 @@ class TestChineseSearchPostgres:
     backend/nova/run_pg_search_tests.sh). On the OLD tsvector code this test
     fails (the original bug); with the ILIKE fallback it passes."""
 
-    def test_chinese_partial_prefix_matches_on_postgres(self, pg_scratch_engine):
+    async def test_chinese_partial_prefix_matches_on_postgres(self, pg_scratch_engine):
+        from sqlalchemy.ext.asyncio import AsyncSession
         from sqlalchemy.orm import sessionmaker
 
         engine = pg_scratch_engine
-        Session = sessionmaker(bind=engine)
-        db = Session()
+        async_session = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+        db = async_session()
         try:
             from app.database import Base
 
-            Base.metadata.create_all(engine)
-            post = _create_post(db, "中文帖子", "zh-pg-post", CJK_CONTENT)
-            db.commit()
-            found, total = search_posts(db, "评")
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            post = await _create_post(db, "中文帖子", "zh-pg-post", CJK_CONTENT)
+            await db.commit()
+            found, total = await search_posts(db, "评")
             assert total >= 1
             assert any(p.id == post.id for p in found)
-            found, total = search_posts(db, "TypeScript 类型")  # mixed -> ILIKE
+            found, total = await search_posts(db, "TypeScript 类型")  # mixed -> ILIKE
             assert total >= 0  # not present -> no match (control path executes)
 
             # CJK snippet uses the Python highlighter even on Postgres: the old
             # dialect-branched ts_headline('english') produced no <mark> for CJK.
-            snippet = _build_snippet(post, "评", True, db)
+            snippet = await _build_snippet(post, "评", True, db)
             assert snippet is not None
             assert "<mark>" in snippet and "</mark>" in snippet
         finally:
-            db.close()
+            await db.close()
             # Self-cleaning: this test commits rows (the created post) into the
             # shared scratch DB. Leaving them behind contaminated other PG-gated
             # files — e.g. test_digest saw the leftover post as a new in-window
@@ -311,5 +326,6 @@ class TestChineseSearchPostgres:
             # postgres_connection PG tests do (each create_all's up front).
             from app.database import Base
 
-            Base.metadata.drop_all(bind=engine)
-            engine.dispose()
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+            await engine.dispose()

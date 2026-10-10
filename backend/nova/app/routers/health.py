@@ -57,10 +57,10 @@ async def readiness_check() -> ReadyResponse:
     """Readiness check - verifies dependencies like database connection."""
     checks: dict[str, str] = {}
 
-    # Check database connection (sync connection for simplicity)
+    # Check database connection
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {str(e)}"

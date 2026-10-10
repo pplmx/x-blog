@@ -21,24 +21,24 @@ def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_post(client, auth_headers, *, title="Sub Post", published=True, publish_at=None):
+async def _create_post(client, auth_headers, *, title="Sub Post", published=True, publish_at=None):
     slug = f"sub-{uuid4().hex[:10]}"
     payload = {"title": title, "slug": slug, "content": "Body", "published": published}
     if publish_at is not None:
         payload["publish_at"] = publish_at
-    resp = client.post("/api/posts", json=payload, headers=auth_headers)
+    resp = await client.post("/api/posts", json=payload, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
-def _comment(client, admin_token, post_id, content, approved=True):
-    created = client.post(
+async def _comment(client, admin_token, post_id, content, approved=True):
+    created = await client.post(
         f"/api/comments/post/{post_id}",
         json={"content": content, "nickname": "Subber", "email": "sub@example.com"},
     )
     assert created.status_code == 201, created.text
     cid = created.json()["id"]
-    resp = client.patch(
+    resp = await client.patch(
         f"/api/comments/{cid}/approve",
         json={"approved": approved},
         headers=_auth(admin_token),
@@ -48,12 +48,12 @@ def _comment(client, admin_token, post_id, content, approved=True):
 
 
 class TestRssFeed:
-    def test_returns_newest_approved_comments_with_deep_links(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers, title="Sub Post")
-        cid = _comment(client, admin_token, post["id"], "a subscribed thought")
-        _comment(client, admin_token, post["id"], "a rejected thought", approved=False)
+    async def test_returns_newest_approved_comments_with_deep_links(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers, title="Sub Post")
+        cid = await _comment(client, admin_token, post["id"], "a subscribed thought")
+        await _comment(client, admin_token, post["id"], "a rejected thought", approved=False)
 
-        resp = client.get(RSS)
+        resp = await client.get(RSS)
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/rss+xml")
         root = ET.fromstring(resp.text)
@@ -66,37 +66,37 @@ class TestRssFeed:
         link = item.findtext("link", "")
         assert link.endswith(f"/posts/{post['slug']}#comment-{cid}")
 
-    def test_item_carries_commenter_and_post_title(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers, title="Named Post")
-        _comment(client, admin_token, post["id"], "who said it")
-        resp = client.get(RSS)
+    async def test_item_carries_commenter_and_post_title(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers, title="Named Post")
+        await _comment(client, admin_token, post["id"], "who said it")
+        resp = await client.get(RSS)
         root = ET.fromstring(resp.text)
         item = root.findall(".//item")[0]
         assert "Named Post" in (item.findtext("title", "") or "")
         assert "Subber" in (item.findtext("title", "") or "")
 
-    def test_visibility_gate_never_leaks_hidden_comments(self, client, auth_headers, db_session, admin_token):
+    async def test_visibility_gate_never_leaks_hidden_comments(self, client, auth_headers, db_session, admin_token):
         from app import models
 
         # Pending (never moderated) comment.
-        post = _create_post(client, auth_headers)
-        created = client.post(
+        post = await _create_post(client, auth_headers)
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"content": "unmoderated secret", "nickname": "Subber", "email": "sub@example.com"},
         )
         assert created.status_code == 201
         # Draft post + scheduled post comments (public create 404s → insert rows).
-        draft = _create_post(client, auth_headers, published=False)
+        draft = await _create_post(client, auth_headers, published=False)
         future = (datetime.now(UTC) + timedelta(days=2)).isoformat()
-        scheduled = _create_post(client, auth_headers, published=True, publish_at=future)
+        scheduled = await _create_post(client, auth_headers, published=True, publish_at=future)
         for p, text in ((draft, "draft leak"), (scheduled, "scheduled leak")):
             row = models.Comment(
                 post_id=p["id"], nickname="Subber", email="sub@example.com", content=text, is_approved=True
             )
             db_session.add(row)
-        db_session.flush()
+        await db_session.flush()
 
-        body = client.get(RSS).text
+        body = (await client.get(RSS)).text
         rss_items = ET.fromstring(body).findall(".//item")
         contents = [i.findtext("description", "") for i in rss_items]
         assert not any("secret" in c for c in contents)
@@ -106,14 +106,14 @@ class TestRssFeed:
         # the feed is empty — the gate rejects every one of them.
         assert not contents
 
-    def test_never_contains_email_or_ip(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        _comment(client, admin_token, post["id"], "PII-free content for sure")
-        body = client.get(RSS).text
+    async def test_never_contains_email_or_ip(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        await _comment(client, admin_token, post["id"], "PII-free content for sure")
+        body = (await client.get(RSS)).text
         assert "sub@example.com" not in body
         assert "127.0.0.1" not in body
 
-    def test_nameless_reader_email_never_in_commenter_label(self, client, db_session, admin_token, auth_headers):
+    async def test_nameless_reader_email_never_in_commenter_label(self, client, db_session, admin_token, auth_headers):
         """A reader registered without a display_name must not have their
         ACCOUNT EMAIL in the feed's commenter label (ISS-606/TASK-532).
 
@@ -124,24 +124,24 @@ class TestRssFeed:
         """
         from app.crud import approve_comment
 
-        post = _create_post(client, auth_headers)
+        post = await _create_post(client, auth_headers)
         email = "nameless-reader@example.com"
-        registered = client.post(
+        registered = await client.post(
             "/api/reader/register",
             json={"email": email, "password": "readerpass123", "display_name": None},
         )
         assert registered.status_code == 201, registered.text
         token = registered.json()["access_token"]
-        created = client.post(
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"content": "from a nameless reader", "nickname": "ignored", "email": "forged@example.com"},
             headers={"Authorization": f"Bearer {token}"},
         )
         assert created.status_code == 201, created.text
-        approve_comment(db_session, created.json()["id"], approved=True)
+        await approve_comment(db_session, created.json()["id"], approved=True)
 
         for path in (RSS, ATOM):
-            body = client.get(path).text
+            body = (await client.get(path)).text
             assert email not in body
             assert "forged@example.com" not in body
             # The reader's identity renders as the deterministic non-PII handle
@@ -151,12 +151,12 @@ class TestRssFeed:
 
 
 class TestAtomFeed:
-    def test_returns_newest_approved_comments_as_atom_entries(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        _comment(client, admin_token, post["id"], "atom-able thought")
-        _comment(client, admin_token, post["id"], "atom rejected", approved=False)
+    async def test_returns_newest_approved_comments_as_atom_entries(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        await _comment(client, admin_token, post["id"], "atom-able thought")
+        await _comment(client, admin_token, post["id"], "atom rejected", approved=False)
 
-        resp = client.get(ATOM)
+        resp = await client.get(ATOM)
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/atom+xml")
         root = ET.fromstring(resp.text)
@@ -167,20 +167,20 @@ class TestAtomFeed:
         link = entries[0].find("{http://www.w3.org/2005/Atom}link").attrib["href"]
         assert "#comment-" in link
 
-    def test_self_link_points_at_the_atom_url(self, client, auth_headers, admin_token):
-        _comment(client, admin_token, _create_post(client, auth_headers)["id"], "self check")
-        resp = client.get(ATOM)
+    async def test_self_link_points_at_the_atom_url(self, client, auth_headers, admin_token):
+        await _comment(client, admin_token, (await _create_post(client, auth_headers))["id"], "self check")
+        resp = await client.get(ATOM)
         root = ET.fromstring(resp.text)
         self_link = [el for el in root.findall("{http://www.w3.org/2005/Atom}link") if el.attrib.get("rel") == "self"]
         assert self_link and self_link[0].attrib["href"].endswith("/rss/comments.atom.xml")
 
 
 class TestFeedCaching:
-    def test_feeds_are_reusable_conditional(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        _comment(client, admin_token, post["id"], "cache me")
-        first = client.get(RSS)
-        second = client.get(RSS)
+    async def test_feeds_are_reusable_conditional(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        await _comment(client, admin_token, post["id"], "cache me")
+        first = await client.get(RSS)
+        second = await client.get(RSS)
         assert first.status_code == 200
         assert second.status_code in (200, 304)
         # ETag present either way.

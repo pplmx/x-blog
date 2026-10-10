@@ -3,7 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, models, schemas
 from app.auth import User, get_current_admin
@@ -67,11 +68,11 @@ def _env_flag(name: str) -> bool:
 AUTO_APPROVE_READER_COMMENTS = _env_flag("AUTO_APPROVE_READER_COMMENTS")
 
 
-def _notify_thread_subscribers(
+async def _notify_thread_subscribers(
     post: models.Post,
     new_comment_id: int,
     exclude_reader_ids: set[int],
-    db: Session,
+    db: AsyncSession,
     commenter_id: int | None = None,
 ) -> None:
     """Push 'a new comment was approved on a thread you follow' to followers.
@@ -88,28 +89,30 @@ def _notify_thread_subscribers(
     never fail because of notifications. Dead (404/410) subscriptions are
     retired by the shared dispatch helper. (DEC-078, TASK-150)
     """
-    target_ids = [rid for rid in crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids]
+    target_ids = [
+        rid for rid in await crud.comment_subscription_reader_ids(db, post.id) if rid not in exclude_reader_ids
+    ]
     if commenter_id is not None:
-        blocked = crud.readers_who_block(db, commenter_id, target_ids)
+        blocked = await crud.readers_who_block(db, commenter_id, target_ids)
         if blocked:
             target_ids = [rid for rid in target_ids if rid not in blocked]
     # Deactivation silences every channel (DEC-194, RIL ISS-278): a deactivated
     # reader keeps their thread subscription row, but must not get the inbox
     # push below (their email is already filtered in dispatch_notification_emails).
     if target_ids:
-        active_ids = {
-            rid
-            for (rid,) in db.query(auth.ReaderAccount.id)
-            .filter(
-                auth.ReaderAccount.id.in_(target_ids),
-                auth.ReaderAccount.is_active.is_(True),
+        rows = (
+            await db.execute(
+                select(auth.ReaderAccount.id).filter(
+                    auth.ReaderAccount.id.in_(target_ids),
+                    auth.ReaderAccount.is_active.is_(True),
+                )
             )
-            .all()
-        }
+        ).all()
+        active_ids = {rid for (rid,) in rows}
         target_ids = [rid for rid in target_ids if rid in active_ids]
     # Per-kind opt-out (DEC-171, TASK-202): readers who turned 'thread_comment'
     # off are dropped before both the inbox row and the push fan-out below.
-    target_prefs = crud.reader_notification_prefs_for(db, target_ids)
+    target_prefs = await crud.reader_notification_prefs_for(db, target_ids)
     target_ids = [rid for rid in target_ids if crud.notification_kind_enabled(target_prefs.get(rid), "thread_comment")]
     if not target_ids:
         return
@@ -118,7 +121,7 @@ def _notify_thread_subscribers(
     # Batched (ISS-427): build every follower's row, flush + prune + commit once
     # — the old per-follower record_reader_notification loop paid O(2n) queries
     # and N transactions per approved comment on a big thread.
-    crud.record_thread_comment_notifications(
+    await crud.record_thread_comment_notifications(
         db,
         target_ids,
         post_title=post.title or "",
@@ -128,8 +131,8 @@ def _notify_thread_subscribers(
     # followers who opted into email for the kind — localized per reader the
     # same way as the inbox rows (DEC-340/TASK-396). One locale query for the
     # whole target set, then per-reader copy.
-    email_locales = crud.reader_locale_map(db, target_ids)
-    dispatch_notification_emails(
+    email_locales = await crud.reader_locale_map(db, target_ids)
+    await dispatch_notification_emails(
         db,
         [
             EmailItem(
@@ -145,7 +148,11 @@ def _notify_thread_subscribers(
     )
     if not vapid_configured():
         return
-    subscriptions = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id.in_(target_ids)).all()
+    subscriptions = (
+        (await db.execute(select(models.PushSubscription).filter(models.PushSubscription.reader_id.in_(target_ids))))
+        .scalars()
+        .all()
+    )
     if not subscriptions:
         return
     payload = {
@@ -156,13 +163,13 @@ def _notify_thread_subscribers(
         # Deep-link to the new approved comment (DEC-072 anchor scroll).
         "url": f"/posts/{post.slug}#comment-{new_comment_id}",
     }
-    dispatch_to_subscriptions(subscriptions, payload, db, logger)
+    await dispatch_to_subscriptions(subscriptions, payload, db, logger)
 
 
-def _notify_guest_thread_subscribers(
+async def _notify_guest_thread_subscribers(
     post: models.Post,
     comment: models.Comment,
-    db: Session,
+    db: AsyncSession,
 ) -> None:
     """Guest thread-follow fan-out (DEC-427, TASK-438): email every CONFIRMED
     guest subscriber of the post that a new comment is approved.
@@ -181,12 +188,12 @@ def _notify_guest_thread_subscribers(
     Followers on the weekly digest cadence are excluded here (DEC-429): the
     digest job owns them, so a subscriber is served by exactly one channel.
     """
-    subscribers = crud.list_confirmed_guest_comment_subscribers(db, post.id)
+    subscribers = await crud.list_confirmed_guest_comment_subscribers(db, post.id)
     if not subscribers:
         return
     commenter_email = comment.email.strip().casefold() if comment.email else None
     if comment.reader_id is not None:
-        account = db.get(auth.ReaderAccount, comment.reader_id)
+        account = await db.get(auth.ReaderAccount, comment.reader_id)
         if account is not None and account.email:
             commenter_email = account.email.strip().casefold()
     url = f"/posts/{post.slug}#comment-{comment.id}"
@@ -209,11 +216,11 @@ def _notify_guest_thread_subscribers(
         logger.exception("guest thread fan-out email failed for %d recipients", len(recipients))
 
 
-def _notify_replied_to(
+async def _notify_replied_to(
     parent_reader: auth.ReaderAccount,
     post: models.Post,
     reply_comment_id: int,
-    db: Session,
+    db: AsyncSession,
     commenter_id: int | None = None,
 ) -> None:
     """Push 'someone replied to your comment' to the replied-to reader.
@@ -231,11 +238,11 @@ def _notify_replied_to(
     """
     # Reader-block opt-out (DEC-425, TASK-437): a parent-author who blocked the
     # replier receives nothing — the reply is the channel the block silences.
-    if commenter_id is not None and crud.get_reader_block(db, parent_reader.id, commenter_id):
+    if commenter_id is not None and await crud.get_reader_block(db, parent_reader.id, commenter_id):
         return
     # Per-kind opt-out (DEC-171, TASK-202): a replied-to reader who turned
     # 'reply' off gets neither the inbox row nor the push.
-    target_prefs = crud.reader_notification_prefs_for(db, [parent_reader.id])
+    target_prefs = await crud.reader_notification_prefs_for(db, [parent_reader.id])
     if not crud.notification_kind_enabled(target_prefs.get(parent_reader.id), "reply"):
         return
     # Localized copy for THIS reader (DEC-340/TASK-396): the durable inbox row
@@ -244,7 +251,7 @@ def _notify_replied_to(
     reply_title, reply_body = notification_copy("reply", post.title or "", parent_reader.locale)
     # Persist to the durable reader inbox (independent of VAPID) so the replied-to
     # reader sees the reply in-app even if the browser push is missed/unconfigured.
-    crud.record_reader_notification(
+    await crud.record_reader_notification(
         db,
         parent_reader.id,
         kind="reply",
@@ -255,7 +262,7 @@ def _notify_replied_to(
     # Email channel (DEC-197, TASK-217): best-effort off-site copy for the
     # replied-to reader if they opted into email for replies.
     if email_channel_enabled(target_prefs.get(parent_reader.id), "reply"):
-        dispatch_notification_emails(
+        await dispatch_notification_emails(
             db,
             [
                 EmailItem(
@@ -279,12 +286,20 @@ def _notify_replied_to(
         # on the reply, not the top of a long post (DEC-072, TASK-145).
         "url": f"/posts/{post.slug}#comment-{reply_comment_id}",
     }
-    subs = db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == parent_reader.id).all()
+    subs = (
+        (
+            await db.execute(
+                select(models.PushSubscription).filter(models.PushSubscription.reader_id == parent_reader.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     if subs:
-        dispatch_to_subscriptions(subs, payload, db, logger)
+        await dispatch_to_subscriptions(subs, payload, db, logger)
 
 
-def _maybe_notify_guest_replied_to(
+async def _maybe_notify_guest_replied_to(
     parent: models.Comment,
     comment: models.Comment,
     post: models.Post,
@@ -324,7 +339,7 @@ def _maybe_notify_guest_replied_to(
         logger.exception("guest reply-email dispatch failed")
 
 
-def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
+async def _notify_comment_approved(db: AsyncSession, comment: models.Comment) -> None:
     """Fire the notifications for a comment that just became public.
 
     Shared by the admin approve endpoint and the verified-reader auto-approve
@@ -346,25 +361,28 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     if comment.notified_at is not None:
         return
     comment.notified_at = utc_now_naive()
-    db.commit()
-    db.refresh(comment)
-    post = db.get(models.Post, comment.post_id)
-    parent = db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
+    await db.commit()
+    # NOTE: no db.refresh(comment) here — expire_on_commit=False keeps this
+    # object's attributes (incl. the joinedloaded `reader`) without a reload,
+    # and a refresh would re-load the relationship via its lazy loader → async
+    # MissingGreenlet (RIL async migration).
+    post = await db.get(models.Post, comment.post_id)
+    parent = await db.get(models.Comment, comment.parent_id) if comment.parent_id is not None else None
 
     # An approved REPLY notifies the replied-to reader (its author is not
     # notified). (DEC-064, TASK-137). A deactivated reader gets no notification —
     # deactivation silences every channel, reply pushes included (DEC-194,
     # RIL ISS-278).
     if parent is not None and parent.reader_id is not None and parent.reader_id != comment.reader_id:
-        parent_reader = db.get(auth.ReaderAccount, parent.reader_id)
+        parent_reader = await db.get(auth.ReaderAccount, parent.reader_id)
         if post is not None and parent_reader is not None and parent_reader.is_active:
-            _notify_replied_to(parent_reader, post, comment.id, db, commenter_id=comment.reader_id)
+            await _notify_replied_to(parent_reader, post, comment.id, db, commenter_id=comment.reader_id)
 
     # Guest reply-email (DEC-332, TASK-392): an approved REPLY to an anonymous
     # comment that consented emails the guest, independent of the reader
     # fan-out above (which only ever sees reader-attributed parents).
     if post is not None and parent is not None:
-        _maybe_notify_guest_replied_to(parent, comment, post)
+        await _maybe_notify_guest_replied_to(parent, comment, post)
 
     # Any approved comment notifies the thread's followers (DEC-078), excluding
     # the comment's own author and — on a reply — the replied-to reader, who
@@ -375,20 +393,20 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
             excluded.add(comment.reader_id)
         if parent is not None and parent.reader_id is not None:
             excluded.add(parent.reader_id)
-        _notify_thread_subscribers(post, comment.id, excluded, db, commenter_id=comment.reader_id)
+        await _notify_thread_subscribers(post, comment.id, excluded, db, commenter_id=comment.reader_id)
         # Guest thread-follow (DEC-427, TASK-438): email this post's confirmed
         # guest subscribers. Independent of the reader fan-out above — different
         # rows, no account, straight SMTP.
-        _notify_guest_thread_subscribers(post, comment, db)
+        await _notify_guest_thread_subscribers(post, comment, db)
 
     # @-mention fan-out (DEC-322, TASK-389): an approved comment naming a
     # reader's display name (e.g. "@Riki") notifies them with a deep link to the
     # comment. Best-effort like the reply/thread fan-out; a comment still
     # pending notifies nobody (moderation gate).
     if post is not None and comment.content and "@" in comment.content:
-        mentioned_ids = crud.resolve_mention_reader_ids(db, comment.content)
+        mentioned_ids = await crud.resolve_mention_reader_ids(db, comment.content)
         if mentioned_ids:
-            _notify_mentions(post, comment, mentioned_ids, db)
+            await _notify_mentions(post, comment, mentioned_ids, db)
 
     # Reader-to-reader follow fan-out (round 365, DEC-403): an approved comment
     # from a reader notifies everyone following that READER (the person-shaped
@@ -398,7 +416,7 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     # replied-to reader already notified above — skip them to avoid a double
     # push when the parent reader also follows the commenter.
     if post is not None and comment.reader_id is not None:
-        _notify_reader_followers(post, comment, db)
+        await _notify_reader_followers(post, comment, db)
 
     # Guest manage email (round 385, DEC-435/TASK-444): an approved ANONYMOUS
     # comment that consented to email gets a "your comment is live — manage it"
@@ -406,10 +424,10 @@ def _notify_comment_approved(db: Session, comment: models.Comment) -> None:
     # ever exists for consenting guests (DEC-332), so the send set is exactly
     # the guests already receiving mail; best-effort like every fan-out.
     if post is not None:
-        _maybe_email_guest_manage_link(comment, post)
+        await _maybe_email_guest_manage_link(comment, post)
 
 
-def _maybe_email_guest_manage_link(comment: models.Comment, post: models.Post) -> None:
+async def _maybe_email_guest_manage_link(comment: models.Comment, post: models.Post) -> None:
     """Best-effort approval-time manage email to an ANONYMOUS commenter.
 
     Fires when a guest's own comment is approved (the moment it becomes
@@ -441,7 +459,7 @@ def _maybe_email_guest_manage_link(comment: models.Comment, post: models.Post) -
         logger.exception("guest comment manage-email dispatch failed")
 
 
-def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Session) -> None:
+async def _notify_reader_followers(post: models.Post, comment: models.Comment, db: AsyncSession) -> None:
     """Inbox 'reader you follow commented' fan-out (round 365, DEC-403).
 
     Followers of the COMMENT's reader (not the thread's subscribers — that is
@@ -453,11 +471,11 @@ def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Ses
     notification above, and a double push for the same comment is noise.
     """
     try:
-        target_ids = crud.list_reader_follower_ids(db, comment.reader_id or 0)
+        target_ids = await crud.list_reader_follower_ids(db, comment.reader_id or 0)
         if not target_ids:
             return
         if comment.parent_id is not None:
-            parent = db.get(models.Comment, comment.parent_id)
+            parent = await db.get(models.Comment, comment.parent_id)
             if parent is not None and parent.reader_id is not None:
                 target_ids = [rid for rid in target_ids if rid != parent.reader_id]
         if not target_ids:
@@ -472,16 +490,19 @@ def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Ses
         # blocked commenter's activity is invisible to them even if they still
         # follow. Suppressed before the active/prefs filters to keep one pass.
         if comment.reader_id is not None:
-            blocked = crud.readers_who_block(db, comment.reader_id, target_ids)
+            blocked = await crud.readers_who_block(db, comment.reader_id, target_ids)
             if blocked:
                 target_ids = [rid for rid in target_ids if rid not in blocked]
-        active_ids = {
-            rid
-            for (rid,) in db.query(auth.ReaderAccount.id)
-            .filter(auth.ReaderAccount.id.in_(target_ids), auth.ReaderAccount.is_active.is_(True))
-            .all()
-        }
-        prefs = crud.reader_notification_prefs_for(db, target_ids)
+        active_rows = (
+            await db.execute(
+                select(auth.ReaderAccount.id).filter(
+                    auth.ReaderAccount.id.in_(target_ids),
+                    auth.ReaderAccount.is_active.is_(True),
+                )
+            )
+        ).all()
+        active_ids = {rid for (rid,) in active_rows}
+        prefs = await crud.reader_notification_prefs_for(db, target_ids)
         target_ids = [
             rid
             for rid in target_ids
@@ -489,9 +510,9 @@ def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Ses
         ]
         if not target_ids:
             return
-        commenter = db.get(auth.ReaderAccount, comment.reader_id)
+        commenter = await db.get(auth.ReaderAccount, comment.reader_id)
         who = commenter.display_name if commenter is not None and commenter.display_name else "Reader"
-        crud.record_reader_follow_notifications(
+        await crud.record_reader_follow_notifications(
             db,
             target_ids,
             commenter=who,
@@ -508,11 +529,11 @@ def _notify_reader_followers(post: models.Post, comment: models.Comment, db: Ses
         logger.exception("reader-follow comment fan-out failed")
 
 
-def _notify_mentions(
+async def _notify_mentions(
     post: models.Post,
     comment: models.Comment,
     mentioned_ids: list[int],
-    db: Session,
+    db: AsyncSession,
 ) -> None:
     """Notify each reader @-mentioned in an approved comment (DEC-322).
 
@@ -529,25 +550,25 @@ def _notify_mentions(
         mentioned_ids = [rid for rid in mentioned_ids if rid != comment.reader_id]
     if not mentioned_ids:
         return
-    active_ids = {
-        rid
-        for (rid,) in db.query(auth.ReaderAccount.id)
-        .filter(
-            auth.ReaderAccount.id.in_(mentioned_ids),
-            auth.ReaderAccount.is_active.is_(True),
+    active_rows = (
+        await db.execute(
+            select(auth.ReaderAccount.id).filter(
+                auth.ReaderAccount.id.in_(mentioned_ids),
+                auth.ReaderAccount.is_active.is_(True),
+            )
         )
-        .all()
-    }
+    ).all()
+    active_ids = {rid for (rid,) in active_rows}
     target_ids = [rid for rid in mentioned_ids if rid in active_ids]
     # Reader-block opt-out (DEC-425, TASK-437): a mentioned reader who blocked
     # the commenter hears nothing — an @-mention by an abusive reader is the
     # exact channel a block exists to silence. Dropped before the prefs split
     # so neither the inbox nor the email copy is written.
     if comment.reader_id is not None:
-        blocked = crud.readers_who_block(db, comment.reader_id, target_ids)
+        blocked = await crud.readers_who_block(db, comment.reader_id, target_ids)
         if blocked:
             target_ids = [rid for rid in target_ids if rid not in blocked]
-    target_prefs = crud.reader_notification_prefs_for(db, target_ids)
+    target_prefs = await crud.reader_notification_prefs_for(db, target_ids)
     # The two channels are gated by DIFFERENT prefs (DEC-326): a reader may
     # silence the in-app 'mention' kind yet still want the email copy, or vice
     # versa — an inbox opt-out must not mute an explicitly-opted email.
@@ -560,7 +581,7 @@ def _notify_mentions(
     # commented as a reader, else their typed nickname, else a generic label.
     commenter_label = "Reader"
     if comment.reader_id is not None:
-        author = db.get(auth.ReaderAccount, comment.reader_id)
+        author = await db.get(auth.ReaderAccount, comment.reader_id)
         if author is not None and author.display_name:
             commenter_label = author.display_name
         elif comment.nickname:
@@ -569,7 +590,7 @@ def _notify_mentions(
         commenter_label = comment.nickname
     url = f"/posts/{post.slug}#comment-{comment.id}"
     if inbox_ids:
-        crud.record_mention_notifications(
+        await crud.record_mention_notifications(
             db,
             inbox_ids,
             # DEC-321 anchor: the landing machinery scrolls to the exact comment.
@@ -580,9 +601,9 @@ def _notify_mentions(
     # Email copy (DEC-326, TASK-391): same values as the inbox row so both
     # channels agree — localized per reader (DEC-340/TASK-396). One locale
     # query for the whole email target set, then per-reader copy.
-    email_locales = crud.reader_locale_map(db, email_ids)
+    email_locales = await crud.reader_locale_map(db, email_ids)
     if email_ids:
-        dispatch_notification_emails(
+        await dispatch_notification_emails(
             db,
             [
                 EmailItem(
@@ -643,11 +664,11 @@ class DiscussionFeedResponse(BaseModel):
 
 @router.get("/feed", response_model=DiscussionFeedResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def discussion_feed(
+async def discussion_feed(
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Site-wide discussion feed (round 367, DEC-407).
 
@@ -659,7 +680,7 @@ def discussion_feed(
     reader ON the comment. Same visibility gate as comment search: pending/
     rejected comments and comments on draft/scheduled posts never appear.
     """
-    comments, total = crud.list_public_comment_feed(db, page=page, limit=limit)
+    comments, total = await crud.list_public_comment_feed(db, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     items = []
     for c in comments:
@@ -684,14 +705,14 @@ def discussion_feed(
 
 @router.get("/post/{post_id}", response_model=CommentListResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def list_comments(
+async def list_comments(
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     post_id: IdInt,
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     sort: str = Query("newest", description="newest | oldest | likes"),
     q: Annotated[NonNulStr | None, Query(max_length=MAX_QUERY_LENGTH)] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get paginated approved comments for a post.
 
@@ -712,10 +733,10 @@ def list_comments(
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     if sort not in VALID_COMMENT_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_COMMENT_SORTS)}")
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    comments, total = crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort, q=q or "")
+    comments, total = await crud.get_comments_paginated(db, post_id, page=page, limit=limit, sort=sort, q=q or "")
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
 
     return CommentListResponse(
@@ -731,18 +752,18 @@ def list_comments(
 
 @router.post("/post/{post_id}", response_model=schemas.Comment, status_code=201)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def create_comment(
+async def create_comment(
     post_id: IdInt,
     comment: schemas.CommentCreate,
     request: Request,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
 ):
     # Drafts and not-yet-published scheduled posts are invisible to the public
     # (same rule as the read paths). Without this guard the endpoint became a
     # draft-existence oracle (201 here vs 400 "Post not found" for unknown ids)
     # and let visitors queue comments on drafts that surface once public.
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -764,7 +785,7 @@ def create_comment(
         # moderation alert is the exception: it fires at CREATE because the
         # whole point is telling the author a comment is WAITING for approval.
         # Best-effort — never fails the create. (DEC-080)
-        created = crud.create_comment(db, post_id, comment, ip_address, reader=reader)
+        created = await crud.create_comment(db, post_id, comment, ip_address, reader=reader)
 
         # Moderation trust tier (DEC-098/100, TASK-161/162): when enabled, a
         # verified reader's comment (reader_id stamped from the reader JWT)
@@ -773,15 +794,15 @@ def create_comment(
         # (if set) overrides the env fallback so the policy flips at runtime.
         # Anonymous comments and the flag-off case stay pending and go through
         # the moderator alert as before.
-        if created.reader_id is not None and crud.boolean_setting(
+        if created.reader_id is not None and await crud.boolean_setting(
             db, "auto_approve_reader_comments", AUTO_APPROVE_READER_COMMENTS
         ):
-            approved = crud.approve_comment(db, created.id, approved=True)
+            approved = await crud.approve_comment(db, created.id, approved=True)
             if approved is not None:
-                _notify_comment_approved(db, approved)
+                await _notify_comment_approved(db, approved)
                 return approved
 
-        dispatch_moderation_pending(db, post, created, logger)
+        await dispatch_moderation_pending(db, post, created, logger)
         return created
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -789,18 +810,18 @@ def create_comment(
 
 @router.patch("/{comment_id}/approve", response_model=schemas.Comment)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def approve_comment(
+async def approve_comment(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
     approval: CommentApproval,
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Approve or reject a comment. Admin only. Idempotent: re-approving an
     already-approved comment (double click / retry) is a no-op that must not
     fan out duplicate reply + thread notifications (round-296 deep-dive)."""
-    before = db.query(models.Comment.is_approved).filter(models.Comment.id == comment_id).scalar()
-    comment = crud.approve_comment(db, comment_id, approved=approval.approved)
+    before = (await db.execute(select(models.Comment.is_approved).filter(models.Comment.id == comment_id))).scalar()
+    comment = await crud.approve_comment(db, comment_id, approved=approval.approved)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
@@ -809,7 +830,7 @@ def approve_comment(
         # crud.approve_comment resolved `before` from a real row (we are past
         # the 404), so `before` is the prior approval state; only a genuine
         # transition into approved fires the fan-out.
-        _notify_comment_approved(db, comment)
+        await _notify_comment_approved(db, comment)
     return comment
 
 
@@ -821,10 +842,10 @@ class ReplyNotifyUnsubscribeBody(BaseModel):
 
 @router.post("/reply-notify/unsubscribe", status_code=200)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def reply_notify_unsubscribe(
+async def reply_notify_unsubscribe(
     request: Request,  # noqa: ARG001
     body: ReplyNotifyUnsubscribeBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Flip a guest comment's reply-email consent off via its emailed token.
 
@@ -835,13 +856,17 @@ def reply_notify_unsubscribe(
     unknown token is 404 — indistinguishable from "already unsubscribed" for a
     random guess, so this never reveals which comments opted in.
     """
-    comment = db.query(models.Comment).filter(models.Comment.reply_notify_token == body.token).first()
+    comment = (
+        (await db.execute(select(models.Comment).filter(models.Comment.reply_notify_token == body.token)))
+        .scalars()
+        .first()
+    )
     if comment is None:
         raise HTTPException(status_code=404, detail="Invalid unsubscribe token")
     # The consent flips off; the token stays (a second click stays idempotent,
     # and unlistening once does not make a stale email link start 404ing).
     comment.reply_notify_email = False
-    db.commit()
+    await db.commit()
     return {"unsubscribed": True}
 
 
@@ -853,11 +878,11 @@ class CommentLikeBody(BaseModel):
 
 @router.post("/{comment_id}/like", response_model=schemas.CommentPublic)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def like_comment(
+async def like_comment(
     request: Request,  # noqa: ARG001
     response: Response,
     comment_id: IdInt,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     body: CommentLikeBody | None = None,
 ):
     """Increment the like count for a comment (DEC-092, TASK-158).
@@ -871,13 +896,13 @@ def like_comment(
     unknown id — so the endpoint never answers existence questions about drafts.
     """
     del body
-    comment = db.get(models.Comment, comment_id)
+    comment = await db.get(models.Comment, comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    post = db.get(models.Post, comment.post_id)
+    post = await db.get(models.Post, comment.post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Comment not found")
-    is_new, updated = crud.like_comment(db, comment_id, client_rate_key(request))
+    is_new, updated = await crud.like_comment(db, comment_id, client_rate_key(request))
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
     response.status_code = status.HTTP_201_CREATED if is_new else status.HTTP_200_OK
@@ -917,10 +942,10 @@ class GuestCommentManageResponse(BaseModel):
 
 @router.get("/manage", response_model=GuestCommentManageResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def get_guest_comment_manage(
+async def get_guest_comment_manage(
     request: Request,  # noqa: ARG001
     token: str = Query(..., min_length=1, max_length=64),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Load a guest's own comment for the management page (round 385).
 
@@ -930,10 +955,10 @@ def get_guest_comment_manage(
     deep-link back to the thread. Moderation status rides on CommentPublic so
     the page can tell "pending / approved / rejected" apart.
     """
-    comment = crud.get_guest_comment_by_token(db, token)
+    comment = await crud.get_guest_comment_by_token(db, token)
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
-    post_obj = db.get(models.Post, comment.post_id)
+    post_obj = await db.get(models.Post, comment.post_id)
     post_brief = (
         schemas.CommentPostBrief(id=post_obj.id, title=post_obj.title or "", slug=post_obj.slug)
         if post_obj is not None
@@ -944,10 +969,10 @@ def get_guest_comment_manage(
 
 @router.patch("/manage", response_model=schemas.CommentPublic)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def edit_guest_comment_manage(
+async def edit_guest_comment_manage(
     request: Request,  # noqa: ARG001
     body: GuestCommentManageBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Edit a guest's own comment via its management token (round 385).
 
@@ -960,7 +985,7 @@ def edit_guest_comment_manage(
     commenters, so it stays pending until a moderator reviews it). An unknown
     token is a 404, indistinguishable from a non-existent comment.
     """
-    updated, _was_public = crud.update_guest_comment(db, body.token, body.content.strip() if body.content else "")
+    updated, _was_public = await crud.update_guest_comment(db, body.token, body.content.strip() if body.content else "")
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
     # No moderation alert on edit — exactly like the reader path (DEC-096): the
@@ -971,10 +996,10 @@ def edit_guest_comment_manage(
 
 @router.delete("/manage", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def delete_guest_comment_manage(
+async def delete_guest_comment_manage(
     request: Request,  # noqa: ARG001
     token: str = Query(..., min_length=1, max_length=64),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a guest's own comment via its management token (round 385).
 
@@ -983,7 +1008,7 @@ def delete_guest_comment_manage(
     reparented (crud.delete_guest_comment) so the thread stays coherent.
     """
     try:
-        deleted = crud.delete_guest_comment(db, token)
+        deleted = await crud.delete_guest_comment(db, token)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
@@ -993,12 +1018,12 @@ def delete_guest_comment_manage(
 
 @router.post("/{comment_id}/flag")
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def flag_comment(
+async def flag_comment(
     request: Request,  # noqa: ARG001
     response: Response,
     comment_id: IdInt,
     body: CommentFlagBody | None = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Flag a comment for moderator review (DEC-108, TASK-166).
 
@@ -1007,28 +1032,28 @@ def flag_comment(
     unknown id) so the endpoint never answers existence questions about drafts.
     Returns the distinct-flag count (not exposed on the public schema).
     """
-    comment = db.get(models.Comment, comment_id)
+    comment = await db.get(models.Comment, comment_id)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-    post = db.get(models.Post, comment.post_id)
+    post = await db.get(models.Post, comment.post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Comment not found")
     reason = (body.reason if body is not None else None) or None
-    created, total = crud.flag_comment(db, comment_id, client_rate_key(request), reason=reason)
+    created, total = await crud.flag_comment(db, comment_id, client_rate_key(request), reason=reason)
     response.status_code = 201 if created else 200
     return {"comment_id": comment_id, "flags": total, "is_new": created}
 
 
 @router.delete("/{comment_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_COMMENT}/minute")
-def delete_comment(
+async def delete_comment(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     try:
-        success = crud.delete_comment(db, comment_id)
+        success = await crud.delete_comment(db, comment_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:

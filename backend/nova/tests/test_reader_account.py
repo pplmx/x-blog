@@ -5,6 +5,8 @@ cloud bookmarks/thread subscriptions, anonymizes their past comments
 (identity detached, discussion kept public) and makes the account unusable.
 """
 
+from sqlalchemy import func, select
+
 from app import models
 from app.auth import ReaderAccount
 from app.crud import approve_comment, create_post
@@ -13,13 +15,13 @@ from app.schemas import PostCreate
 PASSWORD = "readerpass123"
 
 
-def _seed(client, db_session, tag):
-    post = create_post(
+async def _seed(client, db_session, tag):
+    post = await create_post(
         db_session,
         PostCreate(title="Acct Post", slug=f"acct-{tag}", content="# Hi", published=True),
     )
     email = f"acct-{tag}@example.com"
-    reg = client.post(
+    reg = await client.post(
         "/api/reader/register",
         json={"email": email, "password": PASSWORD, "display_name": "Acct User"},
     )
@@ -28,13 +30,13 @@ def _seed(client, db_session, tag):
     reader_id = reg.json()["reader"]["id"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    created = client.post(
+    created = await client.post(
         f"/api/comments/post/{post.id}",
         json={"nickname": "x", "email": "x@x.com", "content": "account comment"},
         headers=headers,
     )
     comment_id = created.json()["id"]
-    approve_comment(db_session, comment_id, approved=True)  # publicly visible
+    await approve_comment(db_session, comment_id, approved=True)  # publicly visible
 
     # Seed private account data directly.
     db_session.add(models.ReaderBookmark(reader_id=reader_id, post_id=post.id))
@@ -46,58 +48,65 @@ def _seed(client, db_session, tag):
     tg = models.Tag(name=f"Tag{tag}")
     series = models.Series(title=f"Series{tag}", slug=f"series-{tag}")
     db_session.add_all([cat, tg, series])
-    db_session.flush()
+    await db_session.flush()
     db_session.add(models.CategoryFollow(reader_id=reader_id, category_id=cat.id))
     db_session.add(models.TagFollow(reader_id=reader_id, tag_id=tg.id))
     db_session.add(models.SeriesFollow(reader_id=reader_id, series_id=series.id))
     db_session.add(models.BookmarkFolder(reader_id=reader_id, name=f"Folder{tag}"))
     db_session.add(models.ReadingHistory(reader_id=reader_id, post_id=post.id))
     db_session.add(models.ReaderNotificationPref(reader_id=reader_id))
-    db_session.commit()
+    await db_session.commit()
     return post, email, reader_id, comment_id, headers
 
 
 class TestDeleteAccount:
-    def test_wrong_password_401(self, client, db_session):
-        _post, _email, _rid, _cid, headers = _seed(client, db_session, "wrongpw")
-        resp = client.request(
+    async def test_wrong_password_401(self, client, db_session):
+        _post, _email, _rid, _cid, headers = await _seed(client, db_session, "wrongpw")
+        resp = await client.request(
             "DELETE", "/api/reader/me/account", json={"password": "not-the-password"}, headers=headers
         )
         assert resp.status_code == 401
 
-    def test_requires_reader_token(self, client, db_session):
-        resp = client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD})
+    async def test_requires_reader_token(self, client, db_session):
+        resp = await client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD})
         assert resp.status_code == 401
 
-    def test_deletes_account_and_anonymizes_comments(self, client, db_session):
-        post, email, reader_id, comment_id, headers = _seed(client, db_session, "delete1")
+    async def test_deletes_account_and_anonymizes_comments(self, client, db_session):
+        post, email, reader_id, comment_id, headers = await _seed(client, db_session, "delete1")
 
-        resp = client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD}, headers=headers)
+        resp = await client.request("DELETE", "/api/reader/me/account", json={"password": PASSWORD}, headers=headers)
         assert resp.status_code == 204, resp.text
 
         # Account is gone; the reader can no longer log in.
-        assert db_session.get(ReaderAccount, reader_id) is None
-        login = client.post("/api/reader/login", json={"email": email, "password": PASSWORD})
+        assert await db_session.get(ReaderAccount, reader_id) is None
+        login = await client.post("/api/reader/login", json={"email": email, "password": PASSWORD})
         assert login.status_code == 401
 
         # The comment is still public/approved but its identity is detached.
-        listed = client.get(f"/api/comments/post/{post.id}").json()["items"]
+        listed = (await client.get(f"/api/comments/post/{post.id}")).json()["items"]
         item = next(c for c in listed if c["id"] == comment_id)
         assert item["reader"] is None
         assert item["content"] == "account comment"
-        row = db_session.get(models.Comment, comment_id)
+        row = await db_session.get(models.Comment, comment_id)
         assert row is not None
         assert row.reader_id is None
         assert row.nickname == "Acct User"
 
         # Cloud bookmarks + thread subscriptions are removed.
-        assert db_session.query(models.ReaderBookmark).filter(models.ReaderBookmark.reader_id == reader_id).count() == 0
         assert (
-            db_session.query(models.CommentSubscription)
-            .filter(models.CommentSubscription.reader_id == reader_id)
-            .count()
-            == 0
-        )
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.ReaderBookmark)
+                .where(models.ReaderBookmark.reader_id == reader_id)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.CommentSubscription)
+                .where(models.CommentSubscription.reader_id == reader_id)
+            )
+        ).scalar_one() == 0
         # Follows / folders / history / notification-prefs are removed too —
         # the old delete leaked them (stale rows that data-leak to a future
         # account reusing the id on SQLite).
@@ -109,5 +118,7 @@ class TestDeleteAccount:
             models.ReadingHistory,
             models.ReaderNotificationPref,
         ):
-            remaining = db_session.query(model).filter(model.reader_id == reader_id).count()
+            remaining = (
+                await db_session.execute(select(func.count()).select_from(model).where(model.reader_id == reader_id))
+            ).scalar_one()
             assert remaining == 0, f"{model.__name__} left {remaining} orphan row(s)"

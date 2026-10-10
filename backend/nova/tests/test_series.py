@@ -7,15 +7,15 @@ series and post writes, and unlink-on-delete semantics.
 """
 
 
-def _create_series(client, auth_headers, title="Tutorial Series", slug="tutorial-series"):
-    return client.post(
+async def _create_series(client, auth_headers, title="Tutorial Series", slug="tutorial-series"):
+    return await client.post(
         "/api/series",
         json={"title": title, "slug": slug, "description": "An ordered tutorial set"},
         headers=auth_headers,
     )
 
 
-def _create_post(
+async def _create_post(
     client,
     auth_headers,
     title,
@@ -35,14 +35,14 @@ def _create_post(
     }
     if publish_at is not None:
         payload["publish_at"] = publish_at
-    return client.post("/api/posts", json=payload, headers=auth_headers)
+    return await client.post("/api/posts", json=payload, headers=auth_headers)
 
 
 # --- Admin CRUD ----------------------------------------------------------
 
 
-def test_create_series(client, auth_headers):
-    resp = _create_series(client, auth_headers)
+async def test_create_series(client, auth_headers):
+    resp = await _create_series(client, auth_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "Tutorial Series"
@@ -51,16 +51,16 @@ def test_create_series(client, auth_headers):
     assert "id" in data
 
 
-def test_create_series_requires_auth(client):
-    resp = client.post("/api/series", json={"title": "X", "slug": "x", "description": None})
+async def test_create_series_requires_auth(client):
+    resp = await client.post("/api/series", json={"title": "X", "slug": "x", "description": None})
     assert resp.status_code == 401
 
 
-def test_create_series_whitespace_title_rejected_422(client, auth_headers):
+async def test_create_series_whitespace_title_rejected_422(client, auth_headers):
     """SeriesCreate.title passed min_length=1 without stripping, so '   '
     stored a blank series that rendered as an empty card — same round-276
     gap as PostBase.title/tag/category names (ISS-456 class)."""
-    resp = client.post(
+    resp = await client.post(
         "/api/series",
         json={"title": "   ", "slug": "blank-series-title", "description": None},
         headers=auth_headers,
@@ -68,15 +68,15 @@ def test_create_series_whitespace_title_rejected_422(client, auth_headers):
     assert resp.status_code == 422, resp.text
 
 
-def test_create_series_duplicate_slug(client, auth_headers):
-    _create_series(client, auth_headers)
-    resp = _create_series(client, auth_headers)
+async def test_create_series_duplicate_slug(client, auth_headers):
+    await _create_series(client, auth_headers)
+    resp = await _create_series(client, auth_headers)
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "BAD_REQUEST"
 
 
-def test_create_series_invalid_slug(client, auth_headers):
-    resp = client.post(
+async def test_create_series_invalid_slug(client, auth_headers):
+    resp = await client.post(
         "/api/series",
         json={"title": "Bad", "slug": "Bad Slug!", "description": None},
         headers=auth_headers,
@@ -84,9 +84,9 @@ def test_create_series_invalid_slug(client, auth_headers):
     assert resp.status_code == 422
 
 
-def test_update_series(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    resp = client.put(
+async def test_update_series(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    resp = await client.put(
         f"/api/series/{series['id']}",
         json={"title": "Renamed", "slug": "renamed-series", "description": "new"},
         headers=auth_headers,
@@ -96,13 +96,13 @@ def test_update_series(client, auth_headers):
     assert data["title"] == "Renamed"
     assert data["slug"] == "renamed-series"
     # public list follows the rename
-    resp = client.get("/api/series")
+    resp = await client.get("/api/series")
     slogs = [s["slug"] for s in resp.json()]
     assert "renamed-series" in slogs and "tutorial-series" not in slogs
 
 
-def test_update_series_missing(client, auth_headers):
-    resp = client.put(
+async def test_update_series_missing(client, auth_headers):
+    resp = await client.put(
         "/api/series/9999",
         json={"title": "Nope", "slug": "nope", "description": None},
         headers=auth_headers,
@@ -113,10 +113,10 @@ def test_update_series_missing(client, auth_headers):
 # --- Public read paths ---------------------------------------------------
 
 
-def test_list_series(client, auth_headers):
-    _create_series(client, auth_headers)
-    _create_series(client, auth_headers, title="Another", slug="another-series")
-    resp = client.get("/api/series")
+async def test_list_series(client, auth_headers):
+    await _create_series(client, auth_headers)
+    await _create_series(client, auth_headers, title="Another", slug="another-series")
+    resp = await client.get("/api/series")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 2
@@ -126,34 +126,34 @@ def test_list_series(client, auth_headers):
     assert {s["slug"] for s in data} == {"tutorial-series", "another-series"}
 
 
-def test_series_list_post_count_visible_only(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    _create_post(client, auth_headers, "Pub", "pub", series["id"], 0)
-    _create_post(client, auth_headers, "Draft", "draft", series["id"], 1, published=False)
-    data = client.get("/api/series").json()
+async def test_series_list_post_count_visible_only(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    await _create_post(client, auth_headers, "Pub", "pub", series["id"], 0)
+    await _create_post(client, auth_headers, "Draft", "draft", series["id"], 1, published=False)
+    data = (await client.get("/api/series")).json()
     match = [s for s in data if s["slug"] == series["slug"]][0]
     assert match["post_count"] == 1
 
 
-def test_get_series_not_found(client):
-    assert client.get("/api/series/does-not-exist").status_code == 404
+async def test_get_series_not_found(client):
+    assert (await client.get("/api/series/does-not-exist")).status_code == 404
 
 
-def test_series_detail_orders_published_posts(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)
-    _create_post(client, auth_headers, "Part 3", "part-3", series["id"], 2)
-    _create_post(client, auth_headers, "Part 2", "part-2", series["id"], 1)
-    data = client.get(f"/api/series/{series['slug']}").json()
+async def test_series_detail_orders_published_posts(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)
+    await _create_post(client, auth_headers, "Part 3", "part-3", series["id"], 2)
+    await _create_post(client, auth_headers, "Part 2", "part-2", series["id"], 1)
+    data = (await client.get(f"/api/series/{series['slug']}")).json()
     assert [p["slug"] for p in data["posts"]] == ["part-1", "part-2", "part-3"]
     assert data["post_count"] == 3
 
 
-def test_series_detail_excludes_drafts_and_scheduled(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    _create_post(client, auth_headers, "Pub", "pub", series["id"], 0)
-    _create_post(client, auth_headers, "Draft", "draft", series["id"], 1, published=False)
-    _create_post(
+async def test_series_detail_excludes_drafts_and_scheduled(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    await _create_post(client, auth_headers, "Pub", "pub", series["id"], 0)
+    await _create_post(client, auth_headers, "Draft", "draft", series["id"], 1, published=False)
+    await _create_post(
         client,
         auth_headers,
         "Future",
@@ -162,7 +162,7 @@ def test_series_detail_excludes_drafts_and_scheduled(client, auth_headers):
         2,
         publish_at="2099-01-01T00:00:00",
     )
-    data = client.get(f"/api/series/{series['slug']}").json()
+    data = (await client.get(f"/api/series/{series['slug']}")).json()
     assert [p["slug"] for p in data["posts"]] == ["pub"]
     assert data["post_count"] == 1
 
@@ -170,10 +170,10 @@ def test_series_detail_excludes_drafts_and_scheduled(client, auth_headers):
 # --- Series <-> Post wiring ----------------------------------------------
 
 
-def test_post_detail_includes_series(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    post = _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0).json()
-    detail = client.get(f"/api/posts/{post['id']}").json()
+async def test_post_detail_includes_series(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    post = (await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)).json()
+    detail = (await client.get(f"/api/posts/{post['id']}")).json()
     assert detail["series"] == {
         "id": series["id"],
         "title": "Tutorial Series",
@@ -182,8 +182,8 @@ def test_post_detail_includes_series(client, auth_headers):
     assert detail["series_order"] == 0
 
 
-def test_create_post_with_unknown_series_rejected(client, auth_headers):
-    resp = client.post(
+async def test_create_post_with_unknown_series_rejected(client, auth_headers):
+    resp = await client.post(
         "/api/posts",
         json={
             "title": "X",
@@ -198,103 +198,103 @@ def test_create_post_with_unknown_series_rejected(client, auth_headers):
     assert resp.status_code == 400
 
 
-def test_clear_series_assignment_via_null(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    post = _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0).json()
-    resp = client.put(
+async def test_clear_series_assignment_via_null(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    post = (await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)).json()
+    resp = await client.put(
         f"/api/posts/{post['id']}",
         json={"series_id": None, "series_order": 0},
         headers=auth_headers,
     )
     assert resp.status_code == 200
-    detail = client.get(f"/api/posts/{post['id']}").json()
+    detail = (await client.get(f"/api/posts/{post['id']}")).json()
     assert detail["series"] is None
     # removing the only post empties the series detail
-    assert client.get(f"/api/series/{series['slug']}").status_code == 200
+    assert (await client.get(f"/api/series/{series['slug']}")).status_code == 200
 
 
-def test_delete_series_unlinks_posts(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    post = _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0).json()
-    resp = client.delete(f"/api/series/{series['id']}", headers=auth_headers)
+async def test_delete_series_unlinks_posts(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    post = (await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)).json()
+    resp = await client.delete(f"/api/series/{series['id']}", headers=auth_headers)
     assert resp.status_code == 204
-    detail = client.get(f"/api/posts/{post['id']}").json()
+    detail = (await client.get(f"/api/posts/{post['id']}")).json()
     assert detail["series"] is None
 
 
 # --- Cache invalidation --------------------------------------------------
 
 
-def test_series_cache_invalidated_on_post_write(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)
-    first = client.get(f"/api/series/{series['slug']}").json()
+async def test_series_cache_invalidated_on_post_write(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)
+    first = (await client.get(f"/api/series/{series['slug']}")).json()
     assert [p["slug"] for p in first["posts"]] == ["part-1"]
     # add a post — the cached detail must drop
-    _create_post(client, auth_headers, "Part 2", "part-2", series["id"], 1)
-    second = client.get(f"/api/series/{series['slug']}").json()
+    await _create_post(client, auth_headers, "Part 2", "part-2", series["id"], 1)
+    second = (await client.get(f"/api/series/{series['slug']}")).json()
     assert [p["slug"] for p in second["posts"]] == ["part-1", "part-2"]
 
 
-def test_series_cache_invalidated_on_series_update(client, auth_headers):
-    series = _create_series(client, auth_headers).json()
-    client.get(f"/api/series/{series['slug']}")  # warm cache
-    client.put(
+async def test_series_cache_invalidated_on_series_update(client, auth_headers):
+    series = (await _create_series(client, auth_headers)).json()
+    await client.get(f"/api/series/{series['slug']}")  # warm cache
+    await client.put(
         f"/api/series/{series['id']}",
         json={"title": "Renamed", "slug": "renamed-series", "description": "new"},
         headers=auth_headers,
     )
-    resp = client.get("/api/series/renamed-series")
+    resp = await client.get("/api/series/renamed-series")
     assert resp.status_code == 200
     assert resp.json()["title"] == "Renamed"
     # old slug is gone from both cache and DB
-    assert client.get("/api/series/tutorial-series").status_code == 404
+    assert (await client.get("/api/series/tutorial-series")).status_code == 404
 
 
-def test_series_cache_invalidated_on_counter_bump(client, auth_headers):
+async def test_series_cache_invalidated_on_counter_bump(client, auth_headers):
     """A pageview/like must bust the cached SERIES detail, not just the posts
     list: the detail embeds the same PostList views/likes (rendered per-episode
     on series/[slug].vue), so without clearing series_cache a hot series served
     pre-bump counters for the full 300s TTL while the feed updated instantly
     (deep-dive review, ISS-373)."""
-    series = _create_series(client, auth_headers).json()
-    post = _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0).json()
+    series = (await _create_series(client, auth_headers)).json()
+    post = (await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)).json()
 
     # Warm the series-detail cache with the pre-bump counters.
-    first = client.get(f"/api/series/{series['slug']}").json()
+    first = (await client.get(f"/api/series/{series['slug']}")).json()
     assert first["posts"][0]["views"] == 0
 
     # Bump the post's view counter (public pageview endpoint).
-    bumped = client.post(f"/api/posts/{post['id']}/view").json()
+    bumped = (await client.post(f"/api/posts/{post['id']}/view")).json()
     assert bumped["views"] == 1
 
     # The series detail must recompute — not serve the cached pre-bump payload.
-    second = client.get(f"/api/series/{series['slug']}").json()
+    second = (await client.get(f"/api/series/{series['slug']}")).json()
     assert second["posts"][0]["views"] == 1
 
 
-def test_posts_list_has_no_series_n_plus_1(client, auth_headers, test_engine):
+async def test_posts_list_has_no_series_n_plus_1(client, auth_headers, test_engine):
     """PostList serializes Post.series, but the list endpoints used to eager-load
     only category+tags — a plain lazy="select" (default) fired one
     ``SELECT ... FROM series WHERE series.id = ?`` per row, i.e. up to `limit`
     extra round-trips on every uncached list render (deep-dive N+1 finding)."""
     from sqlalchemy import event
 
-    series = _create_series(client, auth_headers, "NplusOne Series", "nplusone-series").json()
+    series = (await _create_series(client, auth_headers, "NplusOne Series", "nplusone-series")).json()
     for i in range(4):
-        _create_post(client, auth_headers, f"Series post {i}", f"npo-series-post-{i}", series["id"], i)
-    _create_post(client, auth_headers, "Standalone", "npo-standalone", published=True)
+        await _create_post(client, auth_headers, f"Series post {i}", f"npo-series-post-{i}", series["id"], i)
+    await _create_post(client, auth_headers, "Standalone", "npo-standalone", published=True)
 
     statements = []
 
     def capture_statement(_conn, _cursor, statement, _parameters, _context, _executemany):
         statements.append(statement)
 
-    event.listen(test_engine, "before_cursor_execute", capture_statement)
+    event.listen(test_engine.sync_engine, "before_cursor_execute", capture_statement)
     try:
-        response = client.get("/api/posts")
+        response = await client.get("/api/posts")
     finally:
-        event.remove(test_engine, "before_cursor_execute", capture_statement)
+        event.remove(test_engine.sync_engine, "before_cursor_execute", capture_statement)
 
     assert response.status_code == 200
     items = response.json()["items"]

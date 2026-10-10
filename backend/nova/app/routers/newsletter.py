@@ -27,9 +27,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, models, schemas
 from app.crud import escape_like_pattern, utc_now_naive
@@ -75,10 +75,10 @@ class NewsletterDigestBody(BaseModel):
 
 @router.post("/subscribe", status_code=202)
 @limiter.limit(f"{RATE_LIMIT_NEWSLETTER}/minute")
-def newsletter_subscribe(
+async def newsletter_subscribe(
     request: Request,  # noqa: ARG001 — slowapi injects for the rate-limit key
     body: NewsletterSubscribeBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Record the email and send a double opt-in confirmation link.
 
@@ -99,7 +99,9 @@ def newsletter_subscribe(
     """
     email = body.email.strip().lower()
 
-    row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
+    row = (
+        await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.email == email))
+    ).scalar_one_or_none()
     if row is None:
         row = models.NewsletterSubscriber(
             email=email,
@@ -109,14 +111,16 @@ def newsletter_subscribe(
         )
         db.add(row)
         try:
-            db.commit()
+            await db.commit()
         except IntegrityError:
             # A concurrent subscribe won the unique-email race; reuse the row
             # that other request created (it is pending, and it is the one to
             # send its own confirmation — so this request must NOT also mail,
             # or the address gets two confirmation links).
-            db.rollback()
-            row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.email == email).first()
+            await db.rollback()
+            row = (
+                await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.email == email))
+            ).scalar_one_or_none()
             if row is None:  # shared-unique race with no winner observable here — treat as transient failure
                 raise
         else:
@@ -125,7 +129,7 @@ def newsletter_subscribe(
             # created row is mailed once; a resubscribed address never is).
             # Best-effort: a failure is swallowed (never an error to the
             # subscriber); SMTP unconfigured -> the address just stays pending.
-            db.refresh(row)
+            await db.refresh(row)
             try:
                 send_newsletter_confirm_email(email, row.token)
             except Exception:  # noqa: BLE001
@@ -141,8 +145,8 @@ def newsletter_subscribe(
         row.unsubscribed_at = None
         row.digest_weekly = body.digest_weekly
         row.token = token_urlsafe(32)
-        db.commit()
-        db.refresh(row)
+        await db.commit()
+        await db.refresh(row)
         try:
             send_newsletter_confirm_email(email, row.token)
         except Exception:  # noqa: BLE001
@@ -152,17 +156,19 @@ def newsletter_subscribe(
 
 @router.post("/confirm", status_code=200)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def newsletter_confirm(
+async def newsletter_confirm(
     request: Request,  # noqa: ARG001
     body: NewsletterTokenBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Activate an address after its confirmation link is clicked.
 
     Idempotent (a second click with the same token is a 200); an unknown token
     is 404 so comment-id-style enumeration is impossible.
     """
-    row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.token == body.token).first()
+    row = (
+        await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.token == body.token))
+    ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Invalid token")
     if not row.is_confirmed:
@@ -179,7 +185,7 @@ def newsletter_confirm(
             )
         row.is_confirmed = True
         row.confirmed_at = utc_now_naive()
-        db.commit()
+        await db.commit()
     # The cadence is returned so the confirm page can show the address's real
     # state (a digest_weekly opt-in at subscribe time shows as such, not as an
     # unchecked per-post default) — not an oracle: only the token holder sees
@@ -189,10 +195,10 @@ def newsletter_confirm(
 
 @router.post("/unsubscribe", status_code=200)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def newsletter_unsubscribe(
+async def newsletter_unsubscribe(
     request: Request,  # noqa: ARG001
     body: NewsletterTokenBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Flip an address's newsletter consent off via its emailed token.
 
@@ -200,7 +206,9 @@ def newsletter_unsubscribe(
     is 404. The row + token stay so a stale link keeps working and the address
     is not re-emailed new posts.
     """
-    row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.token == body.token).first()
+    row = (
+        await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.token == body.token))
+    ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Invalid token")
     if row.is_confirmed:
@@ -214,16 +222,16 @@ def newsletter_unsubscribe(
     # With the stamp, the round-393 confirm gate (re-activation requires a
     # fresh subscribe + fresh double-opt-in email) covers both states.
     row.unsubscribed_at = utc_now_naive()
-    db.commit()
+    await db.commit()
     return {"unsubscribed": True}
 
 
 @router.post("/digest", status_code=200)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def newsletter_digest(
+async def newsletter_digest(
     request: Request,  # noqa: ARG001
     body: NewsletterDigestBody,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Flip one address's cadence between per-post mail and the weekly digest.
 
@@ -233,12 +241,14 @@ def newsletter_digest(
     address to the per-post channel; ``digest_weekly`` subscribers are served
     by the weekly digest job instead of the per-post fan-out (DEC-355).
     """
-    row = db.query(models.NewsletterSubscriber).filter(models.NewsletterSubscriber.token == body.token).first()
+    row = (
+        await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.token == body.token))
+    ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Invalid token")
     if row.digest_weekly != body.enabled:
         row.digest_weekly = body.enabled
-        db.commit()
+        await db.commit()
     return {"digest_weekly": body.enabled}
 
 
@@ -276,34 +286,39 @@ class AdminSubscriberListResponse(BaseModel):
 
 @admin_router.get("/subscribers", response_model=AdminSubscriberListResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def admin_list_subscribers(
+async def admin_list_subscribers(
     request: Request,  # noqa: ARG001
     status: str | None = Query(None, pattern="^(confirmed|pending)$", description="filter by confirmation state"),
     q: Annotated[NonNulStr | None, Query(max_length=254, description="case-insensitive email substring")] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     _current_user: auth.User = Depends(auth.get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List newsletter subscribers, newest first, with status/search filters."""
-    query = db.query(models.NewsletterSubscriber)
+    stmt = select(models.NewsletterSubscriber)
     if status == "confirmed":
-        query = query.filter(models.NewsletterSubscriber.is_confirmed.is_(True))
+        stmt = stmt.where(models.NewsletterSubscriber.is_confirmed.is_(True))
     elif status == "pending":
-        query = query.filter(models.NewsletterSubscriber.is_confirmed.is_(False))
+        stmt = stmt.where(models.NewsletterSubscriber.is_confirmed.is_(False))
     if q:
         # Literal substring match: % and _ in the term must not act as
         # wildcards (readers-list convention, crud.escape_like_pattern) —
         # unescaped they would degenerate into full-table matches.
-        query = query.filter(models.NewsletterSubscriber.email.ilike(f"%{escape_like_pattern(q)}%", escape="\\"))
-    total = query.count()
+        stmt = stmt.where(models.NewsletterSubscriber.email.ilike(f"%{escape_like_pattern(q)}%", escape="\\"))
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
     rows = (
-        query.order_by(
-            models.NewsletterSubscriber.created_at.desc(),
-            models.NewsletterSubscriber.id.desc(),
+        (
+            await db.execute(
+                stmt.order_by(
+                    models.NewsletterSubscriber.created_at.desc(),
+                    models.NewsletterSubscriber.id.desc(),
+                )
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
         )
-        .offset((page - 1) * limit)
-        .limit(limit)
+        .scalars()
         .all()
     )
     return {
@@ -340,10 +355,10 @@ class AdminDigestOverviewResponse(BaseModel):
 
 @admin_router.get("/digest/overview", response_model=AdminDigestOverviewResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def admin_digest_overview(
+async def admin_digest_overview(
     request: Request,  # noqa: ARG001
     _current_user: auth.User = Depends(auth.get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Report the weekly digest's current state (DEC-423, TASK-436).
 
@@ -357,28 +372,32 @@ def admin_digest_overview(
     now_naive = utc_now_naive()
 
     reader_count = (
-        db.query(auth.ReaderAccount)
-        .join(models.ReaderNotificationPref, models.ReaderNotificationPref.reader_id == auth.ReaderAccount.id)
-        .filter(
-            auth.ReaderAccount.is_active.is_(True),
-            models.ReaderNotificationPref.email_weekly_digest.is_(True),
+        await db.execute(
+            select(func.count())
+            .select_from(auth.ReaderAccount)
+            .join(models.ReaderNotificationPref, models.ReaderNotificationPref.reader_id == auth.ReaderAccount.id)
+            .where(
+                auth.ReaderAccount.is_active.is_(True),
+                models.ReaderNotificationPref.email_weekly_digest.is_(True),
+            )
         )
-        .count()
-    )
+    ).scalar_one()
     guest_count = (
-        db.query(models.NewsletterSubscriber)
-        .filter(
-            models.NewsletterSubscriber.is_confirmed.is_(True),
-            models.NewsletterSubscriber.digest_weekly.is_(True),
+        await db.execute(
+            select(func.count())
+            .select_from(models.NewsletterSubscriber)
+            .where(
+                models.NewsletterSubscriber.is_confirmed.is_(True),
+                models.NewsletterSubscriber.digest_weekly.is_(True),
+            )
         )
-        .count()
-    )
+    ).scalar_one()
 
     # Latest non-null digest_sent_at across both recipient kinds (a reader pref
     # or a guest row). MAX() skips NULLs and returns NULL on an all-NULL set,
     # so this is exactly "the most recent stamp, or None if nothing went out".
-    sent_ts = db.query(func.max(models.ReaderNotificationPref.digest_sent_at)).scalar()
-    guest_ts = db.query(func.max(models.NewsletterSubscriber.digest_sent_at)).scalar()
+    sent_ts = (await db.execute(select(func.max(models.ReaderNotificationPref.digest_sent_at)))).scalar_one_or_none()
+    guest_ts = (await db.execute(select(func.max(models.NewsletterSubscriber.digest_sent_at)))).scalar_one_or_none()
     last_sent: datetime | None = max(
         (t for t in (sent_ts, guest_ts) if t is not None),
         default=None,
@@ -387,7 +406,7 @@ def admin_digest_overview(
     # The same rolling-window superset the job itself uses — the number of
     # posts a send would (at most) carry. Reuses the digest module's query so
     # the preview and the job can never drift apart.
-    window_posts = len(collect_digest_posts(db, now_naive))
+    window_posts = len(await collect_digest_posts(db, now_naive))
 
     return AdminDigestOverviewResponse(
         reader_digest_subscribers=reader_count,
@@ -399,11 +418,11 @@ def admin_digest_overview(
 
 @admin_router.delete("/subscribers/{subscriber_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_delete_subscriber(
+async def admin_delete_subscriber(
     request: Request,  # noqa: ARG001
     subscriber_id: int,
     _current_user: auth.User = Depends(auth.get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a newsletter subscriber (row + token) entirely.
 
@@ -411,9 +430,9 @@ def admin_delete_subscriber(
     address someone else subscribed. The row is gone, so that address is never
     re-emailed new posts and a subsequently posted token is a 404.
     """
-    row = db.get(models.NewsletterSubscriber, subscriber_id)
+    row = await db.get(models.NewsletterSubscriber, subscriber_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Subscriber not found")
-    db.delete(row)
-    db.commit()
+    await db.delete(row)
+    await db.commit()
     return None

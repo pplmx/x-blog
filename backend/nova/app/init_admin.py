@@ -1,17 +1,19 @@
+import asyncio
 import os
 import warnings
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.auth import ROLE_SUPERUSER, User, get_password_hash
 from app.config import is_development
-from app.database import Base, SessionLocal, engine
+from app.database import AsyncSessionLocal, Base, engine
 
 DEV_ADMIN_PASSWORD = "admin123"
 
 
-def create_admin():
-    Base.metadata.create_all(bind=engine)
+async def create_admin() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
     admin_password = os.getenv("ADMIN_PASSWORD")
     if not admin_password:
@@ -28,9 +30,8 @@ def create_admin():
             stacklevel=2,
         )
 
-    db: Session = SessionLocal()
-    try:
-        existing = db.query(User).filter(User.username == "admin").first()
+    async with AsyncSessionLocal() as db:
+        existing = (await db.scalars(select(User).where(User.username == "admin"))).first()
 
         if not existing:
             admin = User(
@@ -40,7 +41,7 @@ def create_admin():
                 is_superuser=True,
             )
             db.add(admin)
-            db.commit()
+            await db.commit()
             if is_development():
                 print(f"Admin user created: admin / {admin_password}")
             else:
@@ -48,9 +49,7 @@ def create_admin():
             print("WARNING: Please change this password immediately after first login!")
         else:
             print("Admin user already exists")
-    finally:
-        db.close()
 
 
 if __name__ == "__main__":
-    create_admin()
+    asyncio.run(create_admin())

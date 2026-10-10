@@ -19,9 +19,9 @@ import pyotp
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, emailer, models, schemas
 from app.database import get_db
@@ -653,14 +653,16 @@ class ReadingInsightsResponse(BaseModel):
 _FAKE_BCRYPT_HASH = "$2b$12$K7LqkVaQ1OiOsahF1P17/uM5UQi7QkS5d8ZqS3mDzW0yPj2k9VxG"
 
 
-def _authenticate_reader(db: Session, email: str, password: str) -> auth.ReaderAccount | None:
+async def _authenticate_reader(db: AsyncSession, email: str, password: str) -> auth.ReaderAccount | None:
     """Return the reader account for valid credentials, else None.
 
     Runs bcrypt against a dummy hash for unknown emails so timing does not
     leak account existence (login is reusable abuse surface even though
     registration is an existence oracle with a stricter rate limit).
     """
-    reader = db.query(auth.ReaderAccount).filter(func.lower(auth.ReaderAccount.email) == email.lower()).first()
+    reader = (
+        await db.execute(select(auth.ReaderAccount).where(func.lower(auth.ReaderAccount.email) == email.lower()))
+    ).scalar_one_or_none()
     if not reader:
         auth.verify_password(password, _FAKE_BCRYPT_HASH)
         return None
@@ -685,10 +687,10 @@ def _reject_inactive(reader: auth.ReaderAccount) -> None:
 
 @router.post("/register", response_model=ReaderLoginResponse, status_code=201)
 @limiter.limit(f"{RATE_LIMIT_REGISTER}/minute")
-def register(
+async def register(
     request: Request,  # noqa: ARG001
     payload: ReaderRegister,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a reader account and return a reader-scoped JWT (auto-login).
 
@@ -708,14 +710,14 @@ def register(
     )
     db.add(reader)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Email already registered")
-    db.refresh(reader)
+    await db.refresh(reader)
 
     reader.last_login_at = crud.utc_now_naive()
-    db.commit()
+    await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
@@ -726,10 +728,10 @@ def register(
 
 @router.post("/login", response_model=ReaderLoginResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def login(
+async def login(
     request: Request,  # noqa: ARG001
     payload: ReaderLogin,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Authenticate a reader by email+password and return a reader-scoped JWT.
 
@@ -740,7 +742,7 @@ def login(
     ``last_login_at`` is deliberately not bumped on the first step for 2FA
     readers — the account is only "logged in" once the code is proven.
     """
-    reader = _authenticate_reader(db, payload.email, payload.password)
+    reader = await _authenticate_reader(db, payload.email, payload.password)
     if reader is None:
         # Same detail string as admin login so the response doesn't reveal
         # whether an email exists.
@@ -757,7 +759,7 @@ def login(
             "mfa_token": auth.create_reader_2fa_token(reader.id, token_version=reader.token_version or 0),
         }
     reader.last_login_at = crud.utc_now_naive()
-    db.commit()
+    await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
@@ -768,10 +770,10 @@ def login(
 
 @router.post("/login/2fa", response_model=ReaderLoginResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def login_2fa(
+async def login_2fa(
     request: Request,  # noqa: ARG001
     payload: ReaderLogin2FA,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Second step of a 2FA login: exchange a challenge token + TOTP code for a
     real reader session.
@@ -783,7 +785,7 @@ def login_2fa(
     oracle for which part failed, so an attacker learns nothing about whether
     the email or the code was wrong. (DEC-401)
     """
-    reader = auth.get_reader_for_2fa(payload.mfa_token, db)
+    reader = await auth.get_reader_for_2fa(payload.mfa_token, db)
     # One INDISTINGUISHABLE 401 for every failure mode — a bogus/expired/stale
     # challenge AND a wrong code both land here with the same body, so an
     # attacker who stole an mfa_token learns nothing about whether it is still
@@ -796,7 +798,7 @@ def login_2fa(
             headers={"WWW-Authenticate": "Bearer"},
         )
     reader.last_login_at = crud.utc_now_naive()
-    db.commit()
+    await db.commit()
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
@@ -933,11 +935,11 @@ class ReaderPushSubscriptionListResponse(BaseModel):
 
 @router.patch("/me", response_model=ReaderProfile)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def update_my_profile(
+async def update_my_profile(
     request: Request,  # noqa: ARG001
     payload: ReaderProfileUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update the reader's own profile (display_name, bio). Email changes are
     their own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
@@ -956,8 +958,8 @@ def update_my_profile(
     # applied only when explicitly present.
     if "public_bookmarks" in payload.model_dump(exclude_unset=True):
         current_reader.public_bookmarks = bool(payload.public_bookmarks)
-    db.commit()
-    db.refresh(current_reader)
+    await db.commit()
+    await db.refresh(current_reader)
     return current_reader
 
 
@@ -1001,7 +1003,7 @@ async def upload_my_avatar(
     request: Request,  # noqa: ARG001
     file: UploadFile = File(...),
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Set the reader's profile picture (replaces any existing one).
 
@@ -1037,36 +1039,36 @@ async def upload_my_avatar(
     avatar_url = f"/static/avatars/{filename}"
     previous = current_reader.avatar_url
     current_reader.avatar_url = avatar_url
-    db.commit()
-    db.refresh(current_reader)
+    await db.commit()
+    await db.refresh(current_reader)
     _delete_avatar_file(previous)
     return current_reader
 
 
 @router.delete("/me/avatar", response_model=ReaderProfile)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def remove_my_avatar(
+async def remove_my_avatar(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove the reader's profile picture (stored file + DB row)."""
     previous = current_reader.avatar_url
     if previous:
         current_reader.avatar_url = None
-        db.commit()
-        db.refresh(current_reader)
+        await db.commit()
+        await db.refresh(current_reader)
         _delete_avatar_file(previous)
     return current_reader
 
 
 @router.post("/me/password", response_model=ReaderPasswordChangeResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def change_my_password(
+async def change_my_password(
     request: Request,  # noqa: ARG001
     payload: ReaderPasswordChange,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Rotate the reader's password, revoking all other sessions.
 
@@ -1078,8 +1080,8 @@ def change_my_password(
         raise HTTPException(status_code=401, detail="Incorrect current password")
     current_reader.password = auth.get_password_hash(payload.new_password)
     current_reader.token_version = (current_reader.token_version or 0) + 1
-    db.commit()
-    db.refresh(current_reader)
+    await db.commit()
+    await db.refresh(current_reader)
 
     access_token = auth.create_reader_token({"sub": current_reader.id}, token_version=current_reader.token_version or 0)
     return {
@@ -1091,10 +1093,10 @@ def change_my_password(
 
 @router.post("/me/2fa/setup", response_model=TwoFactorSetupResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def setup_two_factor(
+async def setup_two_factor(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Generate fresh TOTP enrollment material (round 364, DEC-401).
 
@@ -1108,18 +1110,18 @@ def setup_two_factor(
         raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
     secret = pyotp.random_base32()
     current_reader.two_factor_secret = secret
-    db.commit()
+    await db.commit()
     otpauth_uri = pyotp.TOTP(secret).provisioning_uri(name=current_reader.email, issuer_name="X-Blog")
     return {"secret": secret, "otpauth_uri": otpauth_uri}
 
 
 @router.post("/me/2fa/enable", response_model=ReaderProfile)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def enable_two_factor(
+async def enable_two_factor(
     request: Request,  # noqa: ARG001
     payload: TwoFactorEnable,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Prove the account AND the authenticator, then turn 2FA on.
 
@@ -1139,17 +1141,17 @@ def enable_two_factor(
     if not auth.verify_totp(current_reader.two_factor_secret, payload.code):
         raise HTTPException(status_code=400, detail="Invalid authentication code")
     current_reader.two_factor_enabled = True
-    db.commit()
+    await db.commit()
     return current_reader
 
 
 @router.post("/me/2fa/disable", response_model=ReaderProfile)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def disable_two_factor(
+async def disable_two_factor(
     request: Request,  # noqa: ARG001
     payload: TwoFactorDisable,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Turn 2FA back off — only with the current password AND a valid code.
 
@@ -1165,7 +1167,7 @@ def disable_two_factor(
         raise HTTPException(status_code=400, detail="Invalid authentication code")
     current_reader.two_factor_enabled = False
     current_reader.two_factor_secret = None
-    db.commit()
+    await db.commit()
     return current_reader
 
 
@@ -1177,11 +1179,11 @@ EMAIL_CHANGE_TTL_MINUTES = 60
 
 @router.post("/me/email/request", status_code=202)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def request_email_change(
+async def request_email_change(
     request: Request,  # noqa: ARG001
     payload: ReaderEmailChangeRequest,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Start an email change: prove the account, then email a link to the NEW
     address.
@@ -1201,10 +1203,13 @@ def request_email_change(
     if new_email == current_reader.email:
         raise HTTPException(status_code=400, detail="New email must differ from the current email")
     occupied = (
-        db.query(auth.ReaderAccount)
-        .filter(func.lower(auth.ReaderAccount.email) == new_email, auth.ReaderAccount.id != current_reader.id)
-        .first()
-    )
+        await db.execute(
+            select(auth.ReaderAccount).where(
+                func.lower(auth.ReaderAccount.email) == new_email,
+                auth.ReaderAccount.id != current_reader.id,
+            )
+        )
+    ).scalar_one_or_none()
     if occupied is not None:
         raise HTTPException(status_code=409, detail="That email is already in use by another account")
     if not emailer.is_email_configured():
@@ -1221,20 +1226,20 @@ def request_email_change(
     # again (best-effort), so the "nothing staged on failure" guarantee holds
     # as before; a stale row that slips through self-expires via the
     # EMAIL_CHANGE_TTL_MINUTES and is overwritten on the next re-request.
-    db.commit()
+    await db.commit()
 
-    def _clear_pending() -> None:
+    async def _clear_pending() -> None:
         current_reader.email_change_token = None
         current_reader.email_change_pending = None
         current_reader.email_change_requested_at = None
-        db.commit()
+        await db.commit()
 
     try:
         accepted = emailer.send_email_change_email(new_email, token)
         if not accepted:
             # RFC-level refusal (e.g. the address provably bounces): nothing
             # staged, exactly as before the reorder.
-            _clear_pending()
+            await _clear_pending()
             raise HTTPException(
                 status_code=503,
                 detail="Could not send the verification email, please try again later",
@@ -1244,9 +1249,9 @@ def request_email_change(
     except Exception:
         logger.exception("email-change verification send raised")
         try:
-            _clear_pending()
+            await _clear_pending()
         except Exception:  # noqa: BLE001 — never mask the primary 503
-            db.rollback()
+            await db.rollback()
         raise HTTPException(
             status_code=503,
             detail="Could not send the verification email, please try again later",
@@ -1256,10 +1261,10 @@ def request_email_change(
 
 @router.post("/me/email/confirm", response_model=ReaderLoginResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def confirm_email_change(
+async def confirm_email_change(
     request: Request,  # noqa: ARG001
     payload: ReaderEmailChangeConfirm,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Redeem the emailed verification token: swap the reader's login email.
 
@@ -1280,7 +1285,9 @@ def confirm_email_change(
     is caught and surfaced as the business 409 (register uses the same
     IntegrityError -> conflict pattern) instead of a 500 (round-342 review).
     """
-    reader = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.email_change_token == payload.token).first()
+    reader = (
+        await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.email_change_token == payload.token))
+    ).scalar_one_or_none()
     if reader is None or reader.email_change_pending is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
 
@@ -1292,7 +1299,7 @@ def confirm_email_change(
         reader.email_change_token = None
         reader.email_change_pending = None
         reader.email_change_requested_at = None
-        db.commit()
+        await db.commit()
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
 
     # Account moderation (DEC-194, TASK-214): a deactivated reader must not
@@ -1305,7 +1312,7 @@ def confirm_email_change(
         reader.email_change_token = None
         reader.email_change_pending = None
         reader.email_change_requested_at = None
-        db.commit()
+        await db.commit()
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
 
     target = reader.email_change_pending
@@ -1313,15 +1320,18 @@ def confirm_email_change(
     # defensive way): current writers always store lowercase, but a legacy
     # mixed-case address must trip a clean 409 rather than a unique-index 500.
     occupied = (
-        db.query(auth.ReaderAccount)
-        .filter(func.lower(auth.ReaderAccount.email) == target, auth.ReaderAccount.id != reader.id)
-        .first()
-    )
+        await db.execute(
+            select(auth.ReaderAccount).where(
+                func.lower(auth.ReaderAccount.email) == target,
+                auth.ReaderAccount.id != reader.id,
+            )
+        )
+    ).scalar_one_or_none()
     if occupied is not None:
         reader.email_change_token = None
         reader.email_change_pending = None
         reader.email_change_requested_at = None
-        db.commit()
+        await db.commit()
         raise HTTPException(status_code=409, detail="That email is already in use; please request a new change")
 
     # Atomic single-statement redeem (see docstring): both the swap and the
@@ -1329,43 +1339,47 @@ def confirm_email_change(
     # so a concurrent double-click or a replaced pending token returns 400
     # (rowcount 0) instead of a second 200 / a lost newer pending.
     redeemed = (
-        db.query(auth.ReaderAccount)
-        .filter(
-            auth.ReaderAccount.id == reader.id,
-            auth.ReaderAccount.email_change_token == payload.token,
+        await db.execute(
+            update(auth.ReaderAccount)
+            .where(
+                auth.ReaderAccount.id == reader.id,
+                auth.ReaderAccount.email_change_token == payload.token,
+            )
+            .values(
+                {
+                    "email": target,
+                    "email_change_token": None,
+                    "email_change_pending": None,
+                    "email_change_requested_at": None,
+                    "token_version": (reader.token_version or 0) + 1,
+                    "last_login_at": now,
+                }
+            )
+            .execution_options(synchronize_session=False)
         )
-        .update(
-            {
-                "email": target,
-                "email_change_token": None,
-                "email_change_pending": None,
-                "email_change_requested_at": None,
-                "token_version": (reader.token_version or 0) + 1,
-                "last_login_at": now,
-            },
-            synchronize_session=False,
-        )
-    )
+    ).rowcount  # type: ignore[reportAttributeAccessIssue]
     if redeemed == 0:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
         # The target address got taken (concurrent register/change) after the
         # occupied check — surface the business 409 and clear the stale pending
         # so the reader's next request starts clean, never a 500.
-        db.rollback()
-        reader = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader.id).first()
+        await db.rollback()
+        reader = (
+            await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.id == reader.id))
+        ).scalar_one_or_none()
         if reader is not None:
             reader.email_change_token = None
             reader.email_change_pending = None
             reader.email_change_requested_at = None
-            db.commit()
+            await db.commit()
         raise HTTPException(
             status_code=409, detail="That email is already in use; please request a new change"
         ) from None
-    db.refresh(reader)
+    await db.refresh(reader)
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
         "access_token": access_token,
@@ -1376,10 +1390,10 @@ def confirm_email_change(
 
 @router.post("/password-reset/request", status_code=202)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def request_password_reset(
+async def request_password_reset(
     request: Request,  # noqa: ARG001
     payload: ReaderPasswordResetRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Email a password-reset link, without revealing whether the address exists.
 
@@ -1398,13 +1412,13 @@ def request_password_reset(
             detail="Email service is not configured on this server",
         )
     reader = (
-        db.query(auth.ReaderAccount)
-        .filter(
-            auth.ReaderAccount.email == normalized_email,
-            auth.ReaderAccount.is_active.is_(True),
+        await db.execute(
+            select(auth.ReaderAccount).where(
+                auth.ReaderAccount.email == normalized_email,
+                auth.ReaderAccount.is_active.is_(True),
+            )
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     # Unknown email is not an error: the same generic 202 is what matters. Only
     # compose/send mail when an active account exists.
     if reader is not None:
@@ -1429,10 +1443,10 @@ def request_password_reset(
 
 @router.post("/password-reset/confirm", response_model=ReaderPasswordChangeResponse)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def confirm_password_reset(
+async def confirm_password_reset(
     request: Request,  # noqa: ARG001
     payload: ReaderPasswordResetConfirm,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Redeem a reset token: set a new password, revoke every session, and log in.
 
@@ -1444,7 +1458,7 @@ def confirm_password_reset(
     matches). The reader is auto-logged-in with a fresh token, mirroring
     register/password-change UX (DEC-286, TASK-371).
     """
-    reader = auth.get_reader_for_password_reset(payload.token, db)
+    reader = await auth.get_reader_for_password_reset(payload.token, db)
     if reader is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1452,10 +1466,10 @@ def confirm_password_reset(
         )
     reader.password = auth.get_password_hash(payload.new_password)
     reader.token_version = (reader.token_version or 0) + 1
-    db.commit()
-    db.refresh(reader)
+    await db.commit()
+    await db.refresh(reader)
     reader.last_login_at = crud.utc_now_naive()
-    db.commit()
+    await db.commit()
 
     access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
     return {
@@ -1473,11 +1487,11 @@ class ReaderAccountDelete(BaseModel):
 
 @router.delete("/me/account", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_AUTH}/minute")
-def delete_my_account(
+async def delete_my_account(
     request: Request,  # noqa: ARG001
     payload: ReaderAccountDelete,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Permanently delete the reader's own account.
 
@@ -1493,7 +1507,7 @@ def delete_my_account(
     # which a lazy refresh of the account object would throw).
     avatar_url = current_reader.avatar_url
     try:
-        deleted = crud.delete_reader_account(db, current_reader.id)
+        deleted = await crud.delete_reader_account(db, current_reader.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
@@ -1506,9 +1520,9 @@ def delete_my_account(
 
 
 @router.get("/me/push-subscriptions", response_model=ReaderPushSubscriptionListResponse)
-def list_my_push_subscriptions(
+async def list_my_push_subscriptions(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The reader's push subscriptions bound to their account (device view).
 
@@ -1516,9 +1530,14 @@ def list_my_push_subscriptions(
     notifications and revoke any they no longer control. Only rows bound to
     this reader (DEC-064 binds subscriptions at /api/push/subscribe)."""
     subs = (
-        db.query(models.PushSubscription)
-        .filter(models.PushSubscription.reader_id == current_reader.id)
-        .order_by(models.PushSubscription.created_at.desc())
+        (
+            await db.execute(
+                select(models.PushSubscription)
+                .where(models.PushSubscription.reader_id == current_reader.id)
+                .order_by(models.PushSubscription.created_at.desc())
+            )
+        )
+        .scalars()
         .all()
     )
     return ReaderPushSubscriptionListResponse(
@@ -1538,12 +1557,12 @@ def list_my_push_subscriptions(
 
 @router.patch("/me/push-subscriptions/{subscription_id}", response_model=ReaderPushSubscriptionItem)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def update_my_push_subscription_prefs(
+async def update_my_push_subscription_prefs(
     request: Request,  # noqa: ARG001
     subscription_id: IdInt,
     payload: ReaderPushSubscriptionUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update the new-post notification prefs on one of the reader's devices.
 
@@ -1554,21 +1573,21 @@ def update_my_push_subscription_prefs(
     (DEC-076, TASK-147)
     """
     sub = (
-        db.query(models.PushSubscription)
-        .filter(
-            models.PushSubscription.id == subscription_id,
-            models.PushSubscription.reader_id == current_reader.id,
+        await db.execute(
+            select(models.PushSubscription).where(
+                models.PushSubscription.id == subscription_id,
+                models.PushSubscription.reader_id == current_reader.id,
+            )
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if not sub:
         raise HTTPException(status_code=404, detail="Push subscription not found")
-    if payload.new_post_category_id is not None and crud.get_category(db, payload.new_post_category_id) is None:
+    if payload.new_post_category_id is not None and (await crud.get_category(db, payload.new_post_category_id)) is None:
         raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
     sub.want_new_posts = payload.want_new_posts
     sub.new_post_category_id = payload.new_post_category_id
-    db.commit()
-    db.refresh(sub)
+    await db.commit()
+    await db.refresh(sub)
     return ReaderPushSubscriptionItem(
         id=sub.id,
         endpoint=sub.endpoint,
@@ -1580,11 +1599,11 @@ def update_my_push_subscription_prefs(
 
 @router.delete("/me/push-subscriptions/{subscription_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def revoke_my_push_subscription(
+async def revoke_my_push_subscription(
     request: Request,  # noqa: ARG001
     subscription_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Revoke one of the reader's push subscriptions (204).
 
@@ -1592,17 +1611,17 @@ def revoke_my_push_subscription(
     subscription ids are not enumerable. The browser keeps its local
     subscription; it simply stops receiving this account's notifications."""
     sub = (
-        db.query(models.PushSubscription)
-        .filter(
-            models.PushSubscription.id == subscription_id,
-            models.PushSubscription.reader_id == current_reader.id,
+        await db.execute(
+            select(models.PushSubscription).where(
+                models.PushSubscription.id == subscription_id,
+                models.PushSubscription.reader_id == current_reader.id,
+            )
         )
-        .first()
-    )
+    ).scalar_one_or_none()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
-    db.delete(sub)
-    db.commit()
+    await db.delete(sub)
+    await db.commit()
     return None
 
 
@@ -1612,13 +1631,13 @@ def revoke_my_push_subscription(
 
 
 @router.get("/me/bookmarks", response_model=BookmarkListResponse)
-def list_bookmarks(
+async def list_bookmarks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     folder_id: IdInt | None = Query(None, description="filter to this folder"),
     done: bool | None = Query(None, description="filter to Done (true) or To-read (false)"),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List the reader's bookmarked posts (publicly-visible only), paginated.
 
@@ -1630,7 +1649,7 @@ def list_bookmarks(
     (page/limit, max 100) keeps setup/merge calls from loading every row
     (ISS-142); clients that need the full set page through ``total_pages``.
     """
-    rows, total = crud.list_reader_bookmarks(
+    rows, total = await crud.list_reader_bookmarks(
         db, current_reader.id, folder_id=folder_id, done=done, page=page, limit=limit
     )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
@@ -1644,11 +1663,11 @@ def list_bookmarks(
 
 
 @router.get("/me/post-subscriptions", response_model=SubscribedThreadListResponse)
-def list_my_post_subscriptions(
+async def list_my_post_subscriptions(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The comment threads the reader follows (publicly-visible posts only), paginated.
 
@@ -1657,7 +1676,7 @@ def list_my_post_subscriptions(
     reader unsubscribes from the post page). Newest follow first. Bounded
     paging like the bookmark list (ISS-142).
     """
-    posts, total = crud.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
+    posts, total = await crud.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return SubscribedThreadListResponse(
         items=[SubscribedThreadItem.from_post(p) for p in posts],
@@ -1670,12 +1689,12 @@ def list_my_post_subscriptions(
 
 @router.put("/me/bookmarks/{post_id}", response_model=AddBookmarkResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def add_bookmark(
+async def add_bookmark(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Bookmark a public post. Idempotent: 201 on first save, 200 on re-save
     (already_existed=True) so a merge/re-login client can re-put the same set
@@ -1684,20 +1703,20 @@ def add_bookmark(
     Drafts/scheduled/unknown posts are uniformly 404 — no draft-existence
     oracle (same guard as the public comment-create path).
     """
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    bookmark, created = crud.add_reader_bookmark(db, current_reader.id, post.id)
+    bookmark, created = await crud.add_reader_bookmark(db, current_reader.id, post.id)
     response.status_code = 201 if created else 200
     return AddBookmarkResponse(post_id=bookmark.post_id, already_existed=not created)
 
 
 @router.delete("/me/bookmarks", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def clear_bookmarks(
+async def clear_bookmarks(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete every bookmark the reader has saved, cloud side included.
 
@@ -1707,21 +1726,21 @@ def clear_bookmarks(
     and the next cloud merge resurrected the list). Idempotent 204 even when
     there was nothing to clear."""
 
-    crud.clear_reader_bookmarks(db, current_reader.id)
+    await crud.clear_reader_bookmarks(db, current_reader.id)
     return None
 
 
 @router.delete("/me/bookmarks/{post_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def remove_bookmark(
+async def remove_bookmark(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a bookmark. Idempotent: deleting a non-existent bookmark is a
     204 no-op (merge-friendly)."""
-    crud.remove_reader_bookmark(db, current_reader.id, post_id)
+    await crud.remove_reader_bookmark(db, current_reader.id, post_id)
     return None
 
 
@@ -1731,12 +1750,12 @@ def remove_bookmark(
 
 
 @router.get("/me/likes", response_model=schemas.PostListResponse)
-def list_my_likes(
+async def list_my_likes(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     q: str | None = Query(None, max_length=200, description="title/excerpt keyword filter"),
     page: PageInt = 1,
     limit: int = Query(100, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A signed-in reader's liked posts (publicly-visible only), paginated.
 
@@ -1748,7 +1767,7 @@ def list_my_likes(
     ``q`` (optional) filters to liked posts matching title/excerpt
     (escape-aware — DEC-413/TASK-432, recall-search like history DEC-148).
     """
-    posts, total = crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
+    posts, total = await crud.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
@@ -1765,12 +1784,12 @@ def list_my_likes(
 
 @router.post("/me/likes/{post_id}", response_model=AddBookmarkResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def like_post(
+async def like_post(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Like a public post as a signed-in reader. Idempotent like a bookmark:
     201 on first like (and the public counter is bumped exactly once), 200 on
@@ -1780,10 +1799,10 @@ def like_post(
     Drafts/scheduled/unknown posts are uniformly 404 (no draft-existence
     oracle, same guard as bookmark/comment-create paths).
     """
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    like, created = crud.add_reader_post_like(db, current_reader.id, post.id)
+    like, created = await crud.add_reader_post_like(db, current_reader.id, post.id)
     # The counter bump is INSIDE add_reader_post_like's transaction (ISS-574):
     # row + badge commit together, so a crash between them can't leave a liked
     # post with an unbumped count. Do not bump again here — that would double it.
@@ -1793,11 +1812,11 @@ def like_post(
 
 @router.delete("/me/likes/{post_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unlike_post(
+async def unlike_post(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove the reader's like of a post. Idempotent 204 like bookmark remove,
     but only decrements the public counter when a like was actually removed
@@ -1806,7 +1825,7 @@ def unlike_post(
     # The counter decrement is INSIDE remove_reader_post_like's transaction
     # (ISS-574): row delete + badge decrement commit together, so a crash can't
     # leave an unliked post still counting the reader. Do not decrement here.
-    crud.remove_reader_post_like(db, current_reader.id, post_id)
+    await crud.remove_reader_post_like(db, current_reader.id, post_id)
     return None
 
 
@@ -1815,12 +1834,12 @@ def unlike_post(
 
 
 @router.get("/me/bookmarks/folders", response_model=BookmarkFolderListResponse)
-def list_bookmark_folders(
+async def list_bookmark_folders(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List the reader's bookmark folders with their saved-post counts."""
-    folders = crud.list_reader_bookmark_folders(db, current_reader.id)
+    folders = await crud.list_reader_bookmark_folders(db, current_reader.id)
     return BookmarkFolderListResponse(
         items=[BookmarkFolderItem(id=f.id, name=f.name, count=c) for f, c in folders],
         total=len(folders),
@@ -1829,35 +1848,35 @@ def list_bookmark_folders(
 
 @router.post("/me/bookmarks/folders", response_model=BookmarkFolderResponse, status_code=201)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def create_bookmark_folder(
+async def create_bookmark_folder(
     request: Request,  # noqa: ARG001
     body: FolderCreate,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a bookmark folder. Idempotent: a same-named folder already
     existing returns 200 with created=False semantics (no error)."""
-    folder, created = crud.create_bookmark_folder(db, current_reader.id, body.name)
+    folder, created = await crud.create_bookmark_folder(db, current_reader.id, body.name)
     response.status_code = 201 if created else 200
     return BookmarkFolderResponse(id=folder.id, name=folder.name)
 
 
 @router.patch("/me/bookmarks/folders/{folder_id}", response_model=BookmarkFolderResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def rename_bookmark_folder(
+async def rename_bookmark_folder(
     request: Request,  # noqa: ARG001
     folder_id: IdInt,
     body: FolderRename,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Rename a folder. 404 if it doesn't belong to the reader; 409 if the new
     name collides with another of the reader's folders."""
-    folder = crud.rename_bookmark_folder(db, current_reader.id, folder_id, body.name)
+    folder = await crud.rename_bookmark_folder(db, current_reader.id, folder_id, body.name)
     if not folder:
         # Distinguish not-found vs duplicate-name.
-        existing = crud.get_bookmark_folder(db, current_reader.id, folder_id)
+        existing = await crud.get_bookmark_folder(db, current_reader.id, folder_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Folder not found")
         raise HTTPException(status_code=409, detail="Folder name already exists")
@@ -1866,31 +1885,31 @@ def rename_bookmark_folder(
 
 @router.delete("/me/bookmarks/folders/{folder_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_bookmark_folder(
+async def delete_bookmark_folder(
     request: Request,  # noqa: ARG001
     folder_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a folder (its bookmarks become uncategorized). Idempotent 204."""
-    crud.delete_bookmark_folder(db, current_reader.id, folder_id)
+    await crud.delete_bookmark_folder(db, current_reader.id, folder_id)
     return None
 
 
 @router.patch("/me/bookmarks/{post_id}/folder", response_model=AssignFolderResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def assign_bookmark_folder(
+async def assign_bookmark_folder(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     body: AssignFolder,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """File a bookmarked post into a folder (or clear with folder_id=None).
 
     404 if the post isn't bookmarked by the reader or the folder isn't theirs.
     """
-    bookmark = crud.set_bookmark_folder(db, current_reader.id, post_id, body.folder_id)
+    bookmark = await crud.set_bookmark_folder(db, current_reader.id, post_id, body.folder_id)
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark or folder not found")
     return AssignFolderResponse(post_id=bookmark.post_id, folder_id=bookmark.folder_id)
@@ -1898,12 +1917,12 @@ def assign_bookmark_folder(
 
 @router.patch("/me/bookmarks/{post_id}/done", response_model=BookmarkDoneResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_bookmark_done(
+async def set_bookmark_done(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     body: BookmarkDone,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Move a saved post between To-read and Done (round 361, DEC-395).
 
@@ -1911,27 +1930,27 @@ def set_bookmark_done(
     To-read queue) and back To-read otherwise. Idempotent; 404 if the post
     isn't bookmarked by this reader.
     """
-    bookmark = crud.set_reader_bookmark_done(db, current_reader.id, post_id, body.done)
+    bookmark = await crud.set_reader_bookmark_done(db, current_reader.id, post_id, body.done)
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return BookmarkDoneResponse(post_id=bookmark.post_id, done=bookmark.done)
 
 
 @router.get("/me/series/{slug}/progress", response_model=SeriesProgressResponse)
-def series_reading_progress(
+async def series_reading_progress(
     slug: str,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's reading progress through a series, from their history.
 
     Reads are posts present in the reader's reading_history among the series'
     ordered publicly-visible posts. 404 if the series slug is unknown.
     """
-    series = crud.get_series_by_slug(db, slug)
+    series = await crud.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    prog = crud.reader_series_progress(db, current_reader.id, series)
+    prog = await crud.reader_series_progress(db, current_reader.id, series)
     return SeriesProgressResponse(
         series_slug=series.slug,
         series_title=series.title,
@@ -1941,10 +1960,10 @@ def series_reading_progress(
 
 @router.get("/me/export", response_model=DataExportResponse)
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
-def export_my_data(
+async def export_my_data(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return the caller's portable data bundle (account, bookmarks, comments,
     history). Auth-scoped — only the signed-in reader's own data (DEC-126).
@@ -1953,26 +1972,26 @@ def export_my_data(
     the bundle assembles every comment + history row, so an unthrottled reader
     token could otherwise serialize large payloads on demand (security review).
     """
-    return DataExportResponse(**crud.export_reader_data(db, current_reader.id))
+    return DataExportResponse(**await crud.export_reader_data(db, current_reader.id))
 
 
 @router.get("/me/recommendations", response_model=list[schemas.PostList])
-def my_recommendations(
+async def my_recommendations(
     limit: int = Query(6, ge=1, le=20),
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Personalized post recommendations for the signed-in reader (DEC-128)."""
-    recommended = crud.recommend_posts(db, current_reader.id, limit=limit)
+    recommended = await crud.recommend_posts(db, current_reader.id, limit=limit)
     return [schemas.PostList.model_validate(p) for p in recommended]
 
 
 @router.get("/me/follows-feed", response_model=schemas.PostListResponse)
-def my_follows_feed(
+async def my_follows_feed(
     page: PageInt = 1,
     limit: int = Query(12, ge=1, le=50),
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Recent public posts from the reader's followed categories + series + tags.
 
@@ -1984,8 +2003,8 @@ def my_follows_feed(
     # notice a crossed scheduled post — so it must trigger the same exactly-
     # once announce as the other public surfaces (round-331 sweep). Cheap
     # indexed no-op when nothing crossed; the durable stamp prevents duplicates.
-    crud.maybe_notify_due_scheduled_posts(db)
-    posts, total = crud.follows_feed_posts(db, current_reader.id, limit=limit, offset=(page - 1) * limit)
+    await crud.maybe_notify_due_scheduled_posts(db)
+    posts, total = await crud.follows_feed_posts(db, current_reader.id, limit=limit, offset=(page - 1) * limit)
     total_pages = (total + limit - 1) // limit
     return schemas.PostListResponse.model_validate(
         {
@@ -2001,12 +2020,12 @@ def my_follows_feed(
 
 
 @router.get("/me/series-follows", response_model=FollowedSeriesListResponse)
-def list_series_follows(
+async def list_series_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The series the reader follows, with per-follow notification state."""
-    follows = crud.list_reader_series_follows(db, current_reader.id)
+    follows = await crud.list_reader_series_follows(db, current_reader.id)
     return FollowedSeriesListResponse(
         items=[
             FollowedSeriesItem(
@@ -2024,18 +2043,18 @@ def list_series_follows(
 
 @router.put("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def follow_series(
+async def follow_series(
     request: Request,  # noqa: ARG001
     series_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Follow a series for new-part push (idempotent: 201 on first, 200 on re-follow)."""
-    series = db.get(models.Series, series_id)
+    series = await db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    follow, created = crud.add_series_follow(db, current_reader.id, series_id)
+    follow, created = await crud.add_series_follow(db, current_reader.id, series_id)
     response.status_code = 201 if created else 200
     return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
 
@@ -2048,18 +2067,18 @@ class SeriesFollowNotifyUpdate(BaseModel):
 
 @router.patch("/me/series/{series_id}/follow", response_model=SeriesFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_series_follow_notify(
+async def set_series_follow_notify(
     request: Request,  # noqa: ARG001
     series_id: IdInt,
     payload: SeriesFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Toggle new-part notifications for a followed series. 404 if not following."""
-    series = db.get(models.Series, series_id)
+    series = await db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    follow = crud.set_series_follow_notify(db, current_reader.id, series_id, payload.notify)
+    follow = await crud.set_series_follow_notify(db, current_reader.id, series_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this series")
     return SeriesFollowResponse(series_id=series.id, series_slug=series.slug, following=True, notify=follow.notify)
@@ -2067,24 +2086,24 @@ def set_series_follow_notify(
 
 @router.delete("/me/series/{series_id}/follow", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unfollow_series(
+async def unfollow_series(
     request: Request,  # noqa: ARG001
     series_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a series. Idempotent 204."""
-    crud.remove_series_follow(db, current_reader.id, series_id)
+    await crud.remove_series_follow(db, current_reader.id, series_id)
     return None
 
 
 @router.get("/me/category-follows", response_model=FollowedCategoryListResponse)
-def list_category_follows(
+async def list_category_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The categories the reader follows, with per-follow notification state."""
-    follows = crud.list_reader_category_follows(db, current_reader.id)
+    follows = await crud.list_reader_category_follows(db, current_reader.id)
     return FollowedCategoryListResponse(
         items=[
             FollowedCategoryItem(
@@ -2100,18 +2119,18 @@ def list_category_follows(
 
 @router.put("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def follow_category(
+async def follow_category(
     request: Request,  # noqa: ARG001
     category_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Follow a category for new-post push (idempotent: 201 on first, 200 on re-follow)."""
-    category = db.get(models.Category, category_id)
+    category = await db.get(models.Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    follow, created = crud.add_category_follow(db, current_reader.id, category_id)
+    follow, created = await crud.add_category_follow(db, current_reader.id, category_id)
     response.status_code = 201 if created else 200
     return CategoryFollowResponse(
         category_id=category.id,
@@ -2123,18 +2142,18 @@ def follow_category(
 
 @router.patch("/me/categories/{category_id}/follow", response_model=CategoryFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_category_follow_notify(
+async def set_category_follow_notify(
     request: Request,  # noqa: ARG001
     category_id: IdInt,
     payload: CategoryFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Toggle new-post notifications for a followed category. 404 if not following."""
-    category = db.get(models.Category, category_id)
+    category = await db.get(models.Category, category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    follow = crud.set_category_follow_notify(db, current_reader.id, category_id, payload.notify)
+    follow = await crud.set_category_follow_notify(db, current_reader.id, category_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this category")
     return CategoryFollowResponse(
@@ -2147,24 +2166,24 @@ def set_category_follow_notify(
 
 @router.delete("/me/categories/{category_id}/follow", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unfollow_category(
+async def unfollow_category(
     request: Request,  # noqa: ARG001
     category_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a category. Idempotent 204."""
-    crud.remove_category_follow(db, current_reader.id, category_id)
+    await crud.remove_category_follow(db, current_reader.id, category_id)
     return None
 
 
 @router.get("/me/tag-follows", response_model=FollowedTagListResponse)
-def list_tag_follows(
+async def list_tag_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The tags the reader follows, with per-follow notification state."""
-    follows = crud.list_reader_tag_follows(db, current_reader.id)
+    follows = await crud.list_reader_tag_follows(db, current_reader.id)
     return FollowedTagListResponse(
         items=[
             FollowedTagItem(
@@ -2180,18 +2199,18 @@ def list_tag_follows(
 
 @router.put("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def follow_tag(
+async def follow_tag(
     request: Request,  # noqa: ARG001
     tag_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Follow a tag for new-post push (idempotent: 201 on first, 200 on re-follow)."""
-    tag = db.get(models.Tag, tag_id)
+    tag = await db.get(models.Tag, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    follow, created = crud.add_tag_follow(db, current_reader.id, tag_id)
+    follow, created = await crud.add_tag_follow(db, current_reader.id, tag_id)
     response.status_code = 201 if created else 200
     return TagFollowResponse(
         tag_id=tag.id,
@@ -2203,18 +2222,18 @@ def follow_tag(
 
 @router.patch("/me/tags/{tag_id}/follow", response_model=TagFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_tag_follow_notify(
+async def set_tag_follow_notify(
     request: Request,  # noqa: ARG001
     tag_id: IdInt,
     payload: TagFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Toggle new-post notifications for a followed tag. 404 if not following."""
-    tag = db.get(models.Tag, tag_id)
+    tag = await db.get(models.Tag, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    follow = crud.set_tag_follow_notify(db, current_reader.id, tag_id, payload.notify)
+    follow = await crud.set_tag_follow_notify(db, current_reader.id, tag_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this tag")
     return TagFollowResponse(
@@ -2227,37 +2246,37 @@ def set_tag_follow_notify(
 
 @router.delete("/me/tags/{tag_id}/follow", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unfollow_tag(
+async def unfollow_tag(
     request: Request,  # noqa: ARG001
     tag_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a tag. Idempotent 204."""
-    crud.remove_tag_follow(db, current_reader.id, tag_id)
+    await crud.remove_tag_follow(db, current_reader.id, tag_id)
     return None
 
 
 # Author follows (round 353): subscribe to a writer's new posts, the
 # person-shaped cousin of the topic-shaped category/series/tag follows.
 # ---------------------------------------------------------------------------
-def _get_followable_author(db: Session, author_id: int) -> auth.User:
+async def _get_followable_author(db: AsyncSession, author_id: int) -> auth.User:
     """The pen-named admin a reader may follow; 404 otherwise (no-oracle:
     a username-only admin has no public identity to follow, so probing ids
     yields the same 404 as an unknown one)."""
-    author = db.get(auth.User, author_id)
+    author = await db.get(auth.User, author_id)
     if author is None or not author.display_name:
         raise HTTPException(status_code=404, detail="Author not found")
     return author
 
 
 @router.get("/me/author-follows", response_model=FollowedAuthorListResponse)
-def list_author_follows(
+async def list_author_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The writers the reader follows, with per-follow notification state."""
-    follows = crud.list_reader_author_follows(db, current_reader.id)
+    follows = await crud.list_reader_author_follows(db, current_reader.id)
     items = []
     for f in follows:
         author = f.author
@@ -2275,16 +2294,16 @@ def list_author_follows(
 
 @router.put("/me/authors/{author_id}/follow", response_model=AuthorFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def follow_author(
+async def follow_author(
     request: Request,  # noqa: ARG001
     author_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Follow a writer for new-post push (idempotent: 201 on first, 200 on re-follow)."""
-    author = _get_followable_author(db, author_id)
-    follow, created = crud.add_author_follow(db, current_reader.id, author_id)
+    author = await _get_followable_author(db, author_id)
+    follow, created = await crud.add_author_follow(db, current_reader.id, author_id)
     response.status_code = 201 if created else 200
     return AuthorFollowResponse(
         author_id=int(author.id),
@@ -2296,16 +2315,16 @@ def follow_author(
 
 @router.patch("/me/authors/{author_id}/follow", response_model=AuthorFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_author_follow_notify(
+async def set_author_follow_notify(
     request: Request,  # noqa: ARG001
     author_id: IdInt,
     payload: AuthorFollowNotifyUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Toggle new-post notifications for a followed author. 404 if not following."""
-    author = _get_followable_author(db, author_id)
-    follow = crud.set_author_follow_notify(db, current_reader.id, author_id, payload.notify)
+    author = await _get_followable_author(db, author_id)
+    follow = await crud.set_author_follow_notify(db, current_reader.id, author_id, payload.notify)
     if not follow:
         raise HTTPException(status_code=404, detail="Not following this author")
     return AuthorFollowResponse(
@@ -2318,14 +2337,14 @@ def set_author_follow_notify(
 
 @router.delete("/me/authors/{author_id}/follow", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unfollow_author(
+async def unfollow_author(
     request: Request,  # noqa: ARG001
     author_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a writer. Idempotent 204."""
-    crud.remove_author_follow(db, current_reader.id, author_id)
+    await crud.remove_author_follow(db, current_reader.id, author_id)
     return None
 
 
@@ -2333,18 +2352,18 @@ def unfollow_author(
 # follow wheel — a reader can subscribe to another commenter's approved
 # comments. Mirrors the author-follow endpoints (idempotent, self-follow and
 # unknown/inactive targets rejected, never the email).
-def _get_followable_reader(db: Session, reader_id: int) -> auth.ReaderAccount | None:
+async def _get_followable_reader(db: AsyncSession, reader_id: int) -> auth.ReaderAccount | None:
     """An active reader that can be followed (not-deleted, exists), else None."""
-    return db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id == reader_id).first()
+    return (await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.id == reader_id))).scalar_one_or_none()
 
 
 @router.get("/me/follows/readers", response_model=FollowedReaderListResponse)
-def list_reader_follows(
+async def list_reader_follows(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The readers the reader follows, newest first, for /account management."""
-    rows = crud.list_reader_follows(db, current_reader.id)
+    rows = await crud.list_reader_follows(db, current_reader.id)
     items = []
     for f in rows:
         followed = f.followed
@@ -2366,12 +2385,12 @@ def list_reader_follows(
 
 @router.put("/me/follows/readers/{reader_id}", response_model=ReaderFollowResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def follow_reader(
+async def follow_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Follow another reader for comment fan-out. Idempotent: 201/200.
 
@@ -2380,10 +2399,10 @@ def follow_reader(
     """
     if reader_id == current_reader.id:
         raise HTTPException(status_code=400, detail="You cannot follow yourself")
-    target = _get_followable_reader(db, reader_id)
+    target = await _get_followable_reader(db, reader_id)
     if target is None or target.is_active is False:
         raise HTTPException(status_code=404, detail="Reader not found")
-    follow, created = crud.add_reader_follow(db, current_reader.id, reader_id)
+    follow, created = await crud.add_reader_follow(db, current_reader.id, reader_id)
     response.status_code = 201 if created else 200
     return ReaderFollowResponse(
         reader_id=reader_id,
@@ -2395,14 +2414,14 @@ def follow_reader(
 
 @router.delete("/me/follows/readers/{reader_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unfollow_reader(
+async def unfollow_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unfollow a reader. Idempotent 204."""
-    crud.remove_reader_follow(db, current_reader.id, reader_id)
+    await crud.remove_reader_follow(db, current_reader.id, reader_id)
     return None
 
 
@@ -2411,9 +2430,9 @@ def unfollow_reader(
 
 
 @router.get("/me/blocks", response_model=BlockedReaderListResponse)
-def list_reader_blocks(
+async def list_reader_blocks(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The readers this reader has blocked, newest first, for management.
 
@@ -2422,13 +2441,17 @@ def list_reader_blocks(
     usable public identity, so it is dropped rather than showing a dead row
     (same rule as list_reader_follows).
     """
-    rows = crud.list_reader_blocks(db, current_reader.id)
+    rows = await crud.list_reader_blocks(db, current_reader.id)
     # Batch-load the blocked profiles in ONE query instead of a per-row
     # primary-key fetch (N+1) — a reader with hundreds of blocks was issuing
     # that many sequential round-trips on a list they directly control
     # (deep-dive finding; matches the sibling list_reader_follows batch).
     blocked_ids = [b.blocked_id for b in rows]
-    accounts = db.query(auth.ReaderAccount).filter(auth.ReaderAccount.id.in_(blocked_ids)).all() if blocked_ids else []
+    accounts = (
+        (await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.id.in_(blocked_ids)))).scalars().all()
+        if blocked_ids
+        else []
+    )
     by_id = {a.id: a for a in accounts}
     items = []
     for b in rows:
@@ -2448,12 +2471,12 @@ def list_reader_blocks(
 
 @router.put("/me/blocks/{reader_id}", response_model=BlockedReaderItem)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def block_reader(
+async def block_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
     response: Response,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Block another reader's personal fan-out. Idempotent: 201/200.
 
@@ -2464,10 +2487,10 @@ def block_reader(
     """
     if reader_id == current_reader.id:
         raise HTTPException(status_code=400, detail="You cannot block yourself")
-    target = _get_followable_reader(db, reader_id)
+    target = await _get_followable_reader(db, reader_id)
     if target is None or target.is_active is False:
         raise HTTPException(status_code=404, detail="Reader not found")
-    block, created = crud.add_reader_block(db, current_reader.id, reader_id)
+    block, created = await crud.add_reader_block(db, current_reader.id, reader_id)
     response.status_code = 201 if created else 200
     return BlockedReaderItem(
         reader_id=reader_id,
@@ -2479,14 +2502,14 @@ def block_reader(
 
 @router.delete("/me/blocks/{reader_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def unblock_reader(
+async def unblock_reader(
     request: Request,  # noqa: ARG001
     reader_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Unblock a reader. Idempotent 204; restores their notifications."""
-    crud.remove_reader_block(db, current_reader.id, reader_id)
+    await crud.remove_reader_block(db, current_reader.id, reader_id)
     return None
 
 
@@ -2495,7 +2518,7 @@ def unblock_reader(
 
 
 @router.get("/me/history", response_model=ReadingHistoryListResponse)
-def list_reading_history(
+async def list_reading_history(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
@@ -2505,7 +2528,7 @@ def list_reading_history(
     q: Annotated[
         NonNulStr | None, Query(max_length=200, description="filter history to posts matching this term")
     ] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The reader's viewed posts, newest-first, publicly-visible only.
 
@@ -2514,7 +2537,7 @@ def list_reading_history(
     invariant as bookmarks/subs: a viewed post that went dark stops appearing
     (row kept).
     """
-    rows, total = crud.list_reader_history(db, current_reader.id, page=page, limit=limit, q=q)
+    rows, total = await crud.list_reader_history(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return ReadingHistoryListResponse(
         items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
@@ -2526,10 +2549,10 @@ def list_reading_history(
 
 
 @router.get("/me/history/in-progress", response_model=ReadingHistoryListResponse)
-def list_in_progress(
+async def list_in_progress(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     limit: int = Query(6, ge=1, le=20),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The reader's posts with a saved resume position, newest-first (DEC-348,
     TASK-400) — the cross-device "Continue reading" trail for the home page.
@@ -2539,7 +2562,7 @@ def list_in_progress(
     below). Same auth + non-leak invariants as the history list: guests/admin
     tokens 401, a post that went dark stops appearing (row kept).
     """
-    rows, total = crud.list_reader_in_progress(db, current_reader.id, limit=limit)
+    rows, total = await crud.list_reader_in_progress(db, current_reader.id, limit=limit)
     return ReadingHistoryListResponse(
         items=[ReadingHistoryItem.from_post(p, viewed_at) for p, viewed_at in rows],
         total=total,
@@ -2550,7 +2573,7 @@ def list_in_progress(
 
 
 @router.get("/me/history/stats", response_model=ReadingStatsResponse)
-def reading_history_stats(
+async def reading_history_stats(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     tz: Annotated[
         NonNulStr | None,
@@ -2560,7 +2583,7 @@ def reading_history_stats(
             "heatmap align to the reader's local calendar day; omitted → UTC (DEC-316)",
         ),
     ] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's reading summary (posts read, minutes, latest activity).
 
@@ -2577,7 +2600,7 @@ def reading_history_stats(
             tz_info = ZoneInfo(tz)
         except ZoneInfoNotFoundError as exc:
             raise HTTPException(status_code=422, detail="Unknown timezone") from exc
-    stats = crud.reader_history_stats(db, current_reader.id, recent_limit=6, tz=tz_info)
+    stats = await crud.reader_history_stats(db, current_reader.id, recent_limit=6, tz=tz_info)
     return ReadingStatsResponse(
         total_posts=stats["total_posts"],
         total_reading_minutes=stats["total_reading_minutes"],
@@ -2590,9 +2613,9 @@ def reading_history_stats(
 
 
 @router.get("/me/history/insights", response_model=ReadingInsightsResponse)
-def reading_history_insights(
+async def reading_history_insights(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's reading insights: what and how much they've read (DEC-417).
 
@@ -2602,7 +2625,7 @@ def reading_history_insights(
     public-visibility invariant as every history read path — un-published and
     scheduled posts neither leak nor count.
     """
-    return ReadingInsightsResponse(**crud.reader_history_insights(db, current_reader.id))
+    return ReadingInsightsResponse(**await crud.reader_history_insights(db, current_reader.id))
 
 
 class HistoryImportItem(BaseModel):
@@ -2651,11 +2674,11 @@ class HistoryImportResponse(BaseModel):
 
 @router.post("/me/history/import", response_model=HistoryImportResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def import_reading_history(
+async def import_reading_history(
     request: Request,  # noqa: ARG001
     body: HistoryImportRequest,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Merge the device-local reading trail into this reader's server history.
 
@@ -2666,7 +2689,7 @@ def import_reading_history(
     imports publicly visible posts (drafts/scheduled never leak — the same
     invariant as every other history read path).
     """
-    imported, skipped = crud.import_reader_history(
+    imported, skipped = await crud.import_reader_history(
         db,
         current_reader.id,
         [(item.slug, item.viewed_at) for item in body.items],
@@ -2675,10 +2698,10 @@ def import_reading_history(
 
 
 @router.get("/me/history/{post_id}", response_model=ReadingPositionResponse)
-def reading_position(
+async def reading_position(
     post_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's saved resume position for a public post (DEC-167/TASK-200).
 
@@ -2688,10 +2711,10 @@ def reading_position(
     uniformly 404 and cannot be positioned (no draft oracle). The position is
     auth-scoped to the reader; it never appears in the public post payload.
     """
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
-    row = crud.get_reading_history(db, current_reader.id, post.id)
+    row = await crud.get_reading_history(db, current_reader.id, post.id)
     return ReadingPositionResponse(
         post_id=post_id,
         scroll_position=row.scroll_position if row else None,
@@ -2701,12 +2724,12 @@ def reading_position(
 
 @router.post("/me/history/{post_id}", response_model=RecordHistoryResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def record_reading_view(
+async def record_reading_view(
     request: Request,  # noqa: ARG001
     post_id: IdInt,
     body: RecordHistoryRequest | None = None,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Record a view on a public post (idempotent upsert).
 
@@ -2717,12 +2740,12 @@ def record_reading_view(
     fraction the same way. Drafts/scheduled/unknown posts are uniformly 404 —
     no draft-existence oracle (same guard as the bookmark/comment paths).
     """
-    post = db.get(models.Post, post_id)
+    post = await db.get(models.Post, post_id)
     if not post or not crud.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     scroll_position = body.scroll_position if body is not None else None
     scroll_fraction = body.scroll_fraction if body is not None else None
-    row, created = crud.record_reading_history(
+    row, created = await crud.record_reading_history(
         db,
         current_reader.id,
         post.id,
@@ -2734,13 +2757,13 @@ def record_reading_view(
 
 @router.delete("/me/history", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def clear_reading_history(
+async def clear_reading_history(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Clear the reader's entire reading history. Idempotent (no-op if empty)."""
-    crud.clear_reader_history(db, current_reader.id)
+    await crud.clear_reader_history(db, current_reader.id)
     return None
 
 
@@ -2775,13 +2798,13 @@ VALID_READER_COMMENT_STATUSES = ("all", "pending", "approved", "rejected")
 
 
 @router.get("/me/comments", response_model=ReaderCommentListResponse)
-def list_my_comments(
+async def list_my_comments(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     status: str = Query("all", description="all | pending | approved | rejected"),
     q: str | None = Query(None, max_length=200, description="content keyword filter"),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The reader's own comment history with a status filter + pagination.
 
@@ -2795,14 +2818,14 @@ def list_my_comments(
     """
     if status not in VALID_READER_COMMENT_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
-    comments, total = crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit, q=q)
+    comments, total = await crud.get_reader_comments(db, current_reader.id, status=status, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     # Batch-load the posts once in a single query instead of db.get per comment
     # (many comments share a post; ISS-140) — one in_() query, not up to 100.
     post_ids = {c.post_id for c in comments}
     posts_by_id = {}
     if post_ids:
-        rows = db.query(models.Post).filter(models.Post.id.in_(post_ids)).all()
+        rows = (await db.execute(select(models.Post).where(models.Post.id.in_(post_ids)))).scalars().all()
         posts_by_id = {p.id: p for p in rows}
     items = []
     for c in comments:
@@ -2828,11 +2851,11 @@ def list_my_comments(
 
 @router.delete("/me/comments/{comment_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_my_comment(
+async def delete_my_comment(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete one of the reader's own comments (any status).
 
@@ -2843,7 +2866,7 @@ def delete_my_comment(
     thread stays coherent (DEC-096, TASK-160).
     """
     try:
-        deleted = crud.delete_reader_comment(db, comment_id, current_reader.id)
+        deleted = await crud.delete_reader_comment(db, comment_id, current_reader.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not deleted:
@@ -2868,12 +2891,12 @@ class ReaderCommentEdit(BaseModel):
 
 @router.patch("/me/comments/{comment_id}", response_model=schemas.CommentPublic)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def edit_my_comment(
+async def edit_my_comment(
     request: Request,  # noqa: ARG001
     comment_id: IdInt,
     edit: ReaderCommentEdit,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Edit one of the reader's own comments (any status).
 
@@ -2895,16 +2918,16 @@ def edit_my_comment(
     publication and a mere edit must not re-fan out reply + thread
     notifications (RIL ISS-404).
     """
-    updated, was_public = crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
+    updated, was_public = await crud.update_reader_comment(db, comment_id, current_reader.id, edit.content)
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
-    if updated.reader_id is not None and crud.boolean_setting(
+    if updated.reader_id is not None and await crud.boolean_setting(
         db, "auto_approve_reader_comments", AUTO_APPROVE_READER_COMMENTS
     ):
-        approved = crud.approve_comment(db, updated.id, approved=True)
+        approved = await crud.approve_comment(db, updated.id, approved=True)
         if approved is not None:
             if not was_public:
-                _notify_comment_approved(db, approved)
+                await _notify_comment_approved(db, approved)
             return approved
     return updated
 
@@ -2939,12 +2962,12 @@ class NotificationListResponse(BaseModel):
 
 
 @router.get("/me/notifications", response_model=NotificationListResponse)
-def list_my_notifications(
+async def list_my_notifications(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     unread: bool = Query(False, description="filter to unread notifications only"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The signed-in reader's durable notification inbox, newest first.
 
@@ -2956,8 +2979,10 @@ def list_my_notifications(
     filter. Auth-scoped; the global middleware defaults these to no-store.
     (DEC-160, TASK-192)
     """
-    items, total = crud.list_reader_notifications(db, current_reader.id, page=page, limit=limit, unread_only=unread)
-    unread_count = crud.unread_notification_count(db, current_reader.id)
+    items, total = await crud.list_reader_notifications(
+        db, current_reader.id, page=page, limit=limit, unread_only=unread
+    )
+    unread_count = await crud.unread_notification_count(db, current_reader.id)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return NotificationListResponse(
         items=[
@@ -2982,17 +3007,17 @@ def list_my_notifications(
 
 @router.post("/me/notifications/{notification_id}/read", response_model=NotificationItem)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def mark_notification_read(
+async def mark_notification_read(
     request: Request,  # noqa: ARG001
     notification_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Mark one of the reader's notifications read. 404 if not theirs."""
-    ok = crud.mark_reader_notification_read(db, current_reader.id, notification_id)
+    ok = await crud.mark_reader_notification_read(db, current_reader.id, notification_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Notification not found")
-    row = db.get(models.ReaderNotification, notification_id)
+    row = await db.get(models.ReaderNotification, notification_id)
     if row is None:
         # mark_reader_notification_read reported an owned row but it vanished in
         # the same session (concurrent clear); surface 404 instead of an
@@ -3011,11 +3036,11 @@ def mark_notification_read(
 
 @router.delete("/me/notifications/{notification_id}", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def delete_notification(
+async def delete_notification(
     request: Request,  # noqa: ARG001
     notification_id: IdInt,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete one of the reader's inbox rows. 404 if not theirs.
 
@@ -3025,20 +3050,20 @@ def delete_notification(
     table), so an unknown or another reader's id is a 404, never a cross-reader
     delete. (DEC-312, TASK-384)
     """
-    ok = crud.delete_reader_notification(db, current_reader.id, notification_id)
+    ok = await crud.delete_reader_notification(db, current_reader.id, notification_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Notification not found")
 
 
 @router.post("/me/notifications/read-all", response_model=dict[str, int])
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def mark_all_notifications_read(
+async def mark_all_notifications_read(
     request: Request,  # noqa: ARG001
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Mark every unread notification read; returns the count updated."""
-    updated = crud.mark_all_reader_notifications_read(db, current_reader.id)
+    updated = await crud.mark_all_reader_notifications_read(db, current_reader.id)
     return {"updated": updated}
 
 
@@ -3083,9 +3108,9 @@ class NotificationPrefUpdate(BaseModel):
 
 
 @router.get("/me/notification-preferences", response_model=NotificationPrefs)
-def get_my_notification_prefs(
+async def get_my_notification_prefs(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """The signed-in reader's per-kind notification opt-outs, all-on by default.
 
@@ -3093,7 +3118,7 @@ def get_my_notification_prefs(
     (per-reader data). Materializes an all-on row on first read so the response
     is always the full object.
     """
-    prefs = crud.get_reader_notification_prefs(db, current_reader.id)
+    prefs = await crud.get_reader_notification_prefs(db, current_reader.id)
     return NotificationPrefs(
         new_post=prefs.new_post,
         reply=prefs.reply,
@@ -3110,11 +3135,11 @@ def get_my_notification_prefs(
 
 @router.patch("/me/notification-preferences", response_model=NotificationPrefs)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_my_notification_pref(
+async def set_my_notification_pref(
     request: Request,  # noqa: ARG001
     payload: NotificationPrefUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Toggle one notification kind for the signed-in reader. 422 on unknown kind.
 
@@ -3122,7 +3147,7 @@ def set_my_notification_pref(
     a durable inbox row nor a browser push for that kind. Returns the full
     updated preferences.
     """
-    prefs = crud.set_reader_notification_kind(db, current_reader.id, payload.kind, payload.enabled)
+    prefs = await crud.set_reader_notification_kind(db, current_reader.id, payload.kind, payload.enabled)
     if prefs is None:
         raise HTTPException(status_code=422, detail=f"Unknown notification kind: {payload.kind}")
     return NotificationPrefs(
@@ -3151,11 +3176,11 @@ class ReaderLocaleUpdate(BaseModel):
 
 @router.put("/me/locale", response_model=ReaderLocaleUpdate)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def set_my_reader_locale(
+async def set_my_reader_locale(
     request: Request,  # noqa: ARG001
     payload: ReaderLocaleUpdate,
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Set the reader's notification-copy language (DEC-338, TASK-395).
 
@@ -3164,5 +3189,5 @@ def set_my_reader_locale(
     this when a signed-in reader changes their language, so an English reader
     stops receiving 新文章发布 / 系列更新 rows and emails immediately.
     """
-    crud.set_reader_locale(db, current_reader.id, payload.locale)
+    await crud.set_reader_locale(db, current_reader.id, payload.locale)
     return payload

@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.crud import utc_now_naive
@@ -39,50 +39,48 @@ router = APIRouter(prefix="/api/stats", tags=["Stats"])
 
 @router.get("", response_model=BlogStatsResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def get_blog_stats(request: Request, db: Session = Depends(get_db)):  # noqa: ARG001
+async def get_blog_stats(request: Request, db: AsyncSession = Depends(get_db)):  # noqa: ARG001
     """Get blog statistics."""
     # Total posts
-    total_posts = db.query(func.count(models.Post.id)).scalar() or 0
+    total_posts = (await db.execute(select(func.count(models.Post.id)))).scalar() or 0
 
     # Published posts (scheduled posts only count once their publish_at has passed,
     # matching the public list semantics)
     now = utc_now_naive()
     published_posts = (
-        db.query(func.count(models.Post.id))
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.execute(
+            select(func.count(models.Post.id)).where(
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
         )
-        .scalar()
-        or 0
-    )
+    ).scalar() or 0
 
     # Scheduled posts: published but publish_at is in the future (not yet live).
     # Mirrors the admin list's "scheduled" status filter semantics.
     scheduled_posts = (
-        db.query(func.count(models.Post.id))
-        .filter(
-            models.Post.published.is_(True),
-            models.Post.publish_at > now,
+        await db.execute(
+            select(func.count(models.Post.id)).where(
+                models.Post.published.is_(True),
+                models.Post.publish_at > now,
+            )
         )
-        .scalar()
-        or 0
-    )
+    ).scalar() or 0
 
     # Total categories
-    total_categories = db.query(func.count(models.Category.id)).scalar() or 0
+    total_categories = (await db.execute(select(func.count(models.Category.id)))).scalar() or 0
 
     # Total tags
-    total_tags = db.query(func.count(models.Tag.id)).scalar() or 0
+    total_tags = (await db.execute(select(func.count(models.Tag.id)))).scalar() or 0
 
     # Total comments
-    total_comments = db.query(func.count(models.Comment.id)).scalar() or 0
+    total_comments = (await db.execute(select(func.count(models.Comment.id)))).scalar() or 0
 
     # Total views
-    total_views = db.query(func.sum(models.Post.views)).scalar() or 0
+    total_views = (await db.execute(select(func.sum(models.Post.views)))).scalar() or 0
 
     # Total likes
-    total_likes = db.query(func.sum(models.Post.likes)).scalar() or 0
+    total_likes = (await db.execute(select(func.sum(models.Post.likes)))).scalar() or 0
 
     return BlogStatsResponse(
         total_posts=total_posts,

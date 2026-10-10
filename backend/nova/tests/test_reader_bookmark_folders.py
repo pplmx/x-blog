@@ -10,15 +10,15 @@ BOOKMARKS = "/api/reader/me/bookmarks"
 FOLDERS = f"{BOOKMARKS}/folders"
 
 
-def _register(client, email="folder@example.com", password="readerpass123"):
-    return client.post(
+async def _register(client, email="folder@example.com", password="readerpass123"):
+    return await client.post(
         "/api/reader/register",
         json={"email": email, "password": password},
     )
 
 
-def _token(client, email="folder@example.com"):
-    return _register(client, email=email).json()["access_token"]
+async def _token(client, email="folder@example.com"):
+    return (await _register(client, email=email)).json()["access_token"]
 
 
 def _auth(token):
@@ -28,13 +28,13 @@ def _auth(token):
 _slug_counter = 0
 
 
-def _create_post(db_session, *, published=True, draft=False, **overrides):
+async def _create_post(db_session, *, published=True, draft=False, **overrides):
     from app.crud import create_post
     from app.schemas import PostCreate
 
     global _slug_counter
     _slug_counter += 1
-    return create_post(
+    return await create_post(
         db_session,
         PostCreate(
             **{
@@ -48,23 +48,23 @@ def _create_post(db_session, *, published=True, draft=False, **overrides):
     )
 
 
-def _make_folder(client, token, name):
-    return client.post(FOLDERS, json={"name": name}, headers=_auth(token))
+async def _make_folder(client, token, name):
+    return await client.post(FOLDERS, json={"name": name}, headers=_auth(token))
 
 
 class TestAuthRequired:
-    def test_list_folders_requires_token(self, client):
-        assert client.get(FOLDERS).status_code == 401
+    async def test_list_folders_requires_token(self, client):
+        assert (await client.get(FOLDERS)).status_code == 401
 
-    def test_create_folder_requires_token(self, client):
-        assert client.post(FOLDERS, json={"name": "X"}).status_code == 401
+    async def test_create_folder_requires_token(self, client):
+        assert (await client.post(FOLDERS, json={"name": "X"})).status_code == 401
 
-    def test_assign_folder_requires_token(self, client):
-        assert client.patch(f"{BOOKMARKS}/1/folder", json={"folder_id": 1}).status_code == 401
+    async def test_assign_folder_requires_token(self, client):
+        assert (await client.patch(f"{BOOKMARKS}/1/folder", json={"folder_id": 1})).status_code == 401
 
-    def test_admin_token_rejected(self, client, admin_token):
+    async def test_admin_token_rejected(self, client, admin_token):
         headers = {"Authorization": f"Bearer {admin_token}"}
-        assert client.get(FOLDERS, headers=headers).status_code == 401
+        assert (await client.get(FOLDERS, headers=headers)).status_code == 401
 
 
 class TestFolderIdOverflowCaps:
@@ -74,148 +74,150 @@ class TestFolderIdOverflowCaps:
 
     BIG_ID = "99999999999999999999999999"
 
-    def test_rename_folder_huge_id_is_422(self, client):
-        token = _token(client)
-        assert client.patch(f"{FOLDERS}/{self.BIG_ID}", json={"name": "Y"}, headers=_auth(token)).status_code == 422
+    async def test_rename_folder_huge_id_is_422(self, client):
+        token = await _token(client)
+        assert (
+            await client.patch(f"{FOLDERS}/{self.BIG_ID}", json={"name": "Y"}, headers=_auth(token))
+        ).status_code == 422
 
-    def test_delete_folder_huge_id_is_422(self, client):
-        token = _token(client)
-        assert client.delete(f"{FOLDERS}/{self.BIG_ID}", headers=_auth(token)).status_code == 422
+    async def test_delete_folder_huge_id_is_422(self, client):
+        token = await _token(client)
+        assert (await client.delete(f"{FOLDERS}/{self.BIG_ID}", headers=_auth(token))).status_code == 422
 
-    def test_list_bookmarks_huge_folder_query_is_422(self, client):
-        token = _token(client)
-        assert client.get(f"{BOOKMARKS}?folder_id={self.BIG_ID}", headers=_auth(token)).status_code == 422
+    async def test_list_bookmarks_huge_folder_query_is_422(self, client):
+        token = await _token(client)
+        assert (await client.get(f"{BOOKMARKS}?folder_id={self.BIG_ID}", headers=_auth(token))).status_code == 422
 
 
 class TestCreateFolder:
-    def test_create_returns_201_and_lists(self, client):
-        token = _token(client)
-        resp = _make_folder(client, token, "Go")
+    async def test_create_returns_201_and_lists(self, client):
+        token = await _token(client)
+        resp = await _make_folder(client, token, "Go")
         assert resp.status_code == 201, resp.text
         assert resp.json()["name"] == "Go"
-        listed = client.get(FOLDERS, headers=_auth(token)).json()
+        listed = (await client.get(FOLDERS, headers=_auth(token))).json()
         assert listed["total"] == 1
         assert listed["items"][0]["name"] == "Go"
         assert listed["items"][0]["count"] == 0
 
-    def test_create_same_name_is_idempotent(self, client):
-        token = _token(client)
-        assert _make_folder(client, token, "Go").status_code == 201
-        again = _make_folder(client, token, "Go")
+    async def test_create_same_name_is_idempotent(self, client):
+        token = await _token(client)
+        assert (await _make_folder(client, token, "Go")).status_code == 201
+        again = await _make_folder(client, token, "Go")
         assert again.status_code == 200
-        assert client.get(FOLDERS, headers=_auth(token)).json()["total"] == 1
+        assert (await client.get(FOLDERS, headers=_auth(token))).json()["total"] == 1
 
-    def test_create_folder_name_with_nul_is_422(self, client):
+    async def test_create_folder_name_with_nul_is_422(self, client):
         """A NUL in a folder name would crash psycopg at bind -> 500; the
         FolderCreate schema must gate it with 422 (ISS-454, TASK-351)."""
-        token = _token(client)
-        resp = _make_folder(client, token, "na\x00me")
+        token = await _token(client)
+        resp = await _make_folder(client, token, "na\x00me")
         assert resp.status_code == 422, resp.text
 
-    def test_create_folder_whitespace_only_name_is_422(self, client):
+    async def test_create_folder_whitespace_only_name_is_422(self, client):
         """'   ' passed min_length=1 and was stored as "" by crud's strip — a
         blank folder in the reader's list. Strip at the boundary (ISS-456)."""
-        token = _token(client)
-        resp = _make_folder(client, token, "   ")
+        token = await _token(client)
+        resp = await _make_folder(client, token, "   ")
         assert resp.status_code == 422, resp.text
-        assert client.get(FOLDERS, headers=_auth(token)).json()["total"] == 0
+        assert (await client.get(FOLDERS, headers=_auth(token))).json()["total"] == 0
 
-    def test_folders_isolated_between_readers(self, client):
-        t1 = _token(client, email="fiso1@example.com")
-        t2 = _token(client, email="fiso2@example.com")
-        _make_folder(client, t1, "Mine")
-        assert client.get(FOLDERS, headers=_auth(t1)).json()["total"] == 1
-        assert client.get(FOLDERS, headers=_auth(t2)).json()["total"] == 0
+    async def test_folders_isolated_between_readers(self, client):
+        t1 = await _token(client, email="fiso1@example.com")
+        t2 = await _token(client, email="fiso2@example.com")
+        await _make_folder(client, t1, "Mine")
+        assert (await client.get(FOLDERS, headers=_auth(t1))).json()["total"] == 1
+        assert (await client.get(FOLDERS, headers=_auth(t2))).json()["total"] == 0
 
 
 class TestRenameFolder:
-    def test_rename(self, client):
-        token = _token(client)
-        fid = _make_folder(client, token, "Old").json()["id"]
-        resp = client.patch(f"{FOLDERS}/{fid}", json={"name": "New"}, headers=_auth(token))
+    async def test_rename(self, client):
+        token = await _token(client)
+        fid = (await _make_folder(client, token, "Old")).json()["id"]
+        resp = await client.patch(f"{FOLDERS}/{fid}", json={"name": "New"}, headers=_auth(token))
         assert resp.status_code == 200, resp.text
         assert resp.json()["name"] == "New"
 
-    def test_rename_duplicate_409(self, client):
-        token = _token(client)
-        _make_folder(client, token, "A")
-        fid = _make_folder(client, token, "B").json()["id"]
-        resp = client.patch(f"{FOLDERS}/{fid}", json={"name": "A"}, headers=_auth(token))
+    async def test_rename_duplicate_409(self, client):
+        token = await _token(client)
+        await _make_folder(client, token, "A")
+        fid = (await _make_folder(client, token, "B")).json()["id"]
+        resp = await client.patch(f"{FOLDERS}/{fid}", json={"name": "A"}, headers=_auth(token))
         assert resp.status_code == 409
 
-    def test_rename_unknown_404(self, client):
-        token = _token(client)
-        resp = client.patch(f"{FOLDERS}/999999", json={"name": "X"}, headers=_auth(token))
+    async def test_rename_unknown_404(self, client):
+        token = await _token(client)
+        resp = await client.patch(f"{FOLDERS}/999999", json={"name": "X"}, headers=_auth(token))
         assert resp.status_code == 404
 
 
 class TestDeleteFolder:
-    def test_delete_uncategorized_its_bookmarks(self, client, db_session):
-        token = _token(client)
-        fid = _make_folder(client, token, "F").json()["id"]
-        post = _create_post(db_session)
-        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+    async def test_delete_uncategorized_its_bookmarks(self, client, db_session):
+        token = await _token(client)
+        fid = (await _make_folder(client, token, "F")).json()["id"]
+        post = await _create_post(db_session)
+        await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
         # Assign the bookmark to the folder.
-        client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
-        listed = client.get(BOOKMARKS, headers=_auth(token)).json()
+        await client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
+        listed = (await client.get(BOOKMARKS, headers=_auth(token))).json()
         assert listed["items"][0]["folder_id"] == fid
 
-        assert client.delete(f"{FOLDERS}/{fid}", headers=_auth(token)).status_code == 204
+        assert (await client.delete(f"{FOLDERS}/{fid}", headers=_auth(token))).status_code == 204
         # Bookmark survives, now uncategorized (no dangling folder_id).
-        assert client.get(BOOKMARKS, headers=_auth(token)).json()["items"][0]["folder_id"] is None
+        assert (await client.get(BOOKMARKS, headers=_auth(token))).json()["items"][0]["folder_id"] is None
 
-    def test_delete_unknown_idempotent_204(self, client):
-        token = _token(client)
-        assert client.delete(f"{FOLDERS}/999999", headers=_auth(token)).status_code == 204
+    async def test_delete_unknown_idempotent_204(self, client):
+        token = await _token(client)
+        assert (await client.delete(f"{FOLDERS}/999999", headers=_auth(token))).status_code == 204
 
 
 class TestAssignAndFilter:
-    def test_assign_folder_and_filter_by_it(self, client, db_session):
-        token = _token(client)
-        fid = _make_folder(client, token, "Tech").json()["id"]
-        p1 = _create_post(db_session, title="Go Post")
-        p2 = _create_post(db_session, title="Vue Post")
-        client.put(f"{BOOKMARKS}/{p1.id}", headers=_auth(token))
-        client.put(f"{BOOKMARKS}/{p2.id}", headers=_auth(token))
-        client.patch(f"{BOOKMARKS}/{p1.id}/folder", json={"folder_id": fid}, headers=_auth(token))
+    async def test_assign_folder_and_filter_by_it(self, client, db_session):
+        token = await _token(client)
+        fid = (await _make_folder(client, token, "Tech")).json()["id"]
+        p1 = await _create_post(db_session, title="Go Post")
+        p2 = await _create_post(db_session, title="Vue Post")
+        await client.put(f"{BOOKMARKS}/{p1.id}", headers=_auth(token))
+        await client.put(f"{BOOKMARKS}/{p2.id}", headers=_auth(token))
+        await client.patch(f"{BOOKMARKS}/{p1.id}/folder", json={"folder_id": fid}, headers=_auth(token))
 
-        all_items = client.get(BOOKMARKS, headers=_auth(token)).json()["items"]
+        all_items = (await client.get(BOOKMARKS, headers=_auth(token))).json()["items"]
         by_id = {i["id"]: i for i in all_items}
         assert by_id[p1.id]["folder_id"] == fid
         assert by_id[p1.id]["folder_name"] == "Tech"
         assert by_id[p2.id]["folder_id"] is None
 
-        filtered = client.get(f"{BOOKMARKS}?folder_id={fid}", headers=_auth(token)).json()
+        filtered = (await client.get(f"{BOOKMARKS}?folder_id={fid}", headers=_auth(token))).json()
         assert filtered["total"] == 1
         assert filtered["items"][0]["id"] == p1.id
 
         # Folder counts reflect the assignment.
-        folders = client.get(FOLDERS, headers=_auth(token)).json()["items"]
+        folders = (await client.get(FOLDERS, headers=_auth(token))).json()["items"]
         assert [f for f in folders if f["id"] == fid][0]["count"] == 1
 
-    def test_clear_folder_assignment(self, client, db_session):
-        token = _token(client)
-        fid = _make_folder(client, token, "F").json()["id"]
-        post = _create_post(db_session)
-        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
-        client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
-        resp = client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": None}, headers=_auth(token))
+    async def test_clear_folder_assignment(self, client, db_session):
+        token = await _token(client)
+        fid = (await _make_folder(client, token, "F")).json()["id"]
+        post = await _create_post(db_session)
+        await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+        await client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
+        resp = await client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": None}, headers=_auth(token))
         assert resp.status_code == 200
         assert resp.json()["folder_id"] is None
 
-    def test_assign_invalid_folder_404(self, client, db_session):
-        token = _token(client)
-        post = _create_post(db_session)
-        client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
+    async def test_assign_invalid_folder_404(self, client, db_session):
+        token = await _token(client)
+        post = await _create_post(db_session)
+        await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))
         # A folder that exists for another reader must not be assignable.
-        other = _token(client, email="other@example.com")
-        other_fid = _make_folder(client, other, "Other").json()["id"]
-        resp = client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": other_fid}, headers=_auth(token))
+        other = await _token(client, email="other@example.com")
+        other_fid = (await _make_folder(client, other, "Other")).json()["id"]
+        resp = await client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": other_fid}, headers=_auth(token))
         assert resp.status_code == 404
 
-    def test_assign_unbookmarked_post_404(self, client, db_session):
-        token = _token(client)
-        fid = _make_folder(client, token, "F").json()["id"]
-        post = _create_post(db_session)  # not bookmarked
-        resp = client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
+    async def test_assign_unbookmarked_post_404(self, client, db_session):
+        token = await _token(client)
+        fid = (await _make_folder(client, token, "F")).json()["id"]
+        post = await _create_post(db_session)  # not bookmarked
+        resp = await client.patch(f"{BOOKMARKS}/{post.id}/folder", json={"folder_id": fid}, headers=_auth(token))
         assert resp.status_code == 404

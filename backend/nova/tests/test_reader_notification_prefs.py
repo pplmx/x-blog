@@ -15,38 +15,39 @@ inbox contract conventions.
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import func, select
 
 PREFS = "/api/reader/me/notification-preferences"
 NOTIFS = "/api/reader/me/notifications"
 
 
-def _register(client, email="pref@example.com", password="readerpass123"):
-    return client.post("/api/reader/register", json={"email": email, "password": password})
+async def _register(client, email="pref@example.com", password="readerpass123"):
+    return await client.post("/api/reader/register", json={"email": email, "password": password})
 
 
-def _token(client, email="pref@example.com"):
-    return _register(client, email=email).json()["access_token"]
+async def _token(client, email="pref@example.com"):
+    return (await _register(client, email=email)).json()["access_token"]
 
 
 def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _opt_out(client, token, kind):
-    resp = client.patch(PREFS, json={"kind": kind, "enabled": False}, headers=_auth(token))
+async def _opt_out(client, token, kind):
+    resp = await client.patch(PREFS, json={"kind": kind, "enabled": False}, headers=_auth(token))
     assert resp.status_code == 200, resp.text
     return resp.json()
 
 
-def _opt_in(client, token, kind):
-    resp = client.patch(PREFS, json={"kind": kind, "enabled": True}, headers=_auth(token))
+async def _opt_in(client, token, kind):
+    resp = await client.patch(PREFS, json={"kind": kind, "enabled": True}, headers=_auth(token))
     assert resp.status_code == 200, resp.text
     return resp.json()
 
 
-def _comment_mention(client, post_id, name):
+async def _comment_mention(client, post_id, name):
     """Post a guest comment that @-mentions ``name`` (pending moderation)."""
-    resp = client.post(
+    resp = await client.post(
         f"/api/comments/post/{post_id}",
         json={"nickname": "Mentioner", "email": "mentioner@example.com", "content": f"Hey @{name}!"},
     )
@@ -54,13 +55,13 @@ def _comment_mention(client, post_id, name):
     return resp.json()["id"]
 
 
-def _approve(client, auth_headers, comment_id):
-    resp = client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
+async def _approve(client, auth_headers, comment_id):
+    resp = await client.patch(f"/api/comments/{comment_id}/approve", json={"approved": True}, headers=auth_headers)
     assert resp.status_code == 200, resp.text
 
 
-def _register_named(client, name, email):
-    resp = client.post(
+async def _register_named(client, name, email):
+    resp = await client.post(
         "/api/reader/register",
         json={"email": email, "password": "readerpass123", "display_name": name},
     )
@@ -68,11 +69,11 @@ def _register_named(client, name, email):
     return resp.json()["access_token"]
 
 
-def _create_post(db_session, **overrides):
+async def _create_post(db_session, **overrides):
     from app.crud import create_post
     from app.schemas import PostCreate
 
-    return create_post(
+    return await create_post(
         db_session,
         PostCreate(
             **{
@@ -87,20 +88,20 @@ def _create_post(db_session, **overrides):
 
 
 class TestAuthRequired:
-    def test_get_requires_reader_token(self, client):
-        assert client.get(PREFS).status_code == 401
+    async def test_get_requires_reader_token(self, client):
+        assert (await client.get(PREFS)).status_code == 401
 
-    def test_patch_requires_reader_token(self, client):
-        assert client.patch(PREFS, json={"kind": "reply", "enabled": False}).status_code == 401
+    async def test_patch_requires_reader_token(self, client):
+        assert (await client.patch(PREFS, json={"kind": "reply", "enabled": False})).status_code == 401
 
-    def test_admin_token_rejected(self, client, admin_token):
-        assert client.get(PREFS, headers={"Authorization": f"Bearer {admin_token}"}).status_code == 401
+    async def test_admin_token_rejected(self, client, admin_token):
+        assert (await client.get(PREFS, headers={"Authorization": f"Bearer {admin_token}"})).status_code == 401
 
 
 class TestPrefsContract:
-    def test_defaults_all_on(self, client):
-        token = _token(client)
-        data = client.get(PREFS, headers=_auth(token)).json()
+    async def test_defaults_all_on(self, client):
+        token = await _token(client)
+        data = (await client.get(PREFS, headers=_auth(token))).json()
         assert data == {
             "new_post": True,
             "reply": True,
@@ -114,15 +115,15 @@ class TestPrefsContract:
             "email_weekly_digest": False,
         }
 
-    def test_toggle_off_persists_and_back_on(self, client):
-        token = _token(client)
+    async def test_toggle_off_persists_and_back_on(self, client):
+        token = await _token(client)
         headers = _auth(token)
-        data = _opt_out(client, token, "reply")
+        data = await _opt_out(client, token, "reply")
         assert data["reply"] is False
         assert data["new_post"] is True
         assert data["thread_comment"] is True
         # persisted server-side: a fresh GET reflects it, and other kinds are untouched.
-        again = client.get(PREFS, headers=headers).json()
+        again = (await client.get(PREFS, headers=headers)).json()
         assert again == {
             "new_post": True,
             "reply": False,
@@ -136,20 +137,20 @@ class TestPrefsContract:
             "email_weekly_digest": False,
         }
         # back on
-        on = client.patch(PREFS, json={"kind": "reply", "enabled": True}, headers=headers)
+        on = await client.patch(PREFS, json={"kind": "reply", "enabled": True}, headers=headers)
         assert on.status_code == 200
         assert on.json()["reply"] is True
 
-    def test_unknown_kind_422(self, client):
-        token = _token(client)
-        resp = client.patch(PREFS, json={"kind": "spam", "enabled": False}, headers=_auth(token))
+    async def test_unknown_kind_422(self, client):
+        token = await _token(client)
+        resp = await client.patch(PREFS, json={"kind": "spam", "enabled": False}, headers=_auth(token))
         assert resp.status_code == 422
 
-    def test_reader_isolation(self, client):
-        token_a = _token(client, email="iso-a@example.com")
-        token_b = _token(client, email="iso-b@example.com")
-        _opt_out(client, token_a, "thread_comment")
-        data_b = client.get(PREFS, headers=_auth(token_b)).json()
+    async def test_reader_isolation(self, client):
+        token_a = await _token(client, email="iso-a@example.com")
+        token_b = await _token(client, email="iso-b@example.com")
+        await _opt_out(client, token_a, "thread_comment")
+        data_b = (await client.get(PREFS, headers=_auth(token_b))).json()
         assert data_b == {
             "new_post": True,
             "reply": True,
@@ -165,18 +166,18 @@ class TestPrefsContract:
 
 
 class TestDispatchGating:
-    def test_new_post_off_skips_inbox_row(self, client, auth_headers):
-        token = _token(client, email="g-new@example.com")
+    async def test_new_post_off_skips_inbox_row(self, client, auth_headers):
+        token = await _token(client, email="g-new@example.com")
         headers = _auth(token)
-        _opt_out(client, token, "new_post")
+        await _opt_out(client, token, "new_post")
 
-        cat = client.post("/api/categories", json={"name": "PrefCat"}, headers=auth_headers)
+        cat = await client.post("/api/categories", json={"name": "PrefCat"}, headers=auth_headers)
         assert cat.status_code == 201, cat.text
         cat_id = cat.json()["id"]
-        f = client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
+        f = await client.put(f"/api/reader/me/categories/{cat_id}/follow", headers=headers)
         assert f.status_code in (200, 201), f.text
 
-        post = client.post(
+        post = await client.post(
             "/api/posts",
             json={
                 "title": "Gated out",
@@ -189,16 +190,16 @@ class TestDispatchGating:
         )
         assert post.status_code == 201, post.text
 
-        data = client.get(NOTIFS, headers=headers).json()
+        data = (await client.get(NOTIFS, headers=headers)).json()
         assert data["total"] == 0
 
-    def test_reply_off_skips_inbox_row(self, client, db_session, auth_headers):
-        token = _token(client, email="g-reply@example.com")
+    async def test_reply_off_skips_inbox_row(self, client, db_session, auth_headers):
+        token = await _token(client, email="g-reply@example.com")
         headers = _auth(token)
-        _opt_out(client, token, "reply")
+        await _opt_out(client, token, "reply")
 
-        post = _create_post(db_session)
-        parent = client.post(
+        post = await _create_post(db_session)
+        parent = await client.post(
             f"/api/comments/post/{post.id}",
             json={"content": "parent pref", "nickname": "P", "email": "p@example.com"},
             headers=headers,
@@ -206,37 +207,41 @@ class TestDispatchGating:
         assert parent.status_code == 201, parent.text
         from app import models
 
-        parent_row = db_session.query(models.Comment).filter_by(content="parent pref").first()
+        parent_row = (
+            await db_session.execute(select(models.Comment).where(models.Comment.content == "parent pref"))
+        ).scalar_one_or_none()
         assert parent_row is not None
-        ap = client.patch(f"/api/comments/{parent_row.id}/approve", json={"approved": True}, headers=auth_headers)
+        ap = await client.patch(f"/api/comments/{parent_row.id}/approve", json={"approved": True}, headers=auth_headers)
         assert ap.status_code == 200, ap.text
 
-        replier_token = _register(client, email="g-replier@example.com").json()["access_token"]
-        reply = client.post(
+        replier_token = (await _register(client, email="g-replier@example.com")).json()["access_token"]
+        reply = await client.post(
             f"/api/comments/post/{post.id}",
             json={"content": "a pref reply", "nickname": "R", "email": "r@example.com", "parent_id": parent_row.id},
             headers=_auth(replier_token),
         )
         assert reply.status_code == 201, reply.text
-        reply_row = db_session.query(models.Comment).filter_by(content="a pref reply").first()
+        reply_row = (
+            await db_session.execute(select(models.Comment).where(models.Comment.content == "a pref reply"))
+        ).scalar_one_or_none()
         assert reply_row is not None
-        ar = client.patch(f"/api/comments/{reply_row.id}/approve", json={"approved": True}, headers=auth_headers)
+        ar = await client.patch(f"/api/comments/{reply_row.id}/approve", json={"approved": True}, headers=auth_headers)
         assert ar.status_code == 200, ar.text
 
-        data = client.get(NOTIFS, headers=headers).json()
+        data = (await client.get(NOTIFS, headers=headers)).json()
         assert data["total"] == 0
 
-    def test_thread_comment_off_skips_inbox_row(self, client, db_session, auth_headers):
-        token = _token(client, email="g-thread@example.com")
+    async def test_thread_comment_off_skips_inbox_row(self, client, db_session, auth_headers):
+        token = await _token(client, email="g-thread@example.com")
         headers = _auth(token)
-        _opt_out(client, token, "thread_comment")
+        await _opt_out(client, token, "thread_comment")
 
-        post = _create_post(db_session)
-        sub = client.put(f"/api/posts/{post.id}/subscription", headers=headers)
+        post = await _create_post(db_session)
+        sub = await client.put(f"/api/posts/{post.id}/subscription", headers=headers)
         assert sub.status_code in (200, 201), sub.text
 
-        other = _register(client, email="g-other@example.com").json()["access_token"]
-        created = client.post(
+        other = (await _register(client, email="g-other@example.com")).json()["access_token"]
+        created = await client.post(
             f"/api/comments/post/{post.id}",
             json={"content": "new pref comment", "nickname": "O", "email": "o@example.com"},
             headers=_auth(other),
@@ -244,12 +249,14 @@ class TestDispatchGating:
         assert created.status_code == 201, created.text
         from app import models
 
-        row = db_session.query(models.Comment).filter_by(content="new pref comment").first()
+        row = (
+            await db_session.execute(select(models.Comment).where(models.Comment.content == "new pref comment"))
+        ).scalar_one_or_none()
         assert row is not None
-        ap = client.patch(f"/api/comments/{row.id}/approve", json={"approved": True}, headers=auth_headers)
+        ap = await client.patch(f"/api/comments/{row.id}/approve", json={"approved": True}, headers=auth_headers)
         assert ap.status_code == 200, ap.text
 
-        data = client.get(NOTIFS, headers=headers).json()
+        data = (await client.get(NOTIFS, headers=headers)).json()
         assert data["total"] == 0
 
 
@@ -287,35 +294,35 @@ class TestEmailChannel:
         monkeypatch.setenv("SMTP_FROM", "blog@example.com")
         monkeypatch.setenv("SITE_URL", "https://blog.example.com")
 
-    def test_defaults_email_off(self, client):
-        token = _token(client, email="mail-default@example.com")
-        data = client.get(PREFS, headers=_auth(token)).json()
+    async def test_defaults_email_off(self, client):
+        token = await _token(client, email="mail-default@example.com")
+        data = (await client.get(PREFS, headers=_auth(token))).json()
         assert data["email_new_post"] is False
         assert data["email_reply"] is False
         assert data["email_thread_comment"] is False
         assert data["new_post"] is True  # push/inbox side stays all-on
 
-    def test_email_kind_toggle_round_trip(self, client):
-        token = _token(client, email="mail-toggle@example.com")
+    async def test_email_kind_toggle_round_trip(self, client):
+        token = await _token(client, email="mail-toggle@example.com")
         headers = _auth(token)
-        patched = client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
+        patched = await client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
         assert patched.status_code == 200, patched.text
         assert patched.json()["email_new_post"] is True
         assert patched.json()["email_reply"] is False
         # Persisted across a fresh GET.
-        got = client.get(PREFS, headers=headers).json()
+        got = (await client.get(PREFS, headers=headers)).json()
         assert got["email_new_post"] is True
         # And back off.
-        off = client.patch(PREFS, json={"kind": "email_new_post", "enabled": False}, headers=headers)
+        off = await client.patch(PREFS, json={"kind": "email_new_post", "enabled": False}, headers=headers)
         assert off.json()["email_new_post"] is False
 
-    def test_email_off_by_default_skips_email_but_inbox_row_still_lands(self, client, auth_headers, db_session):
-        token = _token(client, email="mail-off@example.com")
+    async def test_email_off_by_default_skips_email_but_inbox_row_still_lands(self, client, auth_headers, db_session):
+        token = await _token(client, email="mail-off@example.com")
         headers = _auth(token)
-        cat = client.post("/api/categories", json={"name": "MailOffCat"}, headers=auth_headers)
-        client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
+        cat = await client.post("/api/categories", json={"name": "MailOffCat"}, headers=auth_headers)
+        await client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
 
-        post = client.post(
+        post = await client.post(
             "/api/posts",
             json={
                 "title": "Mail gated",
@@ -330,16 +337,16 @@ class TestEmailChannel:
         # No SMTP emails for a reader who never opted in.
         assert TestEmailChannel._class_smtp_sent == []
         # ...but the durable inbox row still exists (push/inbox unaffected).
-        assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+        assert (await client.get(NOTIFS, headers=headers)).json()["total"] == 1
 
-    def test_email_new_post_on_fans_out_email(self, client, auth_headers, db_session):
-        token = _token(client, email="mail-on@example.com")
+    async def test_email_new_post_on_fans_out_email(self, client, auth_headers, db_session):
+        token = await _token(client, email="mail-on@example.com")
         headers = _auth(token)
-        client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
-        cat = client.post("/api/categories", json={"name": "MailOnCat"}, headers=auth_headers)
-        client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
+        await client.patch(PREFS, json={"kind": "email_new_post", "enabled": True}, headers=headers)
+        cat = await client.post("/api/categories", json={"name": "MailOnCat"}, headers=auth_headers)
+        await client.put(f"/api/reader/me/categories/{cat.json()['id']}/follow", headers=headers)
 
-        client.post(
+        await client.post(
             "/api/posts",
             json={
                 "title": "Mail fan out",
@@ -354,51 +361,51 @@ class TestEmailChannel:
         assert TestEmailChannel._class_smtp_sent[0]["To"] == "mail-on@example.com"
         assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "新文章发布"
         # And the inbox row lands too.
-        assert client.get(NOTIFS, headers=headers).json()["total"] == 1
+        assert (await client.get(NOTIFS, headers=headers)).json()["total"] == 1
 
-    def test_mention_email_off_by_default_skips_email_but_inbox_row_lands(self, client, auth_headers, db_session):
-        token = _register_named(client, "MailMentionDefault", "mail-mention-default@example.com")
-        post = _create_post(db_session, published=True)
-        cid = _comment_mention(client, post.id, "MailMentionDefault")
-        _approve(client, auth_headers, cid)
+    async def test_mention_email_off_by_default_skips_email_but_inbox_row_lands(self, client, auth_headers, db_session):
+        token = await _register_named(client, "MailMentionDefault", "mail-mention-default@example.com")
+        post = await _create_post(db_session, published=True)
+        cid = await _comment_mention(client, post.id, "MailMentionDefault")
+        await _approve(client, auth_headers, cid)
         assert TestEmailChannel._class_smtp_sent == []
-        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        rows = (await client.get(NOTIFS, headers=_auth(token))).json()
         assert any(i["kind"] == "mention" for i in rows["items"])
 
-    def test_mention_email_on_fans_out_email_and_inbox_row(self, client, auth_headers, db_session):
-        token = _register_named(client, "MailMentionOn", "mail-mention-on@example.com")
-        _opt_in(client, token, "email_mention")
-        post = _create_post(db_session, published=True)
-        cid = _comment_mention(client, post.id, "MailMentionOn")
-        _approve(client, auth_headers, cid)
+    async def test_mention_email_on_fans_out_email_and_inbox_row(self, client, auth_headers, db_session):
+        token = await _register_named(client, "MailMentionOn", "mail-mention-on@example.com")
+        await _opt_in(client, token, "email_mention")
+        post = await _create_post(db_session, published=True)
+        cid = await _comment_mention(client, post.id, "MailMentionOn")
+        await _approve(client, auth_headers, cid)
         assert len(TestEmailChannel._class_smtp_sent) == 1, TestEmailChannel._class_smtp_sent
         assert TestEmailChannel._class_smtp_sent[0]["To"] == "mail-mention-on@example.com"
         assert TestEmailChannel._class_smtp_sent[0]["Subject"] == "有人在评论中提到了你"
-        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        rows = (await client.get(NOTIFS, headers=_auth(token))).json()
         assert any(i["kind"] == "mention" for i in rows["items"])
 
-    def test_mention_email_independent_of_inbox_opt_out(self, client, auth_headers, db_session):
+    async def test_mention_email_independent_of_inbox_opt_out(self, client, auth_headers, db_session):
         # Turning the in-app 'mention' kind OFF silences inbox + push (DEC-322)
         # but must NOT silence the separately-opted email copy (DEC-326): the
         # two channels are gated by different prefs.
-        token = _register_named(client, "MailMentionSplit", "mail-mention-split@example.com")
-        _opt_out(client, token, "mention")
-        _opt_in(client, token, "email_mention")
-        post = _create_post(db_session, published=True)
-        cid = _comment_mention(client, post.id, "MailMentionSplit")
-        _approve(client, auth_headers, cid)
+        token = await _register_named(client, "MailMentionSplit", "mail-mention-split@example.com")
+        await _opt_out(client, token, "mention")
+        await _opt_in(client, token, "email_mention")
+        post = await _create_post(db_session, published=True)
+        cid = await _comment_mention(client, post.id, "MailMentionSplit")
+        await _approve(client, auth_headers, cid)
         assert len(TestEmailChannel._class_smtp_sent) == 1, TestEmailChannel._class_smtp_sent
-        rows = client.get(NOTIFS, headers=_auth(token)).json()
+        rows = (await client.get(NOTIFS, headers=_auth(token))).json()
         assert all(i["kind"] != "mention" for i in rows["items"])
 
-    def test_email_mention_defaults_off_and_toggles(self, client):
-        token = _token(client, email="mail-mention-pref@example.com")
+    async def test_email_mention_defaults_off_and_toggles(self, client):
+        token = await _token(client, email="mail-mention-pref@example.com")
         headers = _auth(token)
-        assert client.get(PREFS, headers=headers).json()["email_mention"] is False
-        on = client.patch(PREFS, json={"kind": "email_mention", "enabled": True}, headers=headers)
+        assert (await client.get(PREFS, headers=headers)).json()["email_mention"] is False
+        on = await client.patch(PREFS, json={"kind": "email_mention", "enabled": True}, headers=headers)
         assert on.json()["email_mention"] is True
-        assert client.get(PREFS, headers=headers).json()["email_mention"] is True
-        off = client.patch(PREFS, json={"kind": "email_mention", "enabled": False}, headers=headers)
+        assert (await client.get(PREFS, headers=headers)).json()["email_mention"] is True
+        off = await client.patch(PREFS, json={"kind": "email_mention", "enabled": False}, headers=headers)
         assert off.json()["email_mention"] is False
 
 
@@ -410,32 +417,42 @@ class TestConcurrentMaterializationRace:
     once. The defensive IntegrityError recovery in get/set is the belt-and-
     braces for the rare moment both insert at once."""
 
-    def test_get_reuses_existing_row(self, db_session, client):
+    async def test_get_reuses_existing_row(self, db_session, client):
         """GET on an already-materialized row is a pure read returning the
         same row — no second insert attempt."""
         from app import crud, models
 
-        token = _token(client)
-        reader_id = client.get("/api/reader/me", headers=_auth(token)).json()["id"]
+        token = await _token(client)
+        reader_id = (await client.get("/api/reader/me", headers=_auth(token))).json()["id"]
 
-        first = crud.get_reader_notification_prefs(db_session, reader_id)
-        before = db_session.query(models.ReaderNotificationPref).count()
-        second = crud.get_reader_notification_prefs(db_session, reader_id)
-        after = db_session.query(models.ReaderNotificationPref).count()
+        first = await crud.get_reader_notification_prefs(db_session, reader_id)
+        before = (
+            await db_session.execute(select(func.count()).select_from(models.ReaderNotificationPref))
+        ).scalar_one()
+        second = await crud.get_reader_notification_prefs(db_session, reader_id)
+        after = (await db_session.execute(select(func.count()).select_from(models.ReaderNotificationPref))).scalar_one()
 
         assert first.reader_id == second.reader_id == reader_id
         assert before == after == 1  # still exactly one row
 
-    def test_set_on_existing_row_lands_once(self, db_session, client):
+    async def test_set_on_existing_row_lands_once(self, db_session, client):
         """A toggle on an already-materialized row updates the single row —
         the concurrent double-insert is exactly the case that would 500."""
         from app import crud, models
 
-        token = _token(client)
-        reader_id = client.get("/api/reader/me", headers=_auth(token)).json()["id"]
+        token = await _token(client)
+        reader_id = (await client.get("/api/reader/me", headers=_auth(token))).json()["id"]
 
-        row = crud.set_reader_notification_kind(db_session, reader_id, "new_post", False)
+        row = await crud.set_reader_notification_kind(db_session, reader_id, "new_post", False)
         assert row is not None and row.new_post is False
-        rows = db_session.query(models.ReaderNotificationPref).filter_by(reader_id=reader_id).all()
+        rows = (
+            (
+                await db_session.execute(
+                    select(models.ReaderNotificationPref).where(models.ReaderNotificationPref.reader_id == reader_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         assert rows[0].new_post is False

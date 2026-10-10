@@ -24,7 +24,7 @@ from email.message import EmailMessage
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app import crud, models
 from app.auth import ReaderAccount
@@ -93,16 +93,16 @@ def smtp_sink(monkeypatch: pytest.MonkeyPatch) -> type[_FakeSMTP]:
     return _FakeSMTP
 
 
-def _reader(db, email: str, *, active: bool = True, digest: bool = True, display_name: str | None = None) -> int:
+async def _reader(db, email: str, *, active: bool = True, digest: bool = True, display_name: str | None = None) -> int:
     row = ReaderAccount(email=email, password="x", display_name=display_name or email.split("@")[0], is_active=active)
     db.add(row)
-    db.flush()
+    await db.flush()
     db.add(models.ReaderNotificationPref(reader_id=row.id, email_weekly_digest=digest))
-    db.flush()
+    await db.flush()
     return row.id
 
 
-def _make_post(
+async def _make_post(
     db,
     title: str,
     slug: str,
@@ -117,17 +117,17 @@ def _make_post(
     if created_at is not None:
         post.created_at = created_at
     db.add(post)
-    db.flush()
+    await db.flush()
     return post
 
 
 class TestWindowMath:
-    def test_first_time_is_rolling_seven_days(self):
+    async def test_first_time_is_rolling_seven_days(self):
         now = datetime(2026, 8, 28, 12, 0, 0)
         pref = models.ReaderNotificationPref(reader_id=1)
         assert digest_window_start(pref, now) == now - timedelta(days=WEEKLY_WINDOW_DAYS)
 
-    def test_bounded_by_last_digest_but_never_older_than_week(self):
+    async def test_bounded_by_last_digest_but_never_older_than_week(self):
         now = datetime(2026, 8, 28, 12, 0, 0)
         recent = now - timedelta(days=2)
         pref = models.ReaderNotificationPref(reader_id=1, digest_sent_at=recent)
@@ -138,53 +138,53 @@ class TestWindowMath:
 
 
 class TestCollectPosts:
-    def test_includes_window_posts_excludes_old_unpublished_and_future(self, db_session):
+    async def test_includes_window_posts_excludes_old_unpublished_and_future(self, db_session):
         now = crud.utc_now_naive()
-        _make_post(db_session, "This week", "in-window")  # created_at = now
-        _make_post(
+        await _make_post(db_session, "This week", "in-window")  # created_at = now
+        await _make_post(
             db_session,
             "Old scheduled",
             "old-scheduled",
             publish_at=now - timedelta(days=10),
         )
-        _make_post(
+        await _make_post(
             db_session,
             "Old unscheduled",
             "old-unscheduled",
             created_at=now - timedelta(days=20),
         )
-        _make_post(db_session, "Draft", "draft", published=False)
-        _make_post(
+        await _make_post(db_session, "Draft", "draft", published=False)
+        await _make_post(
             db_session,
             "Future scheduled",
             "future",
             publish_at=now + timedelta(days=1),
         )
-        db_session.commit()
+        await db_session.commit()
 
-        posts = collect_digest_posts(db_session, now)
+        posts = await collect_digest_posts(db_session, now)
         slugs = {p.slug for p in posts}
         assert slugs == {"in-window"}
 
 
 class TestCollectRecipients:
-    def test_opt_in_active_with_email_only(self, db_session):
-        a = _reader(db_session, "a@example.com")
-        _reader(db_session, "b@example.com", digest=False)  # not opted in
-        _reader(db_session, "in@example.com", active=False)  # deactivated
-        db_session.commit()
+    async def test_opt_in_active_with_email_only(self, db_session):
+        a = await _reader(db_session, "a@example.com")
+        await _reader(db_session, "b@example.com", digest=False)  # not opted in
+        await _reader(db_session, "in@example.com", active=False)  # deactivated
+        await db_session.commit()
 
-        rid_pair = collect_digest_recipients(db_session, crud.utc_now_naive())
+        rid_pair = await collect_digest_recipients(db_session, crud.utc_now_naive())
         assert {acct.id for _, acct, _ in rid_pair} == {a}
 
 
 class TestSend:
-    def test_delivers_to_opted_in_reader_and_stamps(self, db_session, smtp_sink):
-        rid = _reader(db_session, "digest@example.com")
-        _make_post(db_session, "本周文章", "week-post")
-        db_session.commit()
+    async def test_delivers_to_opted_in_reader_and_stamps(self, db_session, smtp_sink):
+        rid = await _reader(db_session, "digest@example.com")
+        await _make_post(db_session, "本周文章", "week-post")
+        await db_session.commit()
 
-        summary = send_weekly_digest(db_session)
+        summary = await send_weekly_digest(db_session)
         assert summary["readers"] == 1
         assert summary["emails_sent"] == 1
         assert summary["posts"] == 1
@@ -194,95 +194,95 @@ class TestSend:
         assert msg["To"] == "digest@example.com"
         assert "本周精选" in msg["Subject"]
         # Idempotency stamper landed.
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is not None
 
-    def test_skips_reader_with_no_new_posts(self, db_session, smtp_sink):
-        rid = _reader(db_session, "quiet@example.com")
-        db_session.commit()
-        summary = send_weekly_digest(db_session)
+    async def test_skips_reader_with_no_new_posts(self, db_session, smtp_sink):
+        rid = await _reader(db_session, "quiet@example.com")
+        await db_session.commit()
+        summary = await send_weekly_digest(db_session)
         assert summary["readers"] == 0
         assert summary["emails_sent"] == 0
         assert summary["reason"] == "no_recipients"
         assert smtp_sink.sent == []
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is None
 
-    def test_no_double_send_within_window(self, db_session, smtp_sink):
-        rid = _reader(db_session, "repeat@example.com")
-        _make_post(db_session, "Once", "once")
-        db_session.commit()
-        first = send_weekly_digest(db_session)
+    async def test_no_double_send_within_window(self, db_session, smtp_sink):
+        rid = await _reader(db_session, "repeat@example.com")
+        await _make_post(db_session, "Once", "once")
+        await db_session.commit()
+        first = await send_weekly_digest(db_session)
         assert first["readers"] == 1
-        second = send_weekly_digest(db_session)
+        second = await send_weekly_digest(db_session)
         assert second["readers"] == 0
         assert len(smtp_sink.sent) == 1
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is not None
 
-    def test_smtp_down_leaves_window_open_for_retry(self, db_session, smtp_sink):
-        rid = _reader(db_session, "retry@example.com")
-        _make_post(db_session, "Retry me", "retry")
-        db_session.commit()
+    async def test_smtp_down_leaves_window_open_for_retry(self, db_session, smtp_sink):
+        rid = await _reader(db_session, "retry@example.com")
+        await _make_post(db_session, "Retry me", "retry")
+        await db_session.commit()
         smtp_sink.fail_on_send = True
-        summary = send_weekly_digest(db_session)
+        summary = await send_weekly_digest(db_session)
         assert summary["reason"] == "smtp_error"
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is None
 
-    def test_refused_recipient_not_stamped_but_rest_delivered(self, db_session, smtp_sink):
+    async def test_refused_recipient_not_stamped_but_rest_delivered(self, db_session, smtp_sink):
         # A full/dead mailbox (SMTPRecipientsRefused) must drop ONLY that
         # reader: the batch continues, and only the accepted message stamps
         # digest_sent_at — so a partial delivery never re-mails the reader who
         # already got theirs on the next run (RIL ISS-280).
-        ok_rid = _reader(db_session, "ok@example.com")
-        bad_rid = _reader(db_session, "full@example.com")
-        _make_post(db_session, "本周文章", "week-post")
-        db_session.commit()
+        ok_rid = await _reader(db_session, "ok@example.com")
+        bad_rid = await _reader(db_session, "full@example.com")
+        await _make_post(db_session, "本周文章", "week-post")
+        await db_session.commit()
         smtp_sink.refuse_to = {"full@example.com"}
 
-        summary = send_weekly_digest(db_session)
+        summary = await send_weekly_digest(db_session)
         assert summary["readers"] == 2
         assert summary["emails_sent"] == 1  # only the accepted message
         assert {m["To"] for m in smtp_sink.sent} == {"ok@example.com"}
 
-        ok_pref = db_session.get(models.ReaderNotificationPref, ok_rid)
-        bad_pref = db_session.get(models.ReaderNotificationPref, bad_rid)
+        ok_pref = await db_session.get(models.ReaderNotificationPref, ok_rid)
+        bad_pref = await db_session.get(models.ReaderNotificationPref, bad_rid)
         assert ok_pref.digest_sent_at is not None
         assert bad_pref.digest_sent_at is None
 
         # Next run: the refused reader's window is still open (re-sent), the
         # delivered reader is skipped — no duplicate for anyone.
         smtp_sink.refuse_to = None
-        second = send_weekly_digest(db_session)
+        second = await send_weekly_digest(db_session)
         assert second["emails_sent"] == 1
         assert {m["To"] for m in smtp_sink.sent[1:]} == {"full@example.com"}
 
-    def test_dry_run_sends_nothing_and_stamps_nothing(self, db_session, smtp_sink):
-        rid = _reader(db_session, "preview@example.com")
-        _make_post(db_session, "Preview", "preview")
-        db_session.commit()
-        summary = send_weekly_digest(db_session, dry_run=True)
+    async def test_dry_run_sends_nothing_and_stamps_nothing(self, db_session, smtp_sink):
+        rid = await _reader(db_session, "preview@example.com")
+        await _make_post(db_session, "Preview", "preview")
+        await db_session.commit()
+        summary = await send_weekly_digest(db_session, dry_run=True)
         assert summary["dry_run"] is True
         assert summary["readers"] == 1
         assert summary["emails_sent"] == 0
         assert smtp_sink.sent == []
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is None
 
-    def test_returns_smtp_not_configured_without_host(self, db_session, monkeypatch):
-        rid = _reader(db_session, "noconf@example.com")
-        _make_post(db_session, "Noconf", "noconf")
-        db_session.commit()
+    async def test_returns_smtp_not_configured_without_host(self, db_session, monkeypatch):
+        rid = await _reader(db_session, "noconf@example.com")
+        await _make_post(db_session, "Noconf", "noconf")
+        await db_session.commit()
         monkeypatch.delenv("SMTP_HOST", raising=False)
-        summary = send_weekly_digest(db_session)
+        summary = await send_weekly_digest(db_session)
         assert summary["reason"] == "smtp_not_configured"
         assert summary["emails_sent"] == 0
-        pref = db_session.get(models.ReaderNotificationPref, rid)
+        pref = await db_session.get(models.ReaderNotificationPref, rid)
         assert pref.digest_sent_at is None
 
 
-def _newsletter_subscriber(
+async def _newsletter_subscriber(
     db,
     email: str,
     *,
@@ -298,7 +298,7 @@ def _newsletter_subscriber(
         digest_weekly=digest_weekly,
     )
     db.add(row)
-    db.flush()
+    await db.flush()
     return row.id
 
 
@@ -318,21 +318,21 @@ class TestNewsletterDigest:
     and is stamped idempotently per delivered message — never double-mailed
     within the window. Per-post-only and still-pending subscribers stay out."""
 
-    def test_collects_only_confirmed_opt_in_guests(self, db_session):
-        _newsletter_subscriber(db_session, "a@example.com", confirmed=True, digest_weekly=True)
-        _newsletter_subscriber(db_session, "b@example.com", confirmed=True, digest_weekly=False)
-        _newsletter_subscriber(db_session, "c@example.com", confirmed=False, digest_weekly=True)
+    async def test_collects_only_confirmed_opt_in_guests(self, db_session):
+        await _newsletter_subscriber(db_session, "a@example.com", confirmed=True, digest_weekly=True)
+        await _newsletter_subscriber(db_session, "b@example.com", confirmed=True, digest_weekly=False)
+        await _newsletter_subscriber(db_session, "c@example.com", confirmed=False, digest_weekly=True)
 
         from app.digest import collect_newsletter_digest_recipients
 
-        rows = collect_newsletter_digest_recipients(db_session, datetime.now())
+        rows = await collect_newsletter_digest_recipients(db_session, datetime.now())
         assert [sub.email for sub, _ in rows] == ["a@example.com"]
 
-    def test_delivers_guest_digest_with_token_footer_and_stamps(self, db_session, smtp_sink):
-        _make_post(db_session, "In window", "in-window")
-        sub_id = _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+    async def test_delivers_guest_digest_with_token_footer_and_stamps(self, db_session, smtp_sink):
+        await _make_post(db_session, "In window", "in-window")
+        sub_id = await _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
 
-        summary = send_weekly_digest(db_session)
+        summary = await send_weekly_digest(db_session)
         assert summary["subscribers"] == 1
 
         msgs = [m for m in smtp_sink.sent if m["To"] == "guest@example.com"]
@@ -347,28 +347,28 @@ class TestNewsletterDigest:
         assert "退订订阅" in body
         assert "通知偏好" not in body
 
-        sub = db_session.get(models.NewsletterSubscriber, sub_id)
+        sub = await db_session.get(models.NewsletterSubscriber, sub_id)
         assert sub.digest_sent_at is not None
 
-    def test_no_double_send_within_window(self, db_session, smtp_sink):
-        _make_post(db_session, "In window", "in-window")
-        _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+    async def test_no_double_send_within_window(self, db_session, smtp_sink):
+        await _make_post(db_session, "In window", "in-window")
+        await _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
 
-        send_weekly_digest(db_session)
+        await send_weekly_digest(db_session)
         first = len([m for m in smtp_sink.sent if m["To"] == "guest@example.com"])
         # A same-day second run re-stamps nothing (window still open) — guest
         # still gets exactly one message.
-        send_weekly_digest(db_session)
+        await send_weekly_digest(db_session)
         second = len([m for m in smtp_sink.sent if m["To"] == "guest@example.com"])
         assert first == 1
         assert second == first
 
-    def test_guest_digest_uses_site_language(self, db_session, smtp_sink, monkeypatch):
+    async def test_guest_digest_uses_site_language(self, db_session, smtp_sink, monkeypatch):
         monkeypatch.setenv("SITE_LANGUAGE", "en")
-        _make_post(db_session, "In window", "in-window")
-        _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
+        await _make_post(db_session, "In window", "in-window")
+        await _newsletter_subscriber(db_session, "guest@example.com", confirmed=True, digest_weekly=True)
 
-        send_weekly_digest(db_session)
+        await send_weekly_digest(db_session)
         msg = next(m for m in smtp_sink.sent if m["To"] == "guest@example.com")
         assert msg["Subject"].startswith("Weekly digest")
         # English guest footer reads as plain cancellation, not "preferences".
@@ -376,13 +376,13 @@ class TestNewsletterDigest:
         assert "Unsubscribe from this newsletter" in body
         assert "preferences" not in body.lower()
 
-    def test_per_post_and_pending_guests_not_digested(self, db_session, smtp_sink):
-        _make_post(db_session, "In window", "in-window")
-        _newsletter_subscriber(db_session, "weekly@example.com", confirmed=True, digest_weekly=True)
-        _newsletter_subscriber(db_session, "perpost@example.com", confirmed=True, digest_weekly=False)
-        _newsletter_subscriber(db_session, "pending@example.com", confirmed=False, digest_weekly=True)
+    async def test_per_post_and_pending_guests_not_digested(self, db_session, smtp_sink):
+        await _make_post(db_session, "In window", "in-window")
+        await _newsletter_subscriber(db_session, "weekly@example.com", confirmed=True, digest_weekly=True)
+        await _newsletter_subscriber(db_session, "perpost@example.com", confirmed=True, digest_weekly=False)
+        await _newsletter_subscriber(db_session, "pending@example.com", confirmed=False, digest_weekly=True)
 
-        send_weekly_digest(db_session)
+        await send_weekly_digest(db_session)
         assert any(m["To"] == "weekly@example.com" for m in smtp_sink.sent)
         assert not any(m["To"] == "perpost@example.com" for m in smtp_sink.sent)
         assert not any(m["To"] == "pending@example.com" for m in smtp_sink.sent)
@@ -394,7 +394,7 @@ class TestGuestThreadDigestExcludesOwn:
     makes (round 393; a subscriber who comments this week used to be mailed a
     digest listing their own words)."""
 
-    def _guest_digest_sub(self, db, email, post_id) -> int:
+    async def _guest_digest_sub(self, db, email, post_id) -> int:
         from secrets import token_urlsafe
 
         row = models.GuestCommentSubscription(
@@ -406,12 +406,12 @@ class TestGuestThreadDigestExcludesOwn:
             confirmed_at=datetime.now(),
         )
         db.add(row)
-        db.flush()
+        await db.flush()
         return row.id
 
-    def test_own_guest_comment_is_excluded_from_the_digest(self, db_session):
-        post = _make_post(db_session, "Thread", "thread")
-        sub_id = self._guest_digest_sub(db_session, "guest@example.com", post.id)
+    async def test_own_guest_comment_is_excluded_from_the_digest(self, db_session):
+        post = await _make_post(db_session, "Thread", "thread")
+        sub_id = await self._guest_digest_sub(db_session, "guest@example.com", post.id)
         # The subscriber's own approved comment lands inside the window.
         db_session.add(
             models.Comment(
@@ -432,30 +432,30 @@ class TestGuestThreadDigestExcludesOwn:
                 is_approved=True,
             )
         )
-        db_session.commit()
+        await db_session.commit()
 
         from app.digest import collect_guest_thread_digest_deliveries
 
-        rows = collect_guest_thread_digest_deliveries(db_session, datetime.now())
-        assert [sub for sub, _, _ in rows] == [db_session.get(models.GuestCommentSubscription, sub_id)]
+        rows = await collect_guest_thread_digest_deliveries(db_session, datetime.now())
+        assert [sub for sub, _, _ in rows] == [await db_session.get(models.GuestCommentSubscription, sub_id)]
         _, _, comments = rows[0]
         # Only the other reader's comment is summarized; the follower's own is
         # never echoed back at them.
         assert [c.content for c in comments] == ["someone else's comment"]
 
-    def test_own_reader_comment_is_excluded_via_the_account_email(self, db_session):
+    async def test_own_reader_comment_is_excluded_via_the_account_email(self, db_session):
         # A signed-in reader who comments under their account (Comment.email is
         # None for reader comments) and also subscribes as a guest with the same
         # address must not have their own comment echoed either.
-        post = _make_post(db_session, "Thread", "thread")
-        self._guest_digest_sub(db_session, "reader@example.com", post.id)
+        post = await _make_post(db_session, "Thread", "thread")
+        await self._guest_digest_sub(db_session, "reader@example.com", post.id)
         reader = ReaderAccount(
             email="reader@example.com",
             password="x",
             display_name="Reader",
         )
         db_session.add(reader)
-        db_session.flush()
+        await db_session.flush()
         db_session.add(
             models.Comment(
                 post_id=post.id,
@@ -466,21 +466,21 @@ class TestGuestThreadDigestExcludesOwn:
                 is_approved=True,
             )
         )
-        db_session.commit()
+        await db_session.commit()
 
         from app.digest import collect_guest_thread_digest_deliveries
 
-        rows = collect_guest_thread_digest_deliveries(db_session, datetime.now())
+        rows = await collect_guest_thread_digest_deliveries(db_session, datetime.now())
         # No other comments exist — the follower's own is the only one, so no
         # digest row at all (nothing to summarize).
         assert rows == []
 
-    def test_digest_delivery_excludes_own_comment_end_to_end(self, db_session, smtp_sink):
+    async def test_digest_delivery_excludes_own_comment_end_to_end(self, db_session, smtp_sink):
         # The full weekly job: the follower's own comment alone yields NO digest
         # email; an added third-party comment makes one arrive without echoing
         # the follower's own words.
-        post = _make_post(db_session, "Thread", "thread")
-        self._guest_digest_sub(db_session, "guest@example.com", post.id)
+        post = await _make_post(db_session, "Thread", "thread")
+        await self._guest_digest_sub(db_session, "guest@example.com", post.id)
         db_session.add(
             models.Comment(
                 post_id=post.id,
@@ -490,13 +490,13 @@ class TestGuestThreadDigestExcludesOwn:
                 is_approved=True,
             )
         )
-        db_session.commit()
+        await db_session.commit()
 
         from app.digest import send_weekly_digest
 
         # The subscriber IS a digest candidate (confirmed + weekly + in window
         # by date) but its only comment is its own → no message is mailed.
-        send_weekly_digest(db_session)
+        await send_weekly_digest(db_session)
         assert not any(m["To"] == "guest@example.com" for m in smtp_sink.sent)
 
 
@@ -519,7 +519,7 @@ class TestBuilder:
             now_naive=now,
         )
 
-    def test_subject_and_absolute_link_and_escape(self):
+    async def test_subject_and_absolute_link_and_escape(self):
         msg = self._msg()
         parts = list(msg.walk())
         text = next(p for p in parts if p.get_content_type() == "text/plain").get_content()
@@ -532,21 +532,21 @@ class TestBuilder:
         assert "<img" not in html
         assert "&lt;img" in html
 
-    def test_unsubscribe_link_present(self):
+    async def test_unsubscribe_link_present(self):
         html = next(p for p in self._msg().walk() if p.get_content_type() == "text/html").get_content()
         assert 'href="https://blog.example.com/notifications"' in html
 
 
 class TestAdminEndpoint:
-    def test_requires_superuser(self, client, editor_headers, admin_token):
+    async def test_requires_superuser(self, client, editor_headers, admin_token):
         assert admin_token
         # Editor (non-superuser) is rejected; anonymous is rejected.
-        assert client.post("/api/admin/digests/send-weekly", headers=editor_headers).status_code in (401, 403)
-        assert client.post("/api/admin/digests/send-weekly").status_code in (401, 403)
+        assert (await client.post("/api/admin/digests/send-weekly", headers=editor_headers)).status_code in (401, 403)
+        assert (await client.post("/api/admin/digests/send-weekly")).status_code in (401, 403)
 
-    def test_dry_run_via_superuser(self, client, admin_token):
+    async def test_dry_run_via_superuser(self, client, admin_token):
         assert admin_token
-        resp = client.post(
+        resp = await client.post(
             "/api/admin/digests/send-weekly?dry_run=true", headers={"Authorization": f"Bearer {admin_token}"}
         )
         assert resp.status_code == 200, resp.text
@@ -568,22 +568,23 @@ skip_pg = pytest.mark.skipif(
 
 
 @skip_pg
-def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink, pg_scratch_engine):
+async def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink, pg_scratch_engine):
     """Live-Postgres verification of the two paths SQLite cannot exercise:
     the naive ``created_at`` storage branch (PG stores naive UTC, no +00:00
     suffix) and the advisory-lock contention guard. Uses a per-worker scratch
     schema (pg_scratch_engine) so the create_all/drop_all never collides with
     another worker's scratch test or the shared DB's public schema."""
     engine = pg_scratch_engine
-    Session = sessionmaker(bind=engine)
+    Session = async_sessionmaker(bind=engine, expire_on_commit=False)
     try:
-        Base.metadata.create_all(bind=engine)
+        async with engine.begin() as _conn:
+            await _conn.run_sync(Base.metadata.create_all)
         db = Session()
         try:
             now = crud.utc_now_naive()
             reader = ReaderAccount(email="pg-digest@example.com", password="x", display_name="PG")
             db.add(reader)
-            db.flush()
+            await db.flush()
             db.add(models.ReaderNotificationPref(reader_id=reader.id, email_weekly_digest=True))
             # One scheduled (naive publish_at) in-window post + one unscheduled
             # (naive created_at) in-window post + one old post.
@@ -617,16 +618,16 @@ def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink
                     publish_at=now - timedelta(days=30),
                 )
             )
-            db.commit()
+            await db.commit()
 
             # Normal run: both in-window posts, one email, idempotency stamped.
-            first = send_weekly_digest(db)
+            first = await send_weekly_digest(db)
             assert first["readers"] == 1, first
             assert first["emails_sent"] == 1
             html = next(p.get_content() for p in smtp_sink.sent[-1].walk() if p.get_content_type() == "text/html")
             assert "PG scheduled" in html and "PG created" in html
             assert "PG old" not in html
-            pref = db.get(models.ReaderNotificationPref, reader.id)
+            pref = await db.get(models.ReaderNotificationPref, reader.id)
             assert pref.digest_sent_at is not None
 
             # Advisory lock: hold the lock on a second connection -> job defers.
@@ -635,22 +636,23 @@ def test_pg_delivers_in_window_and_advisory_lock_blocks_concurrent_run(smtp_sink
             # acquires; production uses the stable base key.
             other = Session()
             try:
-                other.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _digest_lock_key()})
-                locked = send_weekly_digest(db)
+                await other.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _digest_lock_key()})
+                locked = await send_weekly_digest(db)
                 assert locked["locked"] is True
                 assert locked["readers"] == 0
             finally:
-                other.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _digest_lock_key()})
-                other.close()
+                await other.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _digest_lock_key()})
+                await other.close()
 
             # Idempotency: a second uncontended run skips the stamped reader.
-            second = send_weekly_digest(db)
+            second = await send_weekly_digest(db)
             assert second["readers"] == 0, second
         finally:
-            db.close()
+            await db.close()
     finally:
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
+        async with engine.begin() as _conn:
+            await _conn.run_sync(Base.metadata.drop_all)
+        await engine.dispose()
 
 
 class TestBuilderEscape:
@@ -673,14 +675,14 @@ class TestBuilderEscape:
             now_naive=now,
         )
 
-    def test_html_display_name_is_not_double_escaped(self):
+    async def test_html_display_name_is_not_double_escaped(self):
         msg = self._msg_for_name("A&B")
         html = next(p for p in msg.walk() if p.get_content_type() == "text/html").get_content()
         # The name should appear once-escaped: A&amp;B, never A&amp;amp;B.
         assert "A&amp;B" in html
         assert "A&amp;amp;B" not in html
 
-    def test_text_display_name_is_raw_not_html_escaped(self):
+    async def test_text_display_name_is_raw_not_html_escaped(self):
         # The plain-TEXT part has no markup context: an HTML entity like
         # &amp; renders literally as "A&amp;B" in a text-only mail client.
         # The raw name must appear verbatim in text while the HTML part keeps
@@ -690,7 +692,7 @@ class TestBuilderEscape:
         assert "A&B" in text
         assert "A&amp;B" not in text
 
-    def test_html_script_name_is_escaped_once(self):
+    async def test_html_script_name_is_escaped_once(self):
         msg = self._msg_for_name("<script>alert(1)</script>")
         html = next(p for p in msg.walk() if p.get_content_type() == "text/html").get_content()
         assert "<script>" not in html

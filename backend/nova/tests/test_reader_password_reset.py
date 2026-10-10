@@ -24,6 +24,7 @@ from email.message import EmailMessage
 
 import jwt as pyjwt
 import pytest
+from sqlalchemy import select
 
 from app.auth import (
     ALGORITHM,
@@ -74,19 +75,19 @@ def smtp_sink(monkeypatch):
     return FakeSMTP
 
 
-def _register(client, email="reset@example.com", password="readerpass123"):
-    return client.post(
+async def _register(client, email="reset@example.com", password="readerpass123"):
+    return await client.post(
         "/api/reader/register",
         json={"email": email, "password": password},
     )
 
 
-def _request(client, email, **extra):
-    return client.post("/api/reader/password-reset/request", json={"email": email, **extra})
+async def _request(client, email, **extra):
+    return await client.post("/api/reader/password-reset/request", json={"email": email, **extra})
 
 
-def _confirm(client, token, new_password="newpass456", **extra):
-    return client.post(
+async def _confirm(client, token, new_password="newpass456", **extra):
+    return await client.post(
         "/api/reader/password-reset/confirm",
         json={"token": token, "new_password": new_password, **extra},
     )
@@ -116,104 +117,98 @@ def _token_from_link() -> str | None:
 
 
 class TestRequest:
-    def test_known_email_sends_one_reset_mail(self, client, smtp_sink):
-        _register(client)
-        resp = _request(client, "RESET@example.com")  # case-insensitive lookup
+    async def test_known_email_sends_one_reset_mail(self, client, smtp_sink):
+        await _register(client)
+        resp = await _request(client, "RESET@example.com")  # case-insensitive lookup
         assert resp.status_code == 202, resp.text
         assert len(FakeSMTP.sent) == 1
         assert FakeSMTP.sent[0]["To"] == "reset@example.com"
         # The reset page deep link carries the token.
         assert "/reset-password?token=" in _reset_link()
 
-    def test_unknown_email_is_identical_202_and_no_mail(self, client, smtp_sink):
-        resp = _request(client, "nobody@example.com")
+    async def test_unknown_email_is_identical_202_and_no_mail(self, client, smtp_sink):
+        resp = await _request(client, "nobody@example.com")
         assert resp.status_code == 202, resp.text
         assert len(FakeSMTP.sent) == 0
 
-    def test_case_insensitive_lookup(self, client, smtp_sink):
-        _register(client, email="Mixed@Example.com")
-        resp = _request(client, "mIXeD@example.COM")
+    async def test_case_insensitive_lookup(self, client, smtp_sink):
+        await _register(client, email="Mixed@Example.com")
+        resp = await _request(client, "mIXeD@example.COM")
         assert resp.status_code == 202
         assert len(FakeSMTP.sent) == 1
         assert FakeSMTP.sent[0]["To"] == "mixed@example.com"
 
-    def test_deactivated_reader_gets_no_mail_but_same_202(self, client, smtp_sink, db_session):
-        _register(client)
+    async def test_deactivated_reader_gets_no_mail_but_same_202(self, client, smtp_sink, db_session):
+        await _register(client)
         from app.auth import ReaderAccount
 
-        reader = db_session.query(ReaderAccount).filter_by(email="reset@example.com").first()
+        reader = (
+            await db_session.execute(select(ReaderAccount).where(ReaderAccount.email == "reset@example.com"))
+        ).scalar_one_or_none()
         assert reader is not None
         reader.is_active = False
-        db_session.commit()
-        resp = _request(client, "reset@example.com")
+        await db_session.commit()
+        resp = await _request(client, "reset@example.com")
         assert resp.status_code == 202, resp.text
         assert len(FakeSMTP.sent) == 0  # no mail, same generic response
 
-    def test_missing_smtp_config_is_account_agnostic_503(self, client, monkeypatch):
+    async def test_missing_smtp_config_is_account_agnostic_503(self, client, monkeypatch):
         monkeypatch.delenv("SMTP_HOST", raising=False)
-        _register(client)
-        known = _request(client, "reset@example.com")
+        await _register(client)
+        known = await _request(client, "reset@example.com")
         assert known.status_code == 503
-        unknown = _request(client, "ghost@example.com")
+        unknown = await _request(client, "ghost@example.com")
         assert unknown.status_code == 503
         # Identical error detail — the 503 reveals config, never account state.
         assert known.json()["error"]["message"] == unknown.json()["error"]["message"]
 
-    def test_invalid_email_is_422(self, client):
-        resp = _request(client, "not-an-email")
+    async def test_invalid_email_is_422(self, client):
+        resp = await _request(client, "not-an-email")
         assert resp.status_code == 422
 
 
 class TestConfirm:
-    def test_valid_token_sets_new_password_and_auto_logs_in(self, client, smtp_sink):
-        reg = _register(client)
+    async def test_valid_token_sets_new_password_and_auto_logs_in(self, client, smtp_sink):
+        reg = await _register(client)
         old_token = reg.json()["access_token"]
-        _request(client, "reset@example.com")
+        await _request(client, "reset@example.com")
         reset_token = _token_from_link()
         assert reset_token
 
-        resp = _confirm(client, reset_token)
+        resp = await _confirm(client, reset_token)
         assert resp.status_code == 200, resp.text
         fresh = resp.json()["access_token"]
         assert resp.json()["reader"]["email"] == "reset@example.com"
 
         # New password works; old is dead.
         assert (
-            client.post("/api/reader/login", json={"email": "reset@example.com", "password": "newpass456"}).status_code
-            == 200
-        )
+            await client.post("/api/reader/login", json={"email": "reset@example.com", "password": "newpass456"})
+        ).status_code == 200
         assert (
-            client.post(
-                "/api/reader/login", json={"email": "reset@example.com", "password": "readerpass123"}
-            ).status_code
-            == 401
-        )
+            await client.post("/api/reader/login", json={"email": "reset@example.com", "password": "readerpass123"})
+        ).status_code == 401
         # Pre-reset reader JWT revoked (token_version bump); fresh session works.
-        assert client.get("/api/reader/me", headers=_auth(old_token)).status_code == 401
-        assert client.get("/api/reader/me", headers=_auth(fresh)).status_code == 200
+        assert (await client.get("/api/reader/me", headers=_auth(old_token))).status_code == 401
+        assert (await client.get("/api/reader/me", headers=_auth(fresh))).status_code == 200
 
-    def test_reset_token_is_single_use(self, client, smtp_sink):
-        _register(client)
-        _request(client, "reset@example.com")
+    async def test_reset_token_is_single_use(self, client, smtp_sink):
+        await _register(client)
+        await _request(client, "reset@example.com")
         reset_token = _token_from_link()
-        assert _confirm(client, reset_token).status_code == 200
+        assert (await _confirm(client, reset_token)).status_code == 200
         # Replaying the same token after success is a 400 (ver no longer matches).
-        replay = _confirm(client, reset_token, new_password="another456")
+        replay = await _confirm(client, reset_token, new_password="another456")
         assert replay.status_code == 400
         # The password from the first reset is untouched.
         assert (
-            client.post(
-                "/api/reader/login", json={"email": "reset@example.com", "password": "readerpass123"}
-            ).status_code
-            == 401
-        )
+            await client.post("/api/reader/login", json={"email": "reset@example.com", "password": "readerpass123"})
+        ).status_code == 401
         assert (
-            client.post("/api/reader/login", json={"email": "reset@example.com", "password": "newpass456"}).status_code
-            == 200
-        )
+            await client.post("/api/reader/login", json={"email": "reset@example.com", "password": "newpass456"})
+        ).status_code == 200
 
-    def test_expired_token_rejected(self, client, smtp_sink):
-        _register(client)
+    async def test_expired_token_rejected(self, client, smtp_sink):
+        await _register(client)
         expired = pyjwt.encode(
             {
                 "sub": "1",
@@ -224,35 +219,35 @@ class TestConfirm:
             SECRET_KEY,
             algorithm=ALGORITHM,
         )
-        resp = _confirm(client, expired)
+        resp = await _confirm(client, expired)
         assert resp.status_code == 400, resp.text
         assert "Invalid or expired" in resp.json()["error"]["message"]
 
-    def test_tampered_token_rejected(self, client, smtp_sink):
-        _register(client)
-        resp = _confirm(client, "not.a.real.token")
+    async def test_tampered_token_rejected(self, client, smtp_sink):
+        await _register(client)
+        resp = await _confirm(client, "not.a.real.token")
         assert resp.status_code == 400
         assert "Invalid or expired" in resp.json()["error"]["message"]
 
-    def test_reader_jwt_cannot_redeem_as_reset(self, client, smtp_sink):
+    async def test_reader_jwt_cannot_redeem_as_reset(self, client, smtp_sink):
         """A reader JWT (aud=x-blog-reader) must never unlock a password reset."""
-        reg = _register(client)
+        reg = await _register(client)
         reader_token = reg.json()["access_token"]
-        resp = _confirm(client, reader_token)
+        resp = await _confirm(client, reader_token)
         assert resp.status_code == 400
 
-    def test_reset_token_cannot_auth_as_reader(self, client, smtp_sink):
+    async def test_reset_token_cannot_auth_as_reader(self, client, smtp_sink):
         """The reset token's own audience keeps it off /api/reader/me."""
-        _register(client)
-        _request(client, "reset@example.com")
+        await _register(client)
+        await _request(client, "reset@example.com")
         reset_token = _token_from_link()
-        assert client.get("/api/reader/me", headers=_auth(reset_token)).status_code == 401
+        assert (await client.get("/api/reader/me", headers=_auth(reset_token))).status_code == 401
 
-    def test_new_password_validation(self, client, smtp_sink):
-        _register(client)
-        _request(client, "reset@example.com")
+    async def test_new_password_validation(self, client, smtp_sink):
+        await _register(client)
+        await _request(client, "reset@example.com")
         reset_token = _token_from_link()
-        too_short = _confirm(client, reset_token, new_password="short")
+        too_short = await _confirm(client, reset_token, new_password="short")
         assert too_short.status_code == 422
-        too_long = _confirm(client, reset_token, new_password="x" * 73)
+        too_long = await _confirm(client, reset_token, new_password="x" * 73)
         assert too_long.status_code == 422

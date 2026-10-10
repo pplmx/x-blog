@@ -9,8 +9,8 @@ neither enumerate admins nor reveal which usernames exist.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, models, schemas
 from app.conditional import conditional_json
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/authors", tags=["authors"])
 
 
 @router.get("", response_model=list[schemas.AuthorIndex])
-def list_authors(db: Session = Depends(get_db)):
+async def list_authors(db: AsyncSession = Depends(get_db)):
     """Every public writer (pen-named admin), with their published-post count.
 
     Writer discovery (DEC-359, round 346): a reader who found one byline can
@@ -30,13 +30,16 @@ def list_authors(db: Session = Depends(get_db)):
     username, admin login is no-oracle). The count is published posts only, so
     a writer with nothing live yet still appears with a zero.
     """
-    writers = db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name).all()
-    post_counts = (
-        db.query(models.Post.author_id, func.count(models.Post.id))
-        .filter(models.Post.author_id.isnot(None), models.Post.published.is_(True))
-        .group_by(models.Post.author_id)
-        .all()
+    writers_result = await db.execute(
+        select(auth.User).where(auth.User.display_name.isnot(None)).order_by(auth.User.display_name)
     )
+    writers = writers_result.scalars().all()
+    post_counts_result = await db.execute(
+        select(models.Post.author_id, func.count(models.Post.id))
+        .where(models.Post.author_id.isnot(None), models.Post.published.is_(True))
+        .group_by(models.Post.author_id)
+    )
+    post_counts = post_counts_result.all()
     counts = {author_id: int(count) for author_id, count in post_counts}
     items = [
         {
@@ -52,12 +55,12 @@ def list_authors(db: Session = Depends(get_db)):
 
 
 @router.get("/{author_id}/posts", response_model=schemas.PostListResponse)
-def get_author_posts(
+async def get_author_posts(
     request: Request,
     author_id: IdInt,
     page: PageInt = 1,
     limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A writer's published posts, newest-first (paginated).
 
@@ -69,12 +72,13 @@ def get_author_posts(
     # Fire the scheduled-post publish-time fan-out on this surface too (the
     # round-331 sweep: every surface that can show a crossed scheduled post
     # announces it exactly once).
-    crud.maybe_notify_due_scheduled_posts(db)
-    author = db.query(auth.User).filter(auth.User.id == author_id).first()
+    await crud.maybe_notify_due_scheduled_posts(db)
+    author_result = await db.execute(select(auth.User).where(auth.User.id == author_id))
+    author = author_result.scalar_one_or_none()
     if author is None or not author.display_name:
         raise HTTPException(status_code=404, detail="Author not found")
 
-    posts, total = crud.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
+    posts, total = await crud.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
     total_pages = (total + limit - 1) // limit
     # The top-level author envelope lets the archive page title itself by pen
     # name even when the writer has no published posts yet (DEC-359/TASK-405).

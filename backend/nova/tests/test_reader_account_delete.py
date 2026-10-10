@@ -14,6 +14,7 @@ anonymous comment. Old tokens stop working (the account row is gone).
 from pathlib import Path
 
 import pytest
+from sqlalchemy import func, select
 
 from app.auth import ReaderAccount
 from app.models import (
@@ -49,9 +50,9 @@ def isolated_avatar_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setattr(reader_module, "AVATAR_DIR", tmp_path / "avatars")
 
 
-def _register(client, tag="delete"):
+async def _register(client, tag="delete"):
     email = f"delete-{tag}@example.com"
-    reg = client.post(
+    reg = await client.post(
         REGISTER_URL,
         json={"email": email, "password": PASSWORD, "display_name": "Delete Me"},
     )
@@ -60,7 +61,7 @@ def _register(client, tag="delete"):
     return email, {"Authorization": f"Bearer {token}"}, token
 
 
-def _seed_side_data(db, reader_id: int, post_id: int):
+async def _seed_side_data(db, reader_id: int, post_id: int):
     """Populate one row in every reader-scoped table (and a comment + avatar)."""
     db.add(CategoryFollow(reader_id=reader_id, category_id=1))
     db.add(TagFollow(reader_id=reader_id, tag_id=1))
@@ -68,7 +69,7 @@ def _seed_side_data(db, reader_id: int, post_id: int):
     db.add(AuthorFollow(reader_id=reader_id, author_id=1))
     folder = BookmarkFolder(reader_id=reader_id, name="Saved")
     db.add(folder)
-    db.flush()
+    await db.flush()
     db.add(ReaderBookmark(reader_id=reader_id, post_id=post_id, folder_id=folder.id))
     db.add(ReaderPostLike(reader_id=reader_id, post_id=post_id))
     db.add(ReaderFollow(reader_id=reader_id, followed_id=99))
@@ -99,68 +100,70 @@ def _seed_side_data(db, reader_id: int, post_id: int):
         )
     )
     db.add(Comment(post_id=post_id, nickname="Delete Me", content="keep me", reader_id=reader_id))
-    db.flush()
+    await db.flush()
 
 
-def _reader_comment(db, reader_id: int, post_id: int) -> int:
+async def _reader_comment(db, reader_id: int, post_id: int) -> int:
     comment = Comment(post_id=post_id, nickname="Delete Me", content="keep me too", reader_id=reader_id)
     db.add(comment)
-    db.flush()
+    await db.flush()
     return comment.id
 
 
-def _count(db, model):
-    return db.query(model).count()
+async def _count(db, model):
+    return (await db.execute(select(func.count()).select_from(model))).scalar_one()
 
 
-def _delete(client, headers, password=PASSWORD):
+async def _delete(client, headers, password=PASSWORD):
     """DELETE /api/reader/me with the current-password body (TestClient.delete
     has no `json` — httpx only bodies POST/PUT/PATCH — so use request())."""
-    return client.request("DELETE", DELETE_URL, json={"password": password}, headers=headers)
+    return await client.request("DELETE", DELETE_URL, json={"password": password}, headers=headers)
 
 
-def test_delete_requires_auth(client):
-    resp = _delete(client, {})
+async def test_delete_requires_auth(client):
+    resp = await _delete(client, {})
     assert resp.status_code == 401
 
 
-def test_delete_rejects_wrong_password_and_keeps_account(client, db_session):
-    email, headers, _ = _register(client, tag="wrongpw")
-    resp = _delete(client, headers, password="not-the-password")
+async def test_delete_rejects_wrong_password_and_keeps_account(client, db_session):
+    email, headers, _ = await _register(client, tag="wrongpw")
+    resp = await _delete(client, headers, password="not-the-password")
     assert resp.status_code == 401
     # The account survives a failed attempt.
-    assert db_session.query(ReaderAccount).filter(ReaderAccount.email == email).one()
+    assert (await db_session.execute(select(ReaderAccount).where(ReaderAccount.email == email))).scalar_one()
 
 
-def test_delete_totally_removes_the_reader_and_anonymizes_comments(client, db_session):
+async def test_delete_totally_removes_the_reader_and_anonymizes_comments(client, db_session):
     from app.routers import reader as reader_module
 
-    email, headers, _ = _register(client, tag="happy")
-    reader_id = db_session.query(ReaderAccount).filter(ReaderAccount.email == email).one().id
+    email, headers, _ = await _register(client, tag="happy")
+    reader_id = (await db_session.execute(select(ReaderAccount).where(ReaderAccount.email == email))).scalar_one().id
     post = Post(title="p", slug="slug-delete", content="c", published=True)
     db_session.add(post)
-    db_session.flush()
+    await db_session.flush()
     # A second commenter ensures anonymization targets only this reader.
     other = Comment(post_id=post.id, nickname="Other", content="different", reader_id=99)
     db_session.add(other)
-    _seed_side_data(db_session, reader_id, post.id)
-    comment_id = _reader_comment(db_session, reader_id, post.id)
+    await _seed_side_data(db_session, reader_id, post.id)
+    comment_id = await _reader_comment(db_session, reader_id, post.id)
     # Give the reader an avatar file that must be reaped. The name matches the
     # avatar shape ({uuid}.ext) so _delete_avatar_file's path guard lets it.
     avatar_name = "aabbccdd-1122-3344-5566-778899aabbcc.png"
     (reader_module.AVATAR_DIR / avatar_name).parent.mkdir(parents=True, exist_ok=True)
     avatar_file = reader_module.AVATAR_DIR / avatar_name
     avatar_file.write_bytes(b"fake-image")
-    reader = db_session.query(ReaderAccount).filter(ReaderAccount.email == email).one()
+    reader = (await db_session.execute(select(ReaderAccount).where(ReaderAccount.email == email))).scalar_one()
     reader.avatar_url = f"/static/avatars/{avatar_name}"
-    db_session.commit()
+    await db_session.commit()
 
-    resp = _delete(client, headers)
+    resp = await _delete(client, headers)
     assert resp.status_code == 204
 
     # The account is gone; the token no longer works.
-    assert db_session.query(ReaderAccount).filter(ReaderAccount.email == email).first() is None
-    me = client.get("/api/reader/me", headers=headers)
+    assert (
+        await db_session.execute(select(ReaderAccount).where(ReaderAccount.email == email))
+    ).scalar_one_or_none() is None
+    me = await client.get("/api/reader/me", headers=headers)
     assert me.status_code == 401
 
     # Every reader-scoped row is removed — including the tables the original
@@ -183,23 +186,23 @@ def test_delete_totally_removes_the_reader_and_anonymizes_comments(client, db_se
         ReaderNotificationPref,
         PushSubscription,
     ):
-        assert _count(db_session, model) == 0, f"leftover {model.__name__} rows"
+        assert await _count(db_session, model) == 0, f"leftover {model.__name__} rows"
 
     # Comments are anonymized, not deleted: the discussion stays, only the
     # reader linkage goes away — and unrelated commenters are untouched.
-    deleted_comment = db_session.get(Comment, comment_id)
+    deleted_comment = await db_session.get(Comment, comment_id)
     assert deleted_comment is not None
     assert deleted_comment.reader_id is None
     assert deleted_comment.content == "keep me too"
-    assert db_session.get(Comment, other.id) is not None
-    assert db_session.get(Comment, other.id).reader_id == 99
+    assert await db_session.get(Comment, other.id) is not None
+    assert (await db_session.get(Comment, other.id)).reader_id == 99
 
     # The avatar file was reaped.
     assert not avatar_file.exists()
 
 
-def test_delete_is_idempotent_per_token_invalidation(client):
+async def test_delete_is_idempotent_per_token_invalidation(client):
     """A second DELETE with the now-deleted account's JWT is rejected."""
-    _, headers, _ = _register(client, tag="twice")
-    assert _delete(client, headers).status_code == 204
-    assert _delete(client, headers).status_code == 401
+    _, headers, _ = await _register(client, tag="twice")
+    assert (await _delete(client, headers)).status_code == 204
+    assert (await _delete(client, headers)).status_code == 401

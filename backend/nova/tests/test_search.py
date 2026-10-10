@@ -4,9 +4,9 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def search_post(client, auth_headers):
+async def search_post(client, auth_headers):
     """Create a post for search tests."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Python Tutorial",
@@ -18,8 +18,8 @@ def search_post(client, auth_headers):
     )
 
 
-def test_search_posts(client, auth_headers):
-    client.post(
+async def test_search_posts(client, auth_headers):
+    await client.post(
         "/api/posts",
         json={
             "title": "Python Tutorial",
@@ -29,7 +29,7 @@ def test_search_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "JavaScript Guide",
@@ -40,15 +40,15 @@ def test_search_posts(client, auth_headers):
         headers=auth_headers,
     )
 
-    response = client.get("/api/search", params={"q": "Python"})
+    response = await client.get("/api/search", params={"q": "Python"})
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1
     assert data["items"][0]["title"] == "Python Tutorial"
 
 
-def test_search_pagination(client, auth_headers):
-    client.post(
+async def test_search_pagination(client, auth_headers):
+    await client.post(
         "/api/posts",
         json={
             "title": "Python Tutorial",
@@ -58,7 +58,7 @@ def test_search_pagination(client, auth_headers):
         },
         headers=auth_headers,
     )
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "JavaScript Guide",
@@ -69,7 +69,7 @@ def test_search_pagination(client, auth_headers):
         headers=auth_headers,
     )
 
-    response = client.get("/api/search", params={"q": "Learn", "limit": 1, "page": 1})
+    response = await client.get("/api/search", params={"q": "Learn", "limit": 1, "page": 1})
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1
@@ -78,8 +78,8 @@ def test_search_pagination(client, auth_headers):
     assert data["pagination"]["limit"] == 1
 
 
-def test_search_no_results(client, auth_headers):
-    client.post(
+async def test_search_no_results(client, auth_headers):
+    await client.post(
         "/api/posts",
         json={
             "title": "Python Tutorial",
@@ -90,14 +90,14 @@ def test_search_no_results(client, auth_headers):
         headers=auth_headers,
     )
 
-    response = client.get("/api/search", params={"q": "Nonexistent"})
+    response = await client.get("/api/search", params={"q": "Nonexistent"})
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 0
     assert data["pagination"]["total"] == 0
 
 
-def test_search_blank_query_is_422(client, auth_headers):
+async def test_search_blank_query_is_422(client, auth_headers):
     """A whitespace-only q must be rejected, not full-scanned.
 
     Before the round-296 fix, q=\" \" passed min_length=1 and crud fell back to
@@ -105,7 +105,7 @@ def test_search_blank_query_is_422(client, auth_headers):
     published post — an anonymous full-table scan on this unauthenticated
     endpoint (this test previously asserted that buggy 200 + corpus).
     """
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Test",
@@ -117,13 +117,13 @@ def test_search_blank_query_is_422(client, auth_headers):
     )
 
     for raw in ("%20", "%20%20"):
-        response = client.get(f"/api/search?q={raw}")
+        response = await client.get(f"/api/search?q={raw}")
         assert response.status_code == 422, response.text
         # App-wide error envelope: {"error": {"message": ...}} (main.py handler).
         assert "non-blank" in response.json()["error"]["message"]
 
 
-def test_search_special_characters(client, db_session):
+async def test_search_special_characters(client, db_session):
     from app import models
 
     post = models.Post(
@@ -133,13 +133,13 @@ def test_search_special_characters(client, db_session):
         published=True,
     )
     db_session.add(post)
-    db_session.commit()
+    await db_session.commit()
 
-    response = client.get("/api/search?q=@#$%")
+    response = await client.get("/api/search?q=@#$%")
     assert response.status_code == 200
 
 
-def test_search_case_insensitive(client, db_session):
+async def test_search_case_insensitive(client, db_session):
     from app import models
 
     post = models.Post(
@@ -149,33 +149,33 @@ def test_search_case_insensitive(client, db_session):
         published=True,
     )
     db_session.add(post)
-    db_session.commit()
+    await db_session.commit()
 
-    response = client.get("/api/search?q=hello")
+    response = await client.get("/api/search?q=hello")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1
 
-    response_upper = client.get("/api/search?q=HELLO")
+    response_upper = await client.get("/api/search?q=HELLO")
     data_upper = response_upper.json()
     assert len(data_upper["items"]) == 1
 
 
-def test_search_query_with_nul_is_422_not_500(client):
+async def test_search_query_with_nul_is_422_not_500(client):
     """A NUL byte in the search query used to crash psycopg at bind time ->
     uncaught 500 on this public endpoint. It must be a clean 422 gate
     (ISS-454, TASK-351)."""
-    response = client.get("/api/search", params={"q": "term\x00term"})
+    response = await client.get("/api/search", params={"q": "term\x00term"})
     assert response.status_code == 422
 
 
-def test_search_category_with_nul_is_422_not_500(client):
-    response = client.get("/api/search", params={"q": "term", "category": "cat\x00tegory"})
+async def test_search_category_with_nul_is_422_not_500(client):
+    response = await client.get("/api/search", params={"q": "term", "category": "cat\x00tegory"})
     assert response.status_code == 422
 
 
-def test_search_tag_with_nul_is_422_not_500(client):
-    response = client.get("/api/search", params={"q": "term", "tag": "tag\x00tag"})
+async def test_search_tag_with_nul_is_422_not_500(client):
+    response = await client.get("/api/search", params={"q": "term", "tag": "tag\x00tag"})
     assert response.status_code == 422
 
 
@@ -218,25 +218,26 @@ def test_highlight_sqlite_truncation_keeps_marks_balanced():
     assert short.count("<mark>") == short.count("</mark>")
 
 
-def test_build_snippet_postgres_escapes_raw_html():
+async def test_build_snippet_postgres_escapes_raw_html():
     """ts_headline output is not HTML-safe — only our <mark> tags may survive (issue #20)."""
-    from unittest.mock import MagicMock
+    from unittest.mock import AsyncMock, MagicMock
 
     from app.routers.search import _build_snippet
 
     mock_post = MagicMock()
     mock_post.excerpt = "excerpt"
     mock_post.content = "content"
-    mock_db = MagicMock()
+    mock_db = AsyncMock()
     # Simulate ts_headline returning raw article HTML with our markers inserted
+    mock_db.execute.return_value = MagicMock()
     mock_db.execute.return_value.scalar.return_value = "<script>alert(1)</script><mark>hello</mark>"
-    result = _build_snippet(mock_post, "hello", True, mock_db)
+    result = await _build_snippet(mock_post, "hello", True, mock_db)
     assert "<script>" not in result
     assert "&lt;script&gt;" in result
     assert "<mark>hello</mark>" in result
 
 
-def test_build_snippet_empty_query_returns_none():
+async def test_build_snippet_empty_query_returns_none():
     """Test _build_snippet returns None for empty/whitespace query."""
     from unittest.mock import MagicMock
 
@@ -244,11 +245,11 @@ def test_build_snippet_empty_query_returns_none():
 
     mock_post = MagicMock()
     mock_db = MagicMock()
-    result = _build_snippet(mock_post, "   ", False, mock_db)
+    result = await _build_snippet(mock_post, "   ", False, mock_db)
     assert result is None
 
 
-def test_build_snippet_sqlite_highlight():
+async def test_build_snippet_sqlite_highlight():
     """Test _build_snippet returns highlighted text for SQLite with non-empty query."""
     from unittest.mock import MagicMock
 
@@ -258,14 +259,14 @@ def test_build_snippet_sqlite_highlight():
     mock_post.excerpt = "Hello world content"
     mock_post.content = "Hello world content"
     mock_db = MagicMock()
-    result = _build_snippet(mock_post, "hello", False, mock_db)
+    result = await _build_snippet(mock_post, "hello", False, mock_db)
     assert result is not None
     assert "<mark>hello</mark>" in result.lower() or "<mark>Hello</mark>" in result
 
 
-def test_search_excludes_scheduled_posts(client, auth_headers):
+async def test_search_excludes_scheduled_posts(client, auth_headers):
     """Future-dated posts must not appear in search results before publish_at."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Future Scheduled Secret",
@@ -276,7 +277,7 @@ def test_search_excludes_scheduled_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Regular Searchable Post",
@@ -287,21 +288,21 @@ def test_search_excludes_scheduled_posts(client, auth_headers):
         headers=auth_headers,
     )
 
-    response = client.get("/api/search", params={"q": "searchable"})
+    response = await client.get("/api/search", params={"q": "searchable"})
     assert response.status_code == 200
     titles = [item["title"] for item in response.json()["items"]]
     assert "Regular Searchable Post" in titles
     assert "Future Scheduled Secret" not in titles
 
     # Search for the scheduled post's unique content directly
-    response = client.get("/api/search", params={"q": "Future Scheduled Secret"})
+    response = await client.get("/api/search", params={"q": "Future Scheduled Secret"})
     assert response.status_code == 200
     assert len(response.json()["items"]) == 0
 
 
-def test_popular_posts_excludes_scheduled(client, auth_headers):
+async def test_popular_posts_excludes_scheduled(client, auth_headers):
     """Future-dated posts must not appear in the popular posts list."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Future Popular",
@@ -312,7 +313,7 @@ def test_popular_posts_excludes_scheduled(client, auth_headers):
         },
         headers=auth_headers,
     )
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Past Popular",
@@ -323,10 +324,10 @@ def test_popular_posts_excludes_scheduled(client, auth_headers):
         headers=auth_headers,
     )
     # Boost the past post's views so it ranks
-    past_id = client.get("/api/search", params={"q": "Past"}).json()["items"][0]["id"]
-    client.post(f"/api/posts/{past_id}/view")
+    past_id = (await client.get("/api/search", params={"q": "Past"})).json()["items"][0]["id"]
+    await client.post(f"/api/posts/{past_id}/view")
 
-    response = client.get("/api/posts/popular/list")
+    response = await client.get("/api/posts/popular/list")
     assert response.status_code == 200
     titles = [item["title"] for item in response.json()]
     assert "Past Popular" in titles
@@ -347,9 +348,9 @@ def test_highlight_sqlite_escapes_html_before_highlighting():
     assert "<mark>bold</mark>" in result
 
 
-def test_search_query_over_max_length_rejected(client):
+async def test_search_query_over_max_length_rejected(client):
     """Query longer than MAX_QUERY_LENGTH is rejected with 422 (issue #20)."""
-    response = client.get("/api/search", params={"q": "a" * 201})
+    response = await client.get("/api/search", params={"q": "a" * 201})
     assert response.status_code == 422
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"

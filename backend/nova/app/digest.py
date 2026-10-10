@@ -39,8 +39,9 @@ from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 
-from sqlalchemy import and_, or_, text
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app import models
 from app.auth import ReaderAccount
@@ -77,7 +78,7 @@ def _digest_lock_key() -> int:
     return int(os.environ.get(_DIGEST_LOCK_KEY_ENV, str(_DIGEST_LOCK_KEY)))
 
 
-def _dialect_name(db: Session) -> str:
+def _dialect_name(db: AsyncSession) -> str:
     """The bound engine's dialect name (``sqlite`` / ``postgresql`` / ...)."""
     return db.get_bind().dialect.name
 
@@ -91,7 +92,7 @@ def _effective_publish_ts(post: models.Post, now_naive: datetime) -> datetime:
     return effective_publish_ts(post, fallback=now_naive)
 
 
-def collect_digest_posts(db: Session, now_naive: datetime) -> list[models.Post]:
+async def collect_digest_posts(db: AsyncSession, now_naive: datetime) -> list[models.Post]:
     """Every public post whose effective publish time falls in the rolling
     sub-window most recent digest could start from (last ``WEEKLY_WINDOW_DAYS``
     days), newest first. Per-recipient tightening (a reader with a more recent
@@ -121,10 +122,14 @@ def collect_digest_posts(db: Session, now_naive: datetime) -> list[models.Post]:
         models.Post.created_at >= created_lo,
     )
     rows = (
-        db.query(models.Post)
-        .filter(models.Post.published.is_(True), or_(scheduled_in_window, unscheduled_recent))
-        .all()
-    )
+        await db.scalars(
+            select(models.Post)
+            .where(models.Post.published.is_(True), or_(scheduled_in_window, unscheduled_recent))
+            # category is lazy-loaded; eager-load so building messages under
+            # an AsyncSession never triggers a blocking lazy load.
+            .options(joinedload(models.Post.category))
+        )
+    ).all()
     kept = [p for p in rows if _effective_publish_ts(p, now_naive) >= window_start]
     kept.sort(key=lambda p: _effective_publish_ts(p, now_naive), reverse=True)
     return kept
@@ -141,20 +146,21 @@ def digest_window_start(pref: models.ReaderNotificationPref, now_naive: datetime
     return max(pref.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
 
 
-def collect_digest_recipients(
-    db: Session, now_naive: datetime
+async def collect_digest_recipients(
+    db: AsyncSession, now_naive: datetime
 ) -> list[tuple[models.ReaderNotificationPref, ReaderAccount, datetime]]:
     """Opted-in, active readers with a registered address, each with their
     window start. A missing prefs row reads as no digest (off by default)."""
     rows = (
-        db.query(models.ReaderNotificationPref, ReaderAccount)
-        .join(ReaderAccount, ReaderAccount.id == models.ReaderNotificationPref.reader_id)
-        .filter(
-            models.ReaderNotificationPref.email_weekly_digest.is_(True),
-            ReaderAccount.is_active.is_(True),
+        await db.execute(
+            select(models.ReaderNotificationPref, ReaderAccount)
+            .join(ReaderAccount, ReaderAccount.id == models.ReaderNotificationPref.reader_id)
+            .where(
+                models.ReaderNotificationPref.email_weekly_digest.is_(True),
+                ReaderAccount.is_active.is_(True),
+            )
         )
-        .all()
-    )
+    ).all()
     return [(pref, acct, digest_window_start(pref, now_naive)) for pref, acct in rows]
 
 
@@ -168,21 +174,21 @@ def newsletter_digest_window_start(sub: models.NewsletterSubscriber, now_naive: 
     return max(sub.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
 
 
-def collect_newsletter_digest_recipients(
-    db: Session, now_naive: datetime
+async def collect_newsletter_digest_recipients(
+    db: AsyncSession, now_naive: datetime
 ) -> list[tuple[models.NewsletterSubscriber, datetime]]:
     """Guest subscribers on the weekly cadence: double opt-in complete AND
     ``digest_weekly`` set. ``digest_weekly`` defaults false, so every existing
     address stays per-post until it opts in; a pending address is never mailed
     (the confirm link must complete first — same gate as the per-post fan-out)."""
     subs = (
-        db.query(models.NewsletterSubscriber)
-        .filter(
-            models.NewsletterSubscriber.is_confirmed.is_(True),
-            models.NewsletterSubscriber.digest_weekly.is_(True),
+        await db.scalars(
+            select(models.NewsletterSubscriber).where(
+                models.NewsletterSubscriber.is_confirmed.is_(True),
+                models.NewsletterSubscriber.digest_weekly.is_(True),
+            )
         )
-        .all()
-    )
+    ).all()
     return [(sub, newsletter_digest_window_start(sub, now_naive)) for sub in subs]
 
 
@@ -201,7 +207,7 @@ def _format_date(ts: datetime) -> str:
     return ts.strftime("%Y-%m-%d")
 
 
-def _thread_created_lower_bound(db: Session, window_start: datetime) -> datetime:
+def _thread_created_lower_bound(db: AsyncSession, window_start: datetime) -> datetime:
     """The comment ``created_at >=`` bound in the form the dialect stores.
 
     ``Comment.created_at`` is stored AWARE on SQLite (the ORM default carries
@@ -228,8 +234,8 @@ def _comment_snippet(comment: models.Comment, *, limit: int = 140) -> str:
     return ""
 
 
-def collect_guest_thread_digest_deliveries(
-    db: Session, now_naive: datetime
+async def collect_guest_thread_digest_deliveries(
+    db: AsyncSession, now_naive: datetime
 ) -> list[tuple[models.GuestCommentSubscription, datetime, list[models.Comment]]]:
     """Confirmed guest thread-followers on the weekly cadence, each with their
     window start plus the APPROVED comments on their followed post created in
@@ -238,18 +244,19 @@ def collect_guest_thread_digest_deliveries(
     one digest per followed thread; ``digest_weekly`` defaults false, so no
     follow is weekly until it opts in (DEC-429)."""
     out: list[tuple[models.GuestCommentSubscription, datetime, list[models.Comment]]] = []
-    for sub in list_confirmed_guest_thread_digest_subs(db):
+    for sub in await list_confirmed_guest_thread_digest_subs(db):
         window_start = guest_thread_digest_window_start(sub, now_naive)
         comments = (
-            db.query(models.Comment)
-            .filter(
-                models.Comment.post_id == sub.post_id,
-                models.Comment.is_approved.is_(True),
-                models.Comment.created_at >= _thread_created_lower_bound(db, window_start),
+            await db.scalars(
+                select(models.Comment)
+                .where(
+                    models.Comment.post_id == sub.post_id,
+                    models.Comment.is_approved.is_(True),
+                    models.Comment.created_at >= _thread_created_lower_bound(db, window_start),
+                )
+                .order_by(models.Comment.created_at.asc())
             )
-            .order_by(models.Comment.created_at.asc())
-            .all()
-        )
+        ).all()
         if not comments:
             continue
         # A confirmed follower who also commented this week must not have their
@@ -264,7 +271,7 @@ def collect_guest_thread_digest_deliveries(
         if reader_ids:
             account_emails = {
                 acc.id: acc.email.strip().casefold() if acc.email else None
-                for acc in db.query(ReaderAccount).filter(ReaderAccount.id.in_(reader_ids)).all()
+                for acc in (await db.scalars(select(ReaderAccount).where(ReaderAccount.id.in_(reader_ids)))).all()
             }
         own_ids = set()
         for c in comments:
@@ -493,21 +500,30 @@ def _digest_items(posts: Iterable[models.Post], now_naive: datetime, base: str) 
     return "\n".join(items)
 
 
-def _acquire_digest_lock(db: Session) -> bool:
+async def _acquire_digest_lock(db: AsyncSession) -> bool:
     """True when this process may run the job. Non-Postgres backends (SQLite
     tests) have no advisory locks and are single-process by construction."""
     if _dialect_name(db) != "postgresql":
         return True
-    return bool(db.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": _digest_lock_key()}).scalar())
+    return bool(
+        (
+            await db.execute(
+                text("SELECT pg_try_advisory_lock(:key)"),
+                {"key": _digest_lock_key()},
+            )
+        ).scalar()
+    )
 
 
-def _release_digest_lock(db: Session) -> None:
+async def _release_digest_lock(db: AsyncSession) -> None:
     if _dialect_name(db) != "postgresql":
         return
-    db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _digest_lock_key()})
+    await db.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _digest_lock_key()})
 
 
-def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger=None, dry_run: bool = False) -> dict:
+async def send_weekly_digest(
+    db: AsyncSession, *, now_naive: datetime | None = None, logger=None, dry_run: bool = False
+) -> dict:
     """Run the weekly digest job: collect eligible posters for each opted-in
     reader, render, deliver over one SMTP session, then stamp ``digest_sent_at``
     on exactly the readers whose mail went out. ``dry_run=True`` builds but
@@ -524,7 +540,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
     absent on a normal empty-delivery)."""
     log = logger or get_logger("digest")
     now = now_naive or utc_now_naive()
-    if not _acquire_digest_lock(db):
+    if not await _acquire_digest_lock(db):
         log.info("weekly_digest_locked")
         return {
             "locked": True,
@@ -537,11 +553,11 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             "reason": "locked",
         }
     try:
-        posts = collect_digest_posts(db, now)
+        posts = await collect_digest_posts(db, now)
         deliveries: list[tuple[models.ReaderNotificationPref, ReaderAccount, datetime, list[models.Post]]] = []
         guest_deliveries: list[tuple[models.NewsletterSubscriber, datetime, list[models.Post]]] = []
         skipped = 0
-        for pref, acct, window_start in collect_digest_recipients(db, now):
+        for pref, acct, window_start in await collect_digest_recipients(db, now):
             if not acct.email:
                 skipped += 1
                 continue
@@ -552,7 +568,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             deliveries.append((pref, acct, window_start, eligible))
         # Guest subscribers on the weekly cadence run through the SAME job (one
         # advisory lock, one SMTP session, the same window stamping) — DEC-355.
-        for sub, window_start in collect_newsletter_digest_recipients(db, now):
+        for sub, window_start in await collect_newsletter_digest_recipients(db, now):
             eligible = [p for p in posts if _effective_publish_ts(p, now) >= window_start]
             if not eligible:
                 skipped += 1
@@ -562,7 +578,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
         # one digest per (email, post) aggregated from the APPROVED comments in
         # the window — the periodic channel for the otherwise per-comment
         # fan-out, in the same job so a single trigger serves all three.
-        thread_deliveries = collect_guest_thread_digest_deliveries(db, now)
+        thread_deliveries = await collect_guest_thread_digest_deliveries(db, now)
 
         if dry_run:
             # No SMTP, no stamping — report exactly who/what would go out
@@ -638,7 +654,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             # A follow row can outlive its post (an admin deleting the post does
             # not cascade to the additive table), so skip a post that is gone —
             # the job must never raise and never mail a dead thread.
-            post = db.get(models.Post, sub.post_id)
+            post = await db.get(models.Post, sub.post_id)
             if post is None:
                 continue
             built.append(
@@ -704,7 +720,7 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
         for sub, was_sent in zip(thread_targets, thread_flags, strict=True):
             if was_sent:
                 sub.digest_sent_at = now
-        db.commit()
+        await db.commit()
         return {
             "locked": False,
             "readers": len(deliveries),
@@ -715,4 +731,4 @@ def send_weekly_digest(db: Session, *, now_naive: datetime | None = None, logger
             "skipped": skipped,
         }
     finally:
-        _release_digest_lock(db)
+        await _release_digest_lock(db)

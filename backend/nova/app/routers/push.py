@@ -3,8 +3,9 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, models
 from app.auth import get_current_superuser
@@ -89,7 +90,7 @@ class NotifyRequest(BaseModel):
 
 
 @router.get("/vapid-public-key")
-def get_vapid_public_key():
+async def get_vapid_public_key():
     """Return the VAPID public key browsers need to subscribe, or 503 unconfigured."""
     if not vapid_configured():
         raise HTTPException(
@@ -107,10 +108,10 @@ def get_vapid_public_key():
 
 @router.post("/subscribe", response_model=PushSubscriptionResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def subscribe(
+async def subscribe(
     request: Request,  # noqa: ARG001
     data: PushSubscriptionCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
 ):
     if not vapid_configured():
@@ -131,13 +132,15 @@ def subscribe(
     # A category-scoped new-post follow must reference an existing category:
     # the fan-out matches on the category id, so an unknown id would silently
     # never notify (DEC-076, TASK-147).
-    if data.new_post_category_id is not None and crud.get_category(db, data.new_post_category_id) is None:
+    if data.new_post_category_id is not None and await crud.get_category(db, data.new_post_category_id) is None:
         raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
 
     # Bind the subscription to the reader account when the subscribe request
     # carries a reader JWT (targeted notifications, DEC-064/TASK-137).
     reader_id = reader.id if reader else None
-    existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
+    existing = (
+        await db.execute(select(models.PushSubscription).where(models.PushSubscription.endpoint == data.endpoint))
+    ).scalar()
     if existing:
         # Ownership guard (security review): re-subscribing must not let one
         # reader silently repoint another reader's subscription to themselves —
@@ -155,8 +158,8 @@ def subscribe(
         sub.reader_id = reader_id or existing.reader_id
         sub.want_new_posts = data.want_new_posts
         sub.new_post_category_id = data.new_post_category_id
-        db.commit()
-        db.refresh(sub)
+        await db.commit()
+        await db.refresh(sub)
         return sub
     # Unbounded rows driven by anonymous input grew the table without limit and
     # amplified the (serial) dispatch loop; cap per source. One browser = one
@@ -168,18 +171,24 @@ def subscribe(
     ip_key = client_rate_key(request)
     if reader_id is not None:
         existing_count = (
-            db.query(models.PushSubscription).filter(models.PushSubscription.reader_id == reader_id).count()
-        )
+            await db.execute(
+                select(func.count())
+                .select_from(models.PushSubscription)
+                .where(models.PushSubscription.reader_id == reader_id)
+            )
+        ).scalar_one()
         note = f"reader {reader_id}"
     else:
         existing_count = (
-            db.query(models.PushSubscription)
-            .filter(
-                models.PushSubscription.reader_id.is_(None),
-                models.PushSubscription.ip_key == ip_key,
+            await db.execute(
+                select(func.count())
+                .select_from(models.PushSubscription)
+                .where(
+                    models.PushSubscription.reader_id.is_(None),
+                    models.PushSubscription.ip_key == ip_key,
+                )
             )
-            .count()
-        )
+        ).scalar_one()
         note = f"IP {ip_key}"
     if existing_count >= cap:
         raise HTTPException(
@@ -197,12 +206,14 @@ def subscribe(
     )
     db.add(sub)
     try:
-        db.commit()
+        await db.commit()
     except IntegrityError:
         # A concurrent subscribe for the same endpoint won the unique-key race:
         # roll back and treat this as the idempotent re-subscribe path (ISS-143).
-        db.rollback()
-        existing = db.query(models.PushSubscription).filter(models.PushSubscription.endpoint == data.endpoint).first()
+        await db.rollback()
+        existing = (
+            await db.execute(select(models.PushSubscription).where(models.PushSubscription.endpoint == data.endpoint))
+        ).scalar()
         if not existing:
             raise
         # Ownership guard (mirrors the non-race path above): a racing
@@ -223,19 +234,19 @@ def subscribe(
         existing.reader_id = reader_id or existing.reader_id
         existing.want_new_posts = data.want_new_posts
         existing.new_post_category_id = data.new_post_category_id
-        db.commit()
-        db.refresh(existing)
+        await db.commit()
+        await db.refresh(existing)
         return existing
-    db.refresh(sub)
+    await db.refresh(sub)
     return sub
 
 
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)
-def unsubscribe(
+async def unsubscribe(
     request: Request,  # noqa: ARG001
     data: PushSubscriptionCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a subscription (idempotent: already-absent endpoints are a no-op).
 
@@ -250,12 +261,14 @@ def unsubscribe(
     subscriptions. The keys the browser sends back are high-entropy and known
     only to it — match on both.
     """
-    db.query(models.PushSubscription).filter(
-        models.PushSubscription.endpoint == data.endpoint,
-        models.PushSubscription.p256dh == data.keys.p256dh,
-        models.PushSubscription.auth == data.keys.auth,
-    ).delete()
-    db.commit()
+    await db.execute(
+        delete(models.PushSubscription).where(
+            models.PushSubscription.endpoint == data.endpoint,
+            models.PushSubscription.p256dh == data.keys.p256dh,
+            models.PushSubscription.auth == data.keys.auth,
+        )
+    )
+    await db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -265,10 +278,10 @@ def unsubscribe(
 
 @router.post("/notify")
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def notify_subscribers(
+async def notify_subscribers(
     request: Request,  # noqa: ARG001
     data: NotifyRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
     """Broadcast a notification to every stored subscription.
@@ -284,6 +297,6 @@ def notify_subscribers(
             detail="Web Push is not configured (VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY unset)",
         )
     payload = {"title": data.title, "body": data.body, "url": data.url}
-    subscriptions = db.query(models.PushSubscription).all()
-    result = dispatch_to_subscriptions(subscriptions, payload, db, logger)
+    subscriptions = (await db.execute(select(models.PushSubscription))).scalars().all()
+    result = await dispatch_to_subscriptions(subscriptions, payload, db, logger)
     return {"total": len(subscriptions), **result}

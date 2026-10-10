@@ -84,10 +84,10 @@ async def lifespan(_app: FastAPI):
     run_migrations()
 
     # Register graceful shutdown handler
-    def shutdown_handler():
+    async def shutdown_handler():
         logger.info("app_shutdown_started")
         cache_clear()
-        engine.dispose()
+        await engine.dispose()
         logger.info("app_shutdown_complete")
 
     # Note: Signal handlers should be registered at the process level
@@ -96,7 +96,7 @@ async def lifespan(_app: FastAPI):
     yield
 
     # Shutdown
-    shutdown_handler()
+    await shutdown_handler()
 
 
 app = FastAPI(

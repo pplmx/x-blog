@@ -30,7 +30,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from email.message import EmailMessage
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.auth import ReaderAccount
@@ -93,7 +94,7 @@ def email_channel_enabled(pref: models.ReaderNotificationPref | None, kind: str)
     return bool(getattr(pref, col, False))
 
 
-def dispatch_notification_emails(db: Session, items: Iterable[EmailItem], logger) -> int:
+async def dispatch_notification_emails(db: AsyncSession, items: Iterable[EmailItem], logger) -> int:
     """Send the best-effort email copy of a notification fan-out.
 
     Gated on is_email_configured() and each reader's per-kind email opt-in plus
@@ -118,23 +119,29 @@ def dispatch_notification_emails(db: Session, items: Iterable[EmailItem], logger
         # same value ReaderNotificationPref.reader_id stores.
         prefs = {
             row.reader_id: row
-            for row in db.query(models.ReaderNotificationPref)
-            .filter(models.ReaderNotificationPref.reader_id.in_(by_reader.keys()))
-            .all()
+            for row in (
+                await db.scalars(
+                    select(models.ReaderNotificationPref).where(
+                        models.ReaderNotificationPref.reader_id.in_(by_reader.keys())
+                    )
+                )
+            ).all()
         }
         addr_by_reader = {
             row[0]: row[1]
-            for row in db.query(ReaderAccount.id, ReaderAccount.email)
-            .filter(
-                ReaderAccount.id.in_(by_reader.keys()),
-                # A deactivated reader is a moderation action: they keep their
-                # follow rows and prefs, but every notification channel must go
-                # silent (the weekly digest already filters is_active — RIL
-                # ISS-278, DEC-194). Without this, disabling an account still
-                # left them receiving per-event mail.
-                ReaderAccount.is_active.is_(True),
-            )
-            .all()
+            for row in (
+                await db.execute(
+                    select(ReaderAccount.id, ReaderAccount.email).where(
+                        ReaderAccount.id.in_(by_reader.keys()),
+                        # A deactivated reader is a moderation action: they keep their
+                        # follow rows and prefs, but every notification channel must go
+                        # silent (the weekly digest already filters is_active — RIL
+                        # ISS-278, DEC-194). Without this, disabling an account still
+                        # left them receiving per-event mail.
+                        ReaderAccount.is_active.is_(True),
+                    )
+                )
+            ).all()
         }
 
         recipients: list[tuple[str, EmailItem]] = []
@@ -664,7 +671,7 @@ def _header_safe_title(title: str | None) -> str:
     return (title or "").replace("\r", " ").replace("\n", " ")
 
 
-def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
+async def dispatch_newsletter_new_post(db: AsyncSession, post: models.Post, logger) -> int:
     """Email every confirmed newsletter subscriber once about a new post (DEC-351).
 
     Called at the same fan-out points that fire the new-post push/reader emails:
@@ -686,13 +693,13 @@ def dispatch_newsletter_new_post(db: Session, post: models.Post, logger) -> int:
         return 0
     try:
         subs = (
-            db.query(models.NewsletterSubscriber)
-            .filter(
-                models.NewsletterSubscriber.is_confirmed.is_(True),
-                models.NewsletterSubscriber.digest_weekly.is_(False),
+            await db.scalars(
+                select(models.NewsletterSubscriber).where(
+                    models.NewsletterSubscriber.is_confirmed.is_(True),
+                    models.NewsletterSubscriber.digest_weekly.is_(False),
+                )
             )
-            .all()
-        )
+        ).all()
         if not subs or not post.slug:
             return 0
         from_addr = _env("SMTP_FROM") or "no-reply@localhost"

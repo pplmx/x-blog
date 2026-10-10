@@ -20,8 +20,8 @@ fetch; tag/category vocab comes from the same cached list helpers the tags/
 categories APIs serve.
 """
 
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import crud, models
 
@@ -113,7 +113,7 @@ def should_suggest(query: str, candidate: str, score: float) -> bool:
     return score >= SUGGEST_MIN_SCORE
 
 
-def build_search_vocabulary(db: Session) -> list[dict]:
+async def build_search_vocabulary(db: AsyncSession) -> list[dict]:
     """The canonical topics a reader might type: tags, categories, post titles.
 
     Each entry is ``{"text", "kind", "hits"}`` where ``hits`` is the count of
@@ -125,10 +125,10 @@ def build_search_vocabulary(db: Session) -> list[dict]:
     # Tag/category names with their public post counts — the payloads the tags
     # and categories APIs already serve (cached; ISS-362 guards count the
     # published+effective-publish-passed posts that a tag listing returns).
-    for tag in crud.get_tags(db):
+    for tag in await crud.get_tags(db):
         if tag["post_count"] > 0:
             vocab.append({"text": tag["name"], "kind": "tag", "hits": tag["post_count"]})
-    for cat in crud.get_categories(db):
+    for cat in await crud.get_categories(db):
         if cat["post_count"] > 0:
             vocab.append({"text": cat["name"], "kind": "category", "hits": cat["post_count"]})
 
@@ -137,23 +137,24 @@ def build_search_vocabulary(db: Session) -> list[dict]:
     # newest-first exactly like the home list so the freshest topics win ties.
     now = crud.utc_now_naive()
     rows = (
-        db.query(models.Post.title)
-        .filter(
-            models.Post.published.is_(True),
-            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        await db.scalars(
+            select(models.Post.title)
+            .where(
+                models.Post.published.is_(True),
+                or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+            )
+            .order_by(crud._effective_publish_col().desc(), models.Post.id.desc())
+            .limit(VOCAB_TITLE_LIMIT)
         )
-        .order_by(crud._effective_publish_col().desc(), models.Post.id.desc())
-        .limit(VOCAB_TITLE_LIMIT)
-        .all()
-    )
-    for (title,) in rows:
+    ).all()
+    for title in rows:
         if title:
             vocab.append({"text": title, "kind": "post", "hits": 1})
 
     return vocab
 
 
-def suggest_terms(db: Session, query: str, limit: int = 4) -> list[dict]:
+async def suggest_terms(db: AsyncSession, query: str, limit: int = 4) -> list[dict]:
     """Top ``limit`` candidate terms closest to ``query``, best first.
 
     Excludes the query itself (an exact match is real results, not a
@@ -166,7 +167,7 @@ def suggest_terms(db: Session, query: str, limit: int = 4) -> list[dict]:
     best: list[tuple[float, dict]] = []
     seen: set[str] = set()
     ql = query.strip().lower()
-    for cand in build_search_vocabulary(db):
+    for cand in await build_search_vocabulary(db):
         score = score_candidate(query, cand["text"])
         if not should_suggest(query, cand["text"], score):
             continue

@@ -29,7 +29,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from pywebpush import webpush
-from sqlalchemy import or_
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.auth import ReaderAccount, User
@@ -199,10 +200,10 @@ DISPATCH_TIME_BUDGET_SECONDS = float(os.getenv("PUSH_DISPATCH_TIME_BUDGET_SECOND
 MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE = int(os.getenv("MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE", "10"))
 
 
-def dispatch_to_subscriptions(
+async def dispatch_to_subscriptions(
     subscriptions,
     payload: dict[str, Any],
-    db,
+    db: AsyncSession | None,
     logger,
 ) -> dict[str, int]:
     """Send ``payload`` to a set of subscriptions, retiring dead ones.
@@ -228,7 +229,7 @@ def dispatch_to_subscriptions(
         # attempted, covering DNS rebinding without breaking offline tests.)
         if _endpoint_host_is_internal_literal(sub.endpoint):
             if db is not None:
-                db.delete(sub)
+                await db.delete(sub)
             removed += 1
             logger.warning(
                 "push_subscription_blocked",
@@ -241,7 +242,7 @@ def dispatch_to_subscriptions(
         except Exception as exc:  # noqa: BLE001 — pywebpush raises typed+untyped per endpoint
             removed_status = push_removed_status(exc)
             if removed_status is not None and db is not None:
-                db.delete(sub)
+                await db.delete(sub)
                 removed += 1
                 logger.warning(
                     "push_subscription_gone",
@@ -254,7 +255,7 @@ def dispatch_to_subscriptions(
                     extra={"endpoint": sub.endpoint, "error": str(exc)[:300]},
                 )
     if db is not None:
-        db.commit()
+        await db.commit()
     return {"sent": sent, "failed": failed, "removed": removed, "skipped": skipped}
 
 
@@ -264,7 +265,7 @@ POST_NOTIF_TITLE = os.getenv("POST_NOTIFICATION_TITLE", "新文章发布")
 POST_NOTIF_BODY = os.getenv("POST_NOTIFICATION_BODY", "《{post_title}》")
 
 
-def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
+async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict[str, int]:
     """Push 'a new post was published' to opted-in subscriptions.
 
     Target: every subscription with ``want_new_posts`` whose scope matches the
@@ -288,17 +289,17 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         "url": f"/posts/{post.slug}",
     }
     # Standard new-post recipients, deduped by push endpoint.
-    query = db.query(models.PushSubscription).filter(models.PushSubscription.want_new_posts.is_(True))
+    stmt = select(models.PushSubscription).where(models.PushSubscription.want_new_posts.is_(True))
     if post.category_id is not None:
-        query = query.filter(
+        stmt = stmt.where(
             or_(
                 models.PushSubscription.new_post_category_id.is_(None),
                 models.PushSubscription.new_post_category_id == post.category_id,
             )
         )
     else:
-        query = query.filter(models.PushSubscription.new_post_category_id.is_(None))
-    by_endpoint = {sub.endpoint: sub for sub in query.all()}
+        stmt = stmt.where(models.PushSubscription.new_post_category_id.is_(None))
+    by_endpoint = {sub.endpoint: sub for sub in (await db.scalars(stmt)).all()}
 
     # Also notify readers who follow this post's series ('new part' push,
     # DEC-132/TASK-178): any of their PushSubscriptions receive the same
@@ -307,19 +308,21 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     if post.series_id is not None:
         follower_reader_ids = [
             row.reader_id
-            for row in db.query(models.SeriesFollow.reader_id)
-            .filter(
-                models.SeriesFollow.series_id == post.series_id,
-                models.SeriesFollow.notify.is_(True),
-            )
-            .all()
+            for row in (
+                await db.execute(
+                    select(models.SeriesFollow.reader_id).where(
+                        models.SeriesFollow.series_id == post.series_id,
+                        models.SeriesFollow.notify.is_(True),
+                    )
+                )
+            ).all()
         ]
         if follower_reader_ids:
             for sub in (
-                db.query(models.PushSubscription)
-                .filter(models.PushSubscription.reader_id.in_(follower_reader_ids))
-                .all()
-            ):
+                await db.scalars(
+                    select(models.PushSubscription).where(models.PushSubscription.reader_id.in_(follower_reader_ids))
+                )
+            ).all():
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow this post's category with notifications
@@ -329,19 +332,23 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     if post.category_id is not None:
         cat_follower_reader_ids = [
             row.reader_id
-            for row in db.query(models.CategoryFollow.reader_id)
-            .filter(
-                models.CategoryFollow.category_id == post.category_id,
-                models.CategoryFollow.notify.is_(True),
-            )
-            .all()
+            for row in (
+                await db.execute(
+                    select(models.CategoryFollow.reader_id).where(
+                        models.CategoryFollow.category_id == post.category_id,
+                        models.CategoryFollow.notify.is_(True),
+                    )
+                )
+            ).all()
         ]
         if cat_follower_reader_ids:
             for sub in (
-                db.query(models.PushSubscription)
-                .filter(models.PushSubscription.reader_id.in_(cat_follower_reader_ids))
-                .all()
-            ):
+                await db.scalars(
+                    select(models.PushSubscription).where(
+                        models.PushSubscription.reader_id.in_(cat_follower_reader_ids)
+                    )
+                )
+            ).all():
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow any of this post's tags with notifications
@@ -352,19 +359,23 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     if tag_ids:
         tag_follower_reader_ids = [
             row.reader_id
-            for row in db.query(models.TagFollow.reader_id)
-            .filter(
-                models.TagFollow.tag_id.in_(tag_ids),
-                models.TagFollow.notify.is_(True),
-            )
-            .all()
+            for row in (
+                await db.execute(
+                    select(models.TagFollow.reader_id).where(
+                        models.TagFollow.tag_id.in_(tag_ids),
+                        models.TagFollow.notify.is_(True),
+                    )
+                )
+            ).all()
         ]
         if tag_follower_reader_ids:
             for sub in (
-                db.query(models.PushSubscription)
-                .filter(models.PushSubscription.reader_id.in_(tag_follower_reader_ids))
-                .all()
-            ):
+                await db.scalars(
+                    select(models.PushSubscription).where(
+                        models.PushSubscription.reader_id.in_(tag_follower_reader_ids)
+                    )
+                )
+            ).all():
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow this post's author with notifications on
@@ -374,19 +385,23 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     if post.author_id is not None:
         author_follower_reader_ids = [
             row.reader_id
-            for row in db.query(models.AuthorFollow.reader_id)
-            .filter(
-                models.AuthorFollow.author_id == post.author_id,
-                models.AuthorFollow.notify.is_(True),
-            )
-            .all()
+            for row in (
+                await db.execute(
+                    select(models.AuthorFollow.reader_id).where(
+                        models.AuthorFollow.author_id == post.author_id,
+                        models.AuthorFollow.notify.is_(True),
+                    )
+                )
+            ).all()
         ]
         if author_follower_reader_ids:
             for sub in (
-                db.query(models.PushSubscription)
-                .filter(models.PushSubscription.reader_id.in_(author_follower_reader_ids))
-                .all()
-            ):
+                await db.scalars(
+                    select(models.PushSubscription).where(
+                        models.PushSubscription.reader_id.in_(author_follower_reader_ids)
+                    )
+                )
+            ).all():
                 by_endpoint[sub.endpoint] = sub
 
     # Per-kind opt-out (DEC-171, TASK-202): drop push subscriptions whose reader
@@ -398,12 +413,14 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
         reader_ids = [s.reader_id for s in by_endpoint.values()]
         opt_out_reader_ids = {
             uid
-            for (uid,) in db.query(models.ReaderNotificationPref.reader_id)
-            .filter(
-                models.ReaderNotificationPref.reader_id.in_(reader_ids),
-                models.ReaderNotificationPref.new_post.is_(False),
-            )
-            .all()
+            for (uid,) in (
+                await db.execute(
+                    select(models.ReaderNotificationPref.reader_id).where(
+                        models.ReaderNotificationPref.reader_id.in_(reader_ids),
+                        models.ReaderNotificationPref.new_post.is_(False),
+                    )
+                )
+            ).all()
         }
         if opt_out_reader_ids:
             by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in opt_out_reader_ids}
@@ -416,19 +433,21 @@ def dispatch_new_post(db, post: models.Post, logger) -> dict[str, int]:
     if linked_ids:
         deactivated_ids = {
             rid
-            for (rid,) in db.query(ReaderAccount.id)
-            .filter(
-                ReaderAccount.id.in_(linked_ids),
-                ReaderAccount.is_active.is_(False),
-            )
-            .all()
+            for (rid,) in (
+                await db.execute(
+                    select(ReaderAccount.id).where(
+                        ReaderAccount.id.in_(linked_ids),
+                        ReaderAccount.is_active.is_(False),
+                    )
+                )
+            ).all()
         }
         if deactivated_ids:
             by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in deactivated_ids}
 
     if not by_endpoint:
         return {"sent": 0, "failed": 0, "removed": 0}
-    return dispatch_to_subscriptions(list(by_endpoint.values()), payload, db, logger)
+    return await dispatch_to_subscriptions(list(by_endpoint.values()), payload, db, logger)
 
 
 # Moderation-alert notification copy (server-generated push, so not i18n-able
@@ -443,7 +462,7 @@ MODERATION_NOTIF_BODY = os.getenv(
 )
 
 
-def dispatch_moderation_pending(db, post: models.Post, comment, logger) -> dict[str, int]:
+async def dispatch_moderation_pending(db: AsyncSession, post: models.Post, comment, logger) -> dict[str, int]:
     """Push 'a new comment awaits moderation' to opted-in admin accounts.
 
     Fired when a comment is CREATED (every comment starts pending in this blog —
@@ -462,11 +481,12 @@ def dispatch_moderation_pending(db, post: models.Post, comment, logger) -> dict[
     if not vapid_configured():
         return {"sent": 0, "failed": 0, "removed": 0}
     subscriptions = (
-        db.query(models.AdminPushSubscription)
-        .join(User, User.id == models.AdminPushSubscription.user_id)
-        .filter(User.role.in_(("superuser", "editor")))
-        .all()
-    )
+        await db.scalars(
+            select(models.AdminPushSubscription)
+            .join(User, User.id == models.AdminPushSubscription.user_id)
+            .where(User.role.in_(("superuser", "editor")))
+        )
+    ).all()
     if not subscriptions:
         return {"sent": 0, "failed": 0, "removed": 0}
     # A short single-line preview (commenter + up to 60 chars of content,
@@ -486,4 +506,4 @@ def dispatch_moderation_pending(db, post: models.Post, comment, logger) -> dict[
         # to the "all" filter and highlights pending comments).
         "url": "/admin/comments",
     }
-    return dispatch_to_subscriptions(subscriptions, payload, db, logger)
+    return await dispatch_to_subscriptions(subscriptions, payload, db, logger)

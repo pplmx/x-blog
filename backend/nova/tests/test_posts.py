@@ -1,8 +1,10 @@
 from datetime import UTC
 
+from sqlalchemy import select
 
-def test_create_post(client, auth_headers):
-    response = client.post(
+
+async def test_create_post(client, auth_headers):
+    response = await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -18,7 +20,7 @@ def test_create_post(client, auth_headers):
     assert data["slug"] == "test-post"
 
 
-def test_list_posts_returns_cached_second_request(client, auth_headers):
+async def test_list_posts_returns_cached_second_request(client, auth_headers):
     """The second identical request to /api/posts must serve from the cache.
 
     We spy on crud.get_posts: the first call queries the DB, the second (cache
@@ -26,7 +28,7 @@ def test_list_posts_returns_cached_second_request(client, auth_headers):
     """
     from app import crud
 
-    client.post(
+    await client.post(
         "/api/posts",
         json={"title": "Cached Post", "slug": "cached-post", "content": "C", "published": True},
         headers=auth_headers,
@@ -35,8 +37,8 @@ def test_list_posts_returns_cached_second_request(client, auth_headers):
     from unittest.mock import patch
 
     with patch.object(crud, "get_posts", wraps=crud.get_posts) as spy:
-        first = client.get("/api/posts")
-        second = client.get("/api/posts")
+        first = await client.get("/api/posts")
+        second = await client.get("/api/posts")
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -46,14 +48,14 @@ def test_list_posts_returns_cached_second_request(client, auth_headers):
     assert spy.call_count == 1
 
 
-def test_list_posts_cache_invalidated_on_create(client, auth_headers):
+async def test_list_posts_cache_invalidated_on_create(client, auth_headers):
     """Creating a post must invalidate the posts list cache."""
     # Prime the cache with an empty list
-    first = client.get("/api/posts")
+    first = await client.get("/api/posts")
     assert first.json()["pagination"]["total"] == 0
 
     # Creating a published post must drop the stale cache
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "New Post",
@@ -64,14 +66,14 @@ def test_list_posts_cache_invalidated_on_create(client, auth_headers):
         headers=auth_headers,
     )
 
-    second = client.get("/api/posts")
+    second = await client.get("/api/posts")
     assert second.json()["pagination"]["total"] == 1
     assert second.json()["items"][0]["slug"] == "new-post"
 
 
-def test_list_posts_cache_invalidated_on_update(client, auth_headers):
+async def test_list_posts_cache_invalidated_on_update(client, auth_headers):
     """Updating a post must drop the stale posts list cache."""
-    create = client.post(
+    create = await client.post(
         "/api/posts",
         json={
             "title": "Update Me",
@@ -84,11 +86,11 @@ def test_list_posts_cache_invalidated_on_update(client, auth_headers):
     post_id = create.json()["id"]
 
     # Prime the cache with the original title
-    first = client.get("/api/posts")
+    first = await client.get("/api/posts")
     assert first.json()["items"][0]["title"] == "Update Me"
 
     # Updating the title must invalidate the cache
-    response = client.put(
+    response = await client.put(
         f"/api/admin/posts/{post_id}",
         json={"title": "Updated Title"},
         headers={**auth_headers, "Content-Type": "application/json"},
@@ -96,13 +98,13 @@ def test_list_posts_cache_invalidated_on_update(client, auth_headers):
     assert response.status_code == 200
 
     # Cache miss → fresh fetch reflects the new title
-    second = client.get("/api/posts")
+    second = await client.get("/api/posts")
     assert second.json()["items"][0]["title"] == "Updated Title"
 
 
-def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
+async def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
     """Deleting a post must drop the stale posts list cache."""
-    create = client.post(
+    create = await client.post(
         "/api/posts",
         json={
             "title": "Delete Me",
@@ -115,37 +117,39 @@ def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
     post_id = create.json()["id"]
 
     # Prime the cache with the post present
-    first = client.get("/api/posts")
+    first = await client.get("/api/posts")
     assert first.json()["pagination"]["total"] == 1
 
     # Deleting must invalidate the cache
-    delete_response = client.delete(f"/api/admin/posts/{post_id}", headers=auth_headers)
+    delete_response = await client.delete(f"/api/admin/posts/{post_id}", headers=auth_headers)
     assert delete_response.status_code in (200, 204)
 
     # Cache miss → fresh fetch shows the post is gone
-    second = client.get("/api/posts")
+    second = await client.get("/api/posts")
     assert second.json()["pagination"]["total"] == 0
 
 
-def test_category_post_count_invalidated_on_post_write(client, auth_headers):
+async def test_category_post_count_invalidated_on_post_write(client, auth_headers):
     """Assigning a post to a category must refresh the cached category post_count.
 
     Regresses the stale post_count bug (RIL TASK-074, ISS-042): post writes
     cleared tags/posts caches but not categories_cache, so the per-category
     post_count stayed stale up to the 1800s TTL.
     """
-    cat = client.post(
-        "/api/admin/categories",
-        json={"name": "Cache Test Cat"},
-        headers=auth_headers,
+    cat = (
+        await client.post(
+            "/api/admin/categories",
+            json={"name": "Cache Test Cat"},
+            headers=auth_headers,
+        )
     ).json()
 
     # Prime the categories cache (post_count 0 for the new category)
-    first = client.get("/api/categories")
+    first = await client.get("/api/categories")
     assert next(c for c in first.json() if c["id"] == cat["id"])["post_count"] == 0
 
     # Create a post in that category -> must drop the cached categories list
-    created = client.post(
+    created = await client.post(
         "/api/posts",
         json={
             "title": "Categorized Cache",
@@ -158,12 +162,12 @@ def test_category_post_count_invalidated_on_post_write(client, auth_headers):
     )
     assert created.status_code == 201
 
-    second = client.get("/api/categories")
+    second = await client.get("/api/categories")
     assert next(c for c in second.json() if c["id"] == cat["id"])["post_count"] == 1
 
 
-def test_list_posts(client, auth_headers):
-    client.post(
+async def test_list_posts(client, auth_headers):
+    await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -173,15 +177,15 @@ def test_list_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/api/posts")
+    response = await client.get("/api/posts")
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1
     assert data["pagination"]["total"] == 1
 
 
-def test_get_post(client, auth_headers):
-    create_response = client.post(
+async def test_get_post(client, auth_headers):
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -192,14 +196,14 @@ def test_get_post(client, auth_headers):
         headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    response = client.get(f"/api/posts/{post_id}")
+    response = await client.get(f"/api/posts/{post_id}")
     assert response.status_code == 200
     assert response.json()["title"] == "Test Post"
 
 
-def test_draft_post_hidden_from_public(client, auth_headers):
+async def test_draft_post_hidden_from_public(client, auth_headers):
     """Drafts must not be readable via the public API by id or slug."""
-    create_response = client.post(
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Draft Post",
@@ -211,22 +215,22 @@ def test_draft_post_hidden_from_public(client, auth_headers):
     )
     post_id = create_response.json()["id"]
 
-    by_id = client.get(f"/api/posts/{post_id}")
+    by_id = await client.get(f"/api/posts/{post_id}")
     assert by_id.status_code == 404
 
-    by_slug = client.get("/api/posts/draft-post")
+    by_slug = await client.get("/api/posts/draft-post")
     assert by_slug.status_code == 404
 
     # Drafts must not count views or likes either
-    view_response = client.post(f"/api/posts/{post_id}/view")
+    view_response = await client.post(f"/api/posts/{post_id}/view")
     assert view_response.status_code == 404
-    like_response = client.post(f"/api/posts/{post_id}/like")
+    like_response = await client.post(f"/api/posts/{post_id}/like")
     assert like_response.status_code == 404
 
 
-def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
+async def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
     """Future-dated posts are invisible; past-dated published posts are visible."""
-    future_response = client.post(
+    future_response = await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Post",
@@ -238,10 +242,10 @@ def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
         headers=auth_headers,
     )
     future_id = future_response.json()["id"]
-    future_get = client.get(f"/api/posts/{future_id}")
+    future_get = await client.get(f"/api/posts/{future_id}")
     assert future_get.status_code == 404
 
-    past_response = client.post(
+    past_response = await client.post(
         "/api/posts",
         json={
             "title": "Past Post",
@@ -253,12 +257,12 @@ def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
         headers=auth_headers,
     )
     past_id = past_response.json()["id"]
-    past_get = client.get(f"/api/posts/{past_id}")
+    past_get = await client.get(f"/api/posts/{past_id}")
     assert past_get.status_code == 200
     assert past_get.json()["title"] == "Past Post"
 
 
-def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
+async def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
     """A NULL view/like counter (raw-SQL/COPY/legacy row) must not stay NULL.
 
     Regression for TASK-535/ISS-614: Post.views/likes are nullable with only a
@@ -280,24 +284,24 @@ def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
         likes=None,
     )
     db_session.add(post)
-    db_session.commit()
+    await db_session.commit()
     post_id = post.id
 
     # Increment the view — the NULL must become 1, not stay NULL.
-    view_response = client.post(f"/api/posts/{post_id}/view")
+    view_response = await client.post(f"/api/posts/{post_id}/view")
     assert view_response.status_code == 200
     assert view_response.json()["views"] == 1, view_response.json()
 
-    recovered = db_session.get(models.Post, post_id)
+    recovered = await db_session.get(models.Post, post_id)
     assert recovered.views == 1
     # The first like also self-heals from NULL to 1.
-    like_response = client.post(f"/api/posts/{post_id}/like")
+    like_response = await client.post(f"/api/posts/{post_id}/like")
     assert like_response.status_code == 200
-    db_session.refresh(recovered)
+    await db_session.refresh(recovered)
     assert recovered.likes == 1
 
 
-def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
+async def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
     """A still-NULL view counter must rank as 0, not first — and not 500.
 
     Regression continuation of TASK-535: until the first pageview lands, a
@@ -315,16 +319,16 @@ def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
             models.Post(title="Ten Views", slug="ten-views", content="C", published=True, views=10),
         ]
     )
-    db_session.commit()
+    await db_session.commit()
     # Plant a real NULL like a raw-SQL/COPY import would (an ORM `views=None`
     # instead fires the Python-side default and stores 0 — never a NULL, which
     # is why the pre-fix version of this test was vacuous).
-    db_session.execute(
+    await db_session.execute(
         models.Post.__table__.update().where(models.Post.__table__.c.slug == "null-views").values(views=None)
     )
-    db_session.commit()
+    await db_session.commit()
 
-    pop = client.get("/api/posts/popular/list")
+    pop = await client.get("/api/posts/popular/list")
     assert pop.status_code == 200, pop.text
     items = pop.json()
     titles = [i["title"] for i in items]
@@ -332,7 +336,7 @@ def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
 
     # Same ordering when sorting by views explicitly; the NULL row must also
     # serialize as views=0 instead of failing the whole list's validation.
-    listed = client.get("/api/posts?sort=views")
+    listed = await client.get("/api/posts?sort=views")
     assert listed.status_code == 200, listed.text
     body = listed.json()
     arranged = [i["title"] for i in body["items"]]
@@ -341,7 +345,7 @@ def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
     assert null_row["views"] == 0, null_row
 
 
-def test_null_pinned_ranks_with_unpinned_group(client, db_session):
+async def test_null_pinned_ranks_with_unpinned_group(client, db_session):
     """A raw/legacy NULL-pinned row must sort with the unpinned group.
 
     Regression continuation of the TASK-535 NULL-parity discipline, applied to
@@ -369,14 +373,14 @@ def test_null_pinned_ranks_with_unpinned_group(client, db_session):
         ),
     ]
     db_session.add_all(posts)
-    db_session.commit()
+    await db_session.commit()
     # Plant a real NULL like a raw import would (bypasses the ORM default).
-    db_session.execute(
+    await db_session.execute(
         models.Post.__table__.update().where(models.Post.__table__.c.slug == "null-pinned").values(pinned=None)
     )
-    db_session.commit()
+    await db_session.commit()
 
-    feed = client.get("/api/posts")
+    feed = await client.get("/api/posts")
     assert feed.status_code == 200, feed.text
     items = feed.json()["items"]
     titles = [i["title"] for i in items]
@@ -390,7 +394,7 @@ def test_null_pinned_ranks_with_unpinned_group(client, db_session):
 
     # The adjacent rank must agree with the feed (same window order_by): the
     # NULL-pinned post's previous is the pinned head, not "no previous".
-    adj = client.get(f"/api/posts/{null_row['id']}/adjacent")
+    adj = await client.get(f"/api/posts/{null_row['id']}/adjacent")
     assert adj.status_code == 200, adj.text
     assert adj.json()["previous"]["title"] == "Pinned", adj.json()
 
@@ -402,8 +406,8 @@ def _dt(year: int, month: int):
     return datetime(year, month, 1, 12, 0, 0, tzinfo=UTC).replace(tzinfo=None)
 
 
-def test_update_post(client, auth_headers):
-    create_response = client.post(
+async def test_update_post(client, auth_headers):
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -414,7 +418,7 @@ def test_update_post(client, auth_headers):
         headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    response = client.put(
+    response = await client.put(
         f"/api/posts/{post_id}",
         json={"title": "Updated Title"},
         headers=auth_headers,
@@ -423,14 +427,14 @@ def test_update_post(client, auth_headers):
     assert response.json()["title"] == "Updated Title"
 
 
-def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers):
+async def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers):
     """PUT /api/posts/{id} (crud.update_post) must 400 on an unknown author_id
     or tag_id instead of silently orphaning (TASK-479, ISS-555/ISS-556).
 
     category_id/series_id already 400 here; author_id was assigned blind (a
     deleted writer left the post author: null with a 404 writer archive/RSS and
     a missed author fan-out) and unknown tag_ids vanished from the save."""
-    create_response = client.post(
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Validation Contract",
@@ -442,7 +446,7 @@ def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers)
     )
     post_id = create_response.json()["id"]
 
-    bad_author = client.put(
+    bad_author = await client.put(
         f"/api/posts/{post_id}",
         json={"author_id": 99999},
         headers=auth_headers,
@@ -450,7 +454,7 @@ def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers)
     assert bad_author.status_code == 400
     assert "99999" in bad_author.json()["error"]["message"]
 
-    bad_tag = client.put(
+    bad_tag = await client.put(
         f"/api/posts/{post_id}",
         json={"tag_ids": [99999]},
         headers=auth_headers,
@@ -459,8 +463,8 @@ def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers)
     assert "99999" in bad_tag.json()["error"]["message"]
 
 
-def test_delete_post(client, auth_headers):
-    create_response = client.post(
+async def test_delete_post(client, auth_headers):
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Test Post",
@@ -471,25 +475,25 @@ def test_delete_post(client, auth_headers):
         headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    response = client.delete(f"/api/posts/{post_id}", headers=auth_headers)
+    response = await client.delete(f"/api/posts/{post_id}", headers=auth_headers)
     assert response.status_code == 204
-    get_response = client.get(f"/api/posts/{post_id}")
+    get_response = await client.get(f"/api/posts/{post_id}")
     assert get_response.status_code == 404
 
 
-def test_get_post_unicode_digit_not_treated_as_id(client):
+async def test_get_post_unicode_digit_not_treated_as_id(client):
     """Unicode superscript digits should be treated as slugs, not post IDs.
 
     str.isdigit() returns True for Unicode digits like '²', but int('²')
     raises ValueError. The endpoint should not crash on such input.
     """
-    response = client.get("/api/posts/%C2%B2")  # '²' URL-encoded
+    response = await client.get("/api/posts/%C2%B2")  # '²' URL-encoded
     # Should not be 500 (internal server error); either 404 or treated as slug
     assert response.status_code != 500
     assert response.status_code in (200, 404)
 
 
-def test_get_post_huge_numeric_id_does_not_crash(client):
+async def test_get_post_huge_numeric_id_does_not_crash(client):
     """A very long all-digit path segment must not 500.
 
     Python 3.14 raises ValueError ('Exceeds the limit (4300 digits)') for
@@ -498,16 +502,16 @@ def test_get_post_huge_numeric_id_does_not_crash(client):
     oversized segment is treated as a slug lookup → 404, never a 500.
     """
     huge = "9" * 5000
-    response = client.get(f"/api/posts/{huge}")
+    response = await client.get(f"/api/posts/{huge}")
     assert response.status_code == 404
 
     over_bigint = "9" * 30  # 30 digits: beyond 64-bit, still 'all digits'
-    response = client.get(f"/api/posts/{over_bigint}")
+    response = await client.get(f"/api/posts/{over_bigint}")
     assert response.status_code in (200, 404)  # definitely not 500
     assert response.status_code != 500
 
 
-def test_huge_int_params_are_422_not_500(client, auth_headers):
+async def test_huge_int_params_are_422_not_500(client, auth_headers):
     """Out-of-range id/page params must be rejected with 422, never a 500.
 
     An unbounded ``post_id: int`` path param accepted input like
@@ -523,15 +527,19 @@ def test_huge_int_params_are_422_not_500(client, auth_headers):
         f"/api/posts/{huge}/adjacent",
         f"/api/posts/{huge}/related",
     ):
-        r = client.get(endpoint) if "adjacent" in endpoint or "related" in endpoint else client.post(endpoint)
+        r = (
+            await client.get(endpoint)
+            if "adjacent" in endpoint or "related" in endpoint
+            else await client.post(endpoint)
+        )
         assert r.status_code == 422, f"{endpoint} -> {r.status_code}"
 
     # page beyond the pagination bound (avoids OFFSET overflow).
-    r = client.get("/api/posts?page=999999999999")
+    r = await client.get("/api/posts?page=999999999999")
     assert r.status_code == 422
 
     # A normal id still works (no regression for real requests).
-    create_response = client.post(
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Huge-int Guard Post",
@@ -542,13 +550,13 @@ def test_huge_int_params_are_422_not_500(client, auth_headers):
         headers=auth_headers,
     )
     post_id = create_response.json()["id"]
-    r = client.post(f"/api/posts/{post_id}/like")
+    r = await client.post(f"/api/posts/{post_id}/like")
     assert r.status_code in (200, 201)
 
 
-def test_create_post_with_cover_image(client, auth_headers):
+async def test_create_post_with_cover_image(client, auth_headers):
     """Creating a post with cover_image should save it."""
-    response = client.post(
+    response = await client.post(
         "/api/posts",
         json={
             "title": "Cover Image API Post",
@@ -563,9 +571,9 @@ def test_create_post_with_cover_image(client, auth_headers):
     assert response.json()["cover_image"] == "https://example.com/cover.jpg"
 
 
-def test_update_post_with_cover_image(client, auth_headers):
+async def test_update_post_with_cover_image(client, auth_headers):
     """Updating a post with cover_image should persist it."""
-    create_response = client.post(
+    create_response = await client.post(
         "/api/posts",
         json={
             "title": "Update Cover Post",
@@ -577,7 +585,7 @@ def test_update_post_with_cover_image(client, auth_headers):
     )
     post_id = create_response.json()["id"]
 
-    update_response = client.put(
+    update_response = await client.put(
         f"/api/posts/{post_id}",
         json={"cover_image": "https://example.com/new-cover.jpg"},
         headers=auth_headers,
@@ -586,7 +594,7 @@ def test_update_post_with_cover_image(client, auth_headers):
     assert update_response.json()["cover_image"] == "https://example.com/new-cover.jpg"
 
 
-def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_headers, db_session):
+async def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_headers, db_session):
     """Test that post update/delete errors are handled gracefully, not 500."""
     from app import models
 
@@ -604,9 +612,9 @@ def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_he
         published=True,
     )
     db_session.add_all([post1, post2])
-    db_session.commit()
+    await db_session.commit()
 
-    response = client.put(
+    response = await client.put(
         f"/api/posts/{post2.id}",
         json={"slug": "post-a-slug"},
         headers=auth_headers,
@@ -615,7 +623,7 @@ def test_delete_post_with_conflicting_data_returns_error_not_500(client, auth_he
     assert "already exists" in response.json()["error"]["message"]
 
 
-def _seed_adjacent_posts(db_session):
+async def _seed_adjacent_posts(db_session):
     """Seed posts with known created_at so feed order is deterministic.
 
     Feed order: pinned desc, then created_at desc. With three non-pinned posts,
@@ -645,85 +653,85 @@ def _seed_adjacent_posts(db_session):
         )
         posts.append(post)
     db_session.add_all(posts)
-    db_session.commit()
+    await db_session.commit()
     return {p.title: p for p in posts}
 
 
-def test_get_adjacent_posts_middle(client, db_session):
+async def test_get_adjacent_posts_middle(client, db_session):
     """The middle post in feed order has both previous and next.
 
     Feed order (pinned desc, created_at desc): PinnedNewest, Newest, Middle,
     Oldest. So for 'Newest': previous=PinnedNewest, next=Middle.
     """
-    posts = _seed_adjacent_posts(db_session)
+    posts = await _seed_adjacent_posts(db_session)
 
-    response = client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
+    response = await client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
     assert response.status_code == 200
     data = response.json()
     assert data["previous"]["title"] == "PinnedNewest"
     assert data["next"]["title"] == "Middle"
 
 
-def test_get_adjacent_posts_feed_ends(client, db_session):
+async def test_get_adjacent_posts_feed_ends(client, db_session):
     """First and last Public posts have a single neighbour."""
-    posts = _seed_adjacent_posts(db_session)
+    posts = await _seed_adjacent_posts(db_session)
 
     # Newest non-pinned public post is the head of the pinned-desc/created-desc feed.
-    newest = client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
+    newest = await client.get(f"/api/posts/{posts['Newest'].id}/adjacent")
     assert newest.status_code == 200
     # PinnedNewest comes before it; Middle after it.
     assert newest.json()["previous"]["title"] == "PinnedNewest"
     assert newest.json()["next"]["title"] == "Middle"
 
     # Oldest is the tail of the public feed (Draft is not published, so excluded).
-    oldest = client.get(f"/api/posts/{posts['Oldest'].id}/adjacent")
+    oldest = await client.get(f"/api/posts/{posts['Oldest'].id}/adjacent")
     assert oldest.status_code == 200
     assert oldest.json()["previous"]["title"] == "Middle"
     assert oldest.json()["next"] is None
 
 
-def test_get_adjacent_posts_pinned_head(client, db_session):
+async def test_get_adjacent_posts_pinned_head(client, db_session):
     """The pinned head of the feed has no previous neighbour."""
-    posts = _seed_adjacent_posts(db_session)
+    posts = await _seed_adjacent_posts(db_session)
 
-    response = client.get(f"/api/posts/{posts['PinnedNewest'].id}/adjacent")
+    response = await client.get(f"/api/posts/{posts['PinnedNewest'].id}/adjacent")
     assert response.status_code == 200
     assert response.json()["previous"] is None
     assert response.json()["next"]["title"] == "Newest"
 
 
-def test_get_adjacent_posts_404(client, db_session):
+async def test_get_adjacent_posts_404(client, db_session):
     """Non-public (draft) and non-existent posts return 404."""
-    posts = _seed_adjacent_posts(db_session)
+    posts = await _seed_adjacent_posts(db_session)
 
-    draft = client.get(f"/api/posts/{posts['Draft'].id}/adjacent")
+    draft = await client.get(f"/api/posts/{posts['Draft'].id}/adjacent")
     assert draft.status_code == 404
 
-    missing = client.get("/api/posts/999999/adjacent")
+    missing = await client.get("/api/posts/999999/adjacent")
     assert missing.status_code == 404
 
 
-def test_adjacent_popular_related_include_comment_count(client, db_session, auth_headers):
+async def test_adjacent_popular_related_include_comment_count(client, db_session, auth_headers):
     """PostList from adjacent/popular/related must carry the real comment_count.
 
     Regression for RIL TASK-109, ISS-089: these paths returned 0 even for
     posts with approved comments (only get_posts populated it).
     """
-    post = _seed_adjacent_posts(db_session)["Middle"]
+    post = (await _seed_adjacent_posts(db_session))["Middle"]
     # Create + approve 2 comments on this post.
     for i in range(2):
-        c_resp = client.post(
+        c_resp = await client.post(
             f"/api/comments/post/{post.id}",
             json={"nickname": f"U{i}", "email": f"u{i}@e.com", "content": f"c{i}"},
         )
         assert c_resp.status_code == 201
         c_id = c_resp.json()["id"]
-        patch = client.patch(f"/api/comments/{c_id}/approve", json={"approved": True}, headers=auth_headers)
+        patch = await client.patch(f"/api/comments/{c_id}/approve", json={"approved": True}, headers=auth_headers)
         assert patch.status_code == 200
 
     # The popular list includes every published post, so Middle appears with
     # its 2 approved comments.
-    pop = client.get("/api/posts/popular/list")
+    pop = await client.get("/api/posts/popular/list")
     assert pop.status_code == 200
     items = pop.json()
     # popular/list is an unbounded array (raw list, not paginated envelope).
@@ -734,17 +742,17 @@ def test_adjacent_popular_related_include_comment_count(client, db_session, auth
     # Adjacent response: Middle's next (Oldest) requires the comment_count key
     # and must reflect any comments Oldest has (we didn't add any, so it is 0 —
     # but the key must exist, not be dropped).
-    adj = client.get(f"/api/posts/{post.id}/adjacent")
+    adj = await client.get(f"/api/posts/{post.id}/adjacent")
     assert adj.status_code == 200
     assert "comment_count" in adj.json()["previous"] or "comment_count" in adj.json()["next"]
 
     # Related list items all carry comment_count.
-    rel = client.get(f"/api/posts/{post.id}/related")
+    rel = await client.get(f"/api/posts/{post.id}/related")
     assert rel.status_code == 200
     assert all("comment_count" in it for it in rel.json())
 
 
-def test_adjacent_posts_follow_effective_publish_order(client, db_session):
+async def test_adjacent_posts_follow_effective_publish_order(client, db_session):
     """Adjacent prev/next must match the real feed order (effective publish
     time), not draft created_at — the route's contract is "matching get_posts",
     and get_posts orders by publish_at ?? created_at (RIL ISS-265/267).
@@ -771,14 +779,16 @@ def test_adjacent_posts_follow_effective_publish_order(client, db_session):
                 publish_at=publish_at,
             )
         )
-    db_session.commit()
+    await db_session.commit()
 
-    ids = {
-        p.title: p.id
-        for p in db_session.query(models.Post).filter(models.Post.title.in_(["MayPost", "SchedJun", "JulPost"]))
-    }
+    rows = (
+        (await db_session.execute(select(models.Post).where(models.Post.title.in_(["MayPost", "SchedJun", "JulPost"]))))
+        .scalars()
+        .all()
+    )
+    ids = {p.title: p.id for p in rows}
 
-    resp = client.get(f"/api/posts/{ids['SchedJun']}/adjacent")
+    resp = await client.get(f"/api/posts/{ids['SchedJun']}/adjacent")
     assert resp.status_code == 200
     data = resp.json()
     # Effective feed order: JulPost, SchedJun, MayPost. Buggy created_at order
@@ -787,7 +797,7 @@ def test_adjacent_posts_follow_effective_publish_order(client, db_session):
     assert data["next"]["title"] == "MayPost"
 
 
-def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
+async def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
     """Related posts in the same category must rank newest-by-effective-publish,
     so a post drafted long ago but live today leads a draft-created-today post
     that actually went live earlier — mirroring the feed (RIL ISS-265/267).
@@ -799,7 +809,7 @@ def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
     now = datetime.now(UTC)
     tech = models.Category(name="Tech")
     db_session.add(tech)
-    db_session.flush()
+    await db_session.flush()
     # Source post: no tags → get_related_posts takes the same-category fallback.
     source = models.Post(
         title="Source",
@@ -829,9 +839,9 @@ def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
         created_at=now - timedelta(days=3),
     )
     db_session.add_all([source, sched, recent_draft])
-    db_session.flush()
+    await db_session.flush()
 
-    resp = client.get(f"/api/posts/{source.id}/related")
+    resp = await client.get(f"/api/posts/{source.id}/related")
     assert resp.status_code == 200, resp.text
     slugs = [it["slug"] for it in resp.json()]
     # Effective-publish order leads with schedcand (yesterday) over recentdraft
@@ -840,7 +850,7 @@ def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
     assert slugs.index("schedcand") < slugs.index("recentdraft")
 
 
-def _seed_archive_posts(db_session):
+async def _seed_archive_posts(db_session):
     """Seed published/unpublished posts across distinct (year, month) buckets."""
     from datetime import UTC, datetime
 
@@ -877,16 +887,16 @@ def _seed_archive_posts(db_session):
         ),
     ]
     db_session.add_all(posts)
-    db_session.commit()
+    await db_session.commit()
     return {p.title: p for p in posts}
 
 
-def test_archive_index_groups_published_posts_by_year_month(client, db_session):
+async def test_archive_index_groups_published_posts_by_year_month(client, db_session):
     """The archive endpoint buckets public posts by (year, month), newest first,
     and excludes drafts."""
-    _seed_archive_posts(db_session)
+    await _seed_archive_posts(db_session)
 
-    response = client.get("/api/posts/archive")
+    response = await client.get("/api/posts/archive")
     assert response.status_code == 200
     data = response.json()
     # Buckets: {2025-11:1, 2024-03:1, 2024-01:1}; the 2024-03 draft is excluded
@@ -898,47 +908,49 @@ def test_archive_index_groups_published_posts_by_year_month(client, db_session):
     ]
 
 
-def test_list_posts_filters_by_year_and_month(client, db_session):
+async def test_list_posts_filters_by_year_and_month(client, db_session):
     """GET /api/posts?year=&month= returns only posts in that period."""
-    _seed_archive_posts(db_session)
+    await _seed_archive_posts(db_session)
 
-    response = client.get("/api/posts?year=2024&month=3")
+    response = await client.get("/api/posts?year=2024&month=3")
     assert response.status_code == 200
     titles = [item["title"] for item in response.json()["items"]]
     assert titles == ["Mar2024"]
     assert response.json()["pagination"]["total"] == 1
 
     # Year-only filter spans all months in that year.
-    response = client.get("/api/posts?year=2024")
+    response = await client.get("/api/posts?year=2024")
     titles = [item["title"] for item in response.json()["items"]]
     assert set(titles) == {"Jan2024", "Mar2024"}
 
 
-def test_archive_filter_rejects_invalid_queries(client):
+async def test_archive_filter_rejects_invalid_queries(client):
     """Out-of-range year/month query values are rejected (422), not silently accepted."""
-    bad_year = client.get("/api/posts?year=1800")
+    bad_year = await client.get("/api/posts?year=1800")
     assert bad_year.status_code == 422
-    bad_month = client.get("/api/posts?month=13")
+    bad_month = await client.get("/api/posts?month=13")
     assert bad_month.status_code == 422
 
 
-def test_related_404_for_unknown_post(client):
+async def test_related_404_for_unknown_post(client):
     """GET /api/posts/{id}/related on an unknown id must 404 (uniform public
     read-path guard) — it used to return 200 with generic "recent posts" and
     acted as an oracle for post existence."""
-    resp = client.get("/api/posts/999999/related")
+    resp = await client.get("/api/posts/999999/related")
     assert resp.status_code == 404
 
 
-def test_related_404_for_draft_post(client, auth_headers):
+async def test_related_404_for_draft_post(client, auth_headers):
     """A draft post's id must not reveal the draft's category via /related —
     return 404 like every other non-public read path."""
-    cat = client.post(
-        "/api/categories",
-        json={"name": "CatDraft", "slug": "catdraft"},
-        headers=auth_headers,
+    cat = (
+        await client.post(
+            "/api/categories",
+            json={"name": "CatDraft", "slug": "catdraft"},
+            headers=auth_headers,
+        )
     ).json()
-    draft = client.post(
+    draft = await client.post(
         "/api/posts",
         json={
             "title": "Draft Related",
@@ -950,7 +962,7 @@ def test_related_404_for_draft_post(client, auth_headers):
         headers=auth_headers,
     )
     assert draft.status_code == 201, draft.text
-    resp = client.get(f"/api/posts/{draft.json()['id']}/related")
+    resp = await client.get(f"/api/posts/{draft.json()['id']}/related")
     assert resp.status_code == 404
 
 
@@ -959,7 +971,7 @@ def test_related_404_for_draft_post(client, auth_headers):
 # ---------------------------------------------------------------------------
 
 
-def test_trending_ranks_published_posts_by_in_window_views(client, db_session, auth_headers):
+async def test_trending_ranks_published_posts_by_in_window_views(client, db_session, auth_headers):
     """Trending orders published posts by the sum of in-window daily views and
     attaches views_window; posts with rows only outside the window are absent."""
     from datetime import timedelta
@@ -968,7 +980,7 @@ def test_trending_ranks_published_posts_by_in_window_views(client, db_session, a
 
     ids = {}
     for name, slug in [("Trend A", "trend-a"), ("Trend B", "trend-b"), ("Trend C", "trend-c")]:
-        r = client.post(
+        r = await client.post(
             "/api/posts",
             json={"title": name, "slug": slug, "content": "C", "published": True},
             headers=auth_headers,
@@ -986,9 +998,9 @@ def test_trending_ranks_published_posts_by_in_window_views(client, db_session, a
             models.PostViewsDaily(post_id=ids["Trend C"], day=today - timedelta(days=40), views=5),
         ]
     )
-    db_session.commit()
+    await db_session.commit()
 
-    resp = client.get("/api/posts/trending/list")
+    resp = await client.get("/api/posts/trending/list")
     assert resp.status_code == 200
     items = resp.json()
     item_ids = [i["id"] for i in items]
@@ -1002,13 +1014,13 @@ def test_trending_ranks_published_posts_by_in_window_views(client, db_session, a
     assert "comment_count" in a
 
 
-def test_trending_days_param_widens_the_window(client, db_session, auth_headers):
+async def test_trending_days_param_widens_the_window(client, db_session, auth_headers):
     """days=30 includes rows at 21 days out that the default 7d window drops."""
     from datetime import timedelta
 
     from app import crud, models
 
-    post = client.post(
+    post = await client.post(
         "/api/posts",
         json={"title": "Windows", "slug": "trend-windows", "content": "C", "published": True},
         headers=auth_headers,
@@ -1017,18 +1029,18 @@ def test_trending_days_param_widens_the_window(client, db_session, auth_headers)
 
     today = crud.utc_now_naive().date()
     db_session.add(models.PostViewsDaily(post_id=post.json()["id"], day=today - timedelta(days=21), views=4))
-    db_session.commit()
+    await db_session.commit()
 
-    default = client.get("/api/posts/trending/list").json()
+    default = (await client.get("/api/posts/trending/list")).json()
     assert all(i["id"] != post.json()["id"] for i in default)
 
-    widened = client.get("/api/posts/trending/list?days=30").json()
+    widened = (await client.get("/api/posts/trending/list?days=30")).json()
     hit = next((i for i in widened if i["id"] == post.json()["id"]), None)
     assert hit is not None, widened
     assert hit["views_window"] == 4
 
 
-def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session, auth_headers):
+async def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session, auth_headers):
     """Only effective-live posts rank: drafts and future-scheduled posts with
     in-window daily rows are filtered out — while a live control post ranks, so
     the negatives are asserted against a non-empty result."""
@@ -1036,26 +1048,32 @@ def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session,
 
     from app import crud, models
 
-    control = client.post(
-        "/api/posts",
-        json={"title": "Trend Control", "slug": "trend-control", "content": "C", "published": True},
-        headers=auth_headers,
+    control = (
+        await client.post(
+            "/api/posts",
+            json={"title": "Trend Control", "slug": "trend-control", "content": "C", "published": True},
+            headers=auth_headers,
+        )
     ).json()
-    draft = client.post(
-        "/api/posts",
-        json={"title": "Trend Draft", "slug": "trend-draft", "content": "C", "published": False},
-        headers=auth_headers,
+    draft = (
+        await client.post(
+            "/api/posts",
+            json={"title": "Trend Draft", "slug": "trend-draft", "content": "C", "published": False},
+            headers=auth_headers,
+        )
     ).json()
-    scheduled = client.post(
-        "/api/posts",
-        json={
-            "title": "Trend Scheduled",
-            "slug": "trend-scheduled",
-            "content": "C",
-            "published": True,
-            "publish_at": (crud.utc_now_naive() + timedelta(days=2)).isoformat(),
-        },
-        headers=auth_headers,
+    scheduled = (
+        await client.post(
+            "/api/posts",
+            json={
+                "title": "Trend Scheduled",
+                "slug": "trend-scheduled",
+                "content": "C",
+                "published": True,
+                "publish_at": (crud.utc_now_naive() + timedelta(days=2)).isoformat(),
+            },
+            headers=auth_headers,
+        )
     ).json()
 
     today = crud.utc_now_naive().date()
@@ -1066,9 +1084,9 @@ def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session,
             models.PostViewsDaily(post_id=scheduled["id"], day=today, views=9),
         ]
     )
-    db_session.commit()
+    await db_session.commit()
 
-    items = client.get("/api/posts/trending/list").json()
+    items = (await client.get("/api/posts/trending/list")).json()
     # The live control ranks (non-vacuous: the draft/scheduled rows would
     # otherwise be the only rows, making the negatives pass on an empty list).
     assert any(i["id"] == control["id"] for i in items), items
@@ -1077,9 +1095,9 @@ def test_trending_excludes_drafts_and_future_scheduled_posts(client, db_session,
     assert all(i["id"] != scheduled["id"] for i in items)
 
 
-def test_trending_empty_window_returns_empty_list(client):
+async def test_trending_empty_window_returns_empty_list(client):
     """A fresh install (no post_views_daily rows) returns [] — the home
     section hides instead of erroring."""
-    resp = client.get("/api/posts/trending/list")
+    resp = await client.get("/api/posts/trending/list")
     assert resp.status_code == 200
     assert resp.json() == []

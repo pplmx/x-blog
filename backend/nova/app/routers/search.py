@@ -4,8 +4,8 @@ from contextlib import suppress
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import crud, models
 from ..crud import _has_cjk, _has_searchable_token, log_search_query, search_posts
@@ -71,7 +71,7 @@ def _contains_any_term(text: str, query: str) -> bool:
     return any(t.lower() in lower for t in query.split() if t)
 
 
-def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> str | None:
+async def _build_snippet(post: Post, query: str, is_postgres: bool, db: AsyncSession) -> str | None:
     """Generate a search snippet with highlighted matches.
 
     Routing mirrors search_posts (DEC-070): CJK/mixed queries use the
@@ -88,7 +88,7 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
             ts_query,
             "StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20, ShortWord=3",
         )
-        result = db.execute(headline).scalar()
+        result = (await db.execute(headline)).scalar()
         if not result:
             # Raw excerpt/content fallback: same escaping guarantee as the
             # ts_headline branch (the module's snippet-XSS contract holds for
@@ -106,7 +106,7 @@ def _build_snippet(post: Post, query: str, is_postgres: bool, db: Session) -> st
     return _highlight_sqlite(post.content or "", query)
 
 
-def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict[int, str | None]:
+async def _build_postgres_snippets(db: AsyncSession, posts: list[Post], query: str) -> dict[int, str | None]:
     """Compute ts_headline for a page of posts in ONE query (avoids N+1, ISS-061).
 
     Each per-post ts_headline call was a round-trip; a 50-post page meant up to
@@ -122,7 +122,8 @@ def _build_postgres_snippets(db: Session, posts: list[Post], query: str) -> dict
         "StartSel=<mark>, StopSel=</mark>, MaxWords=40, MinWords=20, ShortWord=3",
     )
     post_ids = [p.id for p in posts]
-    rows = db.query(models.Post.id, q).filter(models.Post.id.in_(post_ids)).group_by(models.Post.id, q).all()
+    stmt = select(models.Post.id, q).where(models.Post.id.in_(post_ids)).group_by(models.Post.id, q)
+    rows = (await db.execute(stmt)).all()
     out: dict[int, str | None] = dict.fromkeys(post_ids)
     for pid, headline in rows:
         if not headline:
@@ -141,7 +142,7 @@ VALID_SORTS = ("relevance", "newest", "oldest", "views")
 
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
-def search(
+async def search(
     request: Request,  # noqa: ARG001
     q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
     page: PageInt = 1,
@@ -157,7 +158,7 @@ def search(
         description="effective publish time <= (ISO date or datetime; a bare date includes the whole day)",
     ),
     sort: str = Query("relevance", description="relevance | newest | oldest | views"),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     if not q.strip():
         # A whitespace-only q passes min_length=1 but tokenizes to an empty
@@ -172,13 +173,13 @@ def search(
     # surfaces a crossed scheduled post like any public surface, so it must
     # trigger the same exactly-once announce. Cheap indexed no-op when nothing
     # crossed; the durable stamp prevents duplicates.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     is_postgres = db.get_bind().dialect.name == "postgresql"
     # date-only "to" bounds are inclusive of the picked day (see
     # dates.inclusive_end_of_day); parse both raw strings back to naive-UTC
     # datetimes, widening a bare-date date_to to end-of-day first.
     date_to = date_to and inclusive_end_of_day(date_to)
-    posts, total = search_posts(
+    posts, total = await search_posts(
         db,
         query=q,
         page=page,
@@ -195,7 +196,7 @@ def search(
     # the Python highlighter so Postgres snippets highlight too (DEC-071;
     # scope must mirror crud.search_posts's use_tsvector, TASK-246).
     use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
-    snippets = _build_postgres_snippets(db, posts, q) if use_headline else {}
+    snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
 
     items = []
     for p in posts:
@@ -207,14 +208,14 @@ def search(
                 # excerpt/content cannot break the snippet XSS-safety guarantee.
                 snippet = html.escape(p.excerpt or p.content[:200])
         else:
-            snippet = _build_snippet(p, q, is_postgres, db)
+            snippet = await _build_snippet(p, q, is_postgres, db)
         post_dict = PostList.model_validate(p).model_dump()
         post_dict["snippet"] = snippet
         items.append(post_dict)
 
     # Search-term analytics (DEC-152/TASK-188): best-effort aggregate count.
     with suppress(Exception):
-        log_search_query(db, q)
+        await log_search_query(db, q)
 
     return {
         "items": items,
@@ -245,14 +246,14 @@ def _sort_epoch(dt) -> float:
 # <mark> — the same snippet-XSS guarantee the post/comment search holds).
 
 
-def _all_post_item(post, query: str, is_postgres: bool, db: Session) -> dict:
+async def _all_post_item(post, query: str, is_postgres: bool, db: AsyncSession) -> dict:
     return {
         "type": "post",
         "id": post.id,
         "title": post.title,
         "slug": post.slug,
         "path": f"/posts/{post.slug}",
-        "snippet": _build_snippet(post, query, is_postgres, db),
+        "snippet": await _build_snippet(post, query, is_postgres, db),
     }
 
 
@@ -295,12 +296,12 @@ _TYPE_RANK = {"post": 0, "series": 1, "page": 2, "author": 3}
 
 @router.get("/all")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
-def search_all(
+async def search_all(
     request: Request,  # noqa: ARG001
     q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
     page: PageInt = 1,
     limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Combined search across posts, series, published static pages and authors.
 
@@ -328,16 +329,16 @@ def search_all(
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     # Scheduled-post fan-out: a crossed scheduled post is a public surface and
     # must announce exactly once (same rule as the other public surfaces).
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     is_postgres = db.get_bind().dialect.name == "postgresql"
 
     offset = (page - 1) * limit
     window = offset + limit
 
-    series, series_total = crud.search_series(db, q, limit=window)
-    pages, pages_total = crud.search_pages(db, q, limit=window)
-    authors, authors_total = crud.search_authors(db, q, limit=window)
-    posts, posts_total = crud.search_posts(db, q, page=1, limit=window, sort="newest")
+    series, series_total = await crud.search_series(db, q, limit=window)
+    pages, pages_total = await crud.search_pages(db, q, limit=window)
+    authors, authors_total = await crud.search_authors(db, q, limit=window)
+    posts, posts_total = await crud.search_posts(db, q, page=1, limit=window, sort="newest")
 
     ranked: list[tuple[float, dict]] = []
     for s in series:
@@ -347,7 +348,7 @@ def search_all(
     for a in authors:
         ranked.append((_sort_epoch(a.created_at), _all_author_item(a, q)))
     for p in posts:
-        ranked.append((_sort_epoch(p.publish_at or p.created_at), _all_post_item(p, q, is_postgres, db)))
+        ranked.append((_sort_epoch(p.publish_at or p.created_at), await _all_post_item(p, q, is_postgres, db)))
 
     ranked.sort(key=lambda pair: (pair[0], _TYPE_RANK[pair[1]["type"]], pair[1]["id"]), reverse=True)
     items = [item for _, item in ranked[offset : offset + limit]]
@@ -366,12 +367,12 @@ def search_all(
 
 @router.get("/comments")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
-def search_comments(
+async def search_comments(
     request: Request,  # noqa: ARG001
     q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=50),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Find a discussion: approved comments on public posts whose content
     matches every term (round 366, DEC-405).
@@ -392,7 +393,7 @@ def search_comments(
         # public comment — reject at the boundary (same guard as /search,
         # round-296 deep-dive).
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
-    comments, total = crud.search_comments(db, query=q, page=page, limit=limit)
+    comments, total = await crud.search_comments(db, query=q, page=page, limit=limit)
 
     items = []
     for c in comments:
@@ -422,11 +423,11 @@ def search_comments(
 
 @router.get("/suggest")
 @limiter.limit(f"{RATE_LIMIT_SEARCH}/minute")
-def search_suggest(
+async def search_suggest(
     request: Request,  # noqa: ARG001
     q: Annotated[NonNulStr, Query(min_length=1, max_length=MAX_QUERY_LENGTH)],
     limit: int = Query(SUGGEST_LIMIT, ge=1, le=6),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Search-term suggestions for a zero-hit query ("did you mean", round 390).
 
@@ -442,4 +443,4 @@ def search_suggest(
     """
     if not q.strip():
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
-    return {"query": q, "suggestions": suggest_terms(db, query=q, limit=limit)}
+    return {"query": q, "suggestions": await suggest_terms(db, query=q, limit=limit)}

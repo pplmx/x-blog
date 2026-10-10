@@ -14,7 +14,8 @@ frontend renders through the same pipeline as posts.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, models, schemas
 from app.auth import User, get_current_admin
@@ -29,9 +30,12 @@ admin_router = APIRouter(prefix="/api/admin/pages", tags=["pages"])
 
 
 @router.get("", response_model=list[schemas.PageLink])
-def list_pages(request: Request, db: Session = Depends(get_db)):
+async def list_pages(request: Request, db: AsyncSession = Depends(get_db)):
     """Published pages, identity only — the footer/discovery link list."""
-    pages = db.query(models.Page).filter(models.Page.published.is_(True)).order_by(models.Page.title.asc()).all()
+    result = await db.execute(
+        select(models.Page).where(models.Page.published.is_(True)).order_by(models.Page.title.asc())
+    )
+    pages = result.scalars().all()
     return conditional_json(
         [schemas.PageLink.model_validate(p).model_dump(mode="json") for p in pages],
         request,
@@ -39,14 +43,15 @@ def list_pages(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/{slug}", response_model=schemas.PagePublic)
-def get_page(request: Request, slug: str, db: Session = Depends(get_db)):
+async def get_page(request: Request, slug: str, db: AsyncSession = Depends(get_db)):
     """A published page's full body. Unpublished and unknown slugs both 404
     (no-oracle): a draft is indistinguishable from a never-published page."""
-    page = db.query(models.Page).filter(models.Page.slug == slug, models.Page.published.is_(True)).first()
+    result = await db.execute(select(models.Page).where(models.Page.slug == slug, models.Page.published.is_(True)))
+    page = result.scalar_one_or_none()
     if not page:
         # Slug-change redirect (round 350): a re-slugged page's old URL points
         # at the canonical target (round 347 lets an operator swap a page slug).
-        redirect_target = crud.resolve_slug_redirect(db, "page", slug)
+        redirect_target = await crud.resolve_slug_redirect(db, "page", slug)
         if redirect_target:
             raise HTTPException(
                 status_code=404,
@@ -62,33 +67,35 @@ def get_page(request: Request, slug: str, db: Session = Depends(get_db)):
 
 @admin_router.get("", response_model=list[schemas.AdminPageDetail])
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def admin_list_pages(
+async def admin_list_pages(
     request: Request,  # noqa: ARG001
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Every page (drafts included) with its body, newest-touched first — the
     manager list. Unlike the public list this includes content so the inline
     editor can start from what is saved (pages are few and admin-only)."""
-    pages = db.query(models.Page).order_by(models.Page.updated_at.desc(), models.Page.id.desc()).all()
+    result = await db.execute(select(models.Page).order_by(models.Page.updated_at.desc(), models.Page.id.desc()))
+    pages = result.scalars().all()
     return pages
 
 
 @admin_router.post("", response_model=schemas.AdminPageDetail, status_code=status.HTTP_201_CREATED)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_create_page(
+async def admin_create_page(
     request: Request,  # noqa: ARG001
     page_in: schemas.PageCreate,
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    existing = db.query(models.Page).filter(models.Page.slug == page_in.slug).first()
+    result = await db.execute(select(models.Page).where(models.Page.slug == page_in.slug))
+    existing = result.scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Slug already in use")
     page = models.Page(**page_in.model_dump())
     db.add(page)
-    db.commit()
-    db.refresh(page)
+    await db.commit()
+    await db.refresh(page)
     # A page write changes what the sitemap must list (round 348): the cached
     # sitemap derives from the published page set, so bust just the feed cache.
     clear_feeds_cache()
@@ -97,28 +104,30 @@ def admin_create_page(
 
 @admin_router.patch("/{page_id}", response_model=schemas.AdminPageDetail)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_update_page(
+async def admin_update_page(
     request: Request,  # noqa: ARG001
     page_id: IdInt,
     page_in: schemas.PageUpdate,
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    page = db.query(models.Page).filter(models.Page.id == page_id).first()
+    result = await db.execute(select(models.Page).where(models.Page.id == page_id))
+    page = result.scalar_one_or_none()
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
     data = page_in.model_dump(exclude_unset=True)
     if "slug" in data and data["slug"] is not None and data["slug"] != page.slug:
-        clash = db.query(models.Page).filter(models.Page.slug == data["slug"]).first()
+        clash_result = await db.execute(select(models.Page).where(models.Page.slug == data["slug"]))
+        clash = clash_result.scalar_one_or_none()
         if clash:
             raise HTTPException(status_code=409, detail="Slug already in use")
         # Slug-change redirect (round 350): the old page URL that was shared/
         # linked keeps pointing at this page after the rename.
-        crud.record_slug_redirect(db, "page", page.slug, data["slug"])
+        await crud.record_slug_redirect(db, "page", page.slug, data["slug"])
     for field, value in data.items():
         setattr(page, field, value)
-    db.commit()
-    db.refresh(page)
+    await db.commit()
+    await db.refresh(page)
     # A page write changes what the sitemap must list (round 348): the cached
     # sitemap derives from the published page set, so bust just the feed cache.
     clear_feeds_cache()
@@ -127,16 +136,17 @@ def admin_update_page(
 
 @admin_router.delete("/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_delete_page(
+async def admin_delete_page(
     request: Request,  # noqa: ARG001
     page_id: IdInt,
     _current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    page = db.query(models.Page).filter(models.Page.id == page_id).first()
+    result = await db.execute(select(models.Page).where(models.Page.id == page_id))
+    page = result.scalar_one_or_none()
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
-    db.delete(page)
-    db.commit()
+    await db.delete(page)
+    await db.commit()
     # A page delete removes a sitemap URL (round 348) — bust the feed cache.
     clear_feeds_cache()

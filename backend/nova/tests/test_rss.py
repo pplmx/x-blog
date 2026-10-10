@@ -1,9 +1,9 @@
 """Tests for RSS, Atom, Sitemap, and robots.txt endpoints."""
 
 
-def test_rss_feed_returns_xml(client):
+async def test_rss_feed_returns_xml(client):
     """RSS feed should return valid XML with correct content-type."""
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/rss+xml"
     content = response.text
@@ -13,10 +13,10 @@ def test_rss_feed_returns_xml(client):
     assert "<title>" in content
 
 
-def test_rss_feed_with_posts(client, auth_headers):
+async def test_rss_feed_with_posts(client, auth_headers):
     """RSS feed should include published posts."""
     # Create a published post
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "RSS Test Post",
@@ -27,16 +27,16 @@ def test_rss_feed_with_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
     assert "RSS Test Post" in content
     assert "rss-test-post" in content
 
 
-def test_rss_feed_full_content_flag(client, auth_headers):
+async def test_rss_feed_full_content_flag(client, auth_headers):
     """RSS feed with full=true should include content:encoded."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Full Content Post",
@@ -46,17 +46,17 @@ def test_rss_feed_full_content_flag(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=true")
+    response = await client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
     content = response.text
     assert "content:encoded" in content
     assert "Full post content here" in content
 
 
-def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
+async def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
     """Full-content feeds must render markdown to HTML, not literal syntax,
     and strip dangerous markup (ISS-039)."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "MD Post",
@@ -66,7 +66,7 @@ def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=true")
+    response = await client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
     content = response.text
     # Rendered HTML: heading tag, bold tag, code tag appear; raw markdown syntax does not.
@@ -80,10 +80,10 @@ def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
     assert "onclick" not in content
 
 
-def test_rss_full_feed_renders_footnotes(client, auth_headers):
+async def test_rss_full_feed_renders_footnotes(client, auth_headers):
     """Full-content feeds must render GFM footnote markers to a backlinked
     reference list, not emit the raw [^1] marker text (DEC-441, TASK-451)."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Footnotes Post",
@@ -93,7 +93,7 @@ def test_rss_full_feed_renders_footnotes(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=true")
+    response = await client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
     content = response.text
     # Reference: a sup that jumps down to the definition list.
@@ -110,7 +110,7 @@ def test_rss_full_feed_renders_footnotes(client, auth_headers):
     assert "Citations matter[^1]" not in content
 
 
-def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_headers):
+async def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_headers):
     """Full-content feed must not drop closing tags around void elements.
 
     Markdown's nl2br emits <br>; HTMLParser reports <br> as a start tag (no
@@ -118,7 +118,7 @@ def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_heade
     enclosing </p>/</div> — corrupting default full-content feeds. Regression
     for RIL TASK-108, ISS-088.
     """
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "br post",
@@ -128,7 +128,7 @@ def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_heade
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=true")
+    response = await client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
     content = response.text
     # The <br> tags survive, and the <p> they sit in still closes (before the
@@ -145,9 +145,9 @@ def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth_heade
     assert rendered.count("<p>") == rendered.count("</p>"), rendered
 
 
-def test_atom_feed_renders_markdown_as_html(client, auth_headers):
+async def test_atom_feed_renders_markdown_as_html(client, auth_headers):
     """Atom full-content feed also renders markdown to sanitized HTML."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Atom MD",
@@ -157,7 +157,7 @@ def test_atom_feed_renders_markdown_as_html(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/atom.xml")
+    response = await client.get("/rss/atom.xml")
     assert response.status_code == 200
     content = response.text
     # The <content type=html> block renders markdown to sanitized HTML.
@@ -173,11 +173,11 @@ def test_atom_feed_renders_markdown_as_html(client, auth_headers):
     assert "onclick" not in rendered
 
 
-def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
+async def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
     """Unsafe URL schemes (javascript:/data:/vbscript:) in anchor/image href/src
     must be stripped from rendered feeds, matching the frontend DOMPurify policy
     (RIL TASK-091, ISS-071). Safe http(s)/relative URLs survive."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Scheme Post",
@@ -195,7 +195,7 @@ def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=true")
+    response = await client.get("/rss/feed.xml?full=true")
     assert response.status_code == 200
     content = response.text
     # Unsafe schemes stripped.
@@ -209,9 +209,9 @@ def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
     assert "/posts/foo" in content
 
 
-def test_rss_feed_excerpt_only_by_default(client, auth_headers):
+async def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     """RSS feed by default should use excerpt, not full content."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Excerpt Post",
@@ -222,7 +222,7 @@ def test_rss_feed_excerpt_only_by_default(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
     # Should have full content by default
@@ -230,9 +230,9 @@ def test_rss_feed_excerpt_only_by_default(client, auth_headers):
     assert "content:encoded" in content
 
 
-def test_rss_feed_excerpt_mode(client, auth_headers):
+async def test_rss_feed_excerpt_mode(client, auth_headers):
     """RSS feed can be requested in excerpt-only mode."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Excerpt Mode Post",
@@ -243,16 +243,16 @@ def test_rss_feed_excerpt_mode(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml?full=false")
+    response = await client.get("/rss/feed.xml?full=false")
     assert response.status_code == 200
     content = response.text
     assert "Short excerpt" in content
     assert "content:encoded" not in content
 
 
-def test_atom_feed_returns_xml(client):
+async def test_atom_feed_returns_xml(client):
     """Atom feed should return valid XML with correct content-type."""
-    response = client.get("/rss/atom.xml")
+    response = await client.get("/rss/atom.xml")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/atom+xml"
     content = response.text
@@ -261,7 +261,7 @@ def test_atom_feed_returns_xml(client):
     assert "<title>" in content
 
 
-def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_session):
+async def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_session):
     """Feeds must be pure-recency channels: a pinned old post must not float to
     item 0 and fake a freshly-updated feed for pollers that key off the first
     entry — only the site's own listings float pinned (RIL ISS-474)."""
@@ -286,27 +286,27 @@ def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_session):
         created_at=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
     )
     db_session.add_all([pinned_old, fresh_new])
-    db_session.commit()
+    await db_session.commit()
 
     # RSS: the newer post leads, the pinned old post sits below it.
-    rss = client.get("/rss/feed.xml").text
+    rss = (await client.get("/rss/feed.xml")).text
     assert rss.index("<title><![CDATA[Fresh New Post]]></title>") < rss.index(
         "<title><![CDATA[Pinned Old Post]]></title>"
     )
 
     # Sitemap: same pure-recency order (post locs, after the static pages).
-    sitemap = client.get("/sitemap.xml").text
+    sitemap = (await client.get("/sitemap.xml")).text
     assert sitemap.index("/posts/fresh-new-post") < sitemap.index("/posts/pinned-old-post")
 
     # The site's own list still floats the pinned post to the top.
-    homepage = client.get("/api/posts").json()["items"]
+    homepage = (await client.get("/api/posts")).json()["items"]
     assert [p["title"] for p in homepage[:2]] == ["Pinned Old Post", "Fresh New Post"]
 
 
-def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
+async def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
     """A scheduled post's RSS pubDate must be its publish_at, not the draft's
     created_at — otherwise feed readers mis-date/mis-order it (RIL ISS-264)."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Feed Post",
@@ -317,7 +317,7 @@ def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
     assert "Scheduled Feed Post" in content
@@ -326,10 +326,10 @@ def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
     assert "Sat, 01 Jun 2024 10:00:00 GMT" in content
 
 
-def test_atom_published_uses_publish_at_for_scheduled_post(client, auth_headers):
+async def test_atom_published_uses_publish_at_for_scheduled_post(client, auth_headers):
     """A scheduled post's Atom <published> must be its publish_at, never the
     draft's created_at (RIL ISS-264)."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Atom Post",
@@ -340,15 +340,15 @@ def test_atom_published_uses_publish_at_for_scheduled_post(client, auth_headers)
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/atom.xml")
+    response = await client.get("/rss/atom.xml")
     assert response.status_code == 200
     content = response.text
     assert "<published>2024-06-01T10:00:00Z</published>" in content
 
 
-def test_atom_feed_with_posts(client, auth_headers):
+async def test_atom_feed_with_posts(client, auth_headers):
     """Atom feed should include published posts."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Atom Test Post",
@@ -358,7 +358,7 @@ def test_atom_feed_with_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/rss/atom.xml")
+    response = await client.get("/rss/atom.xml")
     assert response.status_code == 200
     content = response.text
     assert "Atom Test Post" in content
@@ -367,9 +367,9 @@ def test_atom_feed_with_posts(client, auth_headers):
     assert "<published>" in content
 
 
-def test_sitemap_returns_xml(client):
+async def test_sitemap_returns_xml(client):
     """Sitemap should return valid XML with correct content-type."""
-    response = client.get("/sitemap.xml")
+    response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/xml"
     content = response.text
@@ -378,9 +378,9 @@ def test_sitemap_returns_xml(client):
     assert "<urlset>" in content or "<urlset " in content
 
 
-def test_sitemap_includes_static_pages(client):
+async def test_sitemap_includes_static_pages(client):
     """Sitemap should include static pages like home, about, search."""
-    response = client.get("/sitemap.xml")
+    response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     content = response.text
     assert "/about" in content
@@ -389,17 +389,17 @@ def test_sitemap_includes_static_pages(client):
     assert "/tags" in content
 
 
-def test_sitemap_includes_image_namespace(client):
+async def test_sitemap_includes_image_namespace(client):
     """Sitemap should include image namespace for Google."""
-    response = client.get("/sitemap.xml")
+    response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     content = response.text
     assert "sitemap-image/1.1" in content
 
 
-def test_sitemap_includes_posts(client, auth_headers):
+async def test_sitemap_includes_posts(client, auth_headers):
     """Sitemap should include published posts."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Sitemap Test Post",
@@ -409,20 +409,20 @@ def test_sitemap_includes_posts(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/sitemap.xml")
+    response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     content = response.text
     assert "sitemap-test-post" in content
 
 
-def test_sitemap_includes_categories_and_tags(client, auth_headers):
+async def test_sitemap_includes_categories_and_tags(client, auth_headers):
     """Sitemap should include category and tag URLs."""
-    cat_resp = client.post(
+    cat_resp = await client.post(
         "/api/categories",
         json={"name": "Test Category", "slug": "test-category"},
         headers=auth_headers,
     )
-    tag_resp = client.post(
+    tag_resp = await client.post(
         "/api/tags",
         json={"name": "Test Tag", "slug": "test-tag"},
         headers=auth_headers,
@@ -430,7 +430,7 @@ def test_sitemap_includes_categories_and_tags(client, auth_headers):
     assert cat_resp.status_code == 201
     assert tag_resp.status_code == 201
 
-    response = client.get("/sitemap.xml")
+    response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     content = response.text
     assert "category_id=" in content
@@ -438,7 +438,7 @@ def test_sitemap_includes_categories_and_tags(client, auth_headers):
     assert "tag_id=" in content
 
 
-def test_sitemap_pages_through_all_published_posts(client, auth_headers, monkeypatch):
+async def test_sitemap_pages_through_all_published_posts(client, auth_headers, monkeypatch):
     """The sitemap must page through EVERY published post.
 
     get_sitemap used a hard ``limit=1000`` with no loop, so a blog past 1000
@@ -452,81 +452,81 @@ def test_sitemap_pages_through_all_published_posts(client, auth_headers, monkeyp
 
     real_get_posts = crud_module.get_posts
 
-    def capped_get_posts(db, skip=0, limit=1000, **kwargs):
-        return real_get_posts(db, skip=skip, limit=min(limit, 3), **kwargs)
+    async def capped_get_posts(db, skip=0, limit=1000, **kwargs):
+        return await real_get_posts(db, skip=skip, limit=min(limit, 3), **kwargs)
 
     monkeypatch.setattr(rss_module, "SITEMAP_POST_PAGE", 3)
     monkeypatch.setattr(crud_module, "get_posts", capped_get_posts)
 
     slugs = [f"sitemap-page-{i}" for i in range(6)]
     for slug in slugs:
-        resp = client.post(
+        resp = await client.post(
             "/api/posts",
             json={"title": f"Sitemap page {slug}", "slug": slug, "content": "x", "published": True},
             headers=auth_headers,
         )
         assert resp.status_code == 201, resp.text
 
-    content = client.get("/sitemap.xml").text
+    content = (await client.get("/sitemap.xml")).text
     for slug in slugs:
         assert f"/posts/{slug}" in content
 
 
-def test_sitemap_includes_series(client, auth_headers):
+async def test_sitemap_includes_series(client, auth_headers):
     """Series detail pages are indexable, so each series must appear in the
     sitemap as /series/{slug} — the URL shape crawlers can reach; the old
     sitemap emitted zero series entries (DEC-318/TASK-387)."""
-    resp = client.post(
+    resp = await client.post(
         "/api/series",
         json={"title": "Sitemap Manga", "slug": "sitemap-manga", "description": "series desc"},
         headers=auth_headers,
     )
     assert resp.status_code == 201, resp.text
 
-    content = client.get("/sitemap.xml").text
+    content = (await client.get("/sitemap.xml")).text
     assert "/series/sitemap-manga" in content
 
 
-def test_sitemap_includes_published_pages_not_drafts(client, auth_headers):
+async def test_sitemap_includes_published_pages_not_drafts(client, auth_headers):
     """Published static pages are indexable /pages/{slug} URLs (round 347/348);
     drafts are unpublished and must stay out of the sitemap entirely."""
-    client.post(
+    await client.post(
         "/api/admin/pages",
         json={"slug": "privacy", "title": "Privacy Policy", "content": "## Data", "published": True},
         headers=auth_headers,
     )
-    client.post(
+    await client.post(
         "/api/admin/pages",
         json={"slug": "draft", "title": "Draft", "content": "unfinished", "published": False},
         headers=auth_headers,
     )
-    content = client.get("/sitemap.xml").text
+    content = (await client.get("/sitemap.xml")).text
     assert "/pages/privacy" in content
     assert "lastmod" in content
     assert "/pages/draft" not in content
 
 
-def test_sitemap_page_write_busts_cache(client, auth_headers):
+async def test_sitemap_page_write_busts_cache(client, auth_headers):
     """A newly published page must reach crawlers after the write, not after a
     feed-cache TTL: the sitemap is cached, so creating/publishing a page has to
     invalidate it (round 348)."""
     # Sitemap warmed with no pages.
-    assert "/pages/privacy" not in client.get("/sitemap.xml").text
-    client.post(
+    assert "/pages/privacy" not in (await client.get("/sitemap.xml")).text
+    await client.post(
         "/api/admin/pages",
         json={"slug": "privacy", "title": "Privacy Policy", "content": "## Data", "published": True},
         headers=auth_headers,
     )
     # The page write busted the feed cache, so the sitemap reflects it now.
-    assert "/pages/privacy" in client.get("/sitemap.xml").text
+    assert "/pages/privacy" in (await client.get("/sitemap.xml")).text
     # A delete removes the URL on the next render.
-    pid = client.get("/api/admin/pages", headers=auth_headers).json()[0]["id"]
-    client.delete(f"/api/admin/pages/{pid}", headers=auth_headers)
-    content = client.get("/sitemap.xml").text
+    pid = (await client.get("/api/admin/pages", headers=auth_headers)).json()[0]["id"]
+    await client.delete(f"/api/admin/pages/{pid}", headers=auth_headers)
+    content = (await client.get("/sitemap.xml")).text
     assert "/pages/privacy" not in content
 
 
-def test_sitemap_includes_author_archives(client, db_session):
+async def test_sitemap_includes_author_archives(client, db_session):
     """Each pen-named writer's /authors/{id} archive (round 343) and the
     /authors index (round 346) are indexable pages; username-only admins have
     no public archive and must not appear (no-oracle)."""
@@ -536,24 +536,24 @@ def test_sitemap_includes_author_archives(client, db_session):
     target = auth.User(id=900001, username="writer", password="x", role="editor")
     target.display_name = "Public Writer"
     db_session.add(target)
-    db_session.commit()
+    await db_session.commit()
 
-    content = client.get("/sitemap.xml").text
+    content = (await client.get("/sitemap.xml")).text
     assert "/authors" in content
     assert "/authors/900001" in content
 
     # Another admin, no pen name → no archive URL, no username leak.
     anon = auth.User(id=900002, username="anon-admin", password="x", role="editor")
     db_session.add(anon)
-    db_session.commit()
-    content = client.get("/sitemap.xml").text
+    await db_session.commit()
+    content = (await client.get("/sitemap.xml")).text
     assert "/authors/900002" not in content
     assert "anon-admin" not in content
 
 
-def test_robots_txt(client):
+async def test_robots_txt(client):
     """robots.txt should return valid plain text with sitemap directive."""
-    response = client.get("/robots.txt")
+    response = await client.get("/robots.txt")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
     content = response.text
@@ -564,12 +564,12 @@ def test_robots_txt(client):
     assert "RSS:" not in content
 
 
-def test_robots_txt_disallows_private_and_auth_surfaces(client):
+async def test_robots_txt_disallows_private_and_auth_surfaces(client):
     """round 438: private/auth/admin/API paths must be Disallowed so crawlers
     do not FETCH them (the page-level noindex only stops them being indexed;
     Disallow saves the crawl budget). Actual feed/sitemap endpoints stay
     crawlable."""
-    response = client.get("/robots.txt")
+    response = await client.get("/robots.txt")
     content = response.text
     for path in (
         "/api/",
@@ -589,20 +589,20 @@ def test_robots_txt_disallows_private_and_auth_surfaces(client):
     assert "Disallow: /discussion" not in content
 
 
-def test_rss_feed_empty_database(client):
+async def test_rss_feed_empty_database(client):
     """RSS feed should return valid XML even with no posts."""
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
     assert "<rss version=" in content
     assert "<channel>" in content
 
 
-def test_rss_feed_escapes_xml_special_chars(client, auth_headers):
+async def test_rss_feed_escapes_xml_special_chars(client, auth_headers):
     """Titles/descriptions with & < > must not produce invalid XML."""
     import xml.etree.ElementTree as ET
 
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "R&D Notes & <Analysis>",
@@ -614,21 +614,21 @@ def test_rss_feed_escapes_xml_special_chars(client, auth_headers):
         headers=auth_headers,
     )
 
-    rss_response = client.get("/rss/feed.xml")
+    rss_response = await client.get("/rss/feed.xml")
     assert rss_response.status_code == 200
     # Feed must be well-formed XML (no escape errors)
     ET.fromstring(rss_response.text)
 
-    atom_response = client.get("/rss/atom.xml")
+    atom_response = await client.get("/rss/atom.xml")
     assert atom_response.status_code == 200
     ET.fromstring(atom_response.text)
     assert "R&amp;D Notes &amp; &lt;Analysis&gt;" in atom_response.text
 
 
-def test_rss_feed_etag_and_304(client, auth_headers):
+async def test_rss_feed_etag_and_304(client, auth_headers):
     """RSS/Atom/sitemap should send an ETag and return 304 on If-None-Match."""
     # Publish a post so the feed is non-trivial
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "ETag Post",
@@ -644,13 +644,13 @@ def test_rss_feed_etag_and_304(client, auth_headers):
         ("/rss/atom.xml", "application/atom+xml"),
         ("/sitemap.xml", "application/xml"),
     ):
-        first = client.get(path)
+        first = await client.get(path)
         assert first.status_code == 200
         etag = first.headers.get("etag")
         assert etag, f"expected ETag header on {path}"
 
         # Conditional request with the same ETag -> 304 Not Modified
-        second = client.get(path, headers={"If-None-Match": etag})
+        second = await client.get(path, headers={"If-None-Match": etag})
         assert second.status_code == 304, f"expected 304 on {path}"
         assert second.text == ""
 
@@ -661,7 +661,7 @@ def test_rss_feed_etag_and_304(client, auth_headers):
 # ---------------------------------------------------------------------------
 
 
-def _make_published_post(client, auth_headers, title, slug, **extra):
+async def _make_published_post(client, auth_headers, title, slug, **extra):
     """Create a published post (plus optional category_id/tags) via the API."""
     payload = {
         "title": title,
@@ -671,21 +671,21 @@ def _make_published_post(client, auth_headers, title, slug, **extra):
         "published": True,
         **extra,
     }
-    resp = client.post("/api/posts", json=payload, headers=auth_headers)
+    resp = await client.post("/api/posts", json=payload, headers=auth_headers)
     assert resp.status_code == 201, resp.text
 
 
-def test_rss_feed_scoped_by_category(client, auth_headers):
+async def test_rss_feed_scoped_by_category(client, auth_headers):
     """A category-scoped RSS feed contains only that category's posts, and
     the channel identifies the category."""
-    cat = client.post("/api/categories", json={"name": "Python", "slug": "python"}, headers=auth_headers)
+    cat = await client.post("/api/categories", json={"name": "Python", "slug": "python"}, headers=auth_headers)
     assert cat.status_code == 201
     cat_id = cat.json()["id"]
 
-    _make_published_post(client, auth_headers, "Python post", "py-post", category_id=cat_id)
-    _make_published_post(client, auth_headers, "Unrelated post", "other-post")
+    await _make_published_post(client, auth_headers, "Python post", "py-post", category_id=cat_id)
+    await _make_published_post(client, auth_headers, "Unrelated post", "other-post")
 
-    response = client.get(f"/rss/feed.xml?category_id={cat_id}")
+    response = await client.get(f"/rss/feed.xml?category_id={cat_id}")
     assert response.status_code == 200
     content = response.text
     assert "Python post" in content
@@ -697,16 +697,16 @@ def test_rss_feed_scoped_by_category(client, auth_headers):
     assert f"category_id={cat_id}" in content
 
 
-def test_rss_feed_scoped_by_tag(client, auth_headers):
+async def test_rss_feed_scoped_by_tag(client, auth_headers):
     """A tag-scoped RSS feed contains only posts carrying that tag."""
-    tag = client.post("/api/tags", json={"name": "pytag", "slug": "pytag"}, headers=auth_headers)
+    tag = await client.post("/api/tags", json={"name": "pytag", "slug": "pytag"}, headers=auth_headers)
     assert tag.status_code == 201
     tag_id = tag.json()["id"]
 
-    _make_published_post(client, auth_headers, "Tagged post", "tagged-post", tags=["pytag"])
-    _make_published_post(client, auth_headers, "Untagged post", "untagged-post")
+    await _make_published_post(client, auth_headers, "Tagged post", "tagged-post", tags=["pytag"])
+    await _make_published_post(client, auth_headers, "Untagged post", "untagged-post")
 
-    response = client.get(f"/rss/feed.xml?tag_id={tag_id}")
+    response = await client.get(f"/rss/feed.xml?tag_id={tag_id}")
     assert response.status_code == 200
     content = response.text
     assert "Tagged post" in content
@@ -716,16 +716,16 @@ def test_rss_feed_scoped_by_tag(client, auth_headers):
     assert f"tag_id={tag_id}" in content
 
 
-def test_atom_feed_scoped_by_category(client, auth_headers):
+async def test_atom_feed_scoped_by_category(client, auth_headers):
     """Atom parity: a category-scoped Atom feed filters and identifies the topic."""
-    cat = client.post("/api/categories", json={"name": "Go", "slug": "go"}, headers=auth_headers)
+    cat = await client.post("/api/categories", json={"name": "Go", "slug": "go"}, headers=auth_headers)
     assert cat.status_code == 201
     cat_id = cat.json()["id"]
 
-    _make_published_post(client, auth_headers, "Go post", "go-post", category_id=cat_id)
-    _make_published_post(client, auth_headers, "Other", "other-post")
+    await _make_published_post(client, auth_headers, "Go post", "go-post", category_id=cat_id)
+    await _make_published_post(client, auth_headers, "Other", "other-post")
 
-    response = client.get(f"/rss/atom.xml?category_id={cat_id}")
+    response = await client.get(f"/rss/atom.xml?category_id={cat_id}")
     assert response.status_code == 200
     content = response.text
     assert "Go post" in content
@@ -735,37 +735,37 @@ def test_atom_feed_scoped_by_category(client, auth_headers):
     assert f"category_id={cat_id}" in content
 
 
-def test_rss_feed_scoped_unknown_scope_404(client):
+async def test_rss_feed_scoped_unknown_scope_404(client):
     """An unknown category/tag scope id is a 404, not a silent global feed."""
-    response = client.get("/rss/feed.xml?category_id=999999")
+    response = await client.get("/rss/feed.xml?category_id=999999")
     assert response.status_code == 404
-    response = client.get("/rss/atom.xml?tag_id=999999")
+    response = await client.get("/rss/atom.xml?tag_id=999999")
     assert response.status_code == 404
 
 
-def test_rss_feed_scoped_both_params_400(client):
+async def test_rss_feed_scoped_both_params_400(client):
     """A feed scoped to both category and tag is rejected — one dimension max."""
-    response = client.get("/rss/feed.xml?category_id=1&tag_id=1")
+    response = await client.get("/rss/feed.xml?category_id=1&tag_id=1")
     assert response.status_code == 400
 
 
-def test_rss_feed_scoped_etag_and_304(client, auth_headers):
+async def test_rss_feed_scoped_etag_and_304(client, auth_headers):
     """Scoped feeds keep the ETag/304 conditional-response behavior."""
-    cat = client.post("/api/categories", json={"name": "ETag Cat", "slug": "etag-cat"}, headers=auth_headers)
+    cat = await client.post("/api/categories", json={"name": "ETag Cat", "slug": "etag-cat"}, headers=auth_headers)
     cat_id = cat.json()["id"]
 
-    first = client.get(f"/rss/feed.xml?category_id={cat_id}")
+    first = await client.get(f"/rss/feed.xml?category_id={cat_id}")
     assert first.status_code == 200
     etag = first.headers.get("etag")
     assert etag
-    second = client.get(f"/rss/feed.xml?category_id={cat_id}", headers={"If-None-Match": etag})
+    second = await client.get(f"/rss/feed.xml?category_id={cat_id}", headers={"If-None-Match": etag})
     assert second.status_code == 304
 
 
-def test_global_feed_unaffected_by_scope_support(client, auth_headers):
+async def test_global_feed_unaffected_by_scope_support(client, auth_headers):
     """Default global feeds still work and are unscoped when no param is sent."""
-    _make_published_post(client, auth_headers, "Global post", "global-post")
-    response = client.get("/rss/feed.xml")
+    await _make_published_post(client, auth_headers, "Global post", "global-post")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     content = response.text
     assert "Global post" in content
@@ -781,25 +781,25 @@ def test_global_feed_unaffected_by_scope_support(client, auth_headers):
 # ---------------------------------------------------------------------------
 
 
-def test_rss_language_follows_configured_site_language(client, monkeypatch):
+async def test_rss_language_follows_configured_site_language(client, monkeypatch):
     """RSS <language> reflects site_language (default zh-CN, configurable)."""
     monkeypatch.setattr("app.routers.rss.settings.site_language", "en-gb")
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     assert "<language>en-gb</language>" in response.text
 
 
-def test_rss_language_default_is_zh_cn(client):
+async def test_rss_language_default_is_zh_cn(client):
     """Without configuration the feed keeps the previous zh-CN default."""
-    response = client.get("/rss/feed.xml")
+    response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     assert "<language>zh-CN</language>" in response.text
 
 
-def test_atom_xml_lang_follows_configuration(client, monkeypatch):
+async def test_atom_xml_lang_follows_configuration(client, monkeypatch):
     """Atom feed carries xml:lang from site_language on the <feed> element."""
     monkeypatch.setattr("app.routers.rss.settings.site_language", "en")
-    response = client.get("/rss/atom.xml")
+    response = await client.get("/rss/atom.xml")
     assert response.status_code == 200
     assert 'xmlns="http://www.w3.org/2005/Atom"' in response.text
     assert 'xml:lang="en"' in response.text

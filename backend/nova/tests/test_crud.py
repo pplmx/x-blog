@@ -1,9 +1,10 @@
 """Tests for CRUD operations."""
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import DEFAULT, AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app import auth, cache, crud, models, schemas
@@ -14,7 +15,7 @@ class TestEffectivePublishTs:
     "published when" line (scheduled publish_at when set, else created_at)
     so scheduled posts are never mis-dated by their draft time (RIL ISS-264)."""
 
-    def test_uses_publish_at_when_set(self):
+    async def test_uses_publish_at_when_set(self):
         post = models.Post(
             published=True,
             publish_at=datetime(2024, 6, 1, 10, 0, 0),
@@ -22,11 +23,11 @@ class TestEffectivePublishTs:
         )
         assert crud.effective_publish_ts(post) == datetime(2024, 6, 1, 10, 0, 0)
 
-    def test_falls_back_to_created_at_without_publish_at(self):
+    async def test_falls_back_to_created_at_without_publish_at(self):
         post = models.Post(published=True, publish_at=None, created_at=datetime(2024, 3, 2, 9, 0, 0))
         assert crud.effective_publish_ts(post) == datetime(2024, 3, 2, 9, 0, 0)
 
-    def test_normalizes_aware_created_at_to_naive_utc(self):
+    async def test_normalizes_aware_created_at_to_naive_utc(self):
         # created_at carries an aware ORM default on some dialects; the
         # returned timestamp must be naive UTC (matching publish_at's domain).
         aware = datetime(2024, 3, 2, 9, 0, 0, tzinfo=UTC)
@@ -39,36 +40,36 @@ class TestEffectivePublishTs:
 class TestGetPosts:
     """Tests for get_posts function."""
 
-    def test_get_posts_default_pagination(self, db_session):
+    async def test_get_posts_default_pagination(self, db_session):
         """Test get_posts returns paginated results."""
-        posts, total = crud.get_posts(db_session)
+        posts, total = await crud.get_posts(db_session)
         assert isinstance(posts, list)
         assert isinstance(total, int)
         assert total >= 0
 
-    def test_get_posts_pagination(self, db_session):
+    async def test_get_posts_pagination(self, db_session):
         """Test get_posts with pagination parameters."""
-        posts, total = crud.get_posts(db_session, skip=0, limit=5)
+        posts, total = await crud.get_posts(db_session, skip=0, limit=5)
         assert len(posts) <= 5
 
-    def test_get_posts_include_unpublished(self, db_session):
+    async def test_get_posts_include_unpublished(self, db_session):
         """Test get_posts can include unpublished posts."""
-        posts, total = crud.get_posts(db_session, published=False)
+        posts, total = await crud.get_posts(db_session, published=False)
         assert isinstance(posts, list)
 
-    def test_get_posts_filter_by_category(self, db_session):
+    async def test_get_posts_filter_by_category(self, db_session):
         """Test get_posts filters by category_id."""
-        posts, total = crud.get_posts(db_session, category_id=999)
+        posts, total = await crud.get_posts(db_session, category_id=999)
         assert isinstance(posts, list)
         assert total == 0 or all(p.category_id == 999 for p in posts)
 
-    def test_get_posts_filter_by_tag(self, db_session):
+    async def test_get_posts_filter_by_tag(self, db_session):
         """Test get_posts filters by tag_id."""
-        posts, total = crud.get_posts(db_session, tag_id=999)
+        posts, total = await crud.get_posts(db_session, tag_id=999)
         assert isinstance(posts, list)
         assert total == 0 or all(p.category_id == 999 for p in posts)
 
-    def test_get_posts_orders_scheduled_posts_by_effective_publish_time(self, db_session):
+    async def test_get_posts_orders_scheduled_posts_by_effective_publish_time(self, db_session):
         """A post drafted in January but scheduled for June sorts by June —
         it must surface at the top of the feed when it actually goes live,
         not stay buried in its draft position (RIL ISS-265)."""
@@ -98,14 +99,14 @@ class TestGetPosts:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        posts, _ = crud.get_posts(db_session, skip=0, limit=10)
+        posts, _ = await crud.get_posts(db_session, skip=0, limit=10)
         titles = [p.title for p in posts]
         # The June-scheduled post (effective Jun 1) sits after July, before May.
         assert titles == ["Unscheduled July", "Drafted Jan, live Jun", "Unscheduled May"]
 
-    def test_get_posts_ties_on_effective_publish_break_by_id_desc(self, db_session):
+    async def test_get_posts_ties_on_effective_publish_break_by_id_desc(self, db_session):
         """Equal effective publish times (two posts batch-scheduled to the same
         whole second) must order deterministically by id desc — otherwise the
         feed query (with joinedload JOINs) and the adjacent-posts bare-column
@@ -132,9 +133,9 @@ class TestGetPosts:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        posts, _ = crud.get_posts(db_session, skip=0, limit=10)
+        posts, _ = await crud.get_posts(db_session, skip=0, limit=10)
         assert [p.title for p in posts] == ["Tie High", "Tie Low"]
 
         # get_adjacent_posts must agree with the feed exactly, tie included:
@@ -142,14 +143,14 @@ class TestGetPosts:
         # "previous" is Tie High and it has no next — never the reverse, and
         # never a None on the higher-id post where the feed has Tie Low below.
         low, high = posts[1], posts[0]  # posts = [Tie High, Tie Low]
-        prev, next_ = crud.get_adjacent_posts(db_session, low.id)
+        prev, next_ = await crud.get_adjacent_posts(db_session, low.id)
         assert prev is not None and prev.title == "Tie High"
         assert next_ is None
-        prev2, next2 = crud.get_adjacent_posts(db_session, high.id)
+        prev2, next2 = await crud.get_adjacent_posts(db_session, high.id)
         assert prev2 is None  # head of the tied run
         assert next2 is not None and next2.title == "Tie Low"
 
-    def test_get_posts_year_month_filters_by_effective_publish_time(self, db_session):
+    async def test_get_posts_year_month_filters_by_effective_publish_time(self, db_session):
         """The year/month feed filter keys off publish time: a post drafted in
         January and scheduled for June is found under June, not January."""
         db_session.add(
@@ -162,14 +163,14 @@ class TestGetPosts:
                 publish_at=datetime(2024, 6, 1, 9, 0, 0),
             )
         )
-        db_session.commit()
+        await db_session.commit()
 
-        _, jan_total = crud.get_posts(db_session, year=2024, month=1)
-        _, jun_total = crud.get_posts(db_session, year=2024, month=6)
+        _, jan_total = await crud.get_posts(db_session, year=2024, month=1)
+        _, jun_total = await crud.get_posts(db_session, year=2024, month=6)
         assert jan_total == 0
         assert jun_total == 1
 
-    def test_get_archive_groups_by_effective_publish_time(self, db_session):
+    async def test_get_archive_groups_by_effective_publish_time(self, db_session):
         """The archive buckets a scheduled post in the month it went live —
         before this it landed under its draft month and was unfindable in the
         archive (RIL ISS-265)."""
@@ -192,16 +193,16 @@ class TestGetPosts:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        rows = crud.get_archive(db_session)
+        rows = await crud.get_archive(db_session)
         buckets = {(y, m): count for y, m, count in rows}
         # No January bucket (the drafted post is not "published in January")
         assert (2024, 1) not in buckets
         assert buckets.get((2024, 6)) == 1
         assert buckets.get((2024, 5)) == 1
 
-    def test_get_posts_filter_by_tag_correct_count(self, db_session):
+    async def test_get_posts_filter_by_tag_correct_count(self, db_session):
         """Test get_posts returns correct total when filtering by tag_id.
 
         This catches a potential bug where query.count() after a join()
@@ -211,13 +212,13 @@ class TestGetPosts:
         # Create a category
         category = models.Category(name="Tag Filter Category")
         db_session.add(category)
-        db_session.flush()
+        await db_session.flush()
 
         # Create tags
         tag1 = models.Tag(name="tag-filter-1")
         tag2 = models.Tag(name="tag-filter-2")
         db_session.add_all([tag1, tag2])
-        db_session.flush()
+        await db_session.flush()
         tag1_id = tag1.id
         tag2_id = tag2.id
 
@@ -245,21 +246,21 @@ class TestGetPosts:
             post.tags.append(tag2)
             db_session.add(post)
 
-        db_session.commit()
+        await db_session.commit()
 
         # Filter by tag1 — should return exactly 3 posts and total=3
-        posts_tag1, total_tag1 = crud.get_posts(db_session, tag_id=tag1_id)  # type: ignore[arg-type]
+        posts_tag1, total_tag1 = await crud.get_posts(db_session, tag_id=tag1_id)  # type: ignore[arg-type]
         assert len(posts_tag1) == 3
         assert total_tag1 == 3
 
         # Filter by tag2 — should return exactly 2 posts and total=2
-        posts_tag2, total_tag2 = crud.get_posts(db_session, tag_id=tag2_id)  # type: ignore[arg-type]
+        posts_tag2, total_tag2 = await crud.get_posts(db_session, tag_id=tag2_id)  # type: ignore[arg-type]
         assert len(posts_tag2) == 2
         assert total_tag2 == 2
 
-    def test_get_posts_eager_loads_relations(self, db_session):
+    async def test_get_posts_eager_loads_relations(self, db_session):
         """Test get_posts eager loads category and tags."""
-        posts, _ = crud.get_posts(db_session)
+        posts, _ = await crud.get_posts(db_session)
         # Check that query options are applied (eager loading)
         # Actual content depends on data in DB
 
@@ -267,17 +268,17 @@ class TestGetPosts:
 class TestGetPost:
     """Tests for get_post function."""
 
-    def test_get_post_returns_none_for_nonexistent(self, db_session):
+    async def test_get_post_returns_none_for_nonexistent(self, db_session):
         """Test get_post returns None for non-existent post."""
-        result = crud.get_post(db_session, 99999)
+        result = await crud.get_post(db_session, 99999)
         assert result is None
 
-    def test_get_post_returns_post(self, db_session):
+    async def test_get_post_returns_post(self, db_session):
         """Test get_post returns post when exists."""
         # Create a test post first
         category = models.Category(name="Test Category")
         db_session.add(category)
-        db_session.flush()
+        await db_session.flush()
 
         post = models.Post(
             title="Test Post",
@@ -286,22 +287,22 @@ class TestGetPost:
             category_id=category.id,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_post(db_session, post.id)
+        result = await crud.get_post(db_session, post.id)
         assert result is not None
         assert result.title == "Test Post"
         assert result.category is not None
 
-    def test_get_post_eager_loads_relations(self, db_session):
+    async def test_get_post_eager_loads_relations(self, db_session):
         """Test get_post eager loads category and tags."""
         category = models.Category(name="Related Category")
         db_session.add(category)
-        db_session.flush()
+        await db_session.flush()
 
         tag = models.Tag(name="related-tag")
         db_session.add(tag)
-        db_session.flush()
+        await db_session.flush()
 
         post = models.Post(
             title="Eager Load Test",
@@ -311,9 +312,9 @@ class TestGetPost:
         )
         post.tags.append(tag)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_post(db_session, post.id)
+        result = await crud.get_post(db_session, post.id)
         assert result.category.name == "Related Category"
         assert len(result.tags) == 1
 
@@ -321,12 +322,12 @@ class TestGetPost:
 class TestGetPostBySlug:
     """Tests for get_post_by_slug function."""
 
-    def test_get_post_by_slug_returns_none(self, db_session):
+    async def test_get_post_by_slug_returns_none(self, db_session):
         """Test get_post_by_slug returns None for non-existent slug."""
-        result = crud.get_post_by_slug(db_session, "nonexistent-slug")
+        result = await crud.get_post_by_slug(db_session, "nonexistent-slug")
         assert result is None
 
-    def test_get_post_by_slug_returns_post(self, db_session):
+    async def test_get_post_by_slug_returns_post(self, db_session):
         """Test get_post_by_slug returns post when exists."""
         post = models.Post(
             title="Slug Test",
@@ -334,9 +335,9 @@ class TestGetPostBySlug:
             content="Content",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_post_by_slug(db_session, "unique-slug-12345")
+        result = await crud.get_post_by_slug(db_session, "unique-slug-12345")
         assert result is not None
         assert result.slug == "unique-slug-12345"
 
@@ -344,7 +345,7 @@ class TestGetPostBySlug:
 class TestCreatePost:
     """Tests for create_post function."""
 
-    def test_create_post_minimal(self, db_session):
+    async def test_create_post_minimal(self, db_session):
         """Test creating post with minimal data."""
         post_data = schemas.PostCreate(
             title="New Post",
@@ -353,7 +354,7 @@ class TestCreatePost:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert post.id is not None
         assert post.title == "New Post"
@@ -361,11 +362,11 @@ class TestCreatePost:
         assert post.published is False
         assert post.pinned is False
 
-    def test_create_post_with_category(self, db_session):
+    async def test_create_post_with_category(self, db_session):
         """Test creating post with a category."""
         category = models.Category(name="Test Category")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
         post_data = schemas.PostCreate(
             title="Categorized Post",
@@ -375,11 +376,11 @@ class TestCreatePost:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert post.category_id == category.id
 
-    def test_create_post_with_nonexistent_category(self, db_session):
+    async def test_create_post_with_nonexistent_category(self, db_session):
         """Test creating post with non-existent category raises error."""
         post_data = schemas.PostCreate(
             title="Bad Category Post",
@@ -392,11 +393,11 @@ class TestCreatePost:
             pytest.raises(ValueError) as exc_info,
             patch("app.crud.clear_tags_cache"),
         ):
-            crud.create_post(db_session, post_data)
+            await crud.create_post(db_session, post_data)
         assert "Category" in str(exc_info.value)
         assert "99999" in str(exc_info.value)
 
-    def test_create_post_with_tags(self, db_session):
+    async def test_create_post_with_tags(self, db_session):
         """Test creating post with tags."""
         post_data = schemas.PostCreate(
             title="Tagged Post",
@@ -406,18 +407,18 @@ class TestCreatePost:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 2
         tag_names = [t.name for t in post.tags]
         assert "python" in tag_names
         assert "fastapi" in tag_names
 
-    def test_create_post_reuses_existing_tags(self, db_session):
+    async def test_create_post_reuses_existing_tags(self, db_session):
         """Test creating post reuses existing tags."""
         existing_tag = models.Tag(name="reuse-tag")
         db_session.add(existing_tag)
-        db_session.commit()
+        await db_session.commit()
 
         post_data = schemas.PostCreate(
             title="Reuse Tag Post",
@@ -427,16 +428,16 @@ class TestCreatePost:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert len(post.tags) == 1
         assert post.tags[0].id == existing_tag.id
 
-    def test_create_post_with_all_fields(self, db_session):
+    async def test_create_post_with_all_fields(self, db_session):
         """Test creating post with all optional fields."""
         category = models.Category(name="Full Post Category")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
         post_data = schemas.PostCreate(
             title="Full Post",
@@ -451,7 +452,7 @@ class TestCreatePost:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert post.published is True
         assert post.pinned is True
@@ -463,13 +464,13 @@ class TestCreatePost:
 class TestUpdatePost:
     """Tests for update_post function."""
 
-    def test_update_post_not_found(self, db_session):
+    async def test_update_post_not_found(self, db_session):
         """Test update_post returns None for non-existent post."""
         update_data = schemas.PostUpdate(title="Updated Title")
-        result = crud.update_post(db_session, 99999, update_data)
+        result = await crud.update_post(db_session, 99999, update_data)
         assert result is None
 
-    def test_update_post_partial_title(self, db_session):
+    async def test_update_post_partial_title(self, db_session):
         """Test update_post with only title change."""
         post = models.Post(
             title="Original Title",
@@ -477,17 +478,17 @@ class TestUpdatePost:
             content="Content",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(title="New Title")
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert result.title == "New Title"
         assert result.slug == "partial-update-test"  # Unchanged
 
-    def test_update_post_multiple_fields(self, db_session):
+    async def test_update_post_multiple_fields(self, db_session):
         """Test update_post with multiple fields."""
         post = models.Post(
             title="Original",
@@ -496,7 +497,7 @@ class TestUpdatePost:
             published=False,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(
             title="Updated Title",
@@ -504,19 +505,19 @@ class TestUpdatePost:
             published=True,
         )
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result.title == "Updated Title"
         assert result.content == "Updated content"
         assert result.published is True
 
-    def test_update_post_with_tag_ids(self, db_session):
+    async def test_update_post_with_tag_ids(self, db_session):
         """Test update_post with tag_ids (list of integers)."""
         # Create some existing tags first
         tag1 = models.Tag(name="existing-tag-1")
         tag2 = models.Tag(name="existing-tag-2")
         db_session.add_all([tag1, tag2])
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(
             title="Tag ID Update Test",
@@ -524,21 +525,21 @@ class TestUpdatePost:
             content="Content",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert len(result.tags) == 2
 
-    def test_update_post_with_category(self, db_session):
+    async def test_update_post_with_category(self, db_session):
         """Test update_post with category change."""
         category1 = models.Category(name="Category 1")
         category2 = models.Category(name="Category 2")
         db_session.add_all([category1, category2])
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(
             title="Category Update Test",
@@ -547,11 +548,11 @@ class TestUpdatePost:
             category_id=category1.id,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(category_id=category2.id)
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result.category_id == category2.id
 
@@ -559,12 +560,12 @@ class TestUpdatePost:
 class TestDeletePost:
     """Tests for delete_post function."""
 
-    def test_delete_post_not_found(self, db_session):
+    async def test_delete_post_not_found(self, db_session):
         """Test delete_post returns False for non-existent post."""
-        result = crud.delete_post(db_session, 99999)
+        result = await crud.delete_post(db_session, 99999)
         assert result is False
 
-    def test_delete_post_success(self, db_session):
+    async def test_delete_post_success(self, db_session):
         """Test delete_post successfully deletes post."""
         post = models.Post(
             title="Delete Test",
@@ -572,164 +573,164 @@ class TestDeletePost:
             content="Content to delete",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         post_id = post.id
 
-        result = crud.delete_post(db_session, post_id)
+        result = await crud.delete_post(db_session, post_id)
 
         assert result is True
-        assert crud.get_post(db_session, post_id) is None
+        assert await crud.get_post(db_session, post_id) is None
 
 
 class TestCategories:
     """Tests for category CRUD operations."""
 
-    def test_get_categories(self, db_session):
+    async def test_get_categories(self, db_session):
         """Test get_categories returns list."""
-        categories = crud.get_categories(db_session)
+        categories = await crud.get_categories(db_session)
         assert isinstance(categories, list)
 
-    def test_get_category_not_found(self, db_session):
+    async def test_get_category_not_found(self, db_session):
         """Test get_category returns None for non-existent."""
-        result = crud.get_category(db_session, 99999)
+        result = await crud.get_category(db_session, 99999)
         assert result is None
 
-    def test_get_category_found(self, db_session):
+    async def test_get_category_found(self, db_session):
         """Test get_category returns category when exists."""
         category = models.Category(name="Find Me Category")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_category(db_session, category.id)
+        result = await crud.get_category(db_session, category.id)
         assert result is not None
         assert result.name == "Find Me Category"
 
-    def test_create_category(self, db_session):
+    async def test_create_category(self, db_session):
         """Test create_category creates new category."""
         category_data = schemas.CategoryCreate(name="New Category")
         with patch("app.crud.clear_categories_cache"):
-            category = crud.create_category(db_session, category_data)
+            category = await crud.create_category(db_session, category_data)
 
         assert category.id is not None
         assert category.name == "New Category"
 
-    def test_update_category(self, db_session):
+    async def test_update_category(self, db_session):
         """Test update_category updates name."""
         category = models.Category(name="Original Name")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.CategoryCreate(name="Updated Name")
         with patch("app.crud.clear_categories_cache"):
-            result = crud.update_category(db_session, category.id, update_data)
+            result = await crud.update_category(db_session, category.id, update_data)
 
         assert result is not None
         assert result.name == "Updated Name"
 
-    def test_update_category_not_found(self, db_session):
+    async def test_update_category_not_found(self, db_session):
         """Test update_category returns None for non-existent."""
         update_data = schemas.CategoryCreate(name="New Name")
-        result = crud.update_category(db_session, 99999, update_data)
+        result = await crud.update_category(db_session, 99999, update_data)
         assert result is None
 
-    def test_delete_category(self, db_session):
+    async def test_delete_category(self, db_session):
         """Test delete_category removes category."""
         category = models.Category(name="Delete Me")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
         cat_id = category.id
 
         with patch("app.crud.clear_categories_cache"):
-            result = crud.delete_category(db_session, cat_id)
+            result = await crud.delete_category(db_session, cat_id)
 
         assert result is True
-        assert crud.get_category(db_session, cat_id) is None
+        assert await crud.get_category(db_session, cat_id) is None
 
 
 class TestTags:
     """Tests for tag CRUD operations."""
 
-    def test_get_tags(self, db_session):
+    async def test_get_tags(self, db_session):
         """Test get_tags returns list."""
-        tags = crud.get_tags(db_session)
+        tags = await crud.get_tags(db_session)
         assert isinstance(tags, list)
 
-    def test_get_tag_not_found(self, db_session):
+    async def test_get_tag_not_found(self, db_session):
         """Test get_tag returns None for non-existent."""
-        result = crud.get_tag(db_session, 99999)
+        result = await crud.get_tag(db_session, 99999)
         assert result is None
 
-    def test_get_tag_found(self, db_session):
+    async def test_get_tag_found(self, db_session):
         """Test get_tag returns tag when exists."""
         tag = models.Tag(name="Find Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_tag(db_session, tag.id)
+        result = await crud.get_tag(db_session, tag.id)
         assert result is not None
         assert result.name == "Find Tag"
 
-    def test_get_tag_by_name(self, db_session):
+    async def test_get_tag_by_name(self, db_session):
         """Test get_tag_by_name returns tag."""
         tag = models.Tag(name="By Name Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.get_tag_by_name(db_session, "By Name Tag")
+        result = await crud.get_tag_by_name(db_session, "By Name Tag")
         assert result is not None
         assert result.name == "By Name Tag"
 
-    def test_create_tag(self, db_session):
+    async def test_create_tag(self, db_session):
         """Test create_tag creates new tag."""
         tag_data = schemas.TagCreate(name="New Tag")
         with patch("app.crud.clear_tags_cache"):
-            tag = crud.create_tag(db_session, tag_data)
+            tag = await crud.create_tag(db_session, tag_data)
 
         assert tag.id is not None
         assert tag.name == "New Tag"
 
-    def test_update_tag(self, db_session):
+    async def test_update_tag(self, db_session):
         """Test update_tag updates name."""
         tag = models.Tag(name="Original Tag Name")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.TagCreate(name="Updated Tag Name")
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_tag(db_session, tag.id, update_data)
+            result = await crud.update_tag(db_session, tag.id, update_data)
 
         assert result is not None
         assert result.name == "Updated Tag Name"
 
-    def test_delete_tag(self, db_session):
+    async def test_delete_tag(self, db_session):
         """Test delete_tag removes tag."""
         tag = models.Tag(name="Delete Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
         tag_id = tag.id
 
         with patch("app.crud.clear_tags_cache"):
-            result = crud.delete_tag(db_session, tag_id)
+            result = await crud.delete_tag(db_session, tag_id)
 
         assert result is True
-        assert crud.get_tag(db_session, tag_id) is None
+        assert await crud.get_tag(db_session, tag_id) is None
 
 
 class TestComments:
     """Tests for comment CRUD operations."""
 
-    def test_get_comments_paginated(self, db_session):
+    async def test_get_comments_paginated(self, db_session):
         """Test get_comments_paginated returns tuple."""
-        comments, total = crud.get_comments_paginated(db_session, 99999)
+        comments, total = await crud.get_comments_paginated(db_session, 99999)
         assert isinstance(comments, list)
         assert isinstance(total, int)
 
-    def test_create_comment(self, db_session):
+    async def test_create_comment(self, db_session):
         """Test create_comment creates comment."""
         # Create a post first
         post = models.Post(title="Comment Post", slug="comment-post", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         comment_data = schemas.CommentCreate(
             nickname="Test User",
@@ -737,7 +738,7 @@ class TestComments:
             content="Test comment",
         )
 
-        comment = crud.create_comment(
+        comment = await crud.create_comment(
             db_session,
             post.id,
             comment_data,
@@ -750,11 +751,11 @@ class TestComments:
         assert comment.content == "Test comment"
         assert comment.ip_address == "127.0.0.1"
 
-    def test_approve_comment(self, db_session):
+    async def test_approve_comment(self, db_session):
         """Test approve_comment updates is_approved."""
         post = models.Post(title="Approve Post", slug="approve-post", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         comment = models.Comment(
             post_id=post.id,
@@ -764,17 +765,17 @@ class TestComments:
             is_approved=False,
         )
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.approve_comment(db_session, comment.id, approved=True)
+        result = await crud.approve_comment(db_session, comment.id, approved=True)
         assert result is not None
         assert result.is_approved is True
 
-    def test_delete_comment(self, db_session):
+    async def test_delete_comment(self, db_session):
         """Test delete_comment removes comment."""
         post = models.Post(title="Delete Comment Post", slug="delete-comment-post", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         comment = models.Comment(
             post_id=post.id,
@@ -783,23 +784,23 @@ class TestComments:
             content="Comment to delete",
         )
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
         comment_id = comment.id
 
-        result = crud.delete_comment(db_session, comment_id)
+        result = await crud.delete_comment(db_session, comment_id)
         assert result is True
 
-    def test_delete_comment_cleans_likes_and_flags(self, db_session):
+    async def test_delete_comment_cleans_likes_and_flags(self, db_session):
         """A like/flag row must never outliven its comment: deleting the
         comment (or, transitively, its post) removes them with it (ORM
         delete-orphan cascade, TASK-352). Previously these additive tables
         orphaned rows pointing at a deleted comment_id forever."""
         post = models.Post(title="Orphan Test Post", slug="orphan-test-post", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         comment = models.Comment(post_id=post.id, nickname="U", email="u@t.com", content="c")
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
         cid = comment.id
         db_session.add_all(
             [
@@ -807,30 +808,46 @@ class TestComments:
                 models.CommentFlag(comment_id=cid, ip_key="127.0.0.3", reason="spam"),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        assert crud.delete_comment(db_session, cid) is True
-        assert db_session.query(models.CommentLike).filter_by(comment_id=cid).count() == 0
-        assert db_session.query(models.CommentFlag).filter_by(comment_id=cid).count() == 0
+        assert await crud.delete_comment(db_session, cid) is True
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentLike).where(models.CommentLike.comment_id == cid)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentFlag).where(models.CommentFlag.comment_id == cid)
+            )
+        ).scalar_one() == 0
 
-    def test_delete_post_cleans_comment_likes_and_flags(self, db_session):
+    async def test_delete_post_cleans_comment_likes_and_flags(self, db_session):
         """Post deletion cascades to comments AND their votes/accusations."""
         post = models.Post(title="Post Orphan", slug="post-orphan", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         comment = models.Comment(post_id=post.id, nickname="U", email="u@t.com", content="c")
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
         cid = comment.id
         db_session.add(models.CommentLike(comment_id=cid, ip_key="127.0.0.4"))
         db_session.add(models.CommentFlag(comment_id=cid, ip_key="127.0.0.5"))
-        db_session.commit()
+        await db_session.commit()
 
-        assert crud.delete_post(db_session, post.id) is True
-        assert db_session.query(models.CommentLike).filter_by(comment_id=cid).count() == 0
-        assert db_session.query(models.CommentFlag).filter_by(comment_id=cid).count() == 0
+        assert await crud.delete_post(db_session, post.id) is True
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentLike).where(models.CommentLike.comment_id == cid)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentFlag).where(models.CommentFlag.comment_id == cid)
+            )
+        ).scalar_one() == 0
 
-    def test_delete_post_cleans_reader_post_likes(self, db_session):
+    async def test_delete_post_cleans_reader_post_likes(self, db_session):
         """Post deletion purges the reader-like rows too (deep-dive finding).
 
         ReaderPostLike is an additive DEC-009 table with no ORM cascade — the
@@ -843,18 +860,22 @@ class TestComments:
 
         reader = ReaderAccount(email="like@example.com", password="x", is_active=True)
         db_session.add(reader)
-        db_session.commit()
+        await db_session.commit()
         post = models.Post(title="Like Orphan", slug="like-orphan", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         db_session.add(models.ReaderPostLike(reader_id=reader.id, post_id=post.id))
-        db_session.commit()
+        await db_session.commit()
 
-        assert crud.delete_post(db_session, post.id) is True
-        remaining = db_session.query(models.ReaderPostLike).filter(models.ReaderPostLike.post_id == post.id).count()
+        assert await crud.delete_post(db_session, post.id) is True
+        remaining = (
+            await db_session.execute(
+                select(func.count()).select_from(models.ReaderPostLike).where(models.ReaderPostLike.post_id == post.id)
+            )
+        ).scalar_one()
         assert remaining == 0
 
-    def test_delete_post_cleans_guest_comment_subscriptions(self, db_session):
+    async def test_delete_post_cleans_guest_comment_subscriptions(self, db_session):
         """Post deletion purges anonymous thread subscriptions too.
 
         GuestCommentSubscription is an additive DEC-009 table with no ORM
@@ -866,7 +887,7 @@ class TestComments:
         """
         post = models.Post(title="Guest Sub Orphan", slug="guest-sub-orphan", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         db_session.add(
             models.GuestCommentSubscription(
                 email="guest@example.com",
@@ -875,17 +896,19 @@ class TestComments:
                 is_confirmed=True,
             )
         )
-        db_session.commit()
+        await db_session.commit()
 
-        assert crud.delete_post(db_session, post.id) is True
+        assert await crud.delete_post(db_session, post.id) is True
         remaining = (
-            db_session.query(models.GuestCommentSubscription)
-            .filter(models.GuestCommentSubscription.post_id == post.id)
-            .count()
-        )
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.GuestCommentSubscription)
+                .where(models.GuestCommentSubscription.post_id == post.id)
+            )
+        ).scalar_one()
         assert remaining == 0
 
-    def test_delete_category_cleans_reader_follows(self, db_session):
+    async def test_delete_category_cleans_reader_follows(self, db_session):
         """Category deletion purges follow rows when no posts reference it.
 
         CategoryFollow is an additive DEC-009 table with no ORM cascade from
@@ -898,22 +921,26 @@ class TestComments:
 
         reader = ReaderAccount(email="cat-follow@example.com", password="x", is_active=True)
         db_session.add(reader)
-        db_session.commit()
+        await db_session.commit()
         category = models.Category(name="Follow Orphan Cat")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
         db_session.add(models.CategoryFollow(reader_id=reader.id, category_id=category.id))
-        db_session.commit()
+        await db_session.commit()
 
         with patch("app.crud.clear_categories_cache"):
-            assert crud.delete_category(db_session, category.id) is True
+            assert await crud.delete_category(db_session, category.id) is True
 
         remaining = (
-            db_session.query(models.CategoryFollow).filter(models.CategoryFollow.category_id == category.id).count()
-        )
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.CategoryFollow)
+                .where(models.CategoryFollow.category_id == category.id)
+            )
+        ).scalar_one()
         assert remaining == 0
 
-    def test_delete_tag_cleans_reader_follows(self, db_session):
+    async def test_delete_tag_cleans_reader_follows(self, db_session):
         """Tag deletion purges follow rows when no posts reference it.
 
         Mirrors the CategoryFollow case: TagFollow is an additive DEC-009 table
@@ -924,20 +951,24 @@ class TestComments:
 
         reader = ReaderAccount(email="tag-follow@example.com", password="x", is_active=True)
         db_session.add(reader)
-        db_session.commit()
+        await db_session.commit()
         tag = models.Tag(name="Follow Orphan Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
         db_session.add(models.TagFollow(reader_id=reader.id, tag_id=tag.id))
-        db_session.commit()
+        await db_session.commit()
 
         with patch("app.crud.clear_tags_cache"):
-            assert crud.delete_tag(db_session, tag.id) is True
+            assert await crud.delete_tag(db_session, tag.id) is True
 
-        remaining = db_session.query(models.TagFollow).filter(models.TagFollow.tag_id == tag.id).count()
+        remaining = (
+            await db_session.execute(
+                select(func.count()).select_from(models.TagFollow).where(models.TagFollow.tag_id == tag.id)
+            )
+        ).scalar_one()
         assert remaining == 0
 
-    def test_delete_series_cleans_reader_follows(self, db_session):
+    async def test_delete_series_cleans_reader_follows(self, db_session):
         """Series deletion purges follow rows too.
 
         SeriesFollow is an additive DEC-009 table with no ORM cascade from
@@ -949,44 +980,52 @@ class TestComments:
 
         reader = ReaderAccount(email="series-follow@example.com", password="x", is_active=True)
         db_session.add(reader)
-        db_session.commit()
+        await db_session.commit()
         series = models.Series(title="Follow Orphan Series", slug="follow-orphan-series")
         db_session.add(series)
-        db_session.commit()
+        await db_session.commit()
         db_session.add(models.SeriesFollow(reader_id=reader.id, series_id=series.id))
-        db_session.commit()
+        await db_session.commit()
 
         with (
             patch("app.crud.clear_series_cache"),
             patch("app.crud.clear_posts_list_cache"),
         ):
-            assert crud.delete_series(db_session, series.id) is True
+            assert await crud.delete_series(db_session, series.id) is True
 
-        remaining = db_session.query(models.SeriesFollow).filter(models.SeriesFollow.series_id == series.id).count()
+        remaining = (
+            await db_session.execute(
+                select(func.count()).select_from(models.SeriesFollow).where(models.SeriesFollow.series_id == series.id)
+            )
+        ).scalar_one()
         assert remaining == 0
 
 
 class TestLikeCommentAtomicity:
     """like_comment must persist row + counter in ONE transaction (ISS-560)."""
 
-    def _comment(self, db_session) -> models.Comment:
+    async def _comment(self, db_session) -> models.Comment:
         post = models.Post(title="Like", slug="like-atomic", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         comment = models.Comment(post_id=post.id, nickname="L", content="like me", is_approved=True)
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
         return comment
 
-    def test_like_comment_bumps_counter_and_creates_row(self, db_session):
-        comment = self._comment(db_session)
-        is_new, updated = crud.like_comment(db_session, comment.id, "ip-1")
+    async def test_like_comment_bumps_counter_and_creates_row(self, db_session):
+        comment = await self._comment(db_session)
+        is_new, updated = await crud.like_comment(db_session, comment.id, "ip-1")
         assert is_new is True
         assert updated is not None
         assert updated.likes == 1
-        assert db_session.query(models.CommentLike).filter(models.CommentLike.comment_id == comment.id).count() == 1
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentLike).where(models.CommentLike.comment_id == comment.id)
+            )
+        ).scalar_one() == 1
 
-    def test_like_comment_single_commit_survives_counter_commit_failure(self, db_session, monkeypatch):
+    async def test_like_comment_single_commit_survives_counter_commit_failure(self, db_session, monkeypatch):
         """A failed second commit must be UNREACHABLE — the like is one write.
 
         The old code committed the CommentLike insert first, then the atomic
@@ -996,7 +1035,7 @@ class TestLikeCommentAtomicity:
         like still lands atomically with row + counter intact; the old code
         would raise on that second commit after persisting the row.
         """
-        comment = self._comment(db_session)
+        comment = await self._comment(db_session)
 
         original_commit = db_session.commit
         calls = {"n": 0}
@@ -1009,26 +1048,30 @@ class TestLikeCommentAtomicity:
 
         monkeypatch.setattr(db_session, "commit", failing_second_commit)
 
-        is_new, updated = crud.like_comment(db_session, comment.id, "ip-1")
+        is_new, updated = await crud.like_comment(db_session, comment.id, "ip-1")
 
         # One commit total (the second is never reached): row + counter are
         # one atomic write.
         assert calls["n"] == 1
         assert is_new is True
         assert updated.likes == 1
-        assert db_session.query(models.CommentLike).filter(models.CommentLike.comment_id == comment.id).count() == 1
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.CommentLike).where(models.CommentLike.comment_id == comment.id)
+            )
+        ).scalar_one() == 1
 
 
 class TestSearchPosts:
     """Tests for search_posts function."""
 
-    def test_search_posts_empty_results(self, db_session):
+    async def test_search_posts_empty_results(self, db_session):
         """Test search_posts with no matches."""
-        posts, total = crud.search_posts(db_session, "nonexistentsearchterm12345")
+        posts, total = await crud.search_posts(db_session, "nonexistentsearchterm12345")
         assert isinstance(posts, list)
         assert total == 0
 
-    def test_search_posts_by_title(self, db_session):
+    async def test_search_posts_by_title(self, db_session):
         """Test search_posts finds posts by title."""
         post = models.Post(
             title="Unique Search Term Post",
@@ -1037,13 +1080,13 @@ class TestSearchPosts:
             published=True,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        posts, total = crud.search_posts(db_session, "Unique Search")
+        posts, total = await crud.search_posts(db_session, "Unique Search")
         assert total >= 1
         assert any("Unique Search" in p.title for p in posts)
 
-    def test_search_posts_by_content(self, db_session):
+    async def test_search_posts_by_content(self, db_session):
         """Test search_posts finds posts by content."""
         post = models.Post(
             title="Content Search Test",
@@ -1052,18 +1095,18 @@ class TestSearchPosts:
             published=True,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        posts, total = crud.search_posts(db_session, "XYZ123")
+        posts, total = await crud.search_posts(db_session, "XYZ123")
         assert total >= 1
 
-    def test_search_posts_pagination(self, db_session):
+    async def test_search_posts_pagination(self, db_session):
         """Test search_posts with pagination."""
-        posts, total = crud.search_posts(db_session, "test", page=1, limit=5)
+        posts, total = await crud.search_posts(db_session, "test", page=1, limit=5)
         assert isinstance(posts, list)
         assert len(posts) <= 5
 
-    def test_has_searchable_token(self):
+    async def test_has_searchable_token(self):
         """Only queries tsvector can tokenize should take the tsvector path.
 
         Postgres plainto_tsquery('english', ...) tokenizes punctuation-only
@@ -1080,7 +1123,7 @@ class TestSearchPosts:
         assert not _has_searchable_token("___ ..")
         assert not _has_searchable_token("--")
 
-    def test_search_posts_percent_wildcard_matches_literally(self, db_session):
+    async def test_search_posts_percent_wildcard_matches_literally(self, db_session):
         """A bare % must not match every post — it is escaped (issue #20)."""
         db_session.add_all(
             [
@@ -1098,13 +1141,13 @@ class TestSearchPosts:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        posts, total = crud.search_posts(db_session, "%")
+        posts, total = await crud.search_posts(db_session, "%")
         assert total == 1
         assert posts[0].title == "50% Off Deal"
 
-    def test_search_posts_underscore_wildcard_matches_literally(self, db_session):
+    async def test_search_posts_underscore_wildcard_matches_literally(self, db_session):
         """A bare _ must not act as a single-char wildcard (issue #20)."""
         db_session.add_all(
             [
@@ -1122,9 +1165,9 @@ class TestSearchPosts:
                 ),
             ]
         )
-        db_session.commit()
+        await db_session.commit()
 
-        posts, total = crud.search_posts(db_session, "_")
+        posts, total = await crud.search_posts(db_session, "_")
         assert total == 1
         assert posts[0].title == "snake_case_note"
 
@@ -1132,16 +1175,16 @@ class TestSearchPosts:
 class TestRelatedPosts:
     """Tests for get_related_posts function."""
 
-    def test_get_related_posts_not_found(self, db_session):
+    async def test_get_related_posts_not_found(self, db_session):
         """Test get_related_posts returns empty for non-existent post."""
-        posts = crud.get_related_posts(db_session, 99999)
+        posts = await crud.get_related_posts(db_session, 99999)
         assert isinstance(posts, list)
 
-    def test_get_related_posts_fallback_category(self, db_session):
+    async def test_get_related_posts_fallback_category(self, db_session):
         """Test get_related_posts falls back to category when no tags."""
         category = models.Category(name="Related Category")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
         # Create source post
         source_post = models.Post(
@@ -1152,7 +1195,7 @@ class TestRelatedPosts:
             category_id=category.id,
         )
         db_session.add(source_post)
-        db_session.commit()
+        await db_session.commit()
 
         # Create related post in same category
         related_post = models.Post(
@@ -1163,21 +1206,21 @@ class TestRelatedPosts:
             category_id=category.id,
         )
         db_session.add(related_post)
-        db_session.commit()
+        await db_session.commit()
 
-        posts = crud.get_related_posts(db_session, source_post.id)
+        posts = await crud.get_related_posts(db_session, source_post.id)
         assert isinstance(posts, list)
 
-    def test_get_related_posts_with_tags_and_category(self, db_session):
+    async def test_get_related_posts_with_tags_and_category(self, db_session):
         """Test get_related_posts with tags and category priority branch."""
         category = models.Category(name="Tag Related Category")
         db_session.add(category)
-        db_session.flush()
+        await db_session.flush()
 
         tag1 = models.Tag(name="related-tag-1")
         tag2 = models.Tag(name="related-tag-2")
         db_session.add_all([tag1, tag2])
-        db_session.flush()
+        await db_session.flush()
 
         # Source post with tags and category
         source_post = models.Post(
@@ -1189,7 +1232,7 @@ class TestRelatedPosts:
         )
         source_post.tags.extend([tag1, tag2])
         db_session.add(source_post)
-        db_session.commit()
+        await db_session.commit()
 
         # Related post in same category with shared tag
         related_post = models.Post(
@@ -1201,7 +1244,7 @@ class TestRelatedPosts:
         )
         related_post.tags.append(tag1)
         db_session.add(related_post)
-        db_session.commit()
+        await db_session.commit()
 
         # Unrelated post (different category, no shared tags)
         other_post = models.Post(
@@ -1211,9 +1254,9 @@ class TestRelatedPosts:
             published=True,
         )
         db_session.add(other_post)
-        db_session.commit()
+        await db_session.commit()
 
-        posts = crud.get_related_posts(db_session, source_post.id, limit=5)
+        posts = await crud.get_related_posts(db_session, source_post.id, limit=5)
         assert isinstance(posts, list)
         assert len(posts) >= 1
         # The related post should be in the results
@@ -1226,9 +1269,9 @@ class TestRelatedPosts:
 class TestPopularPosts:
     """Tests for get_popular_posts function."""
 
-    def test_get_popular_posts(self, db_session):
+    async def test_get_popular_posts(self, db_session):
         """Test get_popular_posts returns posts."""
-        posts = crud.get_popular_posts(db_session, limit=5)
+        posts = await crud.get_popular_posts(db_session, limit=5)
         assert isinstance(posts, list)
         assert len(posts) <= 5
 
@@ -1236,19 +1279,19 @@ class TestPopularPosts:
 class TestCacheInteraction:
     """Tests for cache interaction in CRUD operations."""
 
-    def test_get_categories_uses_cache(self, db_session):
+    async def test_get_categories_uses_cache(self, db_session):
         """Test get_categories checks cache before querying DB."""
         with patch("app.crud.categories_cache", {"all_categories": ["cached"]}):
-            result = crud.get_categories(db_session)
+            result = await crud.get_categories(db_session)
             assert result == ["cached"]
 
-    def test_get_tags_uses_cache(self, db_session):
+    async def test_get_tags_uses_cache(self, db_session):
         """Test get_tags checks cache before querying DB."""
         with patch("app.crud.tags_cache", {"all_tags": ["cached_tag"]}):
-            result = crud.get_tags(db_session)
+            result = await crud.get_tags(db_session)
             assert result == ["cached_tag"]
 
-    def test_create_post_clears_cache(self, db_session):
+    async def test_create_post_clears_cache(self, db_session):
         """Test create_post clears caches after creation."""
         post_data = schemas.PostCreate(
             title="Cache Test Post",
@@ -1258,30 +1301,36 @@ class TestCacheInteraction:
 
         with (
             patch("app.crud.clear_tags_cache") as mock_clear_tags,
-            patch.object(db_session, "commit"),
-            patch.object(db_session, "refresh"),
+            patch.object(db_session, "commit", new_callable=AsyncMock),
+            patch.object(db_session, "refresh", new_callable=AsyncMock),
         ):
-            crud.create_post(db_session, post_data)
+            await crud.create_post(db_session, post_data)
 
         mock_clear_tags.assert_called_once()
 
-    def test_create_category_clears_cache(self, db_session):
+    async def test_create_category_clears_cache(self, db_session):
         """Test create_category clears category cache."""
         category_data = schemas.CategoryCreate(name="Cache Category")
 
         with patch("app.crud.clear_categories_cache") as mock_clear:
-            with patch.object(db_session, "commit"), patch.object(db_session, "refresh"):
-                crud.create_category(db_session, category_data)
+            with (
+                patch.object(db_session, "commit", new_callable=AsyncMock),
+                patch.object(db_session, "refresh", new_callable=AsyncMock),
+            ):
+                await crud.create_category(db_session, category_data)
 
             mock_clear.assert_called_once()
 
-    def test_create_tag_clears_cache(self, db_session):
+    async def test_create_tag_clears_cache(self, db_session):
         """Test create_tag clears tag cache."""
         tag_data = schemas.TagCreate(name="Cache Tag")
 
         with patch("app.crud.clear_tags_cache") as mock_clear:
-            with patch.object(db_session, "commit"), patch.object(db_session, "refresh"):
-                crud.create_tag(db_session, tag_data)
+            with (
+                patch.object(db_session, "commit", new_callable=AsyncMock),
+                patch.object(db_session, "refresh", new_callable=AsyncMock),
+            ):
+                await crud.create_tag(db_session, tag_data)
 
             mock_clear.assert_called_once()
 
@@ -1289,12 +1338,12 @@ class TestCacheInteraction:
 class TestIncrementViewsAndLikes:
     """Tests for increment_views and increment_likes functions."""
 
-    def test_increment_views_not_found(self, db_session):
+    async def test_increment_views_not_found(self, db_session):
         """Test increment_views returns None for non-existent post."""
-        result = crud.increment_views(db_session, 99999)
+        result = await crud.increment_views(db_session, 99999)
         assert result is None
 
-    def test_increment_views_success(self, db_session):
+    async def test_increment_views_success(self, db_session):
         """Test increment_views increments view count."""
         post = models.Post(
             title="Views Test",
@@ -1303,18 +1352,18 @@ class TestIncrementViewsAndLikes:
             views=10,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.increment_views(db_session, post.id)
+        result = await crud.increment_views(db_session, post.id)
         assert result is not None
         assert result.views == 11
 
-    def test_increment_likes_not_found(self, db_session):
+    async def test_increment_likes_not_found(self, db_session):
         """Test increment_likes returns None for non-existent post."""
-        result = crud.increment_likes(db_session, 99999)
+        result = await crud.increment_likes(db_session, 99999)
         assert result is None
 
-    def test_increment_likes_success(self, db_session):
+    async def test_increment_likes_success(self, db_session):
         """Test increment_likes increments like count."""
         post = models.Post(
             title="Likes Test",
@@ -1323,26 +1372,26 @@ class TestIncrementViewsAndLikes:
             likes=5,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
-        result = crud.increment_likes(db_session, post.id)
+        result = await crud.increment_likes(db_session, post.id)
         assert result is not None
         assert result.likes == 6
 
-    def test_increment_views_commit_failure_rolls_back(self):
+    async def test_increment_views_commit_failure_rolls_back(self):
         """Test increment_views rolls back on commit failure."""
-        mock_db = MagicMock()
+        mock_db = AsyncMock()
         mock_db.commit.side_effect = Exception("Commit failed")
         mock_result = MagicMock()
         mock_result.rowcount = 1
         mock_db.execute.return_value = mock_result
 
         with pytest.raises(Exception, match="Commit failed"):
-            crud.increment_views(mock_db, 1)
+            await crud.increment_views(mock_db, 1)
 
         mock_db.rollback.assert_called_once()
 
-    def test_increment_views_recovers_from_daily_row_race(self):
+    async def test_increment_views_recovers_from_daily_row_race(self):
         """Two concurrent first-view pageviews on a day resolve, not 500 (ISS-138).
 
         The loser's commit hits the unique uq_post_views_daily_post_day row and
@@ -1350,11 +1399,11 @@ class TestIncrementViewsAndLikes:
         view is still counted and no IntegrityError escapes to the public
         POST /api/posts/{id}/view endpoint.
         """
-        mock_db = MagicMock()
+        mock_db = AsyncMock()
         # First commit loses the race (IntegrityError); the recovery commit wins.
         mock_db.commit.side_effect = [
             IntegrityError("INSERT INTO post_views_daily", {}, Exception("UNIQUE constraint")),
-            None,
+            DEFAULT,
         ]
         mock_result = MagicMock()
         mock_result.rowcount = 1
@@ -1362,23 +1411,23 @@ class TestIncrementViewsAndLikes:
         # The losing transaction never saw the other writer's daily row.
         mock_db.query.return_value.filter_by.return_value.first.return_value = None
 
-        result = crud.increment_views(mock_db, 1)
+        result = await crud.increment_views(mock_db, 1)
 
         assert result is not None
         # Initial commit + recovery commit; the failed one was rolled back.
         assert mock_db.commit.call_count == 2
         mock_db.rollback.assert_called_once()
 
-    def test_increment_views_invalidates_posts_list_cache(self, db_session):
+    async def test_increment_views_invalidates_posts_list_cache(self, db_session):
         """A pageview must drop the cached list payloads (they embed views, ISS-141)."""
         post = models.Post(title="Cache Views", slug="cache-views", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         cache.posts_list_cache[(1, 10, None, None)] = {"items": [{"id": post.id, "views": 0}]}
         assert len(cache.posts_list_cache) == 1
 
-        crud.increment_views(db_session, post.id)
+        await crud.increment_views(db_session, post.id)
 
         assert len(cache.posts_list_cache) == 0
 
@@ -1387,19 +1436,20 @@ class TestReaderUpsertIdempotency:
     """Concurrent duplicate-key writes on reader follows/bookmarks/subscriptions
     must resolve as idempotent (re-fetch the winner) instead of 500 (ISS-143)."""
 
-    def test_add_reader_bookmark_recovers_from_duplicate_key_race(self):
-        mock_db = MagicMock()
+    async def test_add_reader_bookmark_recovers_from_duplicate_key_race(self):
+        mock_db = AsyncMock()
         # The first commit loses the unique-key race; the recovery re-fetches the
         # winner WITHOUT a second write (no further commit is made).
         mock_db.commit.side_effect = [
             IntegrityError("INSERT INTO reader_bookmarks", {}, Exception("UNIQUE constraint")),
-            None,
+            DEFAULT,
         ]
         existing = MagicMock()
         # Pre-check sees no row; after the rollback the re-fetch sees the winner.
-        mock_db.query.return_value.filter.return_value.first.side_effect = [None, existing]
+        mock_db.execute.return_value = MagicMock()
+        mock_db.execute.return_value.scalars.return_value.first.side_effect = [None, existing]
 
-        bookmark, created = crud.add_reader_bookmark(mock_db, 1, 2)
+        bookmark, created = await crud.add_reader_bookmark(mock_db, 1, 2)
 
         assert created is False
         assert bookmark is existing
@@ -1407,26 +1457,27 @@ class TestReaderUpsertIdempotency:
         assert mock_db.commit.call_count == 1
         mock_db.rollback.assert_called_once()
 
-    def test_record_reading_history_recovers_from_duplicate_key_race(self):
-        mock_db = MagicMock()
+    async def test_record_reading_history_recovers_from_duplicate_key_race(self):
+        mock_db = AsyncMock()
         mock_db.commit.side_effect = [
             IntegrityError("INSERT INTO reading_history", {}, Exception("UNIQUE constraint")),
-            None,
+            DEFAULT,
         ]
         existing = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.side_effect = [None, existing]
+        mock_db.execute.return_value = MagicMock()
+        mock_db.execute.return_value.scalars.return_value.first.side_effect = [None, existing]
         # The denormalized reading_minutes estimate (ISS-451) reads the post's
         # content via db.get; a short post keeps minutes == 1.
         mock_db.get.return_value = models.Post(content="# Hello")
 
-        row, created = crud.record_reading_history(mock_db, 1, 2)
+        row, created = await crud.record_reading_history(mock_db, 1, 2)
 
         assert created is False
         assert row is existing
         assert mock_db.commit.call_count == 1
         mock_db.rollback.assert_called_once()
 
-    def test_record_reading_history_writes_naive_utc(self):
+    async def test_record_reading_history_writes_naive_utc(self):
         """ISS-452: viewed_at written by the history upsert (and the ORM
         column default) is naive UTC — never an aware datetime — so no
         tzoffset can leak into a cache/serialization layer above the DB."""
@@ -1436,25 +1487,25 @@ class TestReaderUpsertIdempotency:
         assert default(None).tzinfo is None
 
         # Create path: hours stamped in the Python constructor must be naive.
-        create_db = MagicMock()
-        create_db.commit.return_value = None
-        create_db.query.return_value.filter.return_value.first.return_value = None
+        create_db = AsyncMock()
+        create_db.execute.return_value = MagicMock()
+        create_db.execute.return_value.scalars.return_value.first.return_value = None
         create_db.get.return_value = models.Post(content="# Hello")
-        row, created = crud.record_reading_history(create_db, 1, 2)
+        row, created = await crud.record_reading_history(create_db, 1, 2)
         assert created is True
         assert row.viewed_at.tzinfo is None
 
         # Update path: the in-place viewed_at bump must also be naive.
         existing = MagicMock()
-        update_db = MagicMock()
-        update_db.commit.return_value = None
-        update_db.query.return_value.filter.return_value.first.return_value = existing
+        update_db = AsyncMock()
+        update_db.execute.return_value = MagicMock()
+        update_db.execute.return_value.scalars.return_value.first.return_value = existing
         update_db.get.return_value = models.Post(content="# Hello")
-        _, created = crud.record_reading_history(update_db, 1, 2)
+        _, created = await crud.record_reading_history(update_db, 1, 2)
         assert created is False
         assert existing.viewed_at.tzinfo is None
 
-    def test_import_reader_history_recovers_from_duplicate_key_race(self):
+    async def test_import_reader_history_recovers_from_duplicate_key_race(self):
         """Concurrent imports of the same previously-unseen post slug must not
         500 on the unique (reader_id, post_id) row (RIL ISS-419/TASK-321).
 
@@ -1464,44 +1515,39 @@ class TestReaderUpsertIdempotency:
         an idempotent existing entry instead of escaping as a 500. The docstring
         promises idempotency for exactly this retry-without-duplication case.
         """
-        mock_db = MagicMock()
+        mock_db = AsyncMock()
         post = models.Post(id=2, slug="race-post", published=True, publish_at=None)
         winner = MagicMock()
         winner.post_id = 2
         winner.viewed_at = datetime(2024, 3, 1, 10, 30, 0)
 
-        def _query(model):
-            q = MagicMock()
-            if model is models.Post:
-                q.filter.return_value.all.return_value = [post]
-            else:  # ReadingHistory — first pass empty, retry sees the winner
-                q.filter.return_value.all.side_effect = [[], [winner]]
-            return q
-
-        mock_db.query.side_effect = _query
+        # Post pass then history pass; the first attempt sees no history rows,
+        # the retry sees the winner (post rows present both attempts).
+        mock_db.execute.return_value = MagicMock()
+        mock_db.execute.return_value.scalars.side_effect = [[post], [], [post], [winner]]
         # First commit loses the unique-key race; the recovery commit wins.
         mock_db.commit.side_effect = [
             IntegrityError("INSERT INTO reading_history", {}, Exception("UNIQUE constraint")),
-            None,
+            DEFAULT,
         ]
 
-        imported, skipped = crud.import_reader_history(mock_db, 1, [("race-post", None)])
+        imported, skipped = await crud.import_reader_history(mock_db, 1, [("race-post", None)])
 
         assert (imported, skipped) == (1, 0)
         # Initial commit + recovery commit; the failed one was rolled back.
         assert mock_db.commit.call_count == 2
         mock_db.rollback.assert_called_once()
 
-    def test_increment_likes_commit_failure_rolls_back(self):
+    async def test_increment_likes_commit_failure_rolls_back(self):
         """Test increment_likes rolls back on commit failure."""
-        mock_db = MagicMock()
+        mock_db = AsyncMock()
         mock_db.commit.side_effect = Exception("Commit failed")
         mock_result = MagicMock()
         mock_result.rowcount = 1
         mock_db.execute.return_value = mock_result
 
         with pytest.raises(Exception, match="Commit failed"):
-            crud.increment_likes(mock_db, 1)
+            await crud.increment_likes(mock_db, 1)
 
         mock_db.rollback.assert_called_once()
 
@@ -1509,11 +1555,11 @@ class TestReaderUpsertIdempotency:
 class TestDeletePostForeignKey:
     """Tests for delete_post with foreign key constraints."""
 
-    def test_delete_post_with_comments(self, db_session):
+    async def test_delete_post_with_comments(self, db_session):
         """Test delete_post successfully deletes post with associated comments (cascade)."""
         post = models.Post(title="Cascade Delete Post", slug="cascade-delete-post", content="Content")
         db_session.add(post)
-        db_session.flush()
+        await db_session.flush()
 
         comment = models.Comment(
             post_id=post.id,
@@ -1522,55 +1568,73 @@ class TestDeletePostForeignKey:
             content="A comment",
         )
         db_session.add(comment)
-        db_session.commit()
+        await db_session.commit()
         post_id = post.id
 
-        result = crud.delete_post(db_session, post_id)
+        result = await crud.delete_post(db_session, post_id)
 
         assert result is True
         # Comments should be cascade-deleted
-        deleted_comment = db_session.get(models.Comment, comment.id)
+        deleted_comment = await db_session.get(models.Comment, comment.id)
         assert deleted_comment is None
 
-    def test_delete_post_not_found(self, db_session):
+    async def test_delete_post_not_found(self, db_session):
         """Test delete_post returns False for non-existent post."""
-        result = crud.delete_post(db_session, 99999)
+        result = await crud.delete_post(db_session, 99999)
         assert result is False
 
-    def test_delete_post_purges_orphan_child_rows(self, db_session):
+    async def test_delete_post_purges_orphan_child_rows(self, db_session):
         """delete_post must purge rows in the DEC-009 child tables (no DB-level
         FK, no ORM cascade) or every post delete leaves permanent orphan rows
         behind (RIL ISS-296)."""
         post = models.Post(title="Orphan Purge Post", slug="orphan-purge-post", content="Content")
         db_session.add(post)
-        db_session.flush()
+        await db_session.flush()
 
         bookmark = models.ReaderBookmark(reader_id=42, post_id=post.id)
         history = models.ReadingHistory(reader_id=42, post_id=post.id, viewed_at=crud.utc_now_naive())
         subscription = models.CommentSubscription(reader_id=42, post_id=post.id)
         daily = models.PostViewsDaily(post_id=post.id, day=crud.utc_now_naive().date())
         db_session.add_all([bookmark, history, subscription, daily])
-        db_session.commit()
+        await db_session.commit()
         post_id = post.id
 
-        result = crud.delete_post(db_session, post_id)
+        result = await crud.delete_post(db_session, post_id)
 
         assert result is True
-        assert db_session.query(models.ReaderBookmark).filter_by(post_id=post_id).count() == 0
-        assert db_session.query(models.ReadingHistory).filter_by(post_id=post_id).count() == 0
-        assert db_session.query(models.CommentSubscription).filter_by(post_id=post_id).count() == 0
-        assert db_session.query(models.PostViewsDaily).filter_by(post_id=post_id).count() == 0
-        assert db_session.get(models.Post, post_id) is None
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.ReaderBookmark).where(models.ReaderBookmark.post_id == post_id)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.ReadingHistory).where(models.ReadingHistory.post_id == post_id)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.CommentSubscription)
+                .where(models.CommentSubscription.post_id == post_id)
+            )
+        ).scalar_one() == 0
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.PostViewsDaily).where(models.PostViewsDaily.post_id == post_id)
+            )
+        ).scalar_one() == 0
+        assert await db_session.get(models.Post, post_id) is None
 
 
 class TestDeleteCategoryForeignKey:
     """Tests for delete_category with foreign key constraints."""
 
-    def test_delete_category_with_posts_raises_error(self, db_session):
+    async def test_delete_category_with_posts_raises_error(self, db_session):
         """Test delete_category raises ValueError when category has posts."""
         category = models.Category(name="Protected Category")
         db_session.add(category)
-        db_session.flush()
+        await db_session.flush()
 
         post = models.Post(
             title="Post with Category",
@@ -1579,33 +1643,33 @@ class TestDeleteCategoryForeignKey:
             category_id=category.id,
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         with pytest.raises(ValueError, match="posts"):
-            crud.delete_category(db_session, category.id)
+            await crud.delete_category(db_session, category.id)
 
-    def test_delete_category_without_posts(self, db_session):
+    async def test_delete_category_without_posts(self, db_session):
         """Test delete_category succeeds when category has no posts."""
         category = models.Category(name="Empty Category")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
         cat_id = category.id
 
         with patch("app.crud.clear_categories_cache"):
-            result = crud.delete_category(db_session, cat_id)
+            result = await crud.delete_category(db_session, cat_id)
 
         assert result is True
-        assert crud.get_category(db_session, cat_id) is None
+        assert await crud.get_category(db_session, cat_id) is None
 
 
 class TestDeleteTagForeignKey:
     """Tests for delete_tag with foreign key constraints."""
 
-    def test_delete_tag_with_posts_raises_error(self, db_session):
+    async def test_delete_tag_with_posts_raises_error(self, db_session):
         """Test delete_tag raises ValueError when tag is used in posts."""
         tag = models.Tag(name="Protected Tag")
         db_session.add(tag)
-        db_session.flush()
+        await db_session.flush()
 
         post = models.Post(
             title="Post with Tag",
@@ -1614,34 +1678,34 @@ class TestDeleteTagForeignKey:
         )
         post.tags.append(tag)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         with pytest.raises(ValueError, match="posts"):
-            crud.delete_tag(db_session, tag.id)
+            await crud.delete_tag(db_session, tag.id)
 
-    def test_delete_tag_without_posts(self, db_session):
+    async def test_delete_tag_without_posts(self, db_session):
         """Test delete_tag succeeds when tag has no posts."""
         tag = models.Tag(name="Unused Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
         tag_id = tag.id
 
         with patch("app.crud.clear_tags_cache"):
-            result = crud.delete_tag(db_session, tag_id)
+            result = await crud.delete_tag(db_session, tag_id)
 
         assert result is True
-        assert crud.get_tag(db_session, tag_id) is None
+        assert await crud.get_tag(db_session, tag_id) is None
 
 
 class TestUpdatePostTagIds:
     """Tests for update_post with tag_ids field."""
 
-    def test_update_post_with_new_tag_ids(self, db_session):
+    async def test_update_post_with_new_tag_ids(self, db_session):
         """Test update_post with tag_ids assigns tags to post."""
         tag1 = models.Tag(name="updated-tag-1")
         tag2 = models.Tag(name="updated-tag-2")
         db_session.add_all([tag1, tag2])
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(
             title="Tag IDs Update Test",
@@ -1649,11 +1713,11 @@ class TestUpdatePostTagIds:
             content="Content",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag1.id, tag2.id])
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert len(result.tags) == 2
@@ -1661,12 +1725,12 @@ class TestUpdatePostTagIds:
         assert tag1.id in tag_ids
         assert tag2.id in tag_ids
 
-    def test_update_post_replace_tag_ids(self, db_session):
+    async def test_update_post_replace_tag_ids(self, db_session):
         """Test update_post with tag_ids replaces existing tags."""
         old_tag = models.Tag(name="old-tag")
         new_tag = models.Tag(name="new-tag")
         db_session.add_all([old_tag, new_tag])
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(
             title="Replace Tags Test",
@@ -1675,23 +1739,23 @@ class TestUpdatePostTagIds:
         )
         post.tags.append(old_tag)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[new_tag.id])
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert len(result.tags) == 1
         assert result.tags[0].id == new_tag.id
 
-    def test_update_post_clear_tag_ids(self, db_session):
+    async def test_update_post_clear_tag_ids(self, db_session):
         """Test update_post with empty tag_ids removes all tags."""
         tag1 = models.Tag(name="clear-tag-1")
         db_session.add(tag1)
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(
             title="Clear Tags Test",
@@ -1700,13 +1764,13 @@ class TestUpdatePostTagIds:
         )
         post.tags.append(tag1)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[])
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert len(result.tags) == 0
@@ -1722,62 +1786,62 @@ class TestUpdatePostValidation:
     with a clear ValueError like the sibling fields.
     """
 
-    def test_update_post_rejects_unknown_author_id(self, db_session):
+    async def test_update_post_rejects_unknown_author_id(self, db_session):
         """An author_id that no longer exists must raise ValueError."""
         post = models.Post(title="Orphan Author", slug="orphan-author-test", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(author_id=99999)
         with pytest.raises(ValueError, match="99999"):
-            crud.update_post(db_session, post.id, update_data)
+            await crud.update_post(db_session, post.id, update_data)
 
-    def test_update_post_accepts_known_author_id(self, db_session):
+    async def test_update_post_accepts_known_author_id(self, db_session):
         """A valid author_id reassignment still saves cleanly."""
         user = auth.User(username="writer2", password="x", role=auth.ROLE_EDITOR)
         db_session.add(user)
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(title="Reassign", slug="reassign-author-test", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(author_id=user.id)
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
         assert result is not None
         assert result.author_id == user.id
 
-    def test_update_post_rejects_unknown_tag_ids(self, db_session):
+    async def test_update_post_rejects_unknown_tag_ids(self, db_session):
         """An unknown tag id must raise ValueError listing the missing ids, not
         silently disappear from the save (same contract as the admin route)."""
         tag = models.Tag(name="keep")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(title="Unknown Tag", slug="unknown-tag-test", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(tag_ids=[tag.id, 99999])
         with pytest.raises(ValueError, match="99999"):
-            crud.update_post(db_session, post.id, update_data)
+            await crud.update_post(db_session, post.id, update_data)
 
-    def test_update_post_clear_tag_ids_still_works(self, db_session):
+    async def test_update_post_clear_tag_ids_still_works(self, db_session):
         """An EMPTY tag_ids list (clearing all tags) is not an unknown-id error."""
         tag = models.Tag(name="to-clear")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
         post = models.Post(title="Clear Tags", slug="clear-tags-test", content="Content")
         post.tags.append(tag)
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
         assert len(post.tags) == 1
 
         update_data = schemas.PostUpdate(tag_ids=[])
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
         assert result is not None
         assert len(result.tags) == 0
 
@@ -1785,93 +1849,93 @@ class TestUpdatePostValidation:
 class TestIntegrityErrorHandling:
     """Tests for IntegrityError handling in category/tag CRUD operations."""
 
-    def test_create_category_duplicate_integrity_error(self, db_session):
+    async def test_create_category_duplicate_integrity_error(self, db_session):
         """Test create_category raises ValueError on duplicate name (IntegrityError)."""
         category = models.Category(name="Duplicate Cat")
         db_session.add(category)
-        db_session.commit()
+        await db_session.commit()
 
         category_data = schemas.CategoryCreate(name="Duplicate Cat")
         with (
             patch("app.crud.clear_categories_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.create_category(db_session, category_data)
+            await crud.create_category(db_session, category_data)
 
-    def test_update_category_duplicate_integrity_error(self, db_session):
+    async def test_update_category_duplicate_integrity_error(self, db_session):
         """Test update_category raises ValueError on duplicate name (IntegrityError)."""
         cat1 = models.Category(name="Category One")
         cat2 = models.Category(name="Category Two")
         db_session.add_all([cat1, cat2])
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.CategoryCreate(name="Category One")
         with (
             patch("app.crud.clear_categories_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.update_category(db_session, cat2.id, update_data)
+            await crud.update_category(db_session, cat2.id, update_data)
 
-    def test_create_tag_duplicate_integrity_error(self, db_session):
+    async def test_create_tag_duplicate_integrity_error(self, db_session):
         """Test create_tag raises ValueError on duplicate name (IntegrityError)."""
         tag = models.Tag(name="Duplicate Tag")
         db_session.add(tag)
-        db_session.commit()
+        await db_session.commit()
 
         tag_data = schemas.TagCreate(name="Duplicate Tag")
         with (
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.create_tag(db_session, tag_data)
+            await crud.create_tag(db_session, tag_data)
 
-    def test_update_tag_duplicate_integrity_error(self, db_session):
+    async def test_update_tag_duplicate_integrity_error(self, db_session):
         """Test update_tag raises ValueError on duplicate name (IntegrityError)."""
         tag1 = models.Tag(name="Tag One")
         tag2 = models.Tag(name="Tag Two")
         db_session.add_all([tag1, tag2])
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.TagCreate(name="Tag One")
         with (
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.update_tag(db_session, tag2.id, update_data)
+            await crud.update_tag(db_session, tag2.id, update_data)
 
-    def test_create_post_duplicate_slug_integrity_error(self, db_session):
+    async def test_create_post_duplicate_slug_integrity_error(self, db_session):
         """Test create_post raises ValueError on duplicate slug (IntegrityError)."""
         post = models.Post(title="Original Post", slug="duplicate-slug-test", content="Content")
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         post_data = schemas.PostCreate(title="Duplicate Post", slug="duplicate-slug-test", content="Other content")
         with (
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.create_post(db_session, post_data)
+            await crud.create_post(db_session, post_data)
 
-    def test_update_post_duplicate_slug_integrity_error(self, db_session):
+    async def test_update_post_duplicate_slug_integrity_error(self, db_session):
         """Test update_post raises ValueError on duplicate slug (IntegrityError)."""
         post1 = models.Post(title="Post One", slug="post-one-slug", content="Content")
         post2 = models.Post(title="Post Two", slug="post-two-slug", content="Content")
         db_session.add(post1)
         db_session.add(post2)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(slug="post-one-slug")
         with (
             patch("app.crud.clear_tags_cache"),
             pytest.raises(ValueError, match="already exists"),
         ):
-            crud.update_post(db_session, post2.id, update_data)
+            await crud.update_post(db_session, post2.id, update_data)
 
 
 class TestCreatePostCoverImage:
     """Tests for cover_image handling in create_post."""
 
-    def test_create_post_with_cover_image(self, db_session):
+    async def test_create_post_with_cover_image(self, db_session):
         """Test creating a post with cover_image saves it correctly."""
         post_data = schemas.PostCreate(
             title="Cover Image Post",
@@ -1881,11 +1945,11 @@ class TestCreatePostCoverImage:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert post.cover_image == "https://example.com/cover.jpg"
 
-    def test_create_post_without_cover_image_defaults_none(self, db_session):
+    async def test_create_post_without_cover_image_defaults_none(self, db_session):
         """Test creating a post without cover_image defaults to None."""
         post_data = schemas.PostCreate(
             title="No Cover Post",
@@ -1894,7 +1958,7 @@ class TestCreatePostCoverImage:
         )
 
         with patch("app.crud.clear_tags_cache"):
-            post = crud.create_post(db_session, post_data)
+            post = await crud.create_post(db_session, post_data)
 
         assert post.cover_image is None
 
@@ -1902,7 +1966,7 @@ class TestCreatePostCoverImage:
 class TestUpdatePostCoverImage:
     """Tests for cover_image handling in update_post."""
 
-    def test_update_post_with_cover_image(self, db_session):
+    async def test_update_post_with_cover_image(self, db_session):
         """Test updating a post's cover_image via update_post."""
         post = models.Post(
             title="Update Cover Post",
@@ -1910,11 +1974,11 @@ class TestUpdatePostCoverImage:
             content="Content",
         )
         db_session.add(post)
-        db_session.commit()
+        await db_session.commit()
 
         update_data = schemas.PostUpdate(cover_image="https://example.com/updated.jpg")
         with patch("app.crud.clear_tags_cache"):
-            result = crud.update_post(db_session, post.id, update_data)
+            result = await crud.update_post(db_session, post.id, update_data)
 
         assert result is not None
         assert result.cover_image == "https://example.com/updated.jpg"

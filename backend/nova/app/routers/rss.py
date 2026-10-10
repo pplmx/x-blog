@@ -6,8 +6,8 @@ from xml.sax.saxutils import escape
 import markdown as md
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, models
 from app.cache import feed_cache
@@ -40,8 +40,8 @@ def _feed_response(body: str, media_type: str, request: Request) -> Response:
     return conditional_response(body, media_type, request, PUBLIC_CACHE_CONTROL)
 
 
-def _resolve_feed_scope(
-    db: Session, category_id: int | None, tag_id: int | None
+async def _resolve_feed_scope(
+    db: AsyncSession, category_id: int | None, tag_id: int | None
 ) -> tuple[models.Category | None, models.Tag | None]:
     """Resolve the optional category/tag scope of a feed request.
 
@@ -54,12 +54,12 @@ def _resolve_feed_scope(
     if category_id is not None and tag_id is not None:
         raise HTTPException(status_code=400, detail="Provide at most one of category_id and tag_id")
     if category_id is not None:
-        category = crud.get_category(db, category_id)
+        category = await crud.get_category(db, category_id)
         if category is None:
             raise HTTPException(status_code=404, detail="Category not found")
         return category, None
     if tag_id is not None:
-        tag = crud.get_tag(db, tag_id)
+        tag = await crud.get_tag(db, tag_id)
         if tag is None:
             raise HTTPException(status_code=404, detail="Tag not found")
         return None, tag
@@ -397,9 +397,9 @@ def generate_comments_atom_feed(
 
 
 @rss_router.get("/comments.xml")
-def get_comments_rss_feed(
+async def get_comments_rss_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """RSS 2.0 feed of the latest approved comments site-wide (round 368, DEC-409).
 
@@ -415,7 +415,7 @@ def get_comments_rss_feed(
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    comments, _ = crud.list_public_comment_feed(db, page=1, limit=20)
+    comments, _ = await crud.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
     site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
@@ -433,9 +433,9 @@ def get_comments_rss_feed(
 
 
 @rss_router.get("/comments.atom.xml")
-def get_comments_atom_feed(
+async def get_comments_atom_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Atom feed variant of the discussion feed (round 368, DEC-409)."""
     key = ("atom-comments",)
@@ -443,7 +443,7 @@ def get_comments_atom_feed(
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    comments, _ = crud.list_public_comment_feed(db, page=1, limit=20)
+    comments, _ = await crud.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
     site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
@@ -461,12 +461,12 @@ def get_comments_atom_feed(
 
 
 @rss_router.get("/feed.xml")
-def get_rss_feed(
+async def get_rss_feed(
     full: bool = True,
     category_id: int | None = None,
     tag_id: int | None = None,
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Get RSS 2.0 feed of published posts.
 
@@ -482,19 +482,19 @@ def get_rss_feed(
     poller hits don't re-query the DB or re-render markdown per request
     (RIL TASK-085, ISS-054).
     """
-    category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    category, tag = await _resolve_feed_scope(db, category_id, tag_id)
     # Fire the scheduled-post publish-time fan-out (DEC-336/TASK-394): an RSS
     # poller is the most reliable read surface for a crossing scheduled post
     # (external cron hits the feed continuously), and the crossing has no
     # write-time trigger to announce it. Cheap indexed no-op when nothing
     # crossed; exactly-once per post by the durable stamp.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     key = ("feed", full, category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(
+    posts, _ = await crud.get_posts(
         db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
     )
 
@@ -519,25 +519,25 @@ def get_rss_feed(
 
 
 @rss_router.get("/atom.xml")
-def get_atom_feed(
+async def get_atom_feed(
     category_id: int | None = None,
     tag_id: int | None = None,
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Get Atom feed of published posts, optionally scoped to a category/tag
     (DEC-074, TASK-146; same semantics as the RSS feed)."""
-    category, tag = _resolve_feed_scope(db, category_id, tag_id)
+    category, tag = await _resolve_feed_scope(db, category_id, tag_id)
     # Same scheduled-post publish-time fan-out as the RSS feed (DEC-336/
     # TASK-394): the crossing has no write-time trigger, so the Atom read path
     # is one of the surfaces that notice it. Exactly-once by durable stamp.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     key = ("atom", category_id, tag_id)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/atom+xml", request)
 
-    posts, _ = crud.get_posts(
+    posts, _ = await crud.get_posts(
         db, skip=0, limit=20, published=True, category_id=category_id, tag_id=tag_id, pinned_first=False
     )
 
@@ -581,30 +581,30 @@ def get_atom_feed(
 
 
 @rss_router.get("/category/{name}.xml")
-def get_category_rss_feed(
+async def get_category_rss_feed(
     name: str,
     full: bool = True,
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """RSS 2.0 feed scoped to a category (by its unique name; DEC-130/TASK-177).
 
     Category has no slug column — its unique ``name`` is the stable, URL-encoded
     path segment. Unknown name -> 404. Cached under a scoped key.
     """
-    category = crud.get_category_by_name(db, name)
+    category = await crud.get_category_by_name(db, name)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
     # a polled surface that surfaces crossed posts — fire the exactly-once
     # sweep like the sitewide feeds. Cheap indexed no-op when nothing crossed.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     key = ("rss-category", name, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id, pinned_first=False)
+    posts, _ = await crud.get_posts(db, skip=0, limit=20, published=True, category_id=category.id, pinned_first=False)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -627,29 +627,29 @@ def get_category_rss_feed(
 
 
 @rss_router.get("/series/{slug}.xml")
-def get_series_rss_feed(
+async def get_series_rss_feed(
     slug: str,
     full: bool = True,
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """RSS 2.0 feed scoped to a series (by its slug; DEC-130/TASK-177).
 
     Unknown slug -> 404. Cached under a scoped key.
     """
-    series = crud.get_series_by_slug(db, slug)
+    series = await crud.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): same sweep as the
     # other polled feed surfaces; a series feed poller is a reliable crossing
     # trigger. Exactly-once by the durable stamp.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     key = ("rss-series", slug, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts = crud.get_series_visible_posts(db, series)[:20]
+    posts = (await crud.get_series_visible_posts(db, series))[:20]
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
@@ -672,11 +672,11 @@ def get_series_rss_feed(
 
 
 @rss_router.get("/authors/{author_id}.xml")
-def get_author_rss_feed(
+async def get_author_rss_feed(
     author_id: IdInt,
     full: bool = True,
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """RSS 2.0 feed scoped to one public writer (DEC-359, round 345).
 
@@ -686,18 +686,18 @@ def get_author_rss_feed(
     admin answer the SAME 404, so the feed cannot enumerate admins or reveal
     which usernames exist. Cached under a scoped key.
     """
-    author = db.query(auth.User).filter(auth.User.id == author_id).first()
+    author = (await db.execute(select(auth.User).where(auth.User.id == author_id))).scalar_one_or_none()
     if author is None or not author.display_name:
         raise HTTPException(status_code=404, detail="Author not found")
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
     # a polled surface — fire the exactly-once sweep like the other feeds.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     key = ("rss-author", author_id, full)
     cached = feed_cache.get(key)
     if cached is not None:
         return _feed_response(cached, "application/rss+xml", request)
 
-    posts, _ = crud.get_posts(
+    posts, _ = await crud.get_posts(
         db,
         skip=0,
         limit=20,
@@ -736,11 +736,11 @@ SITEMAP_POST_PAGE = 1000
 
 
 @seo_router.get("/sitemap.xml")
-def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Response:  # type: ignore[assignment]
+async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get XML sitemap of the site."""
     # Scheduled-post publish-time fan-out (DEC-344/TASK-398): the sitemap's
     # crawl hit surfaces a crossed post — fire the exactly-once sweep too.
-    crud.maybe_notify_due_scheduled_posts(db)
+    await crud.maybe_notify_due_scheduled_posts(db)
     cached = feed_cache.get("sitemap")
     if cached is not None:
         return _feed_response(cached, "application/xml", request)
@@ -749,14 +749,14 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     posts: list = []
     offset = 0
     while True:
-        page, _ = crud.get_posts(db, skip=offset, limit=SITEMAP_POST_PAGE, published=True, pinned_first=False)
+        page, _ = await crud.get_posts(db, skip=offset, limit=SITEMAP_POST_PAGE, published=True, pinned_first=False)
         posts.extend(page)
         offset += len(page)
         if len(page) < SITEMAP_POST_PAGE:
             break
-    categories = crud.get_categories(db)
-    tags = crud.get_tags(db)
-    series_list = crud.list_series(db)
+    categories = await crud.get_categories(db)
+    tags = await crud.get_tags(db)
+    series_list = await crud.list_series(db)
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
 
@@ -854,19 +854,26 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     <priority>0.4</priority>
 </url>""")
     writers = (
-        db.query(auth.User).filter(auth.User.display_name.isnot(None)).order_by(auth.User.display_name.asc()).all()
+        (
+            await db.execute(
+                select(auth.User).where(auth.User.display_name.isnot(None)).order_by(auth.User.display_name.asc())
+            )
+        )
+        .scalars()
+        .all()
     )
     if writers:
         author_lastmod_rows = (
-            db.query(models.Post.author_id, func.max(models.Post.updated_at))
-            .filter(
-                models.Post.author_id.isnot(None),
-                models.Post.published.is_(True),
-                models.Post.author_id.in_([w.id for w in writers]),
+            await db.execute(
+                select(models.Post.author_id, func.max(models.Post.updated_at))
+                .where(
+                    models.Post.author_id.isnot(None),
+                    models.Post.published.is_(True),
+                    models.Post.author_id.in_([w.id for w in writers]),
+                )
+                .group_by(models.Post.author_id)
             )
-            .group_by(models.Post.author_id)
-            .all()
-        )
+        ).all()
         author_lastmod = {int(author_id): lastmod for author_id, lastmod in author_lastmod_rows}
         for writer in writers:
             # The admin User has no updated_at column; a writer with no published
@@ -882,7 +889,7 @@ def get_sitemap(request: Request = None, db: Session = Depends(get_db)) -> Respo
     # Static pages (round 347): a published /pages/{slug} is a real indexable
     # page (privacy policy / terms / contact), so it belongs in the sitemap;
     # drafts are unpublished and must stay out.
-    published_pages = db.query(models.Page).filter(models.Page.published.is_(True)).all()
+    published_pages = (await db.execute(select(models.Page).where(models.Page.published.is_(True)))).scalars().all()
     for page in published_pages:
         updated = page.updated_at or crud.utc_now_naive()
         urls.append(f"""<url>

@@ -52,7 +52,7 @@ def _query(url: str, sql: str, params: tuple = ()):
         conn.close()
 
 
-def test_upgrade_adds_missing_column(stale_sqlite_url: str):
+async def test_upgrade_adds_missing_column(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
 
     cols = {row[1] for row in _query(stale_sqlite_url, "PRAGMA table_info(users)")}
@@ -68,7 +68,7 @@ def test_upgrade_adds_missing_column(stale_sqlite_url: str):
     assert rows == []
 
 
-def test_upgrade_is_idempotent(stale_sqlite_url: str):
+async def test_upgrade_is_idempotent(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
     run_migrations(db_url=stale_sqlite_url)
 
@@ -76,14 +76,14 @@ def test_upgrade_is_idempotent(stale_sqlite_url: str):
     assert cols.count("token_version") == 1
 
 
-def test_upgrade_adds_avatar_url_to_reader_accounts(stale_sqlite_url: str):
+async def test_upgrade_adds_avatar_url_to_reader_accounts(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
 
     cols = {row[1] for row in _query(stale_sqlite_url, "PRAGMA table_info(reader_accounts)")}
     assert "avatar_url" in cols
 
 
-def test_avatar_url_migration_is_idempotent(stale_sqlite_url: str):
+async def test_avatar_url_migration_is_idempotent(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
     run_migrations(db_url=stale_sqlite_url)
 
@@ -91,14 +91,14 @@ def test_avatar_url_migration_is_idempotent(stale_sqlite_url: str):
     assert cols.count("avatar_url") == 1
 
 
-def test_upgrade_stamps_alembic_version(stale_sqlite_url: str):
+async def test_upgrade_stamps_alembic_version(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
 
     version = _query(stale_sqlite_url, "SELECT version_num FROM alembic_version")
     assert version and version[0][0]  # reaches head
 
 
-def test_upgrade_adds_reading_history_pagination_index(stale_sqlite_url: str):
+async def test_upgrade_adds_reading_history_pagination_index(stale_sqlite_url: str):
     run_migrations(db_url=stale_sqlite_url)
 
     indexes = {row[1] for row in _query(stale_sqlite_url, "PRAGMA index_list(reading_history)")}
@@ -114,7 +114,7 @@ def test_upgrade_adds_reading_history_pagination_index(stale_sqlite_url: str):
     assert columns == ["reader_id", "viewed_at", "post_id"]
 
 
-def test_history_pagination_index_is_created_concurrently_on_postgres(monkeypatch):
+async def test_history_pagination_index_is_created_concurrently_on_postgres(monkeypatch):
     from migrations.versions import m2e7a9c1d3f5_add_reading_history_pagination_index as migration
 
     class Dialect:
@@ -170,7 +170,7 @@ def test_history_pagination_index_is_created_concurrently_on_postgres(monkeypatc
     assert create_kwargs["postgresql_concurrently"] is True
 
 
-def test_history_pagination_index_rebuilds_invalid_postgres_index(monkeypatch):
+async def test_history_pagination_index_rebuilds_invalid_postgres_index(monkeypatch):
     from migrations.versions import m2e7a9c1d3f5_add_reading_history_pagination_index as migration
 
     class Dialect:
@@ -220,7 +220,7 @@ def test_history_pagination_index_rebuilds_invalid_postgres_index(monkeypatch):
     assert operations == ["autocommit", "drop", "create"]
 
 
-def test_redundant_indexes_are_removed_from_create_all_era_schema(monkeypatch):
+async def test_redundant_indexes_are_removed_from_create_all_era_schema(monkeypatch):
     from migrations.versions import n3f8b0d2e4a6_remove_redundant_admin_push_endpoint_index as migration
 
     class Dialect:
@@ -302,7 +302,7 @@ def _tsvector_bind(index_exists: bool, dialect: str = "postgresql"):
     return Bind()
 
 
-def test_posts_tsvector_index_created_concurrently_on_postgres(monkeypatch):
+async def test_posts_tsvector_index_created_concurrently_on_postgres(monkeypatch):
     from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
 
     _CreateIndex_AutocommitContext.entered = False
@@ -329,7 +329,7 @@ def test_posts_tsvector_index_created_concurrently_on_postgres(monkeypatch):
     assert migration.INDEX_NAME in executed[0]
 
 
-def test_posts_tsvector_index_skipped_when_present_on_postgres(monkeypatch):
+async def test_posts_tsvector_index_skipped_when_present_on_postgres(monkeypatch):
     """Idempotency: an already-created index must not re-run CREATE INDEX
     CONCURRENTLY (which would error with 'already exists')."""
     from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
@@ -345,7 +345,7 @@ def test_posts_tsvector_index_skipped_when_present_on_postgres(monkeypatch):
     assert executed == []
 
 
-def test_posts_tsvector_index_is_noop_on_sqlite(monkeypatch):
+async def test_posts_tsvector_index_is_noop_on_sqlite(monkeypatch):
     """SQLite (the default test back) lacks to_tsvector/GIN and uses the ILIKE
     substring branch — the migration must not attempt PG-only DDL there."""
     from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
@@ -359,7 +359,7 @@ def test_posts_tsvector_index_is_noop_on_sqlite(monkeypatch):
     assert executed == []
 
 
-def test_posts_tsvector_index_downgrade_drops_on_postgres(monkeypatch):
+async def test_posts_tsvector_index_downgrade_drops_on_postgres(monkeypatch):
     from migrations.versions import a8c9d0e1f2a3_add_posts_tsvector_gin_index as migration
 
     executed = []
@@ -412,7 +412,7 @@ def stale_bookmark_sqlite_url(tmp_path: Path) -> str:
     return f"sqlite:///{db_path}"
 
 
-def test_bookmark_done_migration_defaults_existing_rows_to_toread(stale_bookmark_sqlite_url: str) -> None:
+async def test_bookmark_done_migration_defaults_existing_rows_to_toread(stale_bookmark_sqlite_url: str) -> None:
     """Round 361, DEC-395: existing bookmarks must read back To-read after upgrade.
 
     Guards the dialect-safe default: SQLite must store a real false (DEFAULT 0),
@@ -457,7 +457,7 @@ def stale_account_public_likes_url(tmp_path: Path) -> str:
     return f"sqlite:///{db_path}"
 
 
-def test_public_likes_migration_defaults_existing_readers_private(stale_account_public_likes_url: str) -> None:
+async def test_public_likes_migration_defaults_existing_readers_private(stale_account_public_likes_url: str) -> None:
     """Round 360, DEC-393: existing readers must read back private after upgrade.
 
     Same dialect-guard as the done column above: sa.false() stores DEFAULT 0 on

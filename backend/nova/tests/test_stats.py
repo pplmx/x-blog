@@ -1,9 +1,9 @@
 """Tests for stats endpoint."""
 
 
-def test_get_stats(client):
+async def test_get_stats(client):
     """Test get blog stats endpoint."""
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     data = response.json()
 
@@ -28,16 +28,16 @@ def test_get_stats(client):
     assert isinstance(data["total_likes"], int)
 
 
-def test_stats_has_request_id(client):
+async def test_stats_has_request_id(client):
     """Test stats endpoint returns request ID header."""
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     assert "X-Request-ID" in response.headers
 
 
-def test_stats_values_non_negative(client):
+async def test_stats_values_non_negative(client):
     """Test all stats values are non-negative."""
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     data = response.json()
 
@@ -49,18 +49,18 @@ def test_stats_values_non_negative(client):
     assert data["total_views"] >= 0
 
 
-def test_stats_published_less_than_total(client):
+async def test_stats_published_less_than_total(client):
     """Test published posts <= total posts."""
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     data = response.json()
 
     assert data["published_posts"] <= data["total_posts"]
 
 
-def test_stats_scheduled_post_not_counted_as_published(client, auth_headers):
+async def test_stats_scheduled_post_not_counted_as_published(client, auth_headers):
     """A future-dated post must not inflate the published_posts count."""
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Stats Post",
@@ -71,7 +71,7 @@ def test_stats_scheduled_post_not_counted_as_published(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     data = response.json()
     assert data["published_posts"] == 0
@@ -79,7 +79,7 @@ def test_stats_scheduled_post_not_counted_as_published(client, auth_headers):
     assert data["total_posts"] == 1
 
 
-def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
+async def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     """A future-dated post counts as scheduled, so drafts = total - published - scheduled.
 
     Regression for RIL TASK-036: the dashboard derives draftCount =
@@ -87,7 +87,7 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     into the draft bucket (the admin list treats them as a distinct status).
     """
     # published draft
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Real Draft",
@@ -98,7 +98,7 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
         headers=auth_headers,
     )
     # scheduled (published=True but future publish_at)
-    client.post(
+    await client.post(
         "/api/posts",
         json={
             "title": "Scheduled Post",
@@ -109,7 +109,7 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
         },
         headers=auth_headers,
     )
-    response = client.get("/api/stats")
+    response = await client.get("/api/stats")
     assert response.status_code == 200
     data = response.json()
     # 2 posts: 1 draft + 1 scheduled, nothing published yet
@@ -120,7 +120,7 @@ def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     assert data["total_posts"] - data["published_posts"] - data["scheduled_posts"] == 1
 
 
-def test_stats_no_longer_exposes_pending(client, db_session):
+async def test_stats_no_longer_exposes_pending(client, db_session):
     """GET /api/stats must NOT expose the moderation backlog (round 276).
 
     The unauthenticated endpoint previously answered pending_comments — the
@@ -135,7 +135,7 @@ def test_stats_no_longer_exposes_pending(client, db_session):
 
     post = models.Post(title="Stats Pending Post", slug="stats-pending-post", content="x", published=True)
     db_session.add(post)
-    db_session.flush()
+    await db_session.flush()
     db_session.add_all(
         [
             models.Comment(post_id=post.id, nickname="A", content="pending", is_approved=False, reviewed_at=None),
@@ -149,9 +149,9 @@ def test_stats_no_longer_exposes_pending(client, db_session):
             models.Comment(post_id=post.id, nickname="C", content="approved", is_approved=True),
         ]
     )
-    db_session.commit()
+    await db_session.commit()
 
-    data = client.get("/api/stats").json()
+    data = (await client.get("/api/stats")).json()
     # Pending is gone from the public surface entirely.
     assert "pending_comments" not in data
     assert data["total_comments"] == 3

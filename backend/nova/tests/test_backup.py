@@ -18,13 +18,16 @@ Covers:
 
 from datetime import timedelta
 
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import joinedload
+
 from app import models
 from app.crud import create_post
 from app.schemas import PostCreate
 
 
-def _create_post(db_session, slug, *, category=None, tags=None, series=None, published=True):
-    post = create_post(
+async def _create_post(db_session, slug, *, category=None, tags=None, series=None, published=True):
+    post = await create_post(
         db_session,
         PostCreate(title=f"Title {slug}", slug=slug, content=f"# {slug}", published=published),
     )
@@ -35,19 +38,19 @@ def _create_post(db_session, slug, *, category=None, tags=None, series=None, pub
     if series is not None:
         post.series = series
         post.series_order = 1
-    db_session.flush()
+    await db_session.flush()
     return post
 
 
-def _seed_blog(db_session):
+async def _seed_blog(db_session):
     cat = models.Category(name="技术")
     tag_a = models.Tag(name="python")
     tag_b = models.Tag(name="nuxt")
     srs = models.Series(title="系列一", slug="series-one", description="d")
     db_session.add_all([cat, tag_a, tag_b, srs])
-    db_session.flush()
+    await db_session.flush()
 
-    post = _create_post(db_session, "hello-world", category=cat, tags=[tag_a, tag_b], series=srs)
+    post = await _create_post(db_session, "hello-world", category=cat, tags=[tag_a, tag_b], series=srs)
     post.views = 123
     post.likes = 4
     parent = models.Comment(
@@ -58,7 +61,7 @@ def _seed_blog(db_session):
         is_approved=True,
     )
     db_session.add(parent)
-    db_session.flush()
+    await db_session.flush()
     db_session.add(
         models.Comment(
             post_id=post.id,
@@ -70,21 +73,21 @@ def _seed_blog(db_session):
             reader_id=99,  # reader 99 does not exist here — the link must degrade
         )
     )
-    _create_post(db_session, "draft-post", published=False, tags=[tag_b])
-    db_session.flush()
+    await _create_post(db_session, "draft-post", published=False, tags=[tag_b])
+    await db_session.flush()
     return post
 
 
-def _wipe_content(db_session):
-    db_session.query(models.Comment).delete()
+async def _wipe_content(db_session):
+    await db_session.execute(delete(models.Comment))
     # post_tags is the join table with FKs into posts/tags — clear it before
     # deleting either side (SQLite enforces FKs in the test engine).
-    db_session.execute(models.post_tags.delete())
-    db_session.query(models.Post).delete()
-    db_session.query(models.Series).delete()
-    db_session.query(models.Tag).delete()
-    db_session.query(models.Category).delete()
-    db_session.flush()
+    await db_session.execute(delete(models.post_tags))
+    await db_session.execute(delete(models.Post))
+    await db_session.execute(delete(models.Series))
+    await db_session.execute(delete(models.Tag))
+    await db_session.execute(delete(models.Category))
+    await db_session.flush()
 
 
 def _auth(token):
@@ -92,42 +95,40 @@ def _auth(token):
 
 
 class TestBackupAuthz:
-    def test_anonymous_rejected(self, client):
-        assert client.get("/api/admin/backup").status_code == 401
+    async def test_anonymous_rejected(self, client):
+        assert (await client.get("/api/admin/backup")).status_code == 401
 
-    def test_reader_token_rejected(self, client):
+    async def test_reader_token_rejected(self, client):
         from app.auth import create_reader_token
 
         token = create_reader_token({"sub": 1})
-        assert client.get("/api/admin/backup", headers=_auth(token)).status_code == 401
+        assert (await client.get("/api/admin/backup", headers=_auth(token))).status_code == 401
 
-    def test_editor_rejected(self, client, editor_headers):
+    async def test_editor_rejected(self, client, editor_headers):
         # Export carries commenter PII and restore is a bulk write — both are
         # superuser-only (editors moderate content but must not dump/overwrite).
-        assert client.get("/api/admin/backup", headers=editor_headers).status_code == 403
+        assert (await client.get("/api/admin/backup", headers=editor_headers)).status_code == 403
         assert (
-            client.post(
+            await client.post(
                 "/api/admin/backup/restore",
                 json={"format": "x-blog-backup", "version": 1, "posts": []},
                 headers=editor_headers,
-            ).status_code
-            == 403
-        )
+            )
+        ).status_code == 403
 
-    def test_restore_anonymous_rejected(self, client):
+    async def test_restore_anonymous_rejected(self, client):
         assert (
-            client.post(
+            await client.post(
                 "/api/admin/backup/restore",
                 json={"format": "x-blog-backup", "version": 1, "posts": []},
-            ).status_code
-            == 401
-        )
+            )
+        ).status_code == 401
 
 
 class TestBackupSnapshot:
-    def test_exports_full_blog_without_auth_data(self, client, db_session, auth_headers):
-        _seed_blog(db_session)
-        response = client.get("/api/admin/backup", headers=auth_headers)
+    async def test_exports_full_blog_without_auth_data(self, client, db_session, auth_headers):
+        await _seed_blog(db_session)
+        response = await client.get("/api/admin/backup", headers=auth_headers)
         assert response.status_code == 200
         snap = response.json()
         assert snap["format"] == "x-blog-backup"
@@ -163,14 +164,14 @@ class TestBackupSnapshot:
 
 
 class TestBackupRestore:
-    def test_round_trip_restores_full_blog(self, client, db_session, auth_headers):
-        _seed_blog(db_session)
-        snap = client.get("/api/admin/backup", headers=auth_headers).json()
+    async def test_round_trip_restores_full_blog(self, client, db_session, auth_headers):
+        await _seed_blog(db_session)
+        snap = (await client.get("/api/admin/backup", headers=auth_headers)).json()
 
-        _wipe_content(db_session)
-        assert db_session.query(models.Post).count() == 0
+        await _wipe_content(db_session)
+        assert (await db_session.execute(select(func.count()).select_from(models.Post))).scalar() == 0
 
-        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        response = await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
         assert response.status_code == 200, response.text
         counts = response.json()
         assert counts["categories"] == 1
@@ -182,21 +183,40 @@ class TestBackupRestore:
         assert counts["comments_skipped"] == 0
 
         # Categories/tags/series by natural key.
-        assert db_session.query(models.Category).filter_by(name="技术").count() == 1
-        assert db_session.query(models.Tag).count() == 2
-        series = db_session.query(models.Series).filter_by(slug="series-one").one()
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.Category).where(models.Category.name == "技术")
+            )
+        ).scalar() == 1
+        assert (await db_session.execute(select(func.count()).select_from(models.Tag))).scalar() == 2
+        series = (
+            (await db_session.execute(select(models.Series).where(models.Series.slug == "series-one"))).scalars().one()
+        )
 
         # Posts restored with links + counters; comments re-attached + parent
         # re-wired (restore re-creates the reply and its parent link).
-        post = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        post = (
+            (
+                await db_session.execute(
+                    select(models.Post)
+                    .options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                    .where(models.Post.slug == "hello-world")
+                )
+            )
+            .unique()
+            .scalars()
+            .one()
+        )
         assert post.views == 123 and post.likes == 4
         assert post.category.name == "技术"
         assert {t.name for t in post.tags} == {"python", "nuxt"}
         assert post.series_id == series.id
-        draft = db_session.query(models.Post).filter_by(slug="draft-post").one()
+        draft = (await db_session.execute(select(models.Post).where(models.Post.slug == "draft-post"))).scalars().one()
         assert draft.published is False
 
-        comments = db_session.query(models.Comment).filter_by(post_id=post.id).all()
+        comments = (
+            (await db_session.execute(select(models.Comment).where(models.Comment.post_id == post.id))).scalars().all()
+        )
         assert len(comments) == 2
         reply = next(c for c in comments if c.nickname == "Reader")
         assert reply.parent_id is not None  # parent link survived the round trip
@@ -205,83 +225,95 @@ class TestBackupRestore:
         assert reply.reader_id is None
         assert reply.import_key == "hello-world#1"
 
-    def test_restore_into_existing_blog_upserts_and_merges(self, client, db_session, auth_headers):
+    async def test_restore_into_existing_blog_upserts_and_merges(self, client, db_session, auth_headers):
         """Re-importing into an existing restore: same slugs are UPDATED, and
         comments already imported (their import_key matches) are skipped —
         never duplicated."""
-        _seed_blog(db_session)
-        snap = client.get("/api/admin/backup", headers=auth_headers).json()
-        _wipe_content(db_session)
-        first = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        await _seed_blog(db_session)
+        snap = (await client.get("/api/admin/backup", headers=auth_headers)).json()
+        await _wipe_content(db_session)
+        first = await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
         assert first.status_code == 200  # comments now carry import_key
 
         # Perturb the live post, then restore again: the existing row updates.
-        post = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        post = (await db_session.execute(select(models.Post).where(models.Post.slug == "hello-world"))).scalars().one()
         post.title = "changed locally"
         post.published = False
-        db_session.commit()
-        db_session.refresh(post)
+        await db_session.commit()
+        await db_session.refresh(post)
 
-        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        response = await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
         assert response.status_code == 200
         counts = response.json()
         assert counts["posts_created"] == 0  # both slugs already exist
         assert counts["posts_updated"] == 2
         assert counts["comments_skipped"] == 2  # import_key matches the imported rows
 
-        post = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        post = (await db_session.execute(select(models.Post).where(models.Post.slug == "hello-world"))).scalars().one()
         assert post.title == "Title hello-world"  # restored from the snapshot
         assert post.published is True
-        assert db_session.query(models.Comment).filter_by(post_id=post.id).count() == 2  # no dupes
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(models.Comment).where(models.Comment.post_id == post.id)
+            )
+        ).scalar() == 2  # no dupes
 
-    def test_restore_same_snapshot_twice_is_idempotent(self, client, db_session, auth_headers):
-        _seed_blog(db_session)
-        snap = client.get("/api/admin/backup", headers=auth_headers).json()
-        _wipe_content(db_session)
+    async def test_restore_same_snapshot_twice_is_idempotent(self, client, db_session, auth_headers):
+        await _seed_blog(db_session)
+        snap = (await client.get("/api/admin/backup", headers=auth_headers)).json()
+        await _wipe_content(db_session)
 
-        first = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers).json()
+        first = (await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)).json()
         assert first["comments_created"] == 2
-        second = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers).json()
+        second = (await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)).json()
         assert second["posts_created"] == 0
         assert second["comments_created"] == 0
         assert second["comments_skipped"] == 2
-        assert db_session.query(models.Post).count() == 2
-        assert db_session.query(models.Comment).count() == 2
+        assert (await db_session.execute(select(func.count()).select_from(models.Post))).scalar() == 2
+        assert (await db_session.execute(select(func.count()).select_from(models.Comment))).scalar() == 2
 
-    def test_restore_reconciles_daily_views_against_restored_counter(self, client, db_session, auth_headers):
+    async def test_restore_reconciles_daily_views_against_restored_counter(self, client, db_session, auth_headers):
         """Restoring rewinds the published counter to the snapshot but a backup
         carries no per-day breakdown — the pre-restore post_views_daily rows must
         be dropped so the admin trend chart agrees with the restored counter
         instead of permanently disagreeing (round-292 deep-dive)."""
         from app.crud import utc_now_naive
 
-        _seed_blog(db_session)
+        await _seed_blog(db_session)
         # Live instance has accumulated daily view rows, and the snapshot was
         # taken EARLIER (its counter, 123, is below the live accumulated total).
-        post = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        post = (await db_session.execute(select(models.Post).where(models.Post.slug == "hello-world"))).scalars().one()
         db_session.add(models.PostViewsDaily(post_id=post.id, day=utc_now_naive().date(), views=500))
         db_session.add(
             models.PostViewsDaily(post_id=post.id, day=utc_now_naive().date() - timedelta(days=1), views=400)
         )
-        db_session.commit()
+        await db_session.commit()
 
-        snap = client.get("/api/admin/backup", headers=auth_headers).json()
-        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        snap = (await client.get("/api/admin/backup", headers=auth_headers)).json()
+        response = await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
         assert response.status_code == 200, response.text
 
-        restored = db_session.query(models.Post).filter_by(slug="hello-world").one()
+        restored = (
+            (await db_session.execute(select(models.Post).where(models.Post.slug == "hello-world"))).scalars().one()
+        )
         assert restored.views == 123  # restored counter survives
         # The trend chart must not keep summing the 400/500 pre-restore rows.
-        assert db_session.query(models.PostViewsDaily).filter(models.PostViewsDaily.post_id == restored.id).count() == 0
+        assert (
+            await db_session.execute(
+                select(func.count())
+                .select_from(models.PostViewsDaily)
+                .where(models.PostViewsDaily.post_id == restored.id)
+            )
+        ).scalar() == 0
 
-    def test_restore_invalidates_public_caches(self, client, db_session, auth_headers):
+    async def test_restore_invalidates_public_caches(self, client, db_session, auth_headers):
         """Restoring must invalidate the public categories/posts caches (ISS-365):
         an imported category + published post become visible immediately, not
         after the 30-min categories / 5-min posts-list TTL."""
         # Warm the public list caches with the (empty) blog, so stale data would
         # otherwise be served for the whole TTL.
-        assert client.get("/api/categories").json() == []
-        assert client.get("/api/posts?limit=10").json()["items"] == []
+        assert (await client.get("/api/categories")).json() == []
+        assert (await client.get("/api/posts?limit=10")).json()["items"] == []
 
         snap = {
             "format": "x-blog-backup",
@@ -301,28 +333,28 @@ class TestBackupRestore:
                 }
             ],
         }
-        response = client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
+        response = await client.post("/api/admin/backup/restore", json=snap, headers=auth_headers)
         assert response.status_code == 200, response.text
         counts = response.json()
         assert counts["categories"] == 1
         assert counts["posts_created"] == 1
 
-        cats = client.get("/api/categories").json()
+        cats = (await client.get("/api/categories")).json()
         assert [c["name"] for c in cats] == ["Restored Cat"]
         assert cats[0]["post_count"] == 1
-        posts = client.get("/api/posts?limit=10").json()
+        posts = (await client.get("/api/posts?limit=10")).json()
         assert posts["items"][0]["slug"] == "restored-post"
 
-    def test_restore_rejects_unknown_format(self, client, auth_headers):
-        response = client.post(
+    async def test_restore_rejects_unknown_format(self, client, auth_headers):
+        response = await client.post(
             "/api/admin/backup/restore",
             json={"format": "nope", "version": 1, "posts": []},
             headers=auth_headers,
         )
         assert response.status_code == 422
 
-    def test_restore_rejects_too_many_posts(self, client, auth_headers):
-        response = client.post(
+    async def test_restore_rejects_too_many_posts(self, client, auth_headers):
+        response = await client.post(
             "/api/admin/backup/restore",
             json={"format": "x-blog-backup", "version": 1, "posts": [{"slug": f"p{i}"} for i in range(21_000)]},
             headers=auth_headers,
@@ -330,7 +362,7 @@ class TestBackupRestore:
         assert response.status_code == 422
 
 
-def test_restore_rejects_unbounded_comment_arrays(client, auth_headers, monkeypatch):
+async def test_restore_rejects_unbounded_comment_arrays(client, auth_headers, monkeypatch):
     """ISS-626: a post's ``comments`` array must be bounded — one crafted post
     used to be able to smuggle an arbitrary number of comment rows into a single
     import. Cap at MAX_RESTORE_COMMENTS (422 before any write)."""
@@ -353,7 +385,7 @@ def test_restore_rejects_unbounded_comment_arrays(client, auth_headers, monkeypa
             }
         ],
     }
-    response = client.post("/api/admin/backup/restore", json=payload, headers=auth_headers)
+    response = await client.post("/api/admin/backup/restore", json=payload, headers=auth_headers)
     assert response.status_code == 422
     # FastAPI's HTTPException is mapped to the app's error envelope.
     assert "Too many comments" in response.json()["error"]["message"]

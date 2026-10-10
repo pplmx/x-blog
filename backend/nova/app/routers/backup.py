@@ -13,7 +13,7 @@ subscriptions do not round-trip (DEC-082).
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.auth import User, get_current_superuser
@@ -46,21 +46,21 @@ class BackupRestoreRequest(BaseModel):
 
 @router.get("")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
-def get_backup(
+async def get_backup(
     request: Request,  # noqa: ARG001
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
 ):
     """The whole blog as a portable ``x-blog-backup`` v1 JSON snapshot."""
-    return crud.build_backup_snapshot(db)
+    return await crud.build_backup_snapshot(db)
 
 
 @router.post("/restore")
 @limiter.limit(f"{RATE_LIMIT_EXPORT}/minute")
-def restore_backup(
+async def restore_backup(
     request: Request,  # noqa: ARG001
     data: BackupRestoreRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_superuser),
 ):
     """Import an ``x-blog-backup`` snapshot (natural-key upserts, idempotent).
@@ -74,6 +74,6 @@ def restore_backup(
     if total_comments > MAX_RESTORE_COMMENTS:
         raise HTTPException(status_code=422, detail=f"Too many comments (max {MAX_RESTORE_COMMENTS})")
     try:
-        return crud.restore_backup(db, data.model_dump())
+        return await crud.restore_backup(db, data.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

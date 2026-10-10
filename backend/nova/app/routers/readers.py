@@ -14,7 +14,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import auth, crud, schemas
 from app.database import get_db
@@ -108,10 +108,10 @@ class ReaderMentionSuggestion(BaseModel):
 
 @router.get("/suggest", response_model=list[ReaderMentionSuggestion])
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def suggest_mention_readers(
+async def suggest_mention_readers(
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     query: str = Query("", max_length=50),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Reader suggestions for the comment box's '@' picker (DEC-324, TASK-390).
 
@@ -120,19 +120,19 @@ def suggest_mention_readers(
     empty query returns the first few named active readers so a bare '@' still
     has something to show.
     """
-    rows = crud.suggest_mention_readers(db, query)
+    rows = await crud.suggest_mention_readers(db, query)
     return [ReaderMentionSuggestion(**row) for row in rows]
 
 
 @router.get("/{reader_id}", response_model=ReaderProfilePage)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def reader_profile(
+async def reader_profile(
     reader_id: Annotated[int, Path(ge=1)],
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
     current_reader: auth.ReaderAccount | None = Depends(auth.get_optional_reader),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's public homepage: display name, join date, and their approved
     comments on publicly-visible posts.
@@ -142,11 +142,11 @@ def reader_profile(
     The optional auth resolution is what lets the header render the caller's
     own Follow/Following state (round 365) while the page stays fully public.
     """
-    reader = crud.get_reader_public_profile(db, reader_id)
+    reader = await crud.get_reader_public_profile(db, reader_id)
     if reader is None:
         raise HTTPException(status_code=404, detail="Reader not found")
 
-    comments, total = crud.list_reader_public_comments(db, reader_id, page=page, limit=limit)
+    comments, total = await crud.list_reader_public_comments(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     items = []
     for c in comments:
@@ -159,12 +159,12 @@ def reader_profile(
             )
         )
     profile_data = ReaderPublicProfile.model_validate(reader).model_dump()
-    profile_data["follower_count"] = crud.count_reader_followers(db, reader_id)
-    profile_data["is_following"] = current_reader is not None and crud.is_following_reader(
+    profile_data["follower_count"] = await crud.count_reader_followers(db, reader_id)
+    profile_data["is_following"] = current_reader is not None and await crud.is_following_reader(
         db, current_reader.id, reader_id
     )
     profile_data["is_blocked"] = (
-        current_reader is not None and crud.get_reader_block(db, current_reader.id, reader_id) is not None
+        current_reader is not None and await crud.get_reader_block(db, current_reader.id, reader_id) is not None
     )
     return ReaderProfilePage(
         profile=ReaderPublicProfile(**profile_data),
@@ -180,12 +180,12 @@ def reader_profile(
 
 @router.get("/{reader_id}/likes", response_model=schemas.PostListResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def reader_public_likes(
+async def reader_public_likes(
     reader_id: Annotated[int, Path(ge=1)],
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's liked posts, when they opted to publish them (round 360).
 
@@ -197,10 +197,10 @@ def reader_public_likes(
     endpoint is not an oracle for "does this reader exist" or "what do they
     like" (same non-leak stance as the profile's missing-reader 404).
     """
-    reader = crud.get_reader_public_profile(db, reader_id)
+    reader = await crud.get_reader_public_profile(db, reader_id)
     if reader is None or not reader.public_likes:
         raise HTTPException(status_code=404, detail="Not found")
-    posts, total = crud.list_reader_post_likes(db, reader_id, page=page, limit=limit)
+    posts, total = await crud.list_reader_post_likes(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {
@@ -217,12 +217,12 @@ def reader_public_likes(
 
 @router.get("/{reader_id}/bookmarks", response_model=schemas.PostListResponse)
 @limiter.limit(f"{RATE_LIMIT_READ}/minute")
-def reader_public_bookmarks(
+async def reader_public_bookmarks(
     reader_id: Annotated[int, Path(ge=1)],
     request: Request,  # noqa: ARG001 — keyed by the rate limiter (RATE_LIMIT_READ)
     page: PageInt = 1,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """A reader's saved posts, when they opted to publish them (round 363).
 
@@ -236,10 +236,10 @@ def reader_public_bookmarks(
     both unknown readers AND readers who didn't opt in — one indistinguishable
     answer (same non-leak stance as the likes endpoint).
     """
-    reader = crud.get_reader_public_profile(db, reader_id)
+    reader = await crud.get_reader_public_profile(db, reader_id)
     if reader is None or not reader.public_bookmarks:
         raise HTTPException(status_code=404, detail="Not found")
-    posts, total = crud.list_reader_public_bookmarks(db, reader_id, page=page, limit=limit)
+    posts, total = await crud.list_reader_public_bookmarks(db, reader_id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.PostListResponse.model_validate(
         {

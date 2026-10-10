@@ -17,7 +17,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     Date,
-    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -32,6 +31,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.database import NaiveUTCDateTime as DateTime
 
 if TYPE_CHECKING:
     # ReaderAccount and the admin User live in app.auth (deliberately, next to
@@ -73,13 +73,13 @@ class Post(Base):
     new_post_notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
         index=True,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), index=True)
     cover_image: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -168,7 +168,7 @@ class PostRevision(Base):
     published: Mapped[bool | None] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
         index=True,
     )
 
@@ -207,7 +207,9 @@ class CategoryFollow(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "category_id", name="uq_category_follows_reader_category"),)
 
@@ -237,7 +239,9 @@ class TagFollow(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     tag_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "tag_id", name="uq_tag_follows_reader_tag"),)
 
@@ -262,7 +266,9 @@ class SearchLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     query: Mapped[str] = mapped_column(String(200), unique=True, index=True)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_searched_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    last_searched_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
 
 class Tag(Base):
@@ -308,7 +314,9 @@ class Comment(Base):
     # When the reader-author last edited their own comment (DEC-096, TASK-160).
     # Null = never edited; set by PATCH /api/reader/me/comments/{id}. Additive.
     edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
     # Optional reader that authored the comment (None = anonymous free-text
     # commenter). Set only from the reader JWT at create time — client-supplied
     # identity is never trusted (see routers/comments.py). The email is NOT
@@ -381,7 +389,9 @@ class CommentFlag(Base):
     # Proxy-aware source key (same resolver as the rate limiter / stored ip).
     ip_key: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_flags_comment_ip"),)
 
@@ -403,7 +413,9 @@ class CommentLike(Base):
     comment_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     # Proxy-aware source key (same resolver as the rate limiter / stored ip).
     ip_key: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("comment_id", "ip_key", name="uq_comment_likes_comment_ip"),)
 
@@ -422,7 +434,9 @@ class BookmarkFolder(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "name", name="uq_bookmark_folders_reader_name"),)
 
@@ -448,7 +462,9 @@ class ReaderBookmark(Base):
     # reads as To-read until the reader marks it done. Folders classify by
     # topic; this tracks the queue.
     done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_bookmarks_reader_post"),)
 
@@ -485,7 +501,9 @@ class ReaderPostLike(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_post_likes_reader_post"),)
 
@@ -567,7 +585,9 @@ class CommentSubscription(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_comment_subscriptions_reader_post"),)
 
@@ -620,7 +640,9 @@ class GuestCommentSubscription(Base):
     # double-opt-in link can never silently re-subscribe — re-activation
     # requires a fresh subscribe with a fresh token + confirmation email.
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (UniqueConstraint("email", "post_id", name="uq_guest_thread_email_post"),)
@@ -659,7 +681,7 @@ class ReaderNotification(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
         index=True,
     )
 
@@ -743,7 +765,9 @@ class SeriesFollow(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     series_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "series_id", name="uq_series_follows_reader_series"),)
 
@@ -776,7 +800,9 @@ class AuthorFollow(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     author_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "author_id", name="uq_author_follows_reader_author"),)
 
@@ -811,7 +837,9 @@ class ReaderFollow(Base):
     # Decouples "following the person" from "being notified": a reader can keep
     # following after muting push, and a mute never disturbs the relationship.
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("reader_id", "followed_id", name="uq_reader_follows_reader_followed"),)
 
@@ -841,7 +869,9 @@ class ReaderBlock(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     blocker_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     blocked_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("blocker_id", "blocked_id", name="uq_reader_blocks_blocker_blocked"),)
 
@@ -872,7 +902,9 @@ class PushSubscription(Base):
     endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
     # Reader account that subscribed this browser (None = anonymous). Enables
     # targeted per-reader notifications (DEC-064, TASK-137).
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
@@ -914,7 +946,9 @@ class AdminPushSubscription(Base):
     endpoint: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     p256dh: Mapped[str] = mapped_column(String(200), nullable=False)
     auth: Mapped[str] = mapped_column(String(200), nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
 
 class PostViewsDaily(Base):
@@ -957,11 +991,13 @@ class Series(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(200), unique=True, index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
 
     # Ordered by series_order then id so equal orders fall back to insertion
@@ -996,11 +1032,13 @@ class Page(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
     published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
 
 
@@ -1025,7 +1063,9 @@ class SlugRedirect(Base):
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
     old_slug: Mapped[str] = mapped_column(String(200), nullable=False)
     new_slug: Mapped[str] = mapped_column(String(200), nullable=False)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
 
 class SiteSetting(Base):
@@ -1048,8 +1088,8 @@ class SiteSetting(Base):
     value: Mapped[str] = mapped_column(String(255), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
 
 
@@ -1099,6 +1139,6 @@ class NewsletterSubscriber(Base):
     digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
         index=True,
     )

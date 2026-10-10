@@ -36,10 +36,10 @@ from app import models
 from app.schemas import PostCreate
 
 
-def _create_post(db_session, slug="guest-reply-post"):
+async def _create_post(db_session, slug="guest-reply-post"):
     from app.crud import create_post
 
-    return create_post(
+    return await create_post(
         db_session,
         PostCreate(title="Guest reply post", slug=slug, content="# Hi", published=True),
     )
@@ -83,8 +83,8 @@ def smtp_sink(monkeypatch: pytest.MonkeyPatch) -> type[FakeSMTP]:
     return FakeSMTP
 
 
-def _guest_comment(client, post_id, *, email="guest@example.com", nickname="Guest", content="hello"):
-    resp = client.post(
+async def _guest_comment(client, post_id, *, email="guest@example.com", nickname="Guest", content="hello"):
+    resp = await client.post(
         f"/api/comments/post/{post_id}",
         json={
             "nickname": nickname,
@@ -97,16 +97,16 @@ def _guest_comment(client, post_id, *, email="guest@example.com", nickname="Gues
     return resp.json()
 
 
-def _approve_parent(client, parent_id, auth_headers):
+async def _approve_parent(client, parent_id, auth_headers):
     """Approve a root comment so replies to it are allowed (replies to pending
     comments are refused by create_comment — an approved reply cannot orphan
     under a parent a moderator later rejects)."""
-    resp = _approve(client, parent_id, auth_headers)
+    resp = await _approve(client, parent_id, auth_headers)
     assert resp.status_code == 200, resp.text
 
 
-def _reply(client, post_id, parent_id, *, content="a reply", **kw):
-    resp = client.post(
+async def _reply(client, post_id, parent_id, *, content="a reply", **kw):
+    resp = await client.post(
         f"/api/comments/post/{post_id}",
         json={
             "nickname": "Replier",
@@ -120,8 +120,8 @@ def _reply(client, post_id, parent_id, *, content="a reply", **kw):
     return resp.json()
 
 
-def _approve(client, comment_id, auth_headers):
-    return client.patch(
+async def _approve(client, comment_id, auth_headers):
+    return await client.patch(
         f"/api/comments/{comment_id}/approve",
         json={"approved": True},
         headers=auth_headers,
@@ -154,17 +154,17 @@ def _guest_email_record(email="guest@example.com"):
 
 
 class TestGuestReplyEmail:
-    def test_approved_reply_emails_opted_in_guest(self, client, db_session, auth_headers, smtp_sink):
-        post = _create_post(db_session)
-        guest = _guest_comment(client, post.id)
-        _approve_parent(client, guest["id"], auth_headers)
-        reply = _reply(client, post.id, guest["id"])
+    async def test_approved_reply_emails_opted_in_guest(self, client, db_session, auth_headers, smtp_sink):
+        post = await _create_post(db_session)
+        guest = await _guest_comment(client, post.id)
+        await _approve_parent(client, guest["id"], auth_headers)
+        reply = await _reply(client, post.id, guest["id"])
 
-        resp = _approve(client, reply["id"], auth_headers)
+        resp = await _approve(client, reply["id"], auth_headers)
         assert resp.status_code == 200, resp.text
 
         # The row persisted the consent + a per-comment unsubscribe token.
-        row = db_session.get(models.Comment, guest["id"])
+        row = await db_session.get(models.Comment, guest["id"])
         assert row.reply_notify_email is True
         assert row.reply_notify_token
 
@@ -179,83 +179,89 @@ class TestGuestReplyEmail:
         # gotcha, DEC-332).
         assert f"/comment-reply-unsubscribe?token={row.reply_notify_token}" in record["text"]
 
-    def test_guest_who_did_not_opt_in_never_emailed(self, client, db_session, auth_headers, smtp_sink):
-        post = _create_post(db_session)
-        guest = client.post(
-            f"/api/comments/post/{post.id}",
-            json={
-                "nickname": "Guest",
-                "email": "quiet@example.com",
-                "content": "no consent",
-                "reply_notify_email": False,
-            },
+    async def test_guest_who_did_not_opt_in_never_emailed(self, client, db_session, auth_headers, smtp_sink):
+        post = await _create_post(db_session)
+        guest = (
+            await client.post(
+                f"/api/comments/post/{post.id}",
+                json={
+                    "nickname": "Guest",
+                    "email": "quiet@example.com",
+                    "content": "no consent",
+                    "reply_notify_email": False,
+                },
+            )
         ).json()
-        _approve_parent(client, guest["id"], auth_headers)
-        reply = _reply(client, post.id, guest["id"])
-        assert _approve(client, reply["id"], auth_headers).status_code == 200
+        await _approve_parent(client, guest["id"], auth_headers)
+        reply = await _reply(client, post.id, guest["id"])
+        assert (await _approve(client, reply["id"], auth_headers)).status_code == 200
         assert _guest_email_record("quiet@example.com") is None
         # And the consent was stored false on the row.
-        row = db_session.get(models.Comment, guest["id"])
+        row = await db_session.get(models.Comment, guest["id"])
         assert row.reply_notify_email is False
         assert row.reply_notify_token is None
 
-    def test_guest_without_email_never_emailed(self, client, db_session, auth_headers, smtp_sink):
-        post = _create_post(db_session)
-        guest = client.post(
-            f"/api/comments/post/{post.id}",
-            json={"nickname": "Anon", "email": "", "content": "no address", "reply_notify_email": True},
+    async def test_guest_without_email_never_emailed(self, client, db_session, auth_headers, smtp_sink):
+        post = await _create_post(db_session)
+        guest = (
+            await client.post(
+                f"/api/comments/post/{post.id}",
+                json={"nickname": "Anon", "email": "", "content": "no address", "reply_notify_email": True},
+            )
         ).json()
-        _approve_parent(client, guest["id"], auth_headers)
-        reply = _reply(client, post.id, guest["id"])
-        assert _approve(client, reply["id"], auth_headers).status_code == 200
+        await _approve_parent(client, guest["id"], auth_headers)
+        reply = await _reply(client, post.id, guest["id"])
+        assert (await _approve(client, reply["id"], auth_headers)).status_code == 200
         assert FakeSMTP.sent == []
-        row = db_session.get(models.Comment, guest["id"])
+        row = await db_session.get(models.Comment, guest["id"])
         # Consent with no address to deliver to is not stored (no token either).
         assert row.reply_notify_email is False
         assert row.reply_notify_token is None
 
-    def test_reader_parent_uses_reader_fanout_only(self, client, db_session, auth_headers, smtp_sink):
+    async def test_reader_parent_uses_reader_fanout_only(self, client, db_session, auth_headers, smtp_sink):
         """A reply to a READER's comment must not double-fire a guest email
         (the reader's address comes from the account, not the comment row)."""
-        post = _create_post(db_session)
+        post = await _create_post(db_session)
         # A signed-in reader comments; reply_notify_email is ignored (their
         # reply email is the DEC-197 account pref, never a comment-row field).
-        reg = client.post(
+        reg = await client.post(
             "/api/reader/register",
             json={"email": "reader-owner@example.com", "password": "readerpass123", "display_name": "Owner"},
         )
         token = reg.json()["access_token"]
-        reader_comment = client.post(
-            f"/api/comments/post/{post.id}",
-            json={
-                "nickname": "Owner",
-                "email": "placeholder@example.com",
-                "content": "reader comment",
-                "reply_notify_email": True,
-            },
-            headers={"Authorization": f"Bearer {token}"},
+        reader_comment = (
+            await client.post(
+                f"/api/comments/post/{post.id}",
+                json={
+                    "nickname": "Owner",
+                    "email": "placeholder@example.com",
+                    "content": "reader comment",
+                    "reply_notify_email": True,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
         ).json()
-        _approve_parent(client, reader_comment["id"], auth_headers)
-        reply = _reply(client, post.id, reader_comment["id"])
-        assert _approve(client, reply["id"], auth_headers).status_code == 200
+        await _approve_parent(client, reader_comment["id"], auth_headers)
+        reply = await _reply(client, post.id, reader_comment["id"])
+        assert (await _approve(client, reply["id"], auth_headers)).status_code == 200
         # No email to the (nonexistent) comment-row address — the reader row
         # stores no free-text email (DEC-062).
         assert FakeSMTP.sent == []
 
-    def test_unsubscribe_flips_consent_and_stops_later_mail(self, client, db_session, auth_headers, smtp_sink):
-        post = _create_post(db_session)
-        guest = _guest_comment(client, post.id)
-        _approve_parent(client, guest["id"], auth_headers)
-        row = db_session.get(models.Comment, guest["id"])
+    async def test_unsubscribe_flips_consent_and_stops_later_mail(self, client, db_session, auth_headers, smtp_sink):
+        post = await _create_post(db_session)
+        guest = await _guest_comment(client, post.id)
+        await _approve_parent(client, guest["id"], auth_headers)
+        row = await db_session.get(models.Comment, guest["id"])
         token = row.reply_notify_token
 
         # Unsubscribe (idempotent).
-        resp = client.post("/api/comments/reply-notify/unsubscribe", json={"token": str(token)})
+        resp = await client.post("/api/comments/reply-notify/unsubscribe", json={"token": str(token)})
         assert resp.status_code == 200, resp.text
-        resp2 = client.post("/api/comments/reply-notify/unsubscribe", json={"token": str(token)})
+        resp2 = await client.post("/api/comments/reply-notify/unsubscribe", json={"token": str(token)})
         assert resp2.status_code == 200, "unsubscribe must be idempotent"
 
-        fresh_row = db_session.get(models.Comment, guest["id"])
+        fresh_row = await db_session.get(models.Comment, guest["id"])
         assert fresh_row.reply_notify_email is False
 
         # Snapshot the sink: the guest's own approval may already have fired an
@@ -265,30 +271,30 @@ class TestGuestReplyEmail:
         sent_before = len(FakeSMTP.sent)
 
         # A reply approved AFTER unsubscribe sends nothing.
-        reply = _reply(client, post.id, guest["id"])
-        assert _approve(client, reply["id"], auth_headers).status_code == 200
+        reply = await _reply(client, post.id, guest["id"])
+        assert (await _approve(client, reply["id"], auth_headers)).status_code == 200
         assert len(FakeSMTP.sent) == sent_before, [m["Subject"] for m in FakeSMTP.sent[sent_before:]]
 
-    def test_unknown_unsubscribe_token_404(self, client):
-        resp = client.post("/api/comments/reply-notify/unsubscribe", json={"token": "nope"})
+    async def test_unknown_unsubscribe_token_404(self, client):
+        resp = await client.post("/api/comments/reply-notify/unsubscribe", json={"token": "nope"})
         assert resp.status_code == 404, resp.text
 
-    def test_smtp_unconfigured_approve_still_succeeds(self, client, db_session, auth_headers):
+    async def test_smtp_unconfigured_approve_still_succeeds(self, client, db_session, auth_headers):
         """Fails closed: no SMTP host -> approve still works, nothing emailed."""
-        post = _create_post(db_session)
-        guest = _guest_comment(client, post.id)
-        _approve_parent(client, guest["id"], auth_headers)
-        reply = _reply(client, post.id, guest["id"])
-        resp = _approve(client, reply["id"], auth_headers)
+        post = await _create_post(db_session)
+        guest = await _guest_comment(client, post.id)
+        await _approve_parent(client, guest["id"], auth_headers)
+        reply = await _reply(client, post.id, guest["id"])
+        resp = await _approve(client, reply["id"], auth_headers)
         assert resp.status_code == 200, resp.text
 
-    def test_comment_public_list_omits_token_and_consent(self, client, db_session, auth_headers, smtp_sink):
+    async def test_comment_public_list_omits_token_and_consent(self, client, db_session, auth_headers, smtp_sink):
         """The token and consent flag are private row data: the public thread
         list must not expose them (PII-adjacent machinery, DEC-062 bar)."""
-        post = _create_post(db_session)
-        guest = _guest_comment(client, post.id)
-        _approve(client, guest["id"], auth_headers)
-        listing = client.get(f"/api/comments/post/{post.id}").json()
+        post = await _create_post(db_session)
+        guest = await _guest_comment(client, post.id)
+        await _approve(client, guest["id"], auth_headers)
+        listing = (await client.get(f"/api/comments/post/{post.id}")).json()
         item = next(i for i in listing["items"] if i["id"] == guest["id"])
         assert "reply_notify_token" not in item
         assert "reply_notify_email" not in item

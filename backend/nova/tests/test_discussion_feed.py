@@ -19,7 +19,7 @@ def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_post(client, auth_headers, *, title="Feed Post", published=True, publish_at=None, content="Body"):
+async def _create_post(client, auth_headers, *, title="Feed Post", published=True, publish_at=None, content="Body"):
     slug = f"feed-{uuid4().hex[:10]}"
     payload = {
         "title": title,
@@ -29,19 +29,19 @@ def _create_post(client, auth_headers, *, title="Feed Post", published=True, pub
     }
     if publish_at is not None:
         payload["publish_at"] = publish_at
-    resp = client.post("/api/posts", json=payload, headers=auth_headers)
+    resp = await client.post("/api/posts", json=payload, headers=auth_headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
-def _comment(client, admin_token, post_id, content, approved=True):
-    created = client.post(
+async def _comment(client, admin_token, post_id, content, approved=True):
+    created = await client.post(
         f"/api/comments/post/{post_id}",
         json={"content": content, "nickname": "Feed", "email": "feed@example.com"},
     )
     assert created.status_code == 201, created.text
     cid = created.json()["id"]
-    resp = client.patch(
+    resp = await client.patch(
         f"/api/comments/{cid}/approve",
         json={"approved": approved},
         headers=_auth(admin_token),
@@ -51,11 +51,11 @@ def _comment(client, admin_token, post_id, content, approved=True):
 
 
 class TestFeedContent:
-    def test_returns_newest_approved_comments_with_post_brief(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        _comment(client, admin_token, post["id"], "first approved thought")
-        _comment(client, admin_token, post["id"], "second approved thought", approved=False)  # never appears
-        resp = client.get(FEED)
+    async def test_returns_newest_approved_comments_with_post_brief(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        await _comment(client, admin_token, post["id"], "first approved thought")
+        await _comment(client, admin_token, post["id"], "second approved thought", approved=False)  # never appears
+        resp = await client.get(FEED)
         assert resp.status_code == 200
         body = resp.json()
         assert body["pagination"]["total"] == 1
@@ -66,52 +66,52 @@ class TestFeedContent:
         assert "email" not in item
         assert "ip_address" not in item
 
-    def test_newest_first_with_id_tiebreak(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        ids = [_comment(client, admin_token, post["id"], f"feed term {i}", approved=True) for i in range(3)]
-        items = client.get(FEED).json()["items"]
+    async def test_newest_first_with_id_tiebreak(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        ids = [await _comment(client, admin_token, post["id"], f"feed term {i}", approved=True) for i in range(3)]
+        items = (await client.get(FEED)).json()["items"]
         assert [i["id"] for i in items] == sorted(ids, reverse=True)
 
-    def test_pending_never_appears_without_approval(self, client, auth_headers, admin_token):
-        post = _create_post(client, auth_headers)
-        created = client.post(
+    async def test_pending_never_appears_without_approval(self, client, auth_headers, admin_token):
+        post = await _create_post(client, auth_headers)
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"content": "still pending zzzz", "nickname": "Feed", "email": "feed@example.com"},
         )
         assert created.status_code == 201
-        body = client.get(FEED).json()
+        body = (await client.get(FEED)).json()
         assert not any("still pending zzzz" in i["content"] for i in body["items"])
         # Total reflects only approved comments (there may be seeded approvals).
         assert body["pagination"]["total"] >= 0
 
-    def test_reader_attributed_comment_carries_public_identity(self, client, auth_headers, admin_token):
-        reg = client.post(
+    async def test_reader_attributed_comment_carries_public_identity(self, client, auth_headers, admin_token):
+        reg = await client.post(
             "/api/reader/register",
             json={"email": "feed-r@example.com", "password": "readerpass123", "display_name": "Feed Person"},
         )
         assert reg.status_code == 201
         token = reg.json()["access_token"]
-        post = _create_post(client, auth_headers)
-        created = client.post(
+        post = await _create_post(client, auth_headers)
+        created = await client.post(
             f"/api/comments/post/{post['id']}",
             json={"content": "signed-in feed entry", "nickname": "x", "email": "x@example.com"},
             headers=_auth(token),
         )
         assert created.status_code == 201
-        client.patch(
+        await client.patch(
             f"/api/comments/{created.json()['id']}/approve",
             json={"approved": True},
             headers=_auth(admin_token),
         )
-        item = client.get(FEED).json()["items"][0]
+        item = (await client.get(FEED)).json()["items"][0]
         assert item["reader"] is not None
         assert item["reader"]["display_name"] == "Feed Person"
         assert "email" not in item
 
 
 class TestFeedVisibility:
-    def test_draft_post_comment_never_appears(self, client, auth_headers, db_session):
-        post = _create_post(client, auth_headers, published=False)
+    async def test_draft_post_comment_never_appears(self, client, auth_headers, db_session):
+        post = await _create_post(client, auth_headers, published=False)
         from app import models
 
         row = models.Comment(
@@ -122,13 +122,13 @@ class TestFeedVisibility:
             is_approved=True,
         )
         db_session.add(row)
-        db_session.flush()
-        body = client.get(FEED).json()
+        await db_session.flush()
+        body = (await client.get(FEED)).json()
         assert not any("hidden draft discussion" in i["content"] for i in body["items"])
 
-    def test_future_scheduled_post_comment_never_appears(self, client, auth_headers, db_session):
+    async def test_future_scheduled_post_comment_never_appears(self, client, auth_headers, db_session):
         future = (datetime.now(UTC) + timedelta(days=2)).isoformat()
-        post = _create_post(client, auth_headers, published=True, publish_at=future)
+        post = await _create_post(client, auth_headers, published=True, publish_at=future)
         from app import models
 
         row = models.Comment(
@@ -139,25 +139,25 @@ class TestFeedVisibility:
             is_approved=True,
         )
         db_session.add(row)
-        db_session.flush()
-        body = client.get(FEED).json()
+        await db_session.flush()
+        body = (await client.get(FEED)).json()
         assert not any("not yet public take" in i["content"] for i in body["items"])
 
 
 class TestFeedPagination:
-    def test_paginates(self, client, auth_headers, admin_token):
+    async def test_paginates(self, client, auth_headers, admin_token):
         # The feed is global (other seeded/approved comments exist), so use a
         # unique marker term and assert those rows' relative pagination.
-        post = _create_post(client, auth_headers)
+        post = await _create_post(client, auth_headers)
         for i in range(3):
-            _comment(client, admin_token, post["id"], f"feed-pageable-{i}", approved=True)
-        p1 = client.get(FEED, params={"limit": 2, "page": 1}).json()
+            await _comment(client, admin_token, post["id"], f"feed-pageable-{i}", approved=True)
+        p1 = (await client.get(FEED, params={"limit": 2, "page": 1})).json()
         assert len(p1["items"]) == 2
         assert p1["pagination"]["page"] == 1
         assert p1["pagination"]["limit"] == 2
         assert p1["pagination"]["total_pages"] == 2  # 3 unique marker rows → 2 pages of 2
         # Newest first.
         assert {i["content"] for i in p1["items"]} == {"feed-pageable-2", "feed-pageable-1"}
-        p2 = client.get(FEED, params={"limit": 2, "page": 2}).json()
+        p2 = (await client.get(FEED, params={"limit": 2, "page": 2})).json()
         assert {i["content"] for i in p2["items"]} == {"feed-pageable-0"}
         assert p2["pagination"]["page"] == 2

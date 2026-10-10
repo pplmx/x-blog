@@ -15,7 +15,8 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.auth import User, get_current_admin
@@ -74,9 +75,9 @@ def _validate_keys(keys: AdminSubscriptionKeys) -> None:
 
 @router.get("/subscriptions", response_model=AdminPushSubscriptionsList)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_list_subscriptions(
+async def admin_list_subscriptions(
     request: Request,  # noqa: ARG001
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ):
     """This admin's moderation-push endpoints.
@@ -89,9 +90,14 @@ def admin_list_subscriptions(
     state is queried here (DEC-080).
     """
     rows = (
-        db.query(models.AdminPushSubscription)
-        .filter(models.AdminPushSubscription.user_id == current_user.id)
-        .order_by(models.AdminPushSubscription.id.desc())
+        (
+            await db.execute(
+                select(models.AdminPushSubscription)
+                .filter(models.AdminPushSubscription.user_id == current_user.id)
+                .order_by(models.AdminPushSubscription.id.desc())
+            )
+        )
+        .scalars()
         .all()
     )
     return AdminPushSubscriptionsList(
@@ -108,10 +114,10 @@ def admin_list_subscriptions(
 
 @router.post("/subscribe", response_model=AdminPushSubscriptionResponse)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_subscribe(
+async def admin_subscribe(
     request: Request,  # noqa: ARG001
     data: AdminPushSubscriptionCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ):
     """Register (or update) this admin's browser for moderation pushes."""
@@ -127,14 +133,16 @@ def admin_subscribe(
     # re-stamps reader_id — the same physical browser belongs to one person,
     # so the newest admin claiming it wins.
     existing = (
-        db.query(models.AdminPushSubscription).filter(models.AdminPushSubscription.endpoint == data.endpoint).first()
-    )
+        await db.execute(
+            select(models.AdminPushSubscription).filter(models.AdminPushSubscription.endpoint == data.endpoint)
+        )
+    ).scalar_one_or_none()
     if existing:
         existing.p256dh = data.keys.p256dh
         existing.auth = data.keys.auth
         existing.user_id = current_user.id
-        db.commit()
-        db.refresh(existing)
+        await db.commit()
+        await db.refresh(existing)
         return existing
     sub = models.AdminPushSubscription(
         endpoint=data.endpoint,
@@ -143,17 +151,17 @@ def admin_subscribe(
         user_id=current_user.id,
     )
     db.add(sub)
-    db.commit()
-    db.refresh(sub)
+    await db.commit()
+    await db.refresh(sub)
     return sub
 
 
 @router.post("/unsubscribe", status_code=204)
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
-def admin_unsubscribe(
+async def admin_unsubscribe(
     request: Request,  # noqa: ARG001
     data: AdminPushSubscriptionCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ):
     """Remove this admin's browser subscription (idempotent).
@@ -166,8 +174,10 @@ def admin_unsubscribe(
     stacks do not serialize bodies on DELETE, and the request carries the
     endpoint the way subscribe does (DEC-055, TASK-117 convention).
     """
-    db.query(models.AdminPushSubscription).filter(
-        models.AdminPushSubscription.endpoint == data.endpoint,
-        models.AdminPushSubscription.user_id == current_user.id,
-    ).delete()
-    db.commit()
+    await db.execute(
+        delete(models.AdminPushSubscription).where(
+            models.AdminPushSubscription.endpoint == data.endpoint,
+            models.AdminPushSubscription.user_id == current_user.id,
+        )
+    )
+    await db.commit()

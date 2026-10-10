@@ -21,6 +21,8 @@ Key properties:
 import json
 from uuid import uuid4
 
+from sqlalchemy import select
+
 from app import auth
 
 
@@ -28,19 +30,19 @@ def _admin_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _login(client, username: str, password: str) -> str:
-    r = client.post("/api/admin/login", data={"username": username, "password": password})
+async def _login(client, username: str, password: str) -> str:
+    r = await client.post("/api/admin/login", data={"username": username, "password": password})
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
 
-def _set_pen_name(client, headers, user_id: int, display_name: str | None) -> None:
-    r = client.patch(f"/api/admin/users/{user_id}", headers=headers, json={"display_name": display_name})
+async def _set_pen_name(client, headers, user_id: int, display_name: str | None) -> None:
+    r = await client.patch(f"/api/admin/users/{user_id}", headers=headers, json={"display_name": display_name})
     assert r.status_code == 200, r.text
 
 
-def _create_post(client, headers, *, slug: str | None = None, published: bool = True, **extra) -> int:
-    r = client.post(
+async def _create_post(client, headers, *, slug: str | None = None, published: bool = True, **extra) -> int:
+    r = await client.post(
         "/api/admin/posts",
         headers=headers,
         json={
@@ -61,24 +63,24 @@ def _no_username_leak(payload: dict) -> None:
     assert "username" not in json.dumps(payload)
 
 
-def test_admin_create_defaults_author_to_writing_admin(client, admin_token, admin_user, db_session):
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Riki the Writer")
-    pid = _create_post(client, _admin_headers(admin_token))
+async def test_admin_create_defaults_author_to_writing_admin(client, admin_token, admin_user, db_session):
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Riki the Writer")
+    pid = await _create_post(client, _admin_headers(admin_token))
 
-    detail = client.get(f"/api/posts/{pid}").json()
+    detail = (await client.get(f"/api/posts/{pid}")).json()
     assert detail["author"] == {"id": admin_user.id, "display_name": "Riki the Writer", "avatar_url": None}
     _no_username_leak(detail)
 
-    row = db_session.query(auth.User).filter(auth.User.id == admin_user.id).one()
+    row = (await db_session.execute(select(auth.User).where(auth.User.id == admin_user.id))).scalars().one()
     assert row.display_name == "Riki the Writer"
 
 
-def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, admin_user):
+async def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, admin_user):
     # The second admin-create route (POST /api/posts) must default author_id to
     # the writing admin too — a post created there with no explicit author
     # would otherwise never get a byline (round-343 deep-dive).
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Route Writer")
-    r = client.post(
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Route Writer")
+    r = await client.post(
         "/api/posts",
         headers=_admin_headers(admin_token),
         json={
@@ -90,12 +92,12 @@ def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, a
     )
     assert r.status_code == 201, r.text
     pid = r.json()["id"]
-    detail = client.get(f"/api/posts/{pid}").json()
+    detail = (await client.get(f"/api/posts/{pid}")).json()
     assert detail["author"] == {"id": admin_user.id, "display_name": "Route Writer", "avatar_url": None}
     _no_username_leak(detail)
 
 
-def test_editor_created_post_is_authored_by_editor(client, db_session):
+async def test_editor_created_post_is_authored_by_editor(client, db_session):
     editor = auth.User(
         username=f"ed{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -104,16 +106,16 @@ def test_editor_created_post_is_authored_by_editor(client, db_session):
         display_name="Editor Person",
     )
     db_session.add(editor)
-    db_session.flush()
-    editor_token = _login(client, editor.username, "editorpass123")
+    await db_session.flush()
+    editor_token = await _login(client, editor.username, "editorpass123")
 
-    pid = _create_post(client, _admin_headers(editor_token))
-    detail = client.get(f"/api/posts/{pid}").json()
+    pid = await _create_post(client, _admin_headers(editor_token))
+    detail = (await client.get(f"/api/posts/{pid}")).json()
     assert detail["author"] == {"id": editor.id, "display_name": "Editor Person", "avatar_url": None}
     _no_username_leak(detail)
 
 
-def test_explicit_author_id_overrides_writer(client, admin_token, db_session):
+async def test_explicit_author_id_overrides_writer(client, admin_token, db_session):
     editor = auth.User(
         username=f"o{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -122,57 +124,57 @@ def test_explicit_author_id_overrides_writer(client, admin_token, db_session):
         display_name="Ghostwriter",
     )
     db_session.add(editor)
-    db_session.flush()
+    await db_session.flush()
 
-    pid = _create_post(
+    pid = await _create_post(
         client,
         _admin_headers(admin_token),
         author_id=editor.id,
     )
-    detail = client.get(f"/api/posts/{pid}").json()
+    detail = (await client.get(f"/api/posts/{pid}")).json()
     assert detail["author"] == {"id": editor.id, "display_name": "Ghostwriter", "avatar_url": None}
 
 
-def test_post_without_pen_name_has_no_author(client, admin_token):
+async def test_post_without_pen_name_has_no_author(client, admin_token):
     # No pen name set on the writing admin: the byline must be absent entirely
     # (never an empty-named author, never the username).
-    pid = _create_post(client, _admin_headers(admin_token))
-    detail = client.get(f"/api/posts/{pid}").json()
+    pid = await _create_post(client, _admin_headers(admin_token))
+    detail = (await client.get(f"/api/posts/{pid}")).json()
     assert detail["author"] is None
     _no_username_leak(detail)
 
 
-def test_public_list_includes_author_without_username(client, admin_token, admin_user):
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "List Writer")
-    _create_post(client, _admin_headers(admin_token), slug=f"list-{uuid4().hex[:8]}")
+async def test_public_list_includes_author_without_username(client, admin_token, admin_user):
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "List Writer")
+    await _create_post(client, _admin_headers(admin_token), slug=f"list-{uuid4().hex[:8]}")
 
-    listing = client.get("/api/posts?limit=50").json()
+    listing = (await client.get("/api/posts?limit=50")).json()
     authored = [p for p in listing["items"] if p["author"]]
     assert authored, "expected at least one authored post in the list"
     assert all({"id", "display_name", "avatar_url"} == set(a["author"]) for a in authored)
     _no_username_leak(listing)
 
 
-def test_admin_user_patch_sets_and_clears_pen_name(client, admin_token, admin_user):
+async def test_admin_user_patch_sets_and_clears_pen_name(client, admin_token, admin_user):
     headers = _admin_headers(admin_token)
-    _set_pen_name(client, headers, admin_user.id, "Byline Here")
-    r = client.get("/api/admin/users", headers=headers)
+    await _set_pen_name(client, headers, admin_user.id, "Byline Here")
+    r = await client.get("/api/admin/users", headers=headers)
     me = next(u for u in r.json() if u["id"] == admin_user.id)
     assert me["display_name"] == "Byline Here"
 
     # Clearing (explicit null) returns the author to no public identity.
-    _set_pen_name(client, headers, admin_user.id, None)
-    r = client.get("/api/admin/users", headers=headers)
+    await _set_pen_name(client, headers, admin_user.id, None)
+    r = await client.get("/api/admin/users", headers=headers)
     me = next(u for u in r.json() if u["id"] == admin_user.id)
     assert me["display_name"] is None
 
 
-def _set_bio(client, headers, user_id: int, bio: str | None) -> None:
-    r = client.patch(f"/api/admin/users/{user_id}", headers=headers, json={"bio": bio})
+async def _set_bio(client, headers, user_id: int, bio: str | None) -> None:
+    r = await client.patch(f"/api/admin/users/{user_id}", headers=headers, json={"bio": bio})
     assert r.status_code == 200, r.text
 
 
-def test_admin_user_patch_invalidates_public_caches(client, admin_token, admin_user, monkeypatch):
+async def test_admin_user_patch_invalidates_public_caches(client, admin_token, admin_user, monkeypatch):
     """The pen-name/bio PATCH changes AuthorBrief fields rendered from cached
     objects (post lists, series detail, RSS/Atom posts feed) — the write must
     invalidate those caches, not wait out the TTL (ISS-607/TASK-529)."""
@@ -187,50 +189,50 @@ def test_admin_user_patch_invalidates_public_caches(client, admin_token, admin_u
     series_cache["seed"] = {"posts": []}
 
     headers = _admin_headers(admin_token)
-    _set_pen_name(client, headers, admin_user.id, "Cache-Clear Name")
+    await _set_pen_name(client, headers, admin_user.id, "Cache-Clear Name")
     assert calls, "pen-name PATCH must clear the posts-list/series/feeds caches"
     removed = len(calls)
     posts_list_cache.clear()
     series_cache.clear()
 
-    _set_bio(client, headers, admin_user.id, "A bio.")
+    await _set_bio(client, headers, admin_user.id, "A bio.")
     assert len(calls) > removed, "bio PATCH must clear the public caches too"
 
 
-def test_admin_user_patch_sets_and_clears_bio(client, admin_token, admin_user):
+async def test_admin_user_patch_sets_and_clears_bio(client, admin_token, admin_user):
     headers = _admin_headers(admin_token)
-    _set_pen_name(client, headers, admin_user.id, "Byline Here")
-    _set_bio(client, headers, admin_user.id, "Writes about Rust and distributed systems.")
+    await _set_pen_name(client, headers, admin_user.id, "Byline Here")
+    await _set_bio(client, headers, admin_user.id, "Writes about Rust and distributed systems.")
 
-    r = client.get("/api/admin/users", headers=headers)
+    r = await client.get("/api/admin/users", headers=headers)
     me = next(u for u in r.json() if u["id"] == admin_user.id)
     assert me["bio"] == "Writes about Rust and distributed systems."
 
     # Clearing (explicit null) removes the bio; the writer stays public.
-    _set_bio(client, headers, admin_user.id, None)
-    r = client.get("/api/admin/users", headers=headers)
+    await _set_bio(client, headers, admin_user.id, None)
+    r = await client.get("/api/admin/users", headers=headers)
     me = next(u for u in r.json() if u["id"] == admin_user.id)
     assert me["bio"] is None
     assert me["display_name"] == "Byline Here"
 
 
-def test_admin_user_patch_bio_whitespace_and_boundary(client, admin_token, admin_user):
+async def test_admin_user_patch_bio_whitespace_and_boundary(client, admin_token, admin_user):
     headers = _admin_headers(admin_token)
     # Whitespace-only bio folds to None (empty bio = no bio), like the reader
     # profile bio validator (ISS-456-style boundary discipline).
-    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "   "})
+    r = await client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "   "})
     assert r.status_code == 200, r.text
     assert r.json()["bio"] is None
     # Over 500 chars is a 422 (schema boundary, same cap as the reader bio).
-    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 501})
+    r = await client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 501})
     assert r.status_code == 422
-    r = client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 500})
+    r = await client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "x" * 500})
     assert r.status_code == 200
     assert r.json()["bio"] == "x" * 500
 
 
-def test_admin_user_create_stores_bio(client, admin_token):
-    r = client.post(
+async def test_admin_user_create_stores_bio(client, admin_token):
+    r = await client.post(
         "/api/admin/users",
         headers=_admin_headers(admin_token),
         json={
@@ -244,17 +246,17 @@ def test_admin_user_create_stores_bio(client, admin_token):
     assert r.json()["bio"] == "Posts weekly long-form essays."
 
 
-def test_author_archive_envelope_carries_bio(client, admin_token, admin_user):
+async def test_author_archive_envelope_carries_bio(client, admin_token, admin_user):
     # The person-shaped archive envelope introduces the writer (round 357): the
     # "about this writer" bio rides on the envelope's author, NOT on the
     # per-post AuthorBrief (which would bloat every list payload with the same
     # text). The username never leaks.
     headers = _admin_headers(admin_token)
-    _set_pen_name(client, headers, admin_user.id, "Bio Archive Writer")
-    _set_bio(client, headers, admin_user.id, "Long-form on type systems.")
-    _create_post(client, headers, slug=f"bioarch-{uuid4().hex[:8]}")
+    await _set_pen_name(client, headers, admin_user.id, "Bio Archive Writer")
+    await _set_bio(client, headers, admin_user.id, "Long-form on type systems.")
+    await _create_post(client, headers, slug=f"bioarch-{uuid4().hex[:8]}")
 
-    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    body = (await client.get(f"/api/authors/{admin_user.id}/posts")).json()
     assert body["author"]["display_name"] == "Bio Archive Writer"
     assert body["author"]["bio"] == "Long-form on type systems."
     # Per-post author briefs stay slim: no bio repetition on every card.
@@ -262,17 +264,17 @@ def test_author_archive_envelope_carries_bio(client, admin_token, admin_user):
     _no_username_leak(body)
 
 
-def test_author_archive_envelope_bio_defaults_none(client, admin_token, admin_user):
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "No Bio Writer")
-    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+async def test_author_archive_envelope_bio_defaults_none(client, admin_token, admin_user):
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "No Bio Writer")
+    body = (await client.get(f"/api/authors/{admin_user.id}/posts")).json()
     assert body["author"]["bio"] is None
     assert "username" not in json.dumps(body)
 
 
-def test_public_authors_index_carries_bio(client, admin_token, admin_user, db_session):
+async def test_public_authors_index_carries_bio(client, admin_token, admin_user, db_session):
     headers = _admin_headers(admin_token)
-    _set_pen_name(client, headers, admin_user.id, "Index Bio Writer")
-    _set_bio(client, headers, admin_user.id, "Design researcher.")
+    await _set_pen_name(client, headers, admin_user.id, "Index Bio Writer")
+    await _set_bio(client, headers, admin_user.id, "Design researcher.")
     # A second pen-named writer with no bio: index rows carry the bio
     # independently (null for those without).
     editor = auth.User(
@@ -283,16 +285,16 @@ def test_public_authors_index_carries_bio(client, admin_token, admin_user, db_se
         display_name="Quiet Writer",
     )
     db_session.add(editor)
-    db_session.flush()
+    await db_session.flush()
 
-    rows = client.get("/api/authors").json()
+    rows = (await client.get("/api/authors")).json()
     by_name = {r["display_name"]: r for r in rows}
     assert by_name["Index Bio Writer"]["bio"] == "Design researcher."
     assert by_name["Quiet Writer"]["bio"] is None
     _no_username_leak({"rows": rows})
 
 
-def test_admin_user_patch_is_superuser_only_and_404_unknown(client, db_session, admin_token):
+async def test_admin_user_patch_is_superuser_only_and_404_unknown(client, db_session, admin_token):
     editor = auth.User(
         username=f"u{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -300,19 +302,21 @@ def test_admin_user_patch_is_superuser_only_and_404_unknown(client, db_session, 
         is_superuser=False,
     )
     db_session.add(editor)
-    db_session.flush()
-    editor_token = _login(client, editor.username, "editorpass123")
+    await db_session.flush()
+    editor_token = await _login(client, editor.username, "editorpass123")
 
     # Editors cannot manage users (DEC-054): PATCH /users is superuser-only.
-    r = client.patch(f"/api/admin/users/{editor.id}", headers=_admin_headers(editor_token), json={"display_name": "x"})
+    r = await client.patch(
+        f"/api/admin/users/{editor.id}", headers=_admin_headers(editor_token), json={"display_name": "x"}
+    )
     assert r.status_code == 403
     # Unknown user -> 404.
-    r = client.patch("/api/admin/users/999999", headers=_admin_headers(admin_token), json={"display_name": "x"})
+    r = await client.patch("/api/admin/users/999999", headers=_admin_headers(admin_token), json={"display_name": "x"})
     assert r.status_code == 404
 
 
-def test_admin_user_create_stores_pen_name(client, admin_token):
-    r = client.post(
+async def test_admin_user_create_stores_pen_name(client, admin_token):
+    r = await client.post(
         "/api/admin/users",
         headers=_admin_headers(admin_token),
         json={"username": f"pn{uuid4().hex[:6]}", "password": "readerpass123", "display_name": "New Pen"},
@@ -322,7 +326,7 @@ def test_admin_user_create_stores_pen_name(client, admin_token):
 
     # Whitespace-only pen name is rejected as "no public identity" (None), not
     # stored blank (ISS-456-style boundary discipline).
-    r = client.post(
+    r = await client.post(
         "/api/admin/users",
         headers=_admin_headers(admin_token),
         json={"username": f"pn{uuid4().hex[:6]}", "password": "readerpass123", "display_name": "   "},
@@ -331,29 +335,29 @@ def test_admin_user_create_stores_pen_name(client, admin_token):
     assert r.json()["display_name"] is None
 
 
-def test_author_archive_returns_published_posts_newest_first(client, admin_token, admin_user):
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Archive Writer")
+async def test_author_archive_returns_published_posts_newest_first(client, admin_token, admin_user):
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Archive Writer")
     published = [
-        _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}"),
-        _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}"),
+        await _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}"),
+        await _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}"),
     ]
     # A draft must never surface on the public archive.
-    _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}", published=False)
+    await _create_post(client, _admin_headers(admin_token), slug=f"arch-{uuid4().hex[:8]}", published=False)
 
-    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    body = (await client.get(f"/api/authors/{admin_user.id}/posts")).json()
     assert [p["id"] for p in body["items"]] == sorted(published, reverse=True)
     assert body["pagination"]["total"] == 2
     assert "username" not in json.dumps(body)
     assert all(p["author"]["display_name"] == "Archive Writer" for p in body["items"])
 
 
-def test_author_archive_paginates(client, admin_token, admin_user):
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Page Writer")
+async def test_author_archive_paginates(client, admin_token, admin_user):
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Page Writer")
     for _ in range(3):
-        _create_post(client, _admin_headers(admin_token), slug=f"page-{uuid4().hex[:8]}")
+        await _create_post(client, _admin_headers(admin_token), slug=f"page-{uuid4().hex[:8]}")
 
-    page1 = client.get(f"/api/authors/{admin_user.id}/posts?limit=2&page=1").json()
-    page2 = client.get(f"/api/authors/{admin_user.id}/posts?limit=2&page=2").json()
+    page1 = (await client.get(f"/api/authors/{admin_user.id}/posts?limit=2&page=1")).json()
+    page2 = (await client.get(f"/api/authors/{admin_user.id}/posts?limit=2&page=2")).json()
     assert len(page1["items"]) == 2
     assert len(page2["items"]) == 1
     assert page1["pagination"] == {"total": 3, "page": 1, "limit": 2, "total_pages": 2}
@@ -361,9 +365,9 @@ def test_author_archive_paginates(client, admin_token, admin_user):
     assert not {p["id"] for p in page1["items"]} & {p["id"] for p in page2["items"]}
 
 
-def test_author_archive_404_for_unknown_or_username_only_admin(client, db_session):
+async def test_author_archive_404_for_unknown_or_username_only_admin(client, db_session):
     # Unknown id -> 404.
-    assert client.get("/api/authors/999999/posts").status_code == 404
+    assert (await client.get("/api/authors/999999/posts")).status_code == 404
     # An admin with NO pen name has no public presence -> the SAME 404 (no
     # oracle: the endpoint cannot enumerate admins or reveal usernames).
     editor = auth.User(
@@ -374,15 +378,15 @@ def test_author_archive_404_for_unknown_or_username_only_admin(client, db_sessio
         display_name=None,
     )
     db_session.add(editor)
-    db_session.flush()
-    assert client.get(f"/api/authors/{editor.id}/posts").status_code == 404
+    await db_session.flush()
+    assert (await client.get(f"/api/authors/{editor.id}/posts")).status_code == 404
 
 
-def test_admin_authors_endpoint_lists_pennamed_only_for_any_admin(client, db_session, admin_token):
+async def test_admin_authors_endpoint_lists_pennamed_only_for_any_admin(client, db_session, admin_token):
     # The post editor's author picker: every admin with a pen name, reachable by
     # ANY admin (editor included) — not superuser-only like /users. Pen names
     # are already public on bylines; the login username must not appear here.
-    admin = db_session.query(auth.User).filter(auth.User.role == "superuser").first()
+    admin = (await db_session.execute(select(auth.User).where(auth.User.role == "superuser"))).scalars().first()
     admin.display_name = "Super Pen"
     editor = auth.User(
         username=f"pa{uuid4().hex[:6]}",
@@ -399,10 +403,10 @@ def test_admin_authors_endpoint_lists_pennamed_only_for_any_admin(client, db_ses
         display_name=None,
     )
     db_session.add_all([editor, plain])
-    db_session.flush()
+    await db_session.flush()
 
     # A superuser sees all pen-named admins.
-    r = client.get("/api/admin/authors", headers=_admin_headers(admin_token))
+    r = await client.get("/api/admin/authors", headers=_admin_headers(admin_token))
     assert r.status_code == 200
     names = {u["display_name"] for u in r.json()}
     assert names == {"Super Pen", "Editor Pen"}
@@ -410,16 +414,16 @@ def test_admin_authors_endpoint_lists_pennamed_only_for_any_admin(client, db_ses
 
     # An editor can reach the same endpoint (that is the point — editors must
     # be able to attribute a post to another public writer).
-    editor_token = _login(client, editor.username, "editorpass123")
-    r = client.get("/api/admin/authors", headers=_admin_headers(editor_token))
+    editor_token = await _login(client, editor.username, "editorpass123")
+    r = await client.get("/api/admin/authors", headers=_admin_headers(editor_token))
     assert r.status_code == 200
     assert {u["display_name"] for u in r.json()} == {"Super Pen", "Editor Pen"}
 
 
-def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_session):
+async def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_session):
     # The editor's author picker: PUT /posts/{id} with a new author_id moves the
     # post to another writer; the admin detail reflects it.
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Original Writer")
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Original Writer")
     editor = auth.User(
         username=f"re{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -428,32 +432,32 @@ def test_admin_update_post_reassigns_author(client, admin_token, admin_user, db_
         display_name="Reassigned Writer",
     )
     db_session.add(editor)
-    db_session.flush()
+    await db_session.flush()
 
-    pid = _create_post(client, _admin_headers(admin_token))
+    pid = await _create_post(client, _admin_headers(admin_token))
     # Admin detail exposes author_id for the picker's pre-selection.
-    detail = client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token)).json()
+    detail = (await client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token))).json()
     assert detail["author_id"] == admin_user.id
 
-    r = client.put(
+    r = await client.put(
         f"/api/admin/posts/{pid}",
         headers=_admin_headers(admin_token),
         json={"author_id": editor.id},
     )
     assert r.status_code == 200, r.text
 
-    public = client.get(f"/api/posts/{pid}").json()
+    public = (await client.get(f"/api/posts/{pid}")).json()
     assert public["author"] == {"id": editor.id, "display_name": "Reassigned Writer", "avatar_url": None}
-    detail = client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token)).json()
+    detail = (await client.get(f"/api/admin/posts/{pid}", headers=_admin_headers(admin_token))).json()
     assert detail["author_id"] == editor.id
     _no_username_leak(public)
 
 
-def test_author_rss_feed_scopes_to_one_writer(client, admin_token, admin_user, db_session):
+async def test_author_rss_feed_scopes_to_one_writer(client, admin_token, admin_user, db_session):
     # /rss/authors/{id}.xml delivers ONLY that writer's published posts
     # (round 345): each pen-named writer gets their own scoped feed, no
     # cross-writer bleed and no username in the payload.
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Feed Writer")
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Feed Writer")
     other = auth.User(
         username=f"fw{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -462,29 +466,29 @@ def test_author_rss_feed_scopes_to_one_writer(client, admin_token, admin_user, d
         display_name="Other Feed Writer",
     )
     db_session.add(other)
-    db_session.flush()
-    other_token = _login(client, other.username, "editorpass123")
+    await db_session.flush()
+    other_token = await _login(client, other.username, "editorpass123")
 
-    _create_post(client, _admin_headers(admin_token), slug=f"mine-feed-{uuid4().hex[:8]}")
-    _create_post(client, _admin_headers(other_token), slug=f"theirs-feed-{uuid4().hex[:8]}")
+    await _create_post(client, _admin_headers(admin_token), slug=f"mine-feed-{uuid4().hex[:8]}")
+    await _create_post(client, _admin_headers(other_token), slug=f"theirs-feed-{uuid4().hex[:8]}")
 
-    r = client.get(f"/rss/authors/{admin_user.id}.xml")
+    r = await client.get(f"/rss/authors/{admin_user.id}.xml")
     assert r.status_code == 200
     assert "Feed Writer" in r.text
     assert "mine-feed-" in r.text
     assert "theirs-feed-" not in r.text
     assert "username" not in r.text
 
-    r2 = client.get(f"/rss/authors/{other.id}.xml")
+    r2 = await client.get(f"/rss/authors/{other.id}.xml")
     assert r2.status_code == 200
     assert "Other Feed Writer" in r2.text
     assert "theirs-feed-" in r2.text
     assert "mine-feed-" not in r2.text
 
 
-def test_author_rss_404_for_unknown_or_username_only_author(client, db_session):
+async def test_author_rss_404_for_unknown_or_username_only_author(client, db_session):
     # Unknown id -> 404 (matches the archive endpoint's no-oracle boundary).
-    assert client.get("/rss/authors/999999.xml").status_code == 404
+    assert (await client.get("/rss/authors/999999.xml")).status_code == 404
     editor = auth.User(
         username=f"nf{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -493,17 +497,17 @@ def test_author_rss_404_for_unknown_or_username_only_author(client, db_session):
         display_name=None,
     )
     db_session.add(editor)
-    db_session.flush()
-    assert client.get(f"/rss/authors/{editor.id}.xml").status_code == 404
+    await db_session.flush()
+    assert (await client.get(f"/rss/authors/{editor.id}.xml")).status_code == 404
 
 
-def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, admin_user, db_session):
+async def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, admin_user, db_session):
     # GET /api/authors (writer discovery, round 346): every pen-named admin
     # with their published-post count; never the username; a pen-name-less
     # admin stays off the list.
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Index Writer")
-    _create_post(client, _admin_headers(admin_token))
-    _create_post(client, _admin_headers(admin_token))
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Index Writer")
+    await _create_post(client, _admin_headers(admin_token))
+    await _create_post(client, _admin_headers(admin_token))
     other = auth.User(
         username=f"wi{uuid4().hex[:6]}",
         password=auth.get_password_hash("editorpass123"),
@@ -519,9 +523,9 @@ def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, ad
         display_name=None,
     )
     db_session.add_all([other, plain])
-    db_session.flush()
+    await db_session.flush()
 
-    r = client.get("/api/authors")
+    r = await client.get("/api/authors")
     assert r.status_code == 200
     by_id = {a["id"]: a for a in r.json()}
     assert by_id[admin_user.id]["display_name"] == "Index Writer"
@@ -532,12 +536,12 @@ def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, ad
     assert "username" not in json.dumps(r.json())
 
 
-def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
+async def test_author_archive_envelope_identifies_author_even_when_empty(client, admin_token, admin_user):
     # The archive page must be able to title itself by pen name even before the
     # writer has published anything — the author envelope rides on the (empty)
     # list rather than being derived from a post that may not exist yet.
-    _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Nobody Yet")
-    body = client.get(f"/api/authors/{admin_user.id}/posts").json()
+    await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Nobody Yet")
+    body = (await client.get(f"/api/authors/{admin_user.id}/posts")).json()
     assert body["items"] == []
     # The envelope is AuthorArchive (round 357): bio rides here (null until a
     # superuser writes one) rather than on per-post AuthorBrief.

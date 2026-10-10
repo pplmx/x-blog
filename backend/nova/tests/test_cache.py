@@ -109,15 +109,17 @@ def test_get_cache_info():
         assert isinstance(cache_info["ttl"], int)
 
 
-def test_get_db_yields_session_and_closes():
+async def test_get_db_yields_session_and_closes():
     """get_db() should yield a Session instance and close it after use."""
     db_generator = get_db()
-    db = next(db_generator)
+    db = await anext(db_generator)
     assert db is not None
     assert hasattr(db, "close")
-    assert hasattr(db, "query")
+    # get_db yields an AsyncSession (SQLAlchemy 2.0) — .query was removed; the
+    # session exposes .execute for querying now.
+    assert hasattr(db, "execute")
 
-    # The generator should raise StopIteration when exhausted, indicating
+    # The generator should raise StopAsyncIteration when exhausted, indicating
     # the finally block (db.close()) has executed.
-    with pytest.raises(StopIteration):
-        next(db_generator)
+    with pytest.raises(StopAsyncIteration):
+        await anext(db_generator)

@@ -28,9 +28,9 @@ JPEG_BYTES = _image_bytes("JPEG")
 WEBP_BYTES = _image_bytes("WEBP")
 
 
-def test_upload_image_success(client, auth_headers):
+async def test_upload_image_success(client, auth_headers):
     """Should successfully upload a valid image file."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("test.png", PNG_BYTES, "image/png")},
         headers=auth_headers,
@@ -41,9 +41,9 @@ def test_upload_image_success(client, auth_headers):
     assert data["url"].startswith("/static/uploads/")
 
 
-def test_upload_jpeg_success(client, auth_headers):
+async def test_upload_jpeg_success(client, auth_headers):
     """Should accept JPEG images."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("photo.jpg", JPEG_BYTES, "image/jpeg")},
         headers=auth_headers,
@@ -52,9 +52,9 @@ def test_upload_jpeg_success(client, auth_headers):
     assert "url" in response.json()
 
 
-def test_upload_webp_success(client, auth_headers):
+async def test_upload_webp_success(client, auth_headers):
     """Should accept WebP images."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("image.webp", WEBP_BYTES, "image/webp")},
         headers=auth_headers,
@@ -63,9 +63,9 @@ def test_upload_webp_success(client, auth_headers):
     assert "url" in response.json()
 
 
-def test_upload_content_type_mismatch_rejected(client, auth_headers):
+async def test_upload_content_type_mismatch_rejected(client, auth_headers):
     """A PNG file declared as JPEG must be rejected (issue #20)."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("fake.jpg", PNG_BYTES, "image/jpeg")},
         headers=auth_headers,
@@ -75,9 +75,9 @@ def test_upload_content_type_mismatch_rejected(client, auth_headers):
     assert "does not match" in data["error"]["message"]
 
 
-def test_upload_fake_image_content_rejected(client, auth_headers):
+async def test_upload_fake_image_content_rejected(client, auth_headers):
     """Text bytes with an image Content-Type must be rejected (issue #20)."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("evil.png", b"not an image at all", "image/png")},
         headers=auth_headers,
@@ -87,14 +87,14 @@ def test_upload_fake_image_content_rejected(client, auth_headers):
     assert "does not match" in data["error"]["message"]
 
 
-def test_upload_corrupt_image_with_valid_magic_rejected(client, auth_headers):
+async def test_upload_corrupt_image_with_valid_magic_rejected(client, auth_headers):
     """Valid PNG magic bytes but corrupt content must be rejected.
 
     Magic bytes only prove the header; the Pillow decode check (round 17)
     rejects files that have the right signature but are not decodable images.
     """
     file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("broken.png", file_content, "image/png")},
         headers=auth_headers,
@@ -104,10 +104,10 @@ def test_upload_corrupt_image_with_valid_magic_rejected(client, auth_headers):
     assert "not a valid image" in data["error"]["message"]
 
 
-def test_upload_unsupported_type(client, auth_headers):
+async def test_upload_unsupported_type(client, auth_headers):
     """Should reject files with unsupported content types."""
     file_content = b"fake pdf content"
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("document.pdf", file_content, "application/pdf")},
         headers=auth_headers,
@@ -118,11 +118,11 @@ def test_upload_unsupported_type(client, auth_headers):
     assert "Unsupported file type" in data["error"]["message"]
 
 
-def test_upload_file_too_large(client, auth_headers):
+async def test_upload_file_too_large(client, auth_headers):
     """Should reject files exceeding 5MB limit."""
     # Create a 6MB file (over 5MB limit)
     file_content = b"\x00" * (6 * 1024 * 1024)
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("large.png", file_content, "image/png")},
         headers=auth_headers,
@@ -132,16 +132,16 @@ def test_upload_file_too_large(client, auth_headers):
     assert "File too large" in data["error"]["message"]
 
 
-def test_upload_no_file(client, auth_headers):
+async def test_upload_no_file(client, auth_headers):
     """Should return 422 when no file is provided."""
-    response = client.post("/api/upload", files={}, headers=auth_headers)
+    response = await client.post("/api/upload", files={}, headers=auth_headers)
     assert response.status_code == 422
 
 
-def test_upload_filename_path_traversal(client, auth_headers):
+async def test_upload_filename_path_traversal(client, auth_headers):
     """Should strip path traversal characters from filename extensions."""
     # Filename with path traversal attempt in the extension
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("../../../etc/passwd.png", PNG_BYTES, "image/png")},
         headers=auth_headers,
@@ -154,9 +154,9 @@ def test_upload_filename_path_traversal(client, auth_headers):
     assert "/etc/" not in data["url"]
 
 
-def test_upload_filename_no_extension(client, auth_headers):
+async def test_upload_filename_no_extension(client, auth_headers):
     """Should fall back to content-type-derived extension when filename has no ext."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("noextension", PNG_BYTES, "image/png")},
         headers=auth_headers,
@@ -166,9 +166,9 @@ def test_upload_filename_no_extension(client, auth_headers):
     assert data["url"].endswith(".png")
 
 
-def test_upload_requires_auth(client):
+async def test_upload_requires_auth(client):
     """Should return 401 when no auth token is provided."""
-    response = client.post(
+    response = await client.post(
         "/api/upload",
         files={"file": ("test.png", PNG_BYTES, "image/png")},
     )
@@ -197,10 +197,10 @@ def _jpeg_with_exif() -> bytes:
 
 
 class TestIngestOptimization:
-    def test_stored_jpeg_dropped_exif(self, client, auth_headers):
+    async def test_stored_jpeg_dropped_exif(self, client, auth_headers):
         """A JPEG with EXIF/GPS stores with the metadata stripped (privacy)."""
         jpeg_with_exif = _jpeg_with_exif()
-        resp = client.post(
+        resp = await client.post(
             "/api/upload",
             files={"file": ("phone.jpg", jpeg_with_exif, "image/jpeg")},
             headers=auth_headers,
@@ -214,13 +214,13 @@ class TestIngestOptimization:
                 assert not image.getexif(), "EXIF metadata must be stripped at ingest"
                 assert image.size == (8, 8)
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_never_larger_than_original(self, client, auth_headers):
+    async def test_never_larger_than_original(self, client, auth_headers):
         """Optimized output must not exceed the original's size (re-encode kept
         only if strictly smaller; otherwise the original bytes are stored)."""
         original = _jpeg_with_exif()
-        resp = client.post(
+        resp = await client.post(
             "/api/upload",
             files={"file": ("phone.jpg", original, "image/jpeg")},
             headers=auth_headers,
@@ -232,12 +232,12 @@ class TestIngestOptimization:
             stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             assert stored.stat().st_size <= len(original)
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_gif_preserved_verbatim(self, client, auth_headers):
+    async def test_gif_preserved_verbatim(self, client, auth_headers):
         """Animated GIFs are stored byte-identical (re-encoding risks frames)."""
         gif = _image_bytes("GIF")
-        resp = client.post(
+        resp = await client.post(
             "/api/upload",
             files={"file": ("anim.gif", gif, "image/gif")},
             headers=auth_headers,
@@ -249,11 +249,11 @@ class TestIngestOptimization:
             stored = Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]
             assert stored.read_bytes() == gif
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_webp_optimized(self, client, auth_headers):
+    async def test_webp_optimized(self, client, auth_headers):
         """WebP uploads re-encode in WebP (same format), still decodable."""
-        resp = client.post(
+        resp = await client.post(
             "/api/upload",
             files={"file": ("img.webp", WEBP_BYTES, "image/webp")},
             headers=auth_headers,
@@ -268,15 +268,15 @@ class TestIngestOptimization:
                 image.load()
                 assert image.size == (2, 2)
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_webp_transparency_preserved(self, client, auth_headers):
+    async def test_webp_transparency_preserved(self, client, auth_headers):
         """Transparent WebP must keep its alpha channel (alpha lives in the
         pixel data; the same-format re-encode must not flatten it)."""
         buf = BytesIO()
         transparent = Image.new("RGBA", (4, 4), (0, 0, 0, 0))  # fully transparent
         transparent.save(buf, format="WEBP")
-        resp = client.post(
+        resp = await client.post(
             "/api/upload",
             files={"file": ("alpha.webp", buf.getvalue(), "image/webp")},
             headers=auth_headers,
@@ -293,7 +293,7 @@ class TestIngestOptimization:
                 alpha = image.getchannel("A").getextrema()
                 assert max(alpha) == 0, f"alpha not preserved: {alpha}"
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
     def test_optimize_preserves_pixels_and_jpeg_rgb(self):
         """_optimize_image re-encodes a plain JPEG faithfully (mode stays RGB,
@@ -315,9 +315,9 @@ class TestIngestOptimization:
 # ---------------------------------------------------------------------------
 
 
-def _upload_and_get_url(client, auth_headers) -> str:
+async def _upload_and_get_url(client, auth_headers) -> str:
     """Upload a valid image and return its URL. Callers delete it via the API."""
-    resp = client.post(
+    resp = await client.post(
         "/api/upload",
         files={"file": ("media.png", PNG_BYTES, "image/png")},
         headers=auth_headers,
@@ -326,24 +326,24 @@ def _upload_and_get_url(client, auth_headers) -> str:
     return resp.json()["url"]
 
 
-def _delete_file(client, auth_headers, url: str):
+async def _delete_file(client, auth_headers, url: str):
     """Delete a /static/uploads/Y/M/F url via the media API."""
     parts = url.split("/")
     year, month, filename = parts[-3], parts[-2], parts[-1]
-    return client.delete(f"/api/upload/files/{year}/{month}/{filename}", headers=auth_headers)
+    return await client.delete(f"/api/upload/files/{year}/{month}/{filename}", headers=auth_headers)
 
 
 class TestMediaLibrary:
     """Admin media library: list, reference tracking, and reference-aware delete."""
 
-    def test_list_files_requires_auth(self, client):
-        resp = client.get("/api/upload/files")
+    async def test_list_files_requires_auth(self, client):
+        resp = await client.get("/api/upload/files")
         assert resp.status_code == 401
 
-    def test_list_after_upload_returns_entry(self, client, auth_headers):
-        url = _upload_and_get_url(client, auth_headers)
+    async def test_list_after_upload_returns_entry(self, client, auth_headers):
+        url = await _upload_and_get_url(client, auth_headers)
         try:
-            resp = client.get("/api/upload/files", headers=auth_headers)
+            resp = await client.get("/api/upload/files", headers=auth_headers)
             assert resp.status_code == 200
             data = resp.json()
             assert data["pagination"]["total"] >= 1
@@ -356,20 +356,20 @@ class TestMediaLibrary:
             assert 0 < item["size"] <= len(PNG_BYTES)
             assert item["width"] == 2 and item["height"] == 2
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_list_editors_can_browse(self, client, editor_headers):
+    async def test_list_editors_can_browse(self, client, editor_headers):
         """Editors (non-superuser admins) can use the media library too."""
-        url = _upload_and_get_url(client, editor_headers)
+        url = await _upload_and_get_url(client, editor_headers)
         try:
-            resp = client.get("/api/upload/files", headers=editor_headers)
+            resp = await client.get("/api/upload/files", headers=editor_headers)
             assert resp.status_code == 200
             assert any(item["url"] == url for item in resp.json()["items"])
         finally:
-            _delete_file(client, editor_headers, url)
+            await _delete_file(client, editor_headers, url)
 
-    def test_referenced_image_reported(self, client, auth_headers, db_session):
-        url = _upload_and_get_url(client, auth_headers)
+    async def test_referenced_image_reported(self, client, auth_headers, db_session):
+        url = await _upload_and_get_url(client, auth_headers)
         try:
             # A post embedding the image (markdown) makes it "referenced".
             post = models.Post(
@@ -379,17 +379,17 @@ class TestMediaLibrary:
                 published=False,
             )
             db_session.add(post)
-            db_session.commit()
+            await db_session.commit()
 
-            resp = client.get("/api/upload/files", headers=auth_headers)
+            resp = await client.get("/api/upload/files", headers=auth_headers)
             item = next(i for i in resp.json()["items"] if i["url"] == url)
             assert item["referenced"] is True
             assert [p["id"] for p in item["referencing_posts"]] == [post.id]
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_cover_image_reference_reported(self, client, auth_headers, db_session):
-        url = _upload_and_get_url(client, auth_headers)
+    async def test_cover_image_reference_reported(self, client, auth_headers, db_session):
+        url = await _upload_and_get_url(client, auth_headers)
         try:
             post = models.Post(
                 title="Cover upload",
@@ -399,27 +399,27 @@ class TestMediaLibrary:
                 published=False,
             )
             db_session.add(post)
-            db_session.commit()
+            await db_session.commit()
 
-            resp = client.get("/api/upload/files", headers=auth_headers)
+            resp = await client.get("/api/upload/files", headers=auth_headers)
             item = next(i for i in resp.json()["items"] if i["url"] == url)
             assert item["referenced"] is True
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_delete_unreferenced_succeeds(self, client, auth_headers):
-        url = _upload_and_get_url(client, auth_headers)
+    async def test_delete_unreferenced_succeeds(self, client, auth_headers):
+        url = await _upload_and_get_url(client, auth_headers)
         parts = url.split("/")
         year, month, filename = parts[-3], parts[-2], parts[-1]
-        resp = client.delete(f"/api/upload/files/{year}/{month}/{filename}", headers=auth_headers)
+        resp = await client.delete(f"/api/upload/files/{year}/{month}/{filename}", headers=auth_headers)
         assert resp.status_code == 204, resp.text
         # Gone from the listing and no longer on disk.
-        listing = client.get("/api/upload/files", headers=auth_headers).json()
+        listing = (await client.get("/api/upload/files", headers=auth_headers)).json()
         assert all(item["url"] != url for item in listing["items"])
         assert not (Path(upload_module.STATIC_DIR) / "uploads" / year / month / filename).exists()
 
-    def test_delete_referenced_rejected(self, client, auth_headers, db_session):
-        url = _upload_and_get_url(client, auth_headers)
+    async def test_delete_referenced_rejected(self, client, auth_headers, db_session):
+        url = await _upload_and_get_url(client, auth_headers)
         try:
             post = models.Post(
                 title="Ref post",
@@ -428,45 +428,45 @@ class TestMediaLibrary:
                 published=False,
             )
             db_session.add(post)
-            db_session.commit()
-            resp = _delete_file(client, auth_headers, url)
+            await db_session.commit()
+            resp = await _delete_file(client, auth_headers, url)
             assert resp.status_code == 409, resp.text
             assert "referenced by post" in resp.json()["error"]["message"]
             # Still present on disk after the refused delete.
             parts = url.split("/")
             assert (Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
-    def test_list_filename_search(self, client, auth_headers):
+    async def test_list_filename_search(self, client, auth_headers):
         """`q` narrows the listing to filename substrings (case-insensitive)."""
-        a = _upload_and_get_url(client, auth_headers)  # uuid1.png
-        b = _upload_and_get_url(client, auth_headers)  # uuid2.png
+        a = await _upload_and_get_url(client, auth_headers)  # uuid1.png
+        b = await _upload_and_get_url(client, auth_headers)  # uuid2.png
         try:
             # Search for an exact uuid (must hit exactly one).
             parts = a.split("/")
             needle = parts[-1][:10]
-            resp = client.get(f"/api/upload/files?q={needle}", headers=auth_headers)
+            resp = await client.get(f"/api/upload/files?q={needle}", headers=auth_headers)
             assert resp.status_code == 200
             assert [i["url"] for i in resp.json()["items"]] == [a]
             # No match -> empty list with total 0.
-            resp = client.get("/api/upload/files?q=zzzzzzzzzz", headers=auth_headers)
+            resp = await client.get("/api/upload/files?q=zzzzzzzzzz", headers=auth_headers)
             assert resp.status_code == 200
             body = resp.json()
             assert body["items"] == [] and body["pagination"]["total"] == 0
             # Both .png uploads share the extension -> q=.png returns both.
-            resp = client.get("/api/upload/files?q=.png", headers=auth_headers)
+            resp = await client.get("/api/upload/files?q=.png", headers=auth_headers)
             found = {i["url"] for i in resp.json()["items"]}
             assert {a, b}.issubset(found)
         finally:
-            _delete_file(client, auth_headers, a)
-            _delete_file(client, auth_headers, b)
+            await _delete_file(client, auth_headers, a)
+            await _delete_file(client, auth_headers, b)
 
-    def test_delete_requires_auth(self, client):
-        resp = client.delete("/api/upload/files/2026/07/00000000-0000-0000-0000-000000000000.png")
+    async def test_delete_requires_auth(self, client):
+        resp = await client.delete("/api/upload/files/2026/07/00000000-0000-0000-0000-000000000000.png")
         assert resp.status_code == 401
 
-    def test_delete_invalid_path_rejected(self, client, auth_headers):
+    async def test_delete_invalid_path_rejected(self, client, auth_headers):
         # Path traversal / wrong shape must never reach the filesystem. The
         # `..` forms hit Starlette before routing (extra segments don't match
         # the 3-segment route) and 404; the wrong-shape forms reach the route
@@ -475,7 +475,7 @@ class TestMediaLibrary:
             "/api/upload/files/../../etc/passwd.png",
             "/api/upload/files/2026/07/../../passwd",
         ):
-            resp = client.delete(bad, headers=auth_headers)
+            resp = await client.delete(bad, headers=auth_headers)
             assert resp.status_code in (400, 404), f"{bad} -> {resp.status_code}"
         for bad in (
             "/api/upload/files/20/07/00000000-0000-0000-0000-000000000000.png",
@@ -483,17 +483,17 @@ class TestMediaLibrary:
             "/api/upload/files/2026/07/not-a-uuid.png",
             "/api/upload/files/2026/07/00000000-0000-0000-0000-000000000000.exe",
         ):
-            resp = client.delete(bad, headers=auth_headers)
+            resp = await client.delete(bad, headers=auth_headers)
             assert resp.status_code == 400, f"{bad} -> {resp.status_code}"
 
-    def test_delete_missing_file_404(self, client, auth_headers):
-        resp = client.delete(
+    async def test_delete_missing_file_404(self, client, auth_headers):
+        resp = await client.delete(
             "/api/upload/files/2026/07/00000000-0000-0000-0000-000000000000.png",
             headers=auth_headers,
         )
         assert resp.status_code == 404
 
-    def test_list_orders_equal_mtime_files_by_name(self, client, auth_headers):
+    async def test_list_orders_equal_mtime_files_by_name(self, client, auth_headers):
         """Two uploads landing in the same second (equal mtime) must still have a
         deterministic order — mtime-only sorting skipped/duplicated rows at page
         boundaries and flipped equal files between requests (round-292 deep-dive)."""
@@ -511,7 +511,7 @@ class TestMediaLibrary:
             os.utime(p, (now, now))  # identical mtimes
             files.append(p)
         try:
-            resp = client.get("/api/upload/files", headers=auth_headers)
+            resp = await client.get("/api/upload/files", headers=auth_headers)
             assert resp.status_code == 200
             names = [
                 item["filename"] for item in resp.json()["items"] if item["url"].startswith("/static/uploads/2026/06/")
@@ -531,8 +531,8 @@ class TestMediaLibrary:
 # ---------------------------------------------------------------------------
 
 
-def _batch_delete(client, auth_headers, urls: list[str]):
-    return client.post(
+async def _batch_delete(client, auth_headers, urls: list[str]):
+    return await client.post(
         "/api/upload/files/batch-delete",
         json={"urls": urls},
         headers=auth_headers,
@@ -542,16 +542,16 @@ def _batch_delete(client, auth_headers, urls: list[str]):
 class TestMediaLibraryBulkDelete:
     """Batch delete: capped, shape-validated, fail-closed on references."""
 
-    def test_batch_delete_requires_auth(self, client):
-        resp = _batch_delete(client, {}, ["/static/uploads/2026/07/x.png"])
+    async def test_batch_delete_requires_auth(self, client):
+        resp = await _batch_delete(client, {}, ["/static/uploads/2026/07/x.png"])
         assert resp.status_code == 401
 
-    def test_batch_delete_clean_batch(self, client, auth_headers):
-        urls = [_upload_and_get_url(client, auth_headers) for _ in range(3)]
-        resp = _batch_delete(client, auth_headers, urls)
+    async def test_batch_delete_clean_batch(self, client, auth_headers):
+        urls = [await _upload_and_get_url(client, auth_headers) for _ in range(3)]
+        resp = await _batch_delete(client, auth_headers, urls)
         assert resp.status_code == 200, resp.text
         assert resp.json() == {"deleted": 3}
-        listing = client.get("/api/upload/files", headers=auth_headers).json()
+        listing = (await client.get("/api/upload/files", headers=auth_headers)).json()
         assert all(item["url"] not in urls for item in listing["items"])
         # Each file is gone from disk (month/year dirs are pruned when empty,
         # but the shared static dir may hold unrelated uploads from other runs,
@@ -560,10 +560,10 @@ class TestMediaLibraryBulkDelete:
             parts = url.split("/")
             assert not (Path(upload_module.STATIC_DIR) / "uploads" / parts[-3] / parts[-2] / parts[-1]).exists()
 
-    def test_batch_delete_referenced_rejected_fail_closed(self, client, auth_headers, db_session):
+    async def test_batch_delete_referenced_rejected_fail_closed(self, client, auth_headers, db_session):
         """Any referenced image blocks the WHOLE batch (nothing deleted)."""
-        a = _upload_and_get_url(client, auth_headers)
-        b = _upload_and_get_url(client, auth_headers)
+        a = await _upload_and_get_url(client, auth_headers)
+        b = await _upload_and_get_url(client, auth_headers)
         try:
             post = models.Post(
                 title="Refs a",
@@ -572,41 +572,41 @@ class TestMediaLibraryBulkDelete:
                 published=False,
             )
             db_session.add(post)
-            db_session.commit()
-            resp = _batch_delete(client, auth_headers, [a, b])
+            await db_session.commit()
+            resp = await _batch_delete(client, auth_headers, [a, b])
             assert resp.status_code == 409, resp.text
             assert "referenced by post" in resp.json()["error"]["message"]
             # Neither file was deleted.
-            listing = client.get("/api/upload/files", headers=auth_headers).json()
+            listing = (await client.get("/api/upload/files", headers=auth_headers)).json()
             assert {item["url"] for item in listing["items"]} >= {a, b}
         finally:
-            _delete_file(client, auth_headers, a)
-            _delete_file(client, auth_headers, b)
+            await _delete_file(client, auth_headers, a)
+            await _delete_file(client, auth_headers, b)
 
-    def test_batch_delete_invalid_path_rejected(self, client, auth_headers):
-        resp = _batch_delete(client, auth_headers, ["/static/uploads/etc/passwd.png"])
+    async def test_batch_delete_invalid_path_rejected(self, client, auth_headers):
+        resp = await _batch_delete(client, auth_headers, ["/static/uploads/etc/passwd.png"])
         assert resp.status_code == 400, resp.text
-        resp = _batch_delete(client, auth_headers, ["/static/uploads/2026/07/not-a-uuid.png"])
+        resp = await _batch_delete(client, auth_headers, ["/static/uploads/2026/07/not-a-uuid.png"])
         assert resp.status_code == 400, resp.text
 
-    def test_batch_delete_missing_files_skipped(self, client, auth_headers):
+    async def test_batch_delete_missing_files_skipped(self, client, auth_headers):
         """Valid-shape but absent files are skipped, not errored (idempotent)."""
-        present = _upload_and_get_url(client, auth_headers)
+        present = await _upload_and_get_url(client, auth_headers)
         ghost = "/static/uploads/2026/07/00000000-0000-0000-0000-000000000999.png"
-        resp = _batch_delete(client, auth_headers, [present, ghost])
+        resp = await _batch_delete(client, auth_headers, [present, ghost])
         assert resp.status_code == 200, resp.text
         assert resp.json() == {"deleted": 1}
-        listing = client.get("/api/upload/files", headers=auth_headers).json()
+        listing = (await client.get("/api/upload/files", headers=auth_headers)).json()
         assert all(item["url"] != present for item in listing["items"])
 
-    def test_batch_delete_empty_noop(self, client, auth_headers):
-        resp = _batch_delete(client, auth_headers, [])
+    async def test_batch_delete_empty_noop(self, client, auth_headers):
+        resp = await _batch_delete(client, auth_headers, [])
         assert resp.status_code == 200
         assert resp.json() == {"deleted": 0}
 
-    def test_batch_delete_cap_enforced(self, client, auth_headers):
+    async def test_batch_delete_cap_enforced(self, client, auth_headers):
         urls = [f"/static/uploads/2026/07/{i:08d}-0000-0000-0000-000000000000.png" for i in range(51)]
-        resp = _batch_delete(client, auth_headers, urls)
+        resp = await _batch_delete(client, auth_headers, urls)
         assert resp.status_code == 422, resp.text
 
 
@@ -617,7 +617,7 @@ class TestMediaLibraryBulkDelete:
 
 
 class TestMediaReferenceCache:
-    def test_reference_scan_runs_once_across_renders(self, client, auth_headers, monkeypatch):
+    async def test_reference_scan_runs_once_across_renders(self, client, auth_headers, monkeypatch):
         """Two list renders share ONE full-content scan — the second is a cache hit.
 
         Guard against regressing to the per-render _collect_upload_references
@@ -638,35 +638,35 @@ class TestMediaReferenceCache:
 
         monkeypatch.setattr(upload_module, "_collect_upload_references", counting_scan)
 
-        first = client.get("/api/upload/files", headers=auth_headers)
+        first = await client.get("/api/upload/files", headers=auth_headers)
         assert first.status_code == 200, first.text
         assert calls == 1
-        second = client.get("/api/upload/files", headers=auth_headers)
+        second = await client.get("/api/upload/files", headers=auth_headers)
         assert second.status_code == 200, second.text
         assert calls == 1, "second render must be served from the reference cache"
 
-    def test_clear_posts_list_cache_drops_reference_map(self, client, auth_headers):
+    async def test_clear_posts_list_cache_drops_reference_map(self, client, auth_headers):
         """Every post write clears the reference map (wired through the shared
         clear_posts_list_cache, which all post create/update/delete paths call)."""
         from app.cache import clear_posts_list_cache, upload_refs_cache
         from app.routers import upload as upload_module
 
         (upload_module.STATIC_DIR / "uploads").mkdir(parents=True, exist_ok=False)
-        client.get("/api/upload/files", headers=auth_headers)  # populates the map
+        await client.get("/api/upload/files", headers=auth_headers)  # populates the map
         assert len(upload_refs_cache) > 0
         clear_posts_list_cache()
         assert len(upload_refs_cache) == 0
 
-    def test_post_write_reflected_on_next_render(self, client, auth_headers):
+    async def test_post_write_reflected_on_next_render(self, client, auth_headers):
         """End-to-end: create a post embedding an image, then the next media
         render reports it referenced — the create invalidated the cached map."""
-        url = _upload_and_get_url(client, auth_headers)
+        url = await _upload_and_get_url(client, auth_headers)
         try:
             # Pre-warm the cache with a render showing the image unreferenced.
-            render1 = client.get("/api/upload/files", headers=auth_headers).json()
+            render1 = (await client.get("/api/upload/files", headers=auth_headers)).json()
             assert next(i for i in render1["items"] if i["url"] == url)["referenced"] is False
 
-            resp = client.post(
+            resp = await client.post(
                 "/api/posts",
                 json={
                     "title": "Embeds media",
@@ -679,14 +679,14 @@ class TestMediaReferenceCache:
             )
             assert resp.status_code == 201, resp.text
 
-            render2 = client.get("/api/upload/files", headers=auth_headers).json()
+            render2 = (await client.get("/api/upload/files", headers=auth_headers)).json()
             item = next(i for i in render2["items"] if i["url"] == url)
             assert item["referenced"] is True, "post create must invalidate the ref map"
         finally:
-            _delete_file(client, auth_headers, url)
+            await _delete_file(client, auth_headers, url)
 
 
-def test_referencing_posts_matches_content_and_cover_only(db_session):
+async def test_referencing_posts_matches_content_and_cover_only(db_session):
     """The targeted delete-guard probe (TASK-334/ISS-432) finds a URL embedded
     in content OR cover_image, and ignores posts that reference neither —
     replacing the full _collect_upload_references regex pass over every body
@@ -701,9 +701,11 @@ def test_referencing_posts_matches_content_and_cover_only(db_session):
             models.Post(title="Clean", slug="clean", content="nothing here", published=False),
         ]
     )
-    db_session.commit()
+    await db_session.commit()
 
-    result = {title for _, title in _referencing_posts(db_session, url)}
+    result = {title for _, title in await _referencing_posts(db_session, url)}
     assert result == {"Inline", "Cover"}
     # A URL nothing references resolves to no rows, not a full scan answer.
-    assert _referencing_posts(db_session, "/static/uploads/2026/07/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.png") == []
+    assert (
+        await _referencing_posts(db_session, "/static/uploads/2026/07/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb.png") == []
+    )

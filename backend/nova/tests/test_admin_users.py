@@ -8,9 +8,9 @@ from app.auth import User, get_password_hash
 class TestCreateUser:
     """Tests for POST /api/admin/users endpoint."""
 
-    def test_create_user_success(self, client, admin_user, auth_headers):
+    async def test_create_user_success(self, client, admin_user, auth_headers):
         """Admin can create a new user with valid data."""
-        response = client.post(
+        response = await client.post(
             "/api/admin/users",
             json={"username": "newuser", "password": "password123"},
             headers=auth_headers,
@@ -22,15 +22,15 @@ class TestCreateUser:
         assert "id" in data
         assert "password" not in data  # Password should not be returned
 
-    def test_create_user_auth_required(self, client, admin_user):
+    async def test_create_user_auth_required(self, client, admin_user):
         """Request without token should return 401."""
-        response = client.post(
+        response = await client.post(
             "/api/admin/users",
             json={"username": "newuser", "password": "password123"},
         )
         assert response.status_code == 401
 
-    def test_create_user_non_admin_forbidden(self, client, db_session: Session, admin_user):
+    async def test_create_user_non_admin_forbidden(self, client, db_session: Session, admin_user):
         """Regular user cannot create users."""
         # Create a regular (non-admin) user
         regular_user = User(
@@ -39,10 +39,10 @@ class TestCreateUser:
             is_superuser=False,
         )
         db_session.add(regular_user)
-        db_session.flush()
+        await db_session.flush()
 
         # Login as regular user
-        login_response = client.post(
+        login_response = await client.post(
             "/api/admin/login",
             data={"username": "regularuser", "password": "regularpass123"},
         )
@@ -51,17 +51,17 @@ class TestCreateUser:
         regular_headers = {"Authorization": f"Bearer {regular_token}"}
 
         # Try to create user as non-admin
-        response = client.post(
+        response = await client.post(
             "/api/admin/users",
             json={"username": "someuser", "password": "password123"},
             headers=regular_headers,
         )
         assert response.status_code == 403
 
-    def test_create_user_duplicate_username(self, client, admin_user, auth_headers):
+    async def test_create_user_duplicate_username(self, client, admin_user, auth_headers):
         """Duplicate username should return 400."""
         # Create first user
-        response1 = client.post(
+        response1 = await client.post(
             "/api/admin/users",
             json={"username": "duplicateuser", "password": "password123"},
             headers=auth_headers,
@@ -69,7 +69,7 @@ class TestCreateUser:
         assert response1.status_code == 200
 
         # Try to create user with same username
-        response2 = client.post(
+        response2 = await client.post(
             "/api/admin/users",
             json={"username": "duplicateuser", "password": "differentpass"},
             headers=auth_headers,
@@ -81,10 +81,10 @@ class TestCreateUser:
         error_msg = error_data["error"].get("message", "").lower()
         assert "already exists" in error_msg
 
-    def test_create_user_with_invalid_data(self, client, admin_user, auth_headers):
+    async def test_create_user_with_invalid_data(self, client, admin_user, auth_headers):
         """Invalid data should return validation error."""
         # Missing required fields
-        response = client.post(
+        response = await client.post(
             "/api/admin/users",
             json={"username": "testuser"},
             headers=auth_headers,
@@ -95,22 +95,22 @@ class TestCreateUser:
 class TestListUsers:
     """Tests for GET /api/admin/users endpoint."""
 
-    def test_list_users_success(self, client, admin_user, auth_headers):
+    async def test_list_users_success(self, client, admin_user, auth_headers):
         """Admin can list all users."""
         # Create a couple of users first
-        client.post(
+        await client.post(
             "/api/admin/users",
             json={"username": "user1", "password": "password123"},
             headers=auth_headers,
         )
-        client.post(
+        await client.post(
             "/api/admin/users",
             json={"username": "user2", "password": "password456"},
             headers=auth_headers,
         )
 
         # List users
-        response = client.get("/api/admin/users", headers=auth_headers)
+        response = await client.get("/api/admin/users", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -121,12 +121,12 @@ class TestListUsers:
         assert "user1" in usernames
         assert "user2" in usernames
 
-    def test_list_users_auth_required(self, client, admin_user):
+    async def test_list_users_auth_required(self, client, admin_user):
         """Request without token should return 401."""
-        response = client.get("/api/admin/users")
+        response = await client.get("/api/admin/users")
         assert response.status_code == 401
 
-    def test_list_users_non_admin_forbidden(self, client, db_session: Session, admin_user):
+    async def test_list_users_non_admin_forbidden(self, client, db_session: Session, admin_user):
         """Regular user cannot list all users."""
         # Create a regular user
         regular_user = User(
@@ -135,10 +135,10 @@ class TestListUsers:
             is_superuser=False,
         )
         db_session.add(regular_user)
-        db_session.flush()
+        await db_session.flush()
 
         # Login as regular user
-        login_response = client.post(
+        login_response = await client.post(
             "/api/admin/login",
             data={"username": "regularuser", "password": "regularpass123"},
         )
@@ -146,17 +146,17 @@ class TestListUsers:
         regular_headers = {"Authorization": f"Bearer {regular_token}"}
 
         # Try to list users as non-admin
-        response = client.get("/api/admin/users", headers=regular_headers)
+        response = await client.get("/api/admin/users", headers=regular_headers)
         assert response.status_code == 403
 
 
 class TestDeleteUser:
     """Tests for DELETE /api/admin/users/{user_id} endpoint."""
 
-    def test_delete_user_success(self, client, admin_user, auth_headers):
+    async def test_delete_user_success(self, client, admin_user, auth_headers):
         """Admin can delete a user."""
         # Create a user to delete
-        create_response = client.post(
+        create_response = await client.post(
             "/api/admin/users",
             json={"username": "usertobedeleted", "password": "password123"},
             headers=auth_headers,
@@ -165,17 +165,17 @@ class TestDeleteUser:
         user_id = create_response.json()["id"]
 
         # Delete the user
-        delete_response = client.delete(
+        delete_response = await client.delete(
             f"/api/admin/users/{user_id}",
             headers=auth_headers,
         )
         # Standardized 204-no-body like the public/reader delete surfaces (ISS-147).
         assert delete_response.status_code == 204
 
-    def test_delete_user_cannot_delete_self(self, client, admin_user, auth_headers):
+    async def test_delete_user_cannot_delete_self(self, client, admin_user, auth_headers):
         """Admin cannot delete themselves."""
         # Try to delete the admin user (id = admin_user.id)
-        response = client.delete(
+        response = await client.delete(
             f"/api/admin/users/{admin_user.id}",
             headers=auth_headers,
         )
@@ -186,9 +186,9 @@ class TestDeleteUser:
         error_msg = error_data["error"].get("message", "").lower()
         assert "delete yourself" in error_msg
 
-    def test_delete_user_not_found(self, client, admin_user, auth_headers):
+    async def test_delete_user_not_found(self, client, admin_user, auth_headers):
         """Deleting non-existent user returns 404."""
-        response = client.delete(
+        response = await client.delete(
             "/api/admin/users/99999",
             headers=auth_headers,
         )
@@ -199,12 +199,12 @@ class TestDeleteUser:
         error_msg = error_data["error"].get("message", "").lower()
         assert "not found" in error_msg
 
-    def test_delete_user_auth_required(self, client, admin_user):
+    async def test_delete_user_auth_required(self, client, admin_user):
         """Request without token should return 401."""
-        response = client.delete("/api/admin/users/1")
+        response = await client.delete("/api/admin/users/1")
         assert response.status_code == 401
 
-    def test_delete_user_non_admin_forbidden(self, client, db_session: Session, admin_user, auth_headers):
+    async def test_delete_user_non_admin_forbidden(self, client, db_session: Session, admin_user, auth_headers):
         """Regular user cannot delete users."""
         # Create a regular user
         regular_user = User(
@@ -213,10 +213,10 @@ class TestDeleteUser:
             is_superuser=False,
         )
         db_session.add(regular_user)
-        db_session.flush()
+        await db_session.flush()
 
         # Create another user to try deleting
-        create_response = client.post(
+        create_response = await client.post(
             "/api/admin/users",
             json={"username": "targetuser", "password": "password123"},
             headers=auth_headers,
@@ -224,7 +224,7 @@ class TestDeleteUser:
         target_id = create_response.json()["id"]
 
         # Login as regular user
-        login_response = client.post(
+        login_response = await client.post(
             "/api/admin/login",
             data={"username": "regularuser", "password": "regularpass123"},
         )
@@ -232,7 +232,7 @@ class TestDeleteUser:
         regular_headers = {"Authorization": f"Bearer {regular_token}"}
 
         # Try to delete as non-admin
-        response = client.delete(
+        response = await client.delete(
             f"/api/admin/users/{target_id}",
             headers=regular_headers,
         )

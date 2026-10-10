@@ -13,6 +13,7 @@ import base64
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import func, select
 
 from app import models, webpush
 
@@ -36,44 +37,48 @@ def _subscribe_body(endpoint: str = ENDPOINT, prefix: int = 4) -> dict:
 
 
 class TestVapidPublicKey:
-    def test_returns_valid_65_byte_point(self, client):
-        response = client.get("/api/push/vapid-public-key")
+    async def test_returns_valid_65_byte_point(self, client):
+        response = await client.get("/api/push/vapid-public-key")
         assert response.status_code == 200
         key = response.json()["public_key"]
         raw = base64.urlsafe_b64decode(key + "=" * ((4 - len(key) % 4) % 4))
         assert len(raw) == 65
         assert raw[0] == 4  # uncompressed EC point marker
 
-    def test_fails_closed_when_unconfigured(self, client, monkeypatch):
+    async def test_fails_closed_when_unconfigured(self, client, monkeypatch):
         monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
-        response = client.get("/api/push/vapid-public-key")
+        response = await client.get("/api/push/vapid-public-key")
         assert response.status_code == 503
 
 
 class TestSubscribe:
-    def test_subscribe_stores_row(self, client, db_session):
-        response = client.post("/api/push/subscribe", json=_subscribe_body())
+    async def test_subscribe_stores_row(self, client, db_session):
+        response = await client.post("/api/push/subscribe", json=_subscribe_body())
         assert response.status_code == 200
         data = response.json()
         assert data["endpoint"] == ENDPOINT
-        row = db_session.query(models.PushSubscription).filter_by(endpoint=ENDPOINT).one()
+        row = (
+            await db_session.execute(
+                select(models.PushSubscription).where(models.PushSubscription.endpoint == ENDPOINT)
+            )
+        ).scalar_one()
         assert row.p256dh == _valid_keys()["p256dh"]
         assert row.auth == _valid_keys()["auth"]
 
-    def test_resubscribe_upserts_not_duplicates(self, client, db_session):
-        client.post("/api/push/subscribe", json=_subscribe_body(prefix=4))
-        first_id = db_session.query(models.PushSubscription).one().id
+    async def test_resubscribe_upserts_not_duplicates(self, client, db_session):
+        await client.post("/api/push/subscribe", json=_subscribe_body(prefix=4))
+        first_id = (await db_session.execute(select(models.PushSubscription))).scalar_one().id
         # Same endpoint, rotated keys (fresh browser subscription round).
         updated = _subscribe_body(prefix=9)
-        response = client.post("/api/push/subscribe", json=updated)
+        response = await client.post("/api/push/subscribe", json=updated)
         assert response.status_code == 200
         assert response.json()["id"] == first_id
-        rows = db_session.query(models.PushSubscription).all()
+        rows = (await db_session.execute(select(models.PushSubscription))).scalars().all()
         assert len(rows) == 1
         assert rows[0].p256dh == updated["keys"]["p256dh"]
 
-    def test_race_winner_path_applies_new_keys(self, client, db_session, monkeypatch):
+    async def test_race_winner_path_applies_new_keys(self, client, db_session, monkeypatch):
         """A concurrent subscribe that loses the unique-key insert race must
         still refresh the winner row with THIS request's rotated keys/prefs.
 
@@ -83,7 +88,7 @@ class TestSubscribe:
         dispatch to that endpoint failed http-ece decryption (counted as
         `failed`) until an unlucky future subscribe overwrote them."""
         from sqlalchemy import delete
-        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.ext.asyncio import AsyncSession
 
         # Pre-make a subscription whose endpoint already exists (the row the
         # 'racing winner' owns) with OLD keys. The test session shares ONE root
@@ -95,55 +100,60 @@ class TestSubscribe:
         # reproduces production isolation: the post-rollback re-query then
         # finds the row, exactly like a real concurrent subscriber would.
         old = _subscribe_body(prefix=4)
-        engine = db_session.get_bind().engine
-        winner_session = sessionmaker(bind=engine)()
-        try:
-            winner_session.add(
-                models.PushSubscription(
-                    endpoint=old["endpoint"],
-                    p256dh=old["keys"]["p256dh"],
-                    auth=old["keys"]["auth"],
+        engine = db_session.bind.engine  # AsyncEngine bound to this worker's DB
+
+        async def _seed_winner() -> int:
+            async with AsyncSession(engine) as ws:
+                ws.add(
+                    models.PushSubscription(
+                        endpoint=old["endpoint"],
+                        p256dh=old["keys"]["p256dh"],
+                        auth=old["keys"]["auth"],
+                    )
                 )
-            )
-            winner_session.commit()
-            winner_id = winner_session.query(models.PushSubscription).filter_by(endpoint=old["endpoint"]).one().id
-        finally:
-            winner_session.close()
+                await ws.commit()
+                win = (
+                    await ws.execute(
+                        select(models.PushSubscription).where(models.PushSubscription.endpoint == old["endpoint"])
+                    )
+                ).scalar_one()
+                return win.id
+
+        winner_id = await _seed_winner()
 
         try:
             # Force the losing request down the INSERT path: its pre-check query
             # sees no existing row, but the row actually exists → the INSERT hits
             # the unique constraint → IntegrityError → the winner path runs.
-            real_query = db_session.query
+            real_execute = db_session.execute
             # Exactly ONE miss across every PushSubscription lookup in the
             # losing request: the pre-check (before the INSERT) must see "no
             # row", but the post-IntegrityError re-query must find the winner
             # row so the winner path can refresh it.
             missed = {"v": False}
 
-            def miss_first_query(cls, *args, **kwargs):
-                q = real_query(cls, *args, **kwargs)
-                if cls is models.PushSubscription:
-                    original_first = q.first
+            def is_subscription_select(stmt) -> bool:
+                return "push_subscriptions" in str(stmt)
 
-                    def first(*f_args, **f_kwargs):
-                        if not missed["v"]:
-                            missed["v"] = True
-                            return None  # pre-check misses; INSERT will collide
-                        return original_first(*f_args, **f_kwargs)
+            async def miss_first_sub_execute(stmt, *args, **kwargs):
+                if not missed["v"] and is_subscription_select(stmt):
+                    # The losing request's first PushSubscription lookup is its
+                    # pre-check: report "no row" so the subsequent INSERT hits the
+                    # unique constraint (the real winner row is durably committed
+                    # above on its own connection).
+                    missed["v"] = True
+                    return await real_execute(select(models.PushSubscription).where(False))
+                return await real_execute(stmt, *args, **kwargs)
 
-                    q.first = first  # type: ignore[attr-defined]
-                return q
-
-            monkeypatch.setattr(db_session, "query", miss_first_query)
+            monkeypatch.setattr(db_session, "execute", miss_first_sub_execute)
 
             fresh = _subscribe_body(prefix=9)
-            response = client.post("/api/push/subscribe", json=fresh)
+            response = await client.post("/api/push/subscribe", json=fresh)
             assert response.status_code == 200
             data = response.json()
             assert data["id"] == winner_id
 
-            rows = db_session.query(models.PushSubscription).all()
+            rows = (await db_session.execute(select(models.PushSubscription))).scalars().all()
             assert len(rows) == 1
             # The winner row now carries the LOSER's fresh keys, so the stored
             # subscription is decryptable again.
@@ -154,9 +164,11 @@ class TestSubscribe:
             # later tests. Release the shared session's root transaction first
             # (SQLite holds a read lock while it is open, which would otherwise
             # block this separate writer connection).
-            db_session.rollback()
-            with engine.begin() as conn:
-                conn.execute(delete(models.PushSubscription).where(models.PushSubscription.endpoint == old["endpoint"]))
+            await db_session.rollback()
+            async with engine.begin() as conn:
+                await conn.execute(
+                    delete(models.PushSubscription).where(models.PushSubscription.endpoint == old["endpoint"])
+                )
 
     @pytest.mark.parametrize(
         "endpoint",
@@ -167,12 +179,12 @@ class TestSubscribe:
             "http://",  # no netloc
         ],
     )
-    def test_rejects_unsafe_endpoint_schemes(self, client, endpoint):
-        response = client.post("/api/push/subscribe", json=_subscribe_body(endpoint=endpoint))
+    async def test_rejects_unsafe_endpoint_schemes(self, client, endpoint):
+        response = await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=endpoint))
         assert response.status_code == 422
 
-    def test_rejects_overlong_endpoint(self, client):
-        response = client.post(
+    async def test_rejects_overlong_endpoint(self, client):
+        response = await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(endpoint="https://example.com/" + "x" * 500),
         )
@@ -186,56 +198,56 @@ class TestSubscribe:
             lambda k: {**k, "auth": _b64url(b"\x00" * 8)},  # 8 bytes, not 16
         ],
     )
-    def test_rejects_invalid_keys(self, client, mutator):
+    async def test_rejects_invalid_keys(self, client, mutator):
         """p256dh must be a 65-byte EC point, auth a 16-byte salt — the route
         layer rejects anything else so http-ece can always encrypt (422)."""
         body = _subscribe_body()
         body["keys"] = mutator(body["keys"])
-        response = client.post("/api/push/subscribe", json=body)
+        response = await client.post("/api/push/subscribe", json=body)
         assert response.status_code == 422
 
-    def test_fails_closed_when_unconfigured(self, client, monkeypatch):
+    async def test_fails_closed_when_unconfigured(self, client, monkeypatch):
         monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
-        response = client.post("/api/push/subscribe", json=_subscribe_body())
+        response = await client.post("/api/push/subscribe", json=_subscribe_body())
         assert response.status_code == 503
 
 
 class TestUnsubscribe:
-    def test_removes_existing(self, client, db_session):
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        response = client.post("/api/push/unsubscribe", json=_subscribe_body())
+    async def test_removes_existing(self, client, db_session):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        response = await client.post("/api/push/unsubscribe", json=_subscribe_body())
         assert response.status_code == 204
-        assert db_session.query(models.PushSubscription).count() == 0
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 0
 
-    def test_removing_absent_is_idempotent(self, client):
-        response = client.post("/api/push/unsubscribe", json=_subscribe_body())
+    async def test_removing_absent_is_idempotent(self, client):
+        response = await client.post("/api/push/unsubscribe", json=_subscribe_body())
         assert response.status_code == 204
 
-    def test_removes_only_matching_endpoint(self, client, db_session):
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
-        client.post("/api/push/unsubscribe", json=_subscribe_body())
-        remaining = db_session.query(models.PushSubscription).all()
+    async def test_removes_only_matching_endpoint(self, client, db_session):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
+        await client.post("/api/push/unsubscribe", json=_subscribe_body())
+        remaining = (await db_session.execute(select(models.PushSubscription))).scalars().all()
         assert len(remaining) == 1
         assert remaining[0].endpoint == NEW_ENDPOINT
 
-    def test_requires_proof_of_possession_for_unsubscribe(self, client, db_session):
+    async def test_requires_proof_of_possession_for_unsubscribe(self, client, db_session):
         """Deleting by endpoint ALONE must not work — the keys the browser
         holds are the proof of possession, so a captured endpoint (dispatch
         logs, the reader's own listing) cannot be used to kill someone's
         subscription (security review)."""
-        client.post("/api/push/subscribe", json=_subscribe_body())
+        await client.post("/api/push/subscribe", json=_subscribe_body())
         # Correct endpoint, wrong keys (attacker knows the endpoint's URL only).
         forged = _subscribe_body(prefix=99)  # different p256dh/auth
         forged["endpoint"] = ENDPOINT
-        response = client.post("/api/push/unsubscribe", json=forged)
+        response = await client.post("/api/push/unsubscribe", json=forged)
         assert response.status_code == 204
-        assert db_session.query(models.PushSubscription).count() == 1
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 1
         # The true browser, holding its real keys, still revokes normally.
-        response = client.post("/api/push/unsubscribe", json=_subscribe_body())
+        response = await client.post("/api/push/unsubscribe", json=_subscribe_body())
         assert response.status_code == 204
-        assert db_session.query(models.PushSubscription).count() == 0
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 0
 
 
 class TestSubscribeHardening:
@@ -253,57 +265,57 @@ class TestSubscribeHardening:
             "https://printer.local/push",
         ],
     )
-    def test_rejects_internal_literal_hosts(self, client, endpoint):
+    async def test_rejects_internal_literal_hosts(self, client, endpoint):
         """A push endpoint pointing at loopback/private/link-local/literal
         internal hosts is refused at subscribe (SSRF layer 1, DNS-free)."""
-        response = client.post("/api/push/subscribe", json=_subscribe_body(endpoint=endpoint))
+        response = await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=endpoint))
         assert response.status_code == 422
 
-    def test_rejects_reader_stealing_another_readers_binding(self, client, db_session):
+    async def test_rejects_reader_stealing_another_readers_binding(self, client, db_session):
         """Re-subscribing an endpoint already bound to another reader must not
         silently repoint it (would let reader B steal + revoke reader A's
         subscriptions using only A's logged endpoint)."""
 
         # Reader A subscribes while signed in.
-        register_a = client.post(
+        register_a = await client.post(
             "/api/reader/register",
             json={"email": "a@test.com", "password": "password123"},
         )
         token_a = register_a.json()["access_token"]
-        client.post("/api/push/subscribe", json=_subscribe_body(), headers={"Authorization": f"Bearer {token_a}"})
-        row = db_session.query(models.PushSubscription).one()
+        await client.post("/api/push/subscribe", json=_subscribe_body(), headers={"Authorization": f"Bearer {token_a}"})
+        row = (await db_session.execute(select(models.PushSubscription))).scalar_one()
         assert row.reader_id is not None
 
         # Reader B tries to bind the same endpoint to themselves.
-        register_b = client.post(
+        register_b = await client.post(
             "/api/reader/register",
             json={"email": "b@test.com", "password": "password123"},
         )
         token_b = register_b.json()["access_token"]
-        response = client.post(
+        response = await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(),
             headers={"Authorization": f"Bearer {token_b}"},
         )
         assert response.status_code == 409
-        db_session.refresh(row)
+        await db_session.refresh(row)
         # Binding unchanged — A still owns it.
         assert row.reader_id == register_a.json()["reader"]["id"]
 
-    def test_caps_anonymous_subscriptions_per_ip(self, client, db_session):
+    async def test_caps_anonymous_subscriptions_per_ip(self, client, db_session):
         """Anonymous growth is bounded per client IP (one browser = one
         endpoint, so a handful of rows per IP is generous; security review)."""
         from app import webpush
 
         cap = webpush.MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE
         for i in range(cap):
-            r = client.post(
+            r = await client.post(
                 "/api/push/subscribe",
                 json=_subscribe_body(endpoint=f"https://push.example.com/push-{i}", prefix=i),
             )
             assert r.status_code == 200, r.text
         # At the cap, one more anonymous endpoint is denied.
-        over = client.post(
+        over = await client.post(
             "/api/push/subscribe",
             json=_subscribe_body(endpoint=f"https://push.example.com/push-{cap}", prefix=99),
         )
@@ -311,13 +323,13 @@ class TestSubscribeHardening:
 
 
 class TestNotifyAuth:
-    def test_anonymous_forbidden(self, client):
-        response = client.post("/api/push/notify", json={"title": "Hi", "url": "/posts/x"})
+    async def test_anonymous_forbidden(self, client):
+        response = await client.post("/api/push/notify", json={"title": "Hi", "url": "/posts/x"})
         assert response.status_code == 401
 
-    def test_editor_forbidden(self, client, editor_headers):
+    async def test_editor_forbidden(self, client, editor_headers):
         """Broadcasting to every subscriber is superuser-privileged, not editor work."""
-        response = client.post(
+        response = await client.post(
             "/api/push/notify",
             json={"title": "Hi", "url": "/posts/x"},
             headers=editor_headers,
@@ -333,8 +345,8 @@ class TestNotifyAuth:
             "posts/no-leading-slash",
         ],
     )
-    def test_rejects_off_site_or_malformed_url(self, client, auth_headers, url):
-        response = client.post(
+    async def test_rejects_off_site_or_malformed_url(self, client, auth_headers, url):
+        response = await client.post(
             "/api/push/notify",
             json={"title": "Hi", "url": url},
             headers=auth_headers,
@@ -343,14 +355,14 @@ class TestNotifyAuth:
 
 
 class TestNotifyDispatch:
-    def test_dispatches_to_every_subscription_with_vapid(self, client, auth_headers):
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
+    async def test_dispatches_to_every_subscription_with_vapid(self, client, auth_headers):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
 
         captured = []
         with patch("app.webpush.send_push") as mock_send:
             mock_send.side_effect = lambda **kw: captured.append(kw)
-            response = client.post(
+            response = await client.post(
                 "/api/push/notify",
                 json={"title": "新文章", "body": "Go read it", "url": "/posts/hello"},
                 headers=auth_headers,
@@ -365,9 +377,9 @@ class TestNotifyDispatch:
             assert call["payload"]["title"] == "新文章"
             assert call["payload"]["url"] == "/posts/hello"
 
-    def test_410_gone_retires_subscription(self, client, auth_headers, db_session):
-        client.post("/api/push/subscribe", json=_subscribe_body())
-        client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
+    async def test_410_gone_retires_subscription(self, client, auth_headers, db_session):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
+        await client.post("/api/push/subscribe", json=_subscribe_body(endpoint=NEW_ENDPOINT, prefix=8))
 
         from pywebpush import WebPushException
 
@@ -379,7 +391,7 @@ class TestNotifyDispatch:
             raise WebPushException("gone", response=_Resp())
 
         with patch("app.webpush.send_push", side_effect=_gone):
-            response = client.post(
+            response = await client.post(
                 "/api/push/notify",
                 json={"title": "Hi", "url": "/posts/x"},
                 headers=auth_headers,
@@ -388,10 +400,10 @@ class TestNotifyDispatch:
         assert response.status_code == 200
         assert response.json()["sent"] == 0
         assert response.json()["removed"] == 2
-        assert db_session.query(models.PushSubscription).count() == 0
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 0
 
-    def test_non_gone_failure_counts_and_keeps_subscription(self, client, auth_headers, db_session):
-        client.post("/api/push/subscribe", json=_subscribe_body())
+    async def test_non_gone_failure_counts_and_keeps_subscription(self, client, auth_headers, db_session):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
 
         from pywebpush import WebPushException
 
@@ -403,7 +415,7 @@ class TestNotifyDispatch:
             raise WebPushException("down", response=_Resp())
 
         with patch("app.webpush.send_push", side_effect=_down):
-            response = client.post(
+            response = await client.post(
                 "/api/push/notify",
                 json={"title": "Hi", "url": "/posts/x"},
                 headers=auth_headers,
@@ -411,13 +423,13 @@ class TestNotifyDispatch:
 
         assert response.status_code == 200
         assert response.json() == {"total": 1, "sent": 0, "failed": 1, "removed": 0, "skipped": 0}
-        assert db_session.query(models.PushSubscription).count() == 1
+        assert (await db_session.execute(select(func.count()).select_from(models.PushSubscription))).scalar_one() == 1
 
-    def test_fails_closed_when_unconfigured(self, client, auth_headers, monkeypatch):
-        client.post("/api/push/subscribe", json=_subscribe_body())
+    async def test_fails_closed_when_unconfigured(self, client, auth_headers, monkeypatch):
+        await client.post("/api/push/subscribe", json=_subscribe_body())
         monkeypatch.delenv("VAPID_PUBLIC_KEY", raising=False)
         monkeypatch.delenv("VAPID_PRIVATE_KEY", raising=False)
-        response = client.post(
+        response = await client.post(
             "/api/push/notify",
             json={"title": "Hi", "url": "/posts/x"},
             headers=auth_headers,

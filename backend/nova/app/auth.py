@@ -9,11 +9,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from pydantic import BaseModel
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, false
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy import Boolean, Integer, String, Text, false, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config import is_development
 from app.database import Base, get_db
+from app.database import NaiveUTCDateTime as DateTime
 
 # ≥32 bytes so PyJWT's HS256 InsecureKeyLengthWarning (RFC 7518 §3.2) stays
 # silent in dev; the key itself is still a well-known, development-only value.
@@ -120,7 +122,9 @@ class User(Base):
     # Bumped on password change so previously-issued JWTs are invalidated
     # immediately (checked in get_current_user). (RIL round 16 security audit)
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
 
 class ReaderAccount(Base):
@@ -187,7 +191,9 @@ class ReaderAccount(Base):
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
 
 
 class TokenData(BaseModel):
@@ -263,7 +269,7 @@ def create_password_reset_token(reader_id: int, token_version: int = 0) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_reader_for_password_reset(token: str, db: Session) -> ReaderAccount | None:
+async def get_reader_for_password_reset(token: str, db: AsyncSession) -> ReaderAccount | None:
     """Resolve the reader a valid reset token names, else None.
 
     Mirrors ``get_current_reader``'s checks: audience must match the reset
@@ -281,7 +287,7 @@ def get_reader_for_password_reset(token: str, db: Session) -> ReaderAccount | No
     if reader_id is None:
         return None
     token_version = payload.get("ver", 0)
-    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    reader = (await db.execute(select(ReaderAccount).where(ReaderAccount.id == reader_id))).scalar_one_or_none()
     if reader is None or token_version != (reader.token_version or 0) or reader.is_active is False:
         return None
     return reader
@@ -312,7 +318,7 @@ def create_reader_2fa_token(reader_id: int, token_version: int = 0) -> str:
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_reader_for_2fa(token: str, db: Session) -> ReaderAccount | None:
+async def get_reader_for_2fa(token: str, db: AsyncSession) -> ReaderAccount | None:
     """Resolve the reader a valid 2FA challenge token names, else None.
 
     Mirrors ``get_reader_for_password_reset``: the audience must be the 2FA
@@ -327,7 +333,7 @@ def get_reader_for_2fa(token: str, db: Session) -> ReaderAccount | None:
     if reader_id is None:
         return None
     token_version = payload.get("ver", 0)
-    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    reader = (await db.execute(select(ReaderAccount).where(ReaderAccount.id == reader_id))).scalar_one_or_none()
     # `two_factor_enabled` is re-checked as defense-in-depth: a challenge issued
     # while the reader had 2FA on must not resolve for a reader who has since
     # turned it off (the secret transition also fails closed, but the flag makes
@@ -386,9 +392,9 @@ def _decode_payload(token: str, audience: str | None = None) -> dict | None:
         return None
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -418,13 +424,13 @@ def get_current_user(
     # user's counter is also 0 until a password change, so they still work.
     # After a password change the counter bumps and every older token is rejected.
     token_version = payload.get("ver", 0)
-    user = db.query(User).filter(User.id == user_id).first()
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None or token_version != (user.token_version or 0):
         raise credentials_exception
     return user
 
 
-def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """Any authenticated admin-tier account (superuser or editor).
 
     Guards content-moderation endpoints (posts/comments/categories/tags/upload).
@@ -438,7 +444,7 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-def get_current_superuser(current_user: User = Depends(get_current_admin)) -> User:
+async def get_current_superuser(current_user: User = Depends(get_current_admin)) -> User:
     """Superuser-only guard for privileged admin endpoints (users/export/batch)."""
     if current_user.role != ROLE_SUPERUSER:
         raise HTTPException(
@@ -460,9 +466,9 @@ optional_reader_oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
-def get_current_reader(
+async def get_current_reader(
     token: str = Depends(reader_oauth2_scheme),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> ReaderAccount:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -485,7 +491,7 @@ def get_current_reader(
         raise credentials_exception
 
     token_version = payload.get("ver", 0)
-    reader = db.query(ReaderAccount).filter(ReaderAccount.id == reader_id).first()
+    reader = (await db.execute(select(ReaderAccount).where(ReaderAccount.id == reader_id))).scalar_one_or_none()
     if reader is None or token_version != (reader.token_version or 0):
         raise credentials_exception
     # Account moderation (DEC-194, TASK-214, ISS-116): a deactivated reader is
@@ -500,9 +506,9 @@ def get_current_reader(
     return reader
 
 
-def get_optional_reader(
+async def get_optional_reader(
     token: str | None = Depends(optional_reader_oauth2_scheme),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> ReaderAccount | None:
     """Resolve the reader JWT if present and valid, else None.
 
@@ -517,6 +523,6 @@ def get_optional_reader(
     try:
         # Reuse get_current_reader's decode + audience + version checks (passing
         # the token/db positionally bypasses the Depends defaults).
-        return get_current_reader(token, db)
+        return await get_current_reader(token, db)
     except HTTPException:
         return None
