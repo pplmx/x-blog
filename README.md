@@ -392,12 +392,16 @@ x-blog/
 │   ├── app/
 │   │   ├── main.py         # Application entry
 │   │   ├── config.py       # Configuration
-│   │   ├── database.py     # Database setup
+│   │   ├── database.py     # Async engine + session (SQLAlchemy async)
 │   │   ├── models.py       # SQLAlchemy models
 │   │   ├── schemas.py      # Pydantic schemas
-│   │   ├── crud.py         # Database operations
-│   │   └── routers/        # API routes
-│   ├── tests/              # pytest tests (1243 tests)
+│   │   ├── repositories/   # Data-access layer, split by domain (posts,
+│   │   │                   # comments, follows, notifications, …; `_base`
+│   │   │                   # holds shared helpers) — async SQLAlchemy
+│   │   ├── services/       # Business-orchestration layer (posts, comments,
+│   │   │                   # reader, analytics, …) that routers depend on
+│   │   └── routers/        # Thin HTTP shells: validation, status, rate limit
+│   ├── tests/              # pytest: 1941 tests (SQLite) / 1952 (PostgreSQL)
 │   └── pyproject.toml      # Python config
 │
 ├── frontend/
