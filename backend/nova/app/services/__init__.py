@@ -8,3 +8,5 @@ cross-cutting modules (``app.emailer``, ``app.webpush``, ``app.cache``,
 ``app.limiter``). Routers are thin HTTP shells that call these services; the old
 database-crud facade has been deleted.
 """
+
+from __future__ import annotations

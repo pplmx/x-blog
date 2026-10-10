@@ -2,6 +2,8 @@
 RSS/sitemap service: aggregate feed rendering reads over posts, content and comments repositories.
 """
 
+from __future__ import annotations
+
 from app.repositories._base import (
     effective_publish_ts,
     utc_now_naive,

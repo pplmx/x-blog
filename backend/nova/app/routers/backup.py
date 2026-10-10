@@ -11,6 +11,8 @@ auth data: reader accounts / admin users / password hashes / browser push
 subscriptions do not round-trip (DEC-082).
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -33,6 +33,8 @@ deploy has no worker and a multi-process timer is exactly the double-send risk
 the advisory lock guards against.
 """
 
+from __future__ import annotations
+
 import html
 import os
 from collections.abc import Iterable

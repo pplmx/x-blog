@@ -1,5 +1,7 @@
 """Full-blog backup snapshot and restore."""
 
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import delete, select

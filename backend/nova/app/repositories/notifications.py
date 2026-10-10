@@ -1,5 +1,7 @@
 """Reader notification inbox, prefs, mentions, and fan-outs."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Collection, Iterable
 from typing import Any, cast

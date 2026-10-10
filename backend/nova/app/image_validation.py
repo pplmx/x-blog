@@ -13,6 +13,8 @@ in one file, so a fix to an upload bug can't diverge between the two entry
 points.
 """
 
+from __future__ import annotations
+
 from io import BytesIO
 
 from PIL import Image

@@ -1,5 +1,7 @@
 """Reader bookmarks, folders, and durable post likes."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, cast
 

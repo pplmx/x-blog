@@ -1,5 +1,7 @@
 """Comment CRUD, moderation, flags, and likes."""
 
+from __future__ import annotations
+
 import secrets
 from typing import Any, cast
 

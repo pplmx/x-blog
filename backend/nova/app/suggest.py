@@ -20,6 +20,8 @@ fetch; tag/category vocab comes from the same cached list helpers the tags/
 categories APIs serve.
 """
 
+from __future__ import annotations
+
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

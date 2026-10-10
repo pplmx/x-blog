@@ -17,6 +17,8 @@ alone; every other response defaults to ``no-store``. ``setdefault`` preserves
 route-set headers and never fights TASK-128's conditional-response helper.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 from starlette.requests import Request

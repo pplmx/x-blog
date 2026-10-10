@@ -19,6 +19,8 @@ key env vars set — fails closed instead of silently pushing with only half a
 key. (DEC-055, TASK-117)
 """
 
+from __future__ import annotations
+
 import base64
 import ipaddress
 import json

@@ -11,6 +11,8 @@ Deliberately admin-scoped: guarded by ``get_current_admin`` and stored in
 fan-outs, mirroring the User/ReaderAccount audience separation (DEC-059).
 """
 
+from __future__ import annotations
+
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request

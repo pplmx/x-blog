@@ -1,5 +1,7 @@
 """Shared rate limiter instance for the application."""
 
+from __future__ import annotations
+
 import ipaddress
 import os
 

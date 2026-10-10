@@ -21,6 +21,8 @@ Security posture (mirroring existing no-oracle patterns):
   so a mail client that re-opens the link can never error.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from secrets import token_urlsafe
 from typing import Annotated

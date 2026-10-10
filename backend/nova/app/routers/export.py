@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import io
 from collections.abc import AsyncIterator, Sequence

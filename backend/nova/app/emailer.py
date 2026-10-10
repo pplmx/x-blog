@@ -21,6 +21,8 @@ a consistent story across channels. Every reader-controlled value (titles,
 post titles) is HTML-escaped in the HTML part.
 """
 
+from __future__ import annotations
+
 import html
 import logging
 import os

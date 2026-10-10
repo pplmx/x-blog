@@ -2,6 +2,8 @@
 Admin service: admin post lifecycle (create/clone/update/revisions) with the new-post notification + newsletter/push fan-out, and comment moderation orchestration.
 """
 
+from __future__ import annotations
+
 from app.emailer import (
     dispatch_newsletter_new_post,
 )

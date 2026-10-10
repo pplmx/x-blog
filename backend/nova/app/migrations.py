@@ -11,6 +11,8 @@ missing columns added later (e.g. ``users.token_version``) and broke login with
 ``no such column``. Completes DEC-011.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from alembic import command

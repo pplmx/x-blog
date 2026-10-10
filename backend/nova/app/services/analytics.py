@@ -2,6 +2,8 @@
 Analytics/stats service: daily views, trends, following/search/comment stats, and blog + reader export timing helpers.
 """
 
+from __future__ import annotations
+
 from app.repositories._base import (
     utc_now_naive,
 )

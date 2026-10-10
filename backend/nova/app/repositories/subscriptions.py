@@ -1,5 +1,7 @@
 """Comment-thread subscriptions (reader and guest)."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from sqlalchemy import func, or_, select

@@ -1,5 +1,7 @@
 """Custom exceptions and error codes for the application."""
 
+from __future__ import annotations
+
 from enum import StrEnum
 from typing import Any
 

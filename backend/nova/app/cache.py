@@ -11,6 +11,8 @@ Caches that are actually read by the application live here:
   TTL (ISS-141; the counters do not, however, affect list ordering).
 """
 
+from __future__ import annotations
+
 from cachetools import TTLCache
 
 from app.middleware.logging import get_logger

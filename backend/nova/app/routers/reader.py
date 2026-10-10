@@ -7,6 +7,8 @@ so a self-registering reader can never hold a credential that reaches admin
 endpoints (enforced in auth.get_current_user / get_current_reader).
 """
 
+from __future__ import annotations
+
 import re
 from datetime import datetime, timedelta
 from pathlib import Path

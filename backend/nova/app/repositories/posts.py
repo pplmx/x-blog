@@ -1,5 +1,7 @@
 """Post CRUD, revisions, views/likes, and public post-list recommendations."""
 
+from __future__ import annotations
+
 from datetime import timedelta
 from typing import Any, cast
 

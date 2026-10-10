@@ -10,6 +10,8 @@ provides a value (e.g. ``published``, ``views``, timestamps). Tightening those
 constraints is a separate, deliberate schema migration, not this refactor.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 

@@ -1,5 +1,7 @@
 """Reader reading history, stats, streak, export, and recommendations."""
 
+from __future__ import annotations
+
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, cast
 

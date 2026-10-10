@@ -1,5 +1,7 @@
 """Sentry error tracking and performance monitoring for backend."""
 
+from __future__ import annotations
+
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration

@@ -1,5 +1,7 @@
 """Category CRUD with public post-count projection."""
 
+from __future__ import annotations
+
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

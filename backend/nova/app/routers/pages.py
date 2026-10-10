@@ -13,6 +13,8 @@ dumping their bodies, and the public detail returns the full markdown body the
 frontend renders through the same pipeline as posts.
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

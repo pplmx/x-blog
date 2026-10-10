@@ -1,5 +1,7 @@
 """Middleware package."""
 
+from __future__ import annotations
+
 from app.middleware.cache import add_cache_policy
 from app.middleware.logging import RequestLoggingMiddleware, get_logger, setup_logging
 from app.middleware.security import add_security_headers

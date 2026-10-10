@@ -1,5 +1,7 @@
 """Shared cross-domain helpers and constants moved verbatim from ``app/crud.py`` so the repository domain modules import them from here instead of duplicating them (Phase 1 of the crud.py cleanup)."""
 
+from __future__ import annotations
+
 import os
 from datetime import UTC, datetime, timedelta
 from typing import Any

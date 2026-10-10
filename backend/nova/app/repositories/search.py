@@ -1,5 +1,7 @@
 """Public search across posts/series/pages/authors plus search logging."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from typing import Any, cast
 

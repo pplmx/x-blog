@@ -1,5 +1,7 @@
 """Reader public profile and account deletion."""
 
+from __future__ import annotations
+
 from sqlalchemy import delete, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -11,6 +11,8 @@ script executes on this origin. Routes may still set a more specific header
 headers that a route has not already set.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 from starlette.requests import Request

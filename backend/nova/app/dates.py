@@ -8,6 +8,8 @@ bare-date to-bound to end-of-day so "up to Sep 1" means the whole of Sep 1,
 and normalize everything to naive UTC for the timestamp columns.
 """
 
+from __future__ import annotations
+
 import re
 from datetime import UTC, datetime
 

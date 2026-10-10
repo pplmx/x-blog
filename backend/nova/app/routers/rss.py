@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from urllib.parse import quote, urlparse

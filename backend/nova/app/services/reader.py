@@ -2,6 +2,8 @@
 Reader service: reader account, bookmarks, follows, history, notifications, comments, series/tag/category follows -- the aggregate reader domain.
 """
 
+from __future__ import annotations
+
 from app.repositories._base import (
     is_publicly_visible,
     utc_now_naive,

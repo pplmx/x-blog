@@ -2,6 +2,8 @@
 Search service: full-text post/series/page/author/comment search and search-query logging.
 """
 
+from __future__ import annotations
+
 from app.repositories.comments import (
     search_comments,
 )

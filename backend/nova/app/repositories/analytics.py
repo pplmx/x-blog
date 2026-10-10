@@ -1,5 +1,7 @@
 """Admin dashboard analytics stats (views, trends, comment activity)."""
 
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select

@@ -9,6 +9,8 @@ NO auth (public surface) and NO email (PII — same contract as
 CommentReaderProfile).
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from typing import Annotated
 

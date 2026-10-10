@@ -18,6 +18,8 @@ Exit code 0 even when SMTP is not configured or delivery is skipped — the job
 is best-effort and the cron log is the audit trail.
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import json

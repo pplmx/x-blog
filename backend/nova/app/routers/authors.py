@@ -8,6 +8,8 @@ answers 404 exactly like an author who chose no pen name, so this endpoint can
 neither enumerate admins nor reveal which usernames exist.
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession

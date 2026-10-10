@@ -1,5 +1,7 @@
 """Series CRUD and episode ordering."""
 
+from __future__ import annotations
+
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

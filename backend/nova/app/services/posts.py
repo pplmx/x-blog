@@ -2,6 +2,8 @@
 Posts service: post read/write/list/detail orchestration (archive, related, subscriptions, views, likes).
 """
 
+from __future__ import annotations
+
 from app.repositories._base import (
     is_publicly_visible,
 )

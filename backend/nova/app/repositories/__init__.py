@@ -5,6 +5,8 @@ This package is the data-access barrel (Phase 2): ``app.services`` composes it,
 routers depend on ``app.services``, and the old facade module has been deleted.
 """
 
+from __future__ import annotations
+
 from app.cache import (
     categories_cache,
     clear_categories_cache,

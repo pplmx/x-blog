@@ -2,6 +2,8 @@
 Content service: categories, tags, series and slug-redirect orchestration.
 """
 
+from __future__ import annotations
+
 from app.repositories.categories import (
     category_visible_post_count,
     create_category,

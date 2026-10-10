@@ -8,6 +8,8 @@ The series advances on the write-on-read ``post_views_daily`` table from
 DEC-086 and tracks forward only (no backfill of historic counters).
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -2,6 +2,8 @@
 Comments service: comment read/write orchestration plus the notification fan-out (thread/reply/mention/reader-follow + guest thread emails) that formerly lived inline in the comments router.
 """
 
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

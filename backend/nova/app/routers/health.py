@@ -1,5 +1,7 @@
 """Health check endpoints."""
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text

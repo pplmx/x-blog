@@ -1,5 +1,7 @@
 """Statistics endpoint for blog metrics."""
 
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select
