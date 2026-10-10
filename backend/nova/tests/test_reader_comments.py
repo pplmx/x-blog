@@ -348,10 +348,10 @@ class TestEditOwnComment:
         comment_count falls on the cached posts list) — the write must clear
         the posts-list cache, not leave a stale higher count for the TTL
         (ISS-608/TASK-529)."""
-        from app import crud as crud_module
+        from app import repositories as _repos
 
         calls = []
-        monkeypatch.setattr(crud_module, "clear_posts_list_cache", lambda: calls.append(1))
+        monkeypatch.setattr(_repos.comments, "clear_posts_list_cache", lambda: calls.append(1))
         post, comment_id, token = await self._own_approved(client, db_session)  # auto-approve OFF
         # The seed's approve_comment clears by contract; reset so we only count
         # clears attributable to THIS edit.

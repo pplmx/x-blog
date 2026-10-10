@@ -7,8 +7,6 @@ and the per-post retention cap.
 
 import uuid
 
-from app import crud
-
 
 async def _create_post(client, auth_headers, content="v0"):
     suffix = uuid.uuid4().hex[:10]
@@ -100,7 +98,9 @@ class TestPostRevisions:
         assert (await client.get("/api/admin/posts/999999/revisions", headers=auth_headers)).status_code == 404
 
     async def test_retention_cap_prunes_oldest(self, client, auth_headers, monkeypatch):
-        monkeypatch.setattr(crud, "MAX_REVISIONS_PER_POST", 3)
+        from app import repositories
+
+        monkeypatch.setattr(repositories.posts, "MAX_REVISIONS_PER_POST", 3)
         post_id, _ = await _create_post(client, auth_headers, "0")  # rev 1
         for i in range(1, 5):  # revs 2..5
             await _update_post(client, auth_headers, post_id, f"update {i}")

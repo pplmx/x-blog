@@ -1281,13 +1281,13 @@ class TestCacheInteraction:
 
     async def test_get_categories_uses_cache(self, db_session):
         """Test get_categories checks cache before querying DB."""
-        with patch("app.crud.categories_cache", {"all_categories": ["cached"]}):
+        with patch("app.repositories.categories.categories_cache", {"all_categories": ["cached"]}):
             result = await crud.get_categories(db_session)
             assert result == ["cached"]
 
     async def test_get_tags_uses_cache(self, db_session):
         """Test get_tags checks cache before querying DB."""
-        with patch("app.crud.tags_cache", {"all_tags": ["cached_tag"]}):
+        with patch("app.repositories.tags.tags_cache", {"all_tags": ["cached_tag"]}):
             result = await crud.get_tags(db_session)
             assert result == ["cached_tag"]
 
@@ -1300,7 +1300,7 @@ class TestCacheInteraction:
         )
 
         with (
-            patch("app.crud.clear_tags_cache") as mock_clear_tags,
+            patch("app.repositories.posts.clear_tags_cache") as mock_clear_tags,
             patch.object(db_session, "commit", new_callable=AsyncMock),
             patch.object(db_session, "refresh", new_callable=AsyncMock),
         ):
@@ -1312,7 +1312,7 @@ class TestCacheInteraction:
         """Test create_category clears category cache."""
         category_data = schemas.CategoryCreate(name="Cache Category")
 
-        with patch("app.crud.clear_categories_cache") as mock_clear:
+        with patch("app.repositories.categories.clear_categories_cache") as mock_clear:
             with (
                 patch.object(db_session, "commit", new_callable=AsyncMock),
                 patch.object(db_session, "refresh", new_callable=AsyncMock),
@@ -1325,7 +1325,7 @@ class TestCacheInteraction:
         """Test create_tag clears tag cache."""
         tag_data = schemas.TagCreate(name="Cache Tag")
 
-        with patch("app.crud.clear_tags_cache") as mock_clear:
+        with patch("app.repositories.tags.clear_tags_cache") as mock_clear:
             with (
                 patch.object(db_session, "commit", new_callable=AsyncMock),
                 patch.object(db_session, "refresh", new_callable=AsyncMock),

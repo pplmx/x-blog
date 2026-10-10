@@ -153,10 +153,10 @@ class TestRecommendations:
         candidates even when older same-affinity posts exist."""
         from datetime import datetime, timedelta
 
-        import app.crud as crud
+        from app import repositories
 
-        original = crud.CANDIDATE_SCAN_LIMIT
-        crud.CANDIDATE_SCAN_LIMIT = 2
+        original = repositories.reading_history.CANDIDATE_SCAN_LIMIT
+        repositories.reading_history.CANDIDATE_SCAN_LIMIT = 2
         try:
             token = await _token(client)
             ai = await _category(db_session, "AI")
@@ -177,7 +177,7 @@ class TestRecommendations:
             # binds rather than scanning the whole table.
             assert [r["slug"] for r in recs] == [posts[4].slug, posts[3].slug]
         finally:
-            crud.CANDIDATE_SCAN_LIMIT = original
+            repositories.reading_history.CANDIDATE_SCAN_LIMIT = original
 
     async def test_isolated_between_readers(self, client, db_session):
         ai = await _category(db_session, "AI")
