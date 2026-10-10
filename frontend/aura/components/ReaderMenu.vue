@@ -115,122 +115,116 @@ function onSignOut() {
 </script>
 
 <template>
-  <div ref="root" class="relative shrink-0">
-    <button
-      ref="trigger"
-      type="button"
-      class="inline-flex shrink-0 items-center rounded-lg p-1 text-gray-600 transition-colors duration-200 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-      :aria-label="t('reader.nav.groupMy')"
-      aria-haspopup="menu"
-      :aria-expanded="open"
-      @click="toggle"
-    >
-      <!-- Avatar (DEC-299) or letter fallback, + unread badge (ISS-124).
+	<div ref="root" class="relative shrink-0">
+		<button
+			ref="trigger"
+			type="button"
+			class="inline-flex shrink-0 items-center rounded-lg p-1 text-gray-600 transition-colors duration-200 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+			:aria-label="t('reader.nav.groupMy')"
+			aria-haspopup="menu"
+			:aria-expanded="open"
+			@click="toggle"
+		>
+			<!-- Avatar (DEC-299) or letter fallback, + unread badge (ISS-124).
            ReaderAvatar degrades to the letter if the file is gone (round-446). -->
-      <span class="relative">
-        <ReaderAvatar
-          v-if="reader"
-          :url="reader.avatar_url"
-          :name="displayName"
-          size="h-8 w-8"
-        />
-        <span
-          v-if="unreadCount > 0"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          class="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full border-2 border-white bg-amber-500 px-1 text-[10px] font-bold leading-4 text-white dark:border-gray-950"
-        >{{ unreadCount > 99 ? "99+" : unreadCount }}</span>
-      </span>
-      <Icon
-        icon="lucide:chevron-down"
-        class="ml-0.5 h-3.5 w-3.5 transition-transform duration-200"
-        :class="open ? 'rotate-180' : ''"
-      />
-    </button>
+			<span class="relative">
+				<ReaderAvatar v-if="reader" :url="reader.avatar_url" :name="displayName" size="h-8 w-8" />
+				<span
+					v-if="unreadCount > 0"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+					class="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full border-2 border-white bg-amber-500 px-1 text-[10px] font-bold leading-4 text-white dark:border-gray-950"
+					>{{ unreadCount > 99 ? "99+" : unreadCount }}</span
+				>
+			</span>
+			<Icon
+				icon="lucide:chevron-down"
+				class="ml-0.5 h-3.5 w-3.5 transition-transform duration-200"
+				:class="open ? 'rotate-180' : ''"
+			/>
+		</button>
 
-    <Transition name="my-dropdown">
-      <div
-        v-if="open"
-        role="menu"
-        class="absolute right-0 z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-      >
-        <!-- Mini profile header → account settings. -->
-        <NuxtLink
-          to="/account"
-          role="menuitem"
-          class="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-          @click="closeMenu"
-        >
-          <ReaderAvatar
-            v-if="reader"
-            :url="reader.avatar_url"
-            :name="displayName"
-            size="h-9 w-9"
-          />
-          <span class="min-w-0">
-            <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-              {{ displayName }}
-            </span>
-            <span v-if="reader?.display_name" class="block truncate text-xs text-gray-400">
-              {{ reader.email }}
-            </span>
-          </span>
-        </NuxtLink>
+		<Transition name="my-dropdown">
+			<div
+				v-if="open"
+				role="menu"
+				class="absolute right-0 z-50 mt-1.5 w-60 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+			>
+				<!-- Mini profile header → account settings. -->
+				<NuxtLink
+					to="/account"
+					role="menuitem"
+					class="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+					@click="closeMenu"
+				>
+					<ReaderAvatar v-if="reader" :url="reader.avatar_url" :name="displayName" size="h-9 w-9" />
+					<span class="min-w-0">
+						<span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+							{{ displayName }}
+						</span>
+						<span v-if="reader?.display_name" class="block truncate text-xs text-gray-400">
+							{{ reader.email }}
+						</span>
+					</span>
+				</NuxtLink>
 
-        <!-- Public reader profile (round 352): their /readers/{id} page. -->
-        <NuxtLink
-          v-if="reader?.id"
-          :to="`/readers/${reader.id}`"
-          role="menuitem"
-          class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-          @click="closeMenu"
-        >
-          <Icon icon="lucide:user-round" class="h-4 w-4" />
-          {{ t('reader.nav.viewMyProfile') }}
-        </NuxtLink>
+				<!-- Public reader profile (round 352): their /readers/{id} page. -->
+				<NuxtLink
+					v-if="reader?.id"
+					:to="`/readers/${reader.id}`"
+					role="menuitem"
+					class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+					@click="closeMenu"
+				>
+					<Icon icon="lucide:user-round" class="h-4 w-4" />
+					{{ t("reader.nav.viewMyProfile") }}
+				</NuxtLink>
 
-        <div class="my-1 h-px bg-gray-100 dark:bg-gray-800" />
+				<div class="my-1 h-px bg-gray-100 dark:bg-gray-800" />
 
-        <NuxtLink
-          v-for="link in links"
-          :key="link.to"
-          :to="link.to"
-          role="menuitem"
-          class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-          @click="closeMenu"
-        >
-          <Icon :icon="link.icon" class="h-4 w-4" />
-          <span class="flex-1">{{ t(link.labelKey) }}</span>
-          <span
-            v-if="link.badge && unreadCount > 0"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            class="inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-4 text-white"
-          >{{ unreadCount > 99 ? "99+" : unreadCount }}</span>
-        </NuxtLink>
+				<NuxtLink
+					v-for="link in links"
+					:key="link.to"
+					:to="link.to"
+					role="menuitem"
+					class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+					@click="closeMenu"
+				>
+					<Icon :icon="link.icon" class="h-4 w-4" />
+					<span class="flex-1">{{ t(link.labelKey) }}</span>
+					<span
+						v-if="link.badge && unreadCount > 0"
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						class="inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-4 text-white"
+						>{{ unreadCount > 99 ? "99+" : unreadCount }}</span
+					>
+				</NuxtLink>
 
-        <div class="my-1 h-px bg-gray-100 dark:bg-gray-800" />
+				<div class="my-1 h-px bg-gray-100 dark:bg-gray-800" />
 
-        <button
-          type="button"
-          role="menuitem"
-          class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-          @click="onSignOut"
-        >
-          <Icon icon="lucide:log-out" class="h-4 w-4" />
-          {{ t('reader.nav.signOut') }}
-        </button>
-      </div>
-    </Transition>
-  </div>
+				<button
+					type="button"
+					role="menuitem"
+					class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+					@click="onSignOut"
+				>
+					<Icon icon="lucide:log-out" class="h-4 w-4" />
+					{{ t("reader.nav.signOut") }}
+				</button>
+			</div>
+		</Transition>
+	</div>
 </template>
 
 <style scoped>
 .my-dropdown-enter-active,
 .my-dropdown-leave-active {
-	transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+	transition:
+		opacity 0.15s ease-out,
+		transform 0.15s ease-out;
 	transform-origin: top right;
 }
 .my-dropdown-enter-from,

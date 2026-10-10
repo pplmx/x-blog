@@ -4,6 +4,15 @@ packages:
 allowBuilds:
   esbuild: true
 
+minimumReleaseAgeExclude:
+  - "@nuxt/cli@4.0.1"
+  - "@nuxt/kit@4.6.1"
+  - "@nuxt/nitro-server@4.6.1"
+  - "@nuxt/schema@4.6.1"
+  - "@nuxt/vite-builder@4.6.1"
+  - "@nuxt/vite-server@4.6.1"
+  - nuxt@4.6.1
+
 # Force patched versions for transitive advisories tracked on the default
 # branch (TASK-196 / ISS-108). All are dev/build-tooling chains; both the
 # range and the exact resolved-version overrides are listed so every reporter
@@ -18,3 +27,7 @@ overrides:
   nanoid@3.3.16: 3.3.18
   postcss: ^8.5.23
   postcss@8.5.22: 8.5.23
+  # Vite+ toolchain: unify on its bundled Vite core + Vitest so plugins,
+  # dependencies, and `vp test` all share a single copy (see viteplus.dev local-cli).
+  vite@*: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vitest@*: 5.0.3

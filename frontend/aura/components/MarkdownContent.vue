@@ -309,69 +309,75 @@ function lineNumbers(code: string): number[] {
 </script>
 
 <template>
-  <div class="prose dark:prose-invert max-w-none markdown-content">
-    <template v-for="seg in segments" :key="seg.key">
-      <!-- Plain HTML (sanitised) -->
-      <div
-        v-if="seg.type === 'html'"
-        v-html="seg.html"
-        class="contents"
-      />
+	<div class="prose dark:prose-invert max-w-none markdown-content">
+		<template v-for="seg in segments" :key="seg.key">
+			<!-- Plain HTML (sanitised) -->
+			<div v-if="seg.type === 'html'" v-html="seg.html" class="contents" />
 
-      <!-- Code block with line numbers + copy button -->
-      <div
-        v-else-if="seg.type === 'code'"
-        class="relative group my-4 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
-      >
-        <!-- The header bar (language + Copy button) and the line-number gutter
+			<!-- Code block with line numbers + copy button -->
+			<div
+				v-else-if="seg.type === 'code'"
+				class="relative group my-4 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
+			>
+				<!-- The header bar (language + Copy button) and the line-number gutter
              are editor chrome, not article content: no-print so the print/PDF
              route emits only the code itself (main.css @media print hides
              header/footer/nav/.no-print). -->
-        <div class="no-print flex items-center justify-between px-4 py-2.5 bg-gray-800 dark:bg-gray-950 text-gray-300 text-sm border-b border-gray-700">
-          <div class="flex items-center gap-2">
-            <Icon icon="lucide:file-code" class="w-4 h-4 opacity-60" />
-            <span class="font-mono font-medium">{{ seg.lang }}</span>
-          </div>
-          <button
-            @click="copyCode(seg.code, seg.key, $event.currentTarget as HTMLButtonElement)"
-            :data-copied="copiedStates.has(seg.key)"
-            :data-copied-error="copyFailedKeys.has(seg.key)"
-            :title="copyFailedKeys.has(seg.key) ? t('components.markdown.copyFailed') : t('components.markdown.copyCode')"
-            class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200"
-            :class="copyFailedKeys.has(seg.key)
-              ? 'text-red-400 hover:bg-gray-700 hover:text-red-300'
-              : 'text-gray-400 hover:bg-gray-700 hover:text-white'"
-          >
-            <span v-if="copyFailedKeys.has(seg.key)" role="alert" class="sr-only">{{ t('components.markdown.copyFailed') }}</span>
-            <Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.key)" />
-            <Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
-            <span>{{
-              copiedStates.has(seg.key)
-                ? t('components.markdown.copied')
-                : (copyFailedKeys.has(seg.key)
-                    ? t('components.markdown.copyFailed')
-                    : t('components.markdown.copy'))
-            }}</span>
-          </button>
-        </div>
-        <div class="flex bg-[#1a1b26]">
-          <!-- Line numbers -->
-          <div
-            class="no-print py-4 pr-4 pl-4 text-right select-none text-gray-500 text-xs font-mono leading-6 border-r border-gray-700/50"
-            aria-hidden="true"
-          >
-            <div v-for="n in lineNumbers(seg.code)" :key="`ln-${n}`">{{ n }}</div>
-          </div>
-          <!-- Code -->
-          <div class="flex-1 overflow-x-auto">
-            <pre
-              class="m-0 p-4 pl-6 text-sm leading-6 font-mono text-gray-200 whitespace-pre-wrap break-words"
-            ><code :data-lang="seg.lang" v-html="highlighted[seg.key] ?? escapeHtml(seg.code)"></code></pre>
-          </div>
-        </div>
-      </div>
+				<div
+					class="no-print flex items-center justify-between px-4 py-2.5 bg-gray-800 dark:bg-gray-950 text-gray-300 text-sm border-b border-gray-700"
+				>
+					<div class="flex items-center gap-2">
+						<Icon icon="lucide:file-code" class="w-4 h-4 opacity-60" />
+						<span class="font-mono font-medium">{{ seg.lang }}</span>
+					</div>
+					<button
+						@click="copyCode(seg.code, seg.key, $event.currentTarget as HTMLButtonElement)"
+						:data-copied="copiedStates.has(seg.key)"
+						:data-copied-error="copyFailedKeys.has(seg.key)"
+						:title="
+							copyFailedKeys.has(seg.key)
+								? t('components.markdown.copyFailed')
+								: t('components.markdown.copyCode')
+						"
+						class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all duration-200"
+						:class="
+							copyFailedKeys.has(seg.key)
+								? 'text-red-400 hover:bg-gray-700 hover:text-red-300'
+								: 'text-gray-400 hover:bg-gray-700 hover:text-white'
+						"
+					>
+						<span v-if="copyFailedKeys.has(seg.key)" role="alert" class="sr-only">{{
+							t("components.markdown.copyFailed")
+						}}</span>
+						<Icon icon="lucide:copy" class="w-3.5 h-3.5" v-if="!copiedStates.has(seg.key)" />
+						<Icon icon="lucide:check" class="w-3.5 h-3.5" v-else />
+						<span>{{
+							copiedStates.has(seg.key)
+								? t("components.markdown.copied")
+								: copyFailedKeys.has(seg.key)
+									? t("components.markdown.copyFailed")
+									: t("components.markdown.copy")
+						}}</span>
+					</button>
+				</div>
+				<div class="flex bg-[#1a1b26]">
+					<!-- Line numbers -->
+					<div
+						class="no-print py-4 pr-4 pl-4 text-right select-none text-gray-500 text-xs font-mono leading-6 border-r border-gray-700/50"
+						aria-hidden="true"
+					>
+						<div v-for="n in lineNumbers(seg.code)" :key="`ln-${n}`">{{ n }}</div>
+					</div>
+					<!-- Code -->
+					<div class="flex-1 overflow-x-auto">
+						<pre
+							class="m-0 p-4 pl-6 text-sm leading-6 font-mono text-gray-200 whitespace-pre-wrap break-words"
+						><code :data-lang="seg.lang" v-html="highlighted[seg.key] ?? escapeHtml(seg.code)"></code></pre>
+					</div>
+				</div>
+			</div>
 
-      <!-- Mermaid diagram. [&>svg]:ml-auto, NOT justify-center: a diagram wider
+			<!-- Mermaid diagram. [&>svg]:ml-auto, NOT justify-center: a diagram wider
            than the viewport must leave its left edge reachable. With
            justify-center + overflow-x-auto the overhang splits to both sides
            and scrollLeft can't go negative, so the start of a wide diagram is
@@ -379,23 +385,27 @@ function lineNumbers(code: string): number[] {
            margin centers fitting diagrams yet collapses to a reachable left
            edge once the child overflows. The SVG is injected via innerHTML,
            hence the arbitrary variant targeting the child. -->
-      <div
-        v-else-if="seg.type === 'mermaid'"
-        class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex [&>svg]:ml-auto"
-        :data-mermaid-key="seg.key"
-        :ref="(el) => handleMermaidRef(el, seg.code, seg.key)"
-      />
+			<div
+				v-else-if="seg.type === 'mermaid'"
+				class="my-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-x-auto flex [&>svg]:ml-auto"
+				:data-mermaid-key="seg.key"
+				:ref="(el) => handleMermaidRef(el, seg.code, seg.key)"
+			/>
 
-      <!-- Math (inline or display) -->
-      <component
-        v-else-if="seg.type === 'math'"
-        :is="'span'"
-        :class="seg.displayMode ? 'block my-4 text-center' : 'inline'"
-        :data-math-key="seg.key"
-        :ref="(el: HTMLElement | null) => { if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key) }"
-      />
+			<!-- Math (inline or display) -->
+			<component
+				v-else-if="seg.type === 'math'"
+				:is="'span'"
+				:class="seg.displayMode ? 'block my-4 text-center' : 'inline'"
+				:data-math-key="seg.key"
+				:ref="
+					(el: HTMLElement | null) => {
+						if (el) renderKatex(seg.formula, el, seg.displayMode, seg.key);
+					}
+				"
+			/>
 
-      <!-- Image: preserve the natural aspect ratio (no fixed h-64 crop frame).
+			<!-- Image: preserve the natural aspect ratio (no fixed h-64 crop frame).
            The img now wraps in a lightbox trigger (DEC-302/TASK-379): clicking
            opens MarkdownLightbox at full resolution; cursor-zoom-in is
            truthful again because the viewer actually exists. :deep(img) styles
@@ -405,102 +415,102 @@ function lineNumbers(code: string): number[] {
            in advance — a small scroll-position shift on lazy load is the
            accepted cost of showing tall images whole rather than cropping
            them. -->
-      <button
-        v-else-if="seg.type === 'image'"
-        type="button"
-        class="block w-full cursor-zoom-in rounded-xl bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-        :aria-label="
-          seg.alt
-            ? `${seg.alt} · ${t('components.markdown.lightboxOpen')}`
-            : t('components.markdown.lightboxOpen')
-        "
-        data-testid="markdown-image-trigger"
-        @click="openLightbox(seg.key)"
-      >
-        <img
-          :src="sanitizeUrl(seg.src)"
-          :alt="seg.alt ?? ''"
-          class="bg-gray-100 dark:bg-gray-800"
-          loading="lazy"
-          decoding="async"
-          referrerpolicy="no-referrer"
-        >
-      </button>
+			<button
+				v-else-if="seg.type === 'image'"
+				type="button"
+				class="block w-full cursor-zoom-in rounded-xl bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+				:aria-label="
+					seg.alt
+						? `${seg.alt} · ${t('components.markdown.lightboxOpen')}`
+						: t('components.markdown.lightboxOpen')
+				"
+				data-testid="markdown-image-trigger"
+				@click="openLightbox(seg.key)"
+			>
+				<img
+					:src="sanitizeUrl(seg.src)"
+					:alt="seg.alt ?? ''"
+					class="bg-gray-100 dark:bg-gray-800"
+					loading="lazy"
+					decoding="async"
+					referrerpolicy="no-referrer"
+				/>
+			</button>
 
-      <!-- Unknown segment type — render nothing -->
-      <template v-else />
-    </template>
-  </div>
+			<!-- Unknown segment type — render nothing -->
+			<template v-else />
+		</template>
+	</div>
 
-  <MarkdownLightbox :images="images" v-model:index="lightboxIndex" />
+	<MarkdownLightbox :images="images" v-model:index="lightboxIndex" />
 </template>
 
 <style scoped>
 @reference "tailwindcss";
 .markdown-content {
-  @apply text-gray-800 dark:text-gray-200;
-  /* Reading density (DEC-288/TASK-373): the body font/leading are em-based so
+	@apply text-gray-800 dark:text-gray-200;
+	/* Reading density (DEC-288/TASK-373): the body font/leading are em-based so
      the post page can scale them with a `--reader-density` factor (a control
      the reader persists locally). Defaults to the long-standing 1.0625rem/1.75
      line-height unless the wrapper sets the variable — a no-op everywhere else
      (print, preview, search snippets). Headings stay rem-based so hierarchy
      survives scaling. */
-  font-size: calc(1.0625rem * var(--reader-density, 1));
-  line-height: calc(1.75 * var(--reader-density, 1));
+	font-size: calc(1.0625rem * var(--reader-density, 1));
+	line-height: calc(1.75 * var(--reader-density, 1));
 }
 
 .markdown-content :deep(p) {
-  @apply my-5 leading-7;
+	@apply my-5 leading-7;
 }
 
 .markdown-content :deep(h1) {
-  @apply text-3xl sm:text-4xl font-bold mt-10 mb-5 text-gray-900 dark:text-gray-100 leading-tight;
+	@apply text-3xl sm:text-4xl font-bold mt-10 mb-5 text-gray-900 dark:text-gray-100 leading-tight;
 }
 
 .markdown-content :deep(h2) {
-  @apply text-2xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100 leading-tight pb-2 border-b border-gray-100 dark:border-gray-800;
+	@apply text-2xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100 leading-tight pb-2 border-b border-gray-100 dark:border-gray-800;
 }
 
 .markdown-content :deep(h3) {
-  @apply text-xl font-bold mt-8 mb-3 text-gray-900 dark:text-gray-100 leading-tight;
+	@apply text-xl font-bold mt-8 mb-3 text-gray-900 dark:text-gray-100 leading-tight;
 }
 
 .markdown-content :deep(h4) {
-  @apply text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100;
+	@apply text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100;
 }
 
 .markdown-content :deep(h1[id]),
 .markdown-content :deep(h2[id]),
 .markdown-content :deep(h3[id]) {
-  @apply scroll-mt-24;
+	@apply scroll-mt-24;
 }
 
 .markdown-content :deep(a) {
-  @apply text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline underline-offset-2 decoration-blue-300 dark:decoration-blue-700 decoration-1 hover:decoration-2 transition-all;
+	@apply text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline underline-offset-2 decoration-blue-300 dark:decoration-blue-700 decoration-1 hover:decoration-2 transition-all;
 }
 
 .markdown-content :deep(strong) {
-  @apply font-semibold text-gray-900 dark:text-gray-100;
+	@apply font-semibold text-gray-900 dark:text-gray-100;
 }
 
 .markdown-content :deep(blockquote) {
-  @apply border-l-[3px] border-blue-400 dark:border-blue-600 pl-5 pr-2 py-2 my-6 text-gray-600 dark:text-gray-400 italic leading-relaxed bg-blue-50/50 dark:bg-blue-950/30 rounded-r-xl;
+	@apply border-l-[3px] border-blue-400 dark:border-blue-600 pl-5 pr-2 py-2 my-6 text-gray-600 dark:text-gray-400 italic leading-relaxed bg-blue-50/50 dark:bg-blue-950/30 rounded-r-xl;
 }
 
 .markdown-content :deep(ul) {
-  @apply my-5 pl-6 space-y-1.5;
+	@apply my-5 pl-6 space-y-1.5;
 }
 
 .markdown-content :deep(ol) {
-  @apply my-5 pl-6 space-y-1.5;
+	@apply my-5 pl-6 space-y-1.5;
 }
 
 .markdown-content :deep(li) {
-  @apply leading-relaxed;
+	@apply leading-relaxed;
 }
 
 .markdown-content :deep(li::marker) {
-  @apply text-blue-500;
+	@apply text-blue-500;
 }
 
 /* Inline footnotes (DEC-441/TASK-451): the reference sup stays small and
@@ -508,39 +518,39 @@ function lineNumbers(code: string): number[] {
    citation block separated from the body by the leading rule. The backref
    ("↩") is subtle and keeps the default link color for discoverability. */
 .markdown-content :deep(.footnote-ref) {
-  @apply font-medium no-underline scroll-mt-24;
+	@apply font-medium no-underline scroll-mt-24;
 }
 
 .markdown-content :deep(.footnotes) {
-  @apply mt-4 text-sm text-gray-600 dark:text-gray-400;
+	@apply mt-4 text-sm text-gray-600 dark:text-gray-400;
 }
 
 .markdown-content :deep(.footnotes hr) {
-  @apply my-4 border-gray-200 dark:border-gray-800 w-24 border-t-2;
+	@apply my-4 border-gray-200 dark:border-gray-800 w-24 border-t-2;
 }
 
 .markdown-content :deep(.footnotes ol) {
-  @apply my-0 pl-6 space-y-1.5 list-decimal;
+	@apply my-0 pl-6 space-y-1.5 list-decimal;
 }
 
 .markdown-content :deep(.footnotes li) {
-  @apply leading-relaxed;
+	@apply leading-relaxed;
 }
 
 .markdown-content :deep(.footnotes .footnote-backref) {
-  @apply no-underline ml-1;
+	@apply no-underline ml-1;
 }
 
 .markdown-content :deep(pre) {
-  @apply text-sm leading-6 font-mono text-gray-200 bg-gray-900 dark:bg-gray-950 rounded-xl overflow-x-auto;
+	@apply text-sm leading-6 font-mono text-gray-200 bg-gray-900 dark:bg-gray-950 rounded-xl overflow-x-auto;
 }
 
 .markdown-content :deep(code):not(pre code) {
-  @apply px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-mono;
+	@apply px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm font-mono;
 }
 
 .markdown-content :deep(pre code) {
-  @apply text-sm leading-6;
+	@apply text-sm leading-6;
 }
 
 /* The highlight.js token theme (Tokyo Night) now lives in the shared global
@@ -548,38 +558,38 @@ function lineNumbers(code: string): number[] {
    (DEC-090). Only the code-surface base styles stay here. */
 
 .markdown-content :deep(img) {
-  @apply rounded-xl my-8 mx-auto max-w-full h-auto shadow-md;
+	@apply rounded-xl my-8 mx-auto max-w-full h-auto shadow-md;
 }
 
 .markdown-content :deep(hr) {
-  @apply my-10 border-gray-200 dark:border-gray-800;
+	@apply my-10 border-gray-200 dark:border-gray-800;
 }
 
 .markdown-content :deep(table) {
-  @apply w-full my-6 border-collapse;
+	@apply w-full my-6 border-collapse;
 }
 
 .markdown-content :deep(th) {
-  @apply px-4 py-3 bg-gray-50 dark:bg-gray-800 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700;
+	@apply px-4 py-3 bg-gray-50 dark:bg-gray-800 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700;
 }
 
 .markdown-content :deep(td) {
-  @apply px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800;
+	@apply px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800;
 }
 
 .markdown-content :deep(tr:last-child td) {
-  @apply border-b-0;
+	@apply border-b-0;
 }
 
 .markdown-content :deep(tr:hover td) {
-  @apply bg-gray-50 dark:bg-gray-800/50;
+	@apply bg-gray-50 dark:bg-gray-800/50;
 }
 
 .markdown-content :deep(kbd) {
-  @apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono border border-gray-200 dark:border-gray-700;
+	@apply px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono border border-gray-200 dark:border-gray-700;
 }
 
 .markdown-content :deep(.math) {
-  @apply my-6 overflow-x-auto;
+	@apply my-6 overflow-x-auto;
 }
 </style>

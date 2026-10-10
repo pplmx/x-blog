@@ -125,23 +125,27 @@ onMounted(initTheme);
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
-    <!-- Header -->
-    <header
-      class="sticky top-0 z-50 border-b border-gray-100/80 dark:border-gray-800/80"
-      :class="isHome ? 'bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl' : 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md'"
-    >
-      <div class="page-shell px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <!-- Logo -->
-          <NuxtLink
-            to="/"
-            class="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 transition-all duration-300"
-          >
-            X-Blog
-          </NuxtLink>
+	<div class="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
+		<!-- Header -->
+		<header
+			class="sticky top-0 z-50 border-b border-gray-100/80 dark:border-gray-800/80"
+			:class="
+				isHome
+					? 'bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl'
+					: 'bg-white/90 dark:bg-gray-950/90 backdrop-blur-md'
+			"
+		>
+			<div class="page-shell px-4 sm:px-6 lg:px-8">
+				<div class="flex items-center justify-between h-16">
+					<!-- Logo -->
+					<NuxtLink
+						to="/"
+						class="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 transition-all duration-300"
+					>
+						X-Blog
+					</NuxtLink>
 
-          <!-- Desktop nav (xl+; ISS-125/TASK-225): the six content links +
+					<!-- Desktop nav (xl+; ISS-125/TASK-225): the six content links +
                search + chrome (push, avatar, language, theme) fit the xl bar —
                round 382 moved every reader-personal link into the "My" avatar
                menu, so signing in no longer lengthens the bar and the 1400px+
@@ -159,237 +163,265 @@ onMounted(initTheme);
                items (scrollLeft can't go negative), whereas the auto margin
                collapses to 0 on overflow so the group scrolls from its start.
                No nav item is ever unreachable at any width/locale/auth state. -->
-          <div class="hidden xl:flex flex-1 min-w-0 items-center justify-end gap-1">
-            <nav class="flex items-center gap-1 overflow-x-auto min-w-0">
-              <NuxtLink
-                v-for="link in contentLinks"
-                :key="link.to"
-                :to="link.to"
-                class="first:ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-                :class="route.path === link.to
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'"
-              >
-                <Icon :icon="link.icon" class="w-4 h-4" />
-                {{ t(link.labelKey) }}
-              </NuxtLink>
+					<div class="hidden xl:flex flex-1 min-w-0 items-center justify-end gap-1">
+						<nav class="flex items-center gap-1 overflow-x-auto min-w-0">
+							<NuxtLink
+								v-for="link in contentLinks"
+								:key="link.to"
+								:to="link.to"
+								class="first:ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+								:class="
+									route.path === link.to
+										? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+										: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+								"
+							>
+								<Icon :icon="link.icon" class="w-4 h-4" />
+								{{ t(link.labelKey) }}
+							</NuxtLink>
 
-              <!-- Instant search suggestions -->
-              <HeaderSearch class="w-44 mx-2" />
-            </nav>
+							<!-- Instant search suggestions -->
+							<HeaderSearch class="w-44 mx-2" />
+						</nav>
 
-            <!-- Web Push opt-in (new-post notifications) -->
-            <SubscribeButton class="mx-1 shrink-0" compact />
+						<!-- Web Push opt-in (new-post notifications) -->
+						<SubscribeButton class="mx-1 shrink-0" compact />
 
-            <!-- Reader account: sign in (→ /login) for guests; the "My" avatar
+						<!-- Reader account: sign in (→ /login) for guests; the "My" avatar
                  menu (ReaderMenu) holds the personal links + sign-out for
                  signed-in readers (round 382). The avatar is the SINGLE
                  auth-gated node in the desktop bar. -->
-            <NuxtLink
-              v-if="!isAuthenticated"
-              to="/login"
-              class="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
-            >
-              <Icon icon="lucide:log-in" class="w-4 h-4" />
-              {{ t('reader.nav.signIn') }}
-            </NuxtLink>
-            <ReaderMenu v-else :links="myLinks" class="mx-1" />
+						<NuxtLink
+							v-if="!isAuthenticated"
+							to="/login"
+							class="shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+						>
+							<Icon icon="lucide:log-in" class="w-4 h-4" />
+							{{ t("reader.nav.signIn") }}
+						</NuxtLink>
+						<ReaderMenu v-else :links="myLinks" class="mx-1" />
 
-            <!-- Language switcher -->
-            <LanguageSwitcher class="mx-2 shrink-0" />
+						<!-- Language switcher -->
+						<LanguageSwitcher class="mx-2 shrink-0" />
 
-            <!-- Dark mode toggle -->
-            <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2 shrink-0" />
+						<!-- Dark mode toggle -->
+						<div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-2 shrink-0" />
 
-            <button
-              type="button"
-              :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
-              class="shrink-0 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
-              @click="toggleTheme"
-            >
-              <Icon v-if="isDark" icon="lucide:sun" class="w-4 h-4" />
-              <Icon v-else icon="lucide:moon" class="w-4 h-4" />
-            </button>
-          </div>
+						<button
+							type="button"
+							:aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
+							class="shrink-0 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
+							@click="toggleTheme"
+						>
+							<Icon v-if="isDark" icon="lucide:sun" class="w-4 h-4" />
+							<Icon v-else icon="lucide:moon" class="w-4 h-4" />
+						</button>
+					</div>
 
-          <!-- Mobile menu button (xl below: the desktop nav can't fit before
+					<!-- Mobile menu button (xl below: the desktop nav can't fit before
                ~1150px, so tablets/compact laptops use the menu instead) -->
-          <button
-            ref="mobileMenuToggle"
-            type="button"
-            class="xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            :aria-label="mobileMenuOpen ? t('common.menu.close') : t('common.menu.open')"
-            :aria-expanded="mobileMenuOpen"
-            aria-controls="mobile-nav"
-            @click="toggleMobileMenu"
-          >
-            <Icon :icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5 transition-transform duration-200" />
-          </button>
-        </div>
-      </div>
+					<button
+						ref="mobileMenuToggle"
+						type="button"
+						class="xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+						:aria-label="mobileMenuOpen ? t('common.menu.close') : t('common.menu.open')"
+						:aria-expanded="mobileMenuOpen"
+						aria-controls="mobile-nav"
+						@click="toggleMobileMenu"
+					>
+						<Icon
+							:icon="mobileMenuOpen ? 'lucide:x' : 'lucide:menu'"
+							class="w-5 h-5 transition-transform duration-200"
+						/>
+					</button>
+				</div>
+			</div>
 
-      <!-- Mobile navigation -->
-      <Transition name="slide">
-        <div v-if="mobileMenuOpen" id="mobile-nav" class="xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
-          <div class="page-shell px-4 py-4 space-y-1">
-            <NuxtLink
-              v-for="link in contentLinks"
-              :key="link.to"
-              :to="link.to"
-              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-              :class="route.path === link.to
-                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
-              @click="mobileMenuOpen = false"
-            >
-              <Icon :icon="link.icon" class="w-4 h-4" />
-              {{ t(link.labelKey) }}
-            </NuxtLink>
-            <div class="px-4 py-2">
-              <HeaderSearch />
-            </div>
-            <div class="px-4 py-2">
-              <LanguageSwitcher />
-            </div>
-            <div class="px-4 py-2">
-              <SubscribeButton />
-            </div>
-            <!-- Mobile "我的" group (round 382): the personal links the desktop
+			<!-- Mobile navigation -->
+			<Transition name="slide">
+				<div
+					v-if="mobileMenuOpen"
+					id="mobile-nav"
+					class="xl:hidden max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950"
+				>
+					<div class="page-shell px-4 py-4 space-y-1">
+						<NuxtLink
+							v-for="link in contentLinks"
+							:key="link.to"
+							:to="link.to"
+							class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+							:class="
+								route.path === link.to
+									? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+									: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+							"
+							@click="mobileMenuOpen = false"
+						>
+							<Icon :icon="link.icon" class="w-4 h-4" />
+							{{ t(link.labelKey) }}
+						</NuxtLink>
+						<div class="px-4 py-2">
+							<HeaderSearch />
+						</div>
+						<div class="px-4 py-2">
+							<LanguageSwitcher />
+						</div>
+						<div class="px-4 py-2">
+							<SubscribeButton />
+						</div>
+						<!-- Mobile "我的" group (round 382): the personal links the desktop
                  bar hides behind the avatar dropdown land here as a flat,
                  always-expanded section — the panel scrolls, so vertical room
                  is not a constraint. -->
-            <template v-if="isAuthenticated">
-              <div
-                class="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
-              >
-                {{ t('reader.nav.groupMy') }}
-              </div>
-              <NuxtLink
-                v-if="reader?.id"
-                :to="`/readers/${reader.id}`"
-                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                @click="mobileMenuOpen = false"
-              >
-                <Icon icon="lucide:user-round" class="w-4 h-4" />
-                {{ t('reader.nav.viewMyProfile') }}
-              </NuxtLink>
-              <NuxtLink
-                to="/account"
-                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                @click="mobileMenuOpen = false"
-              >
-                <Icon icon="lucide:settings" class="w-4 h-4" />
-                {{ t('reader.nav.account') }}
-              </NuxtLink>
-              <NuxtLink
-                v-for="link in myLinks"
-                :key="link.to"
-                :to="link.to"
-                class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-                :class="route.path === link.to
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'"
-                @click="mobileMenuOpen = false"
-              >
-                <Icon :icon="link.icon" class="w-4 h-4" />
-                {{ t(link.labelKey) }}
-                <span
-                  v-if="link.badge && unreadCount > 0"
-                  role="status"
-                  aria-live="polite"
-                  aria-atomic="true"
-                  class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
-                >{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-              </NuxtLink>
-              <button
-                type="button"
-                class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                @click="logout"
-              >
-                <Icon icon="lucide:log-out" class="w-4 h-4" />
-                {{ t('reader.nav.signOut') }}
-              </button>
-            </template>
-            <NuxtLink
-              v-else
-              to="/login"
-              class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="mobileMenuOpen = false"
-            >
-              <Icon icon="lucide:log-in" class="w-4 h-4" />
-              {{ t('reader.nav.signIn') }}
-            </NuxtLink>
-            <button
-              type="button"
-              class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="toggleTheme"
-            >
-              <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
-              {{ isDark ? t('common.theme.light') : t('common.theme.dark') }}
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </header>
+						<template v-if="isAuthenticated">
+							<div
+								class="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
+							>
+								{{ t("reader.nav.groupMy") }}
+							</div>
+							<NuxtLink
+								v-if="reader?.id"
+								:to="`/readers/${reader.id}`"
+								class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+								@click="mobileMenuOpen = false"
+							>
+								<Icon icon="lucide:user-round" class="w-4 h-4" />
+								{{ t("reader.nav.viewMyProfile") }}
+							</NuxtLink>
+							<NuxtLink
+								to="/account"
+								class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+								@click="mobileMenuOpen = false"
+							>
+								<Icon icon="lucide:settings" class="w-4 h-4" />
+								{{ t("reader.nav.account") }}
+							</NuxtLink>
+							<NuxtLink
+								v-for="link in myLinks"
+								:key="link.to"
+								:to="link.to"
+								class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+								:class="
+									route.path === link.to
+										? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50'
+										: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+								"
+								@click="mobileMenuOpen = false"
+							>
+								<Icon :icon="link.icon" class="w-4 h-4" />
+								{{ t(link.labelKey) }}
+								<span
+									v-if="link.badge && unreadCount > 0"
+									role="status"
+									aria-live="polite"
+									aria-atomic="true"
+									class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[11px] font-bold bg-amber-500 text-white"
+									>{{ unreadCount > 99 ? "99+" : unreadCount }}</span
+								>
+							</NuxtLink>
+							<button
+								type="button"
+								class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+								@click="logout"
+							>
+								<Icon icon="lucide:log-out" class="w-4 h-4" />
+								{{ t("reader.nav.signOut") }}
+							</button>
+						</template>
+						<NuxtLink
+							v-else
+							to="/login"
+							class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+							@click="mobileMenuOpen = false"
+						>
+							<Icon icon="lucide:log-in" class="w-4 h-4" />
+							{{ t("reader.nav.signIn") }}
+						</NuxtLink>
+						<button
+							type="button"
+							class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+							@click="toggleTheme"
+						>
+							<Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
+							{{ isDark ? t("common.theme.light") : t("common.theme.dark") }}
+						</button>
+					</div>
+				</div>
+			</Transition>
+		</header>
 
-    <!-- Main -->
-    <main class="flex-1 page-shell px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
-      <slot />
-    </main>
+		<!-- Main -->
+		<main class="flex-1 page-shell px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+			<slot />
+		</main>
 
-    <!-- Footer -->
-    <footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
-      <div class="page-shell px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Guest newsletter on-ramp (DEC-351/TASK-401): the anonymous "email me
+		<!-- Footer -->
+		<footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+			<div class="page-shell px-4 sm:px-6 lg:px-8 py-8">
+				<!-- Guest newsletter on-ramp (DEC-351/TASK-401): the anonymous "email me
              new posts" entry that sits beside the RSS link for readers who don't
              use feed readers. -->
-        <div class="mb-6 w-full sm:max-w-sm">
-          <NewsletterSubscribe />
-        </div>
-        <!-- Static pages (round 347): the published /pages/{slug} links so an
+				<div class="mb-6 w-full sm:max-w-sm">
+					<NewsletterSubscribe />
+				</div>
+				<!-- Static pages (round 347): the published /pages/{slug} links so an
              admin-curated privacy policy / terms / contact is discoverable. -->
-        <PagesFooterLinks />
-        <!-- Site-wide discussion feed (round 367, DEC-407): the conversation's
+				<PagesFooterLinks />
+				<!-- Site-wide discussion feed (round 367, DEC-407): the conversation's
              public entry point, beside the content links. -->
-        <nav class="mb-6" :aria-label="t('common.footer.discussion')">
-          <NuxtLink
-            to="/discussion"
-            class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-          >
-            <Icon icon="lucide:messages-square" class="w-3.5 h-3.5" />
-            {{ t('common.footer.discussion') }}
-          </NuxtLink>
-        </nav>
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <!-- The year is dynamic so the footer never goes stale; the same
+				<nav class="mb-6" :aria-label="t('common.footer.discussion')">
+					<NuxtLink
+						to="/discussion"
+						class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+					>
+						<Icon icon="lucide:messages-square" class="w-3.5 h-3.5" />
+						{{ t("common.footer.discussion") }}
+					</NuxtLink>
+				</nav>
+				<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+					<div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+						<!-- The year is dynamic so the footer never goes stale; the same
                  instant on server + client render, so no hydration mismatch. -->
-            <span>© {{ new Date().getFullYear() }} X-Blog.</span>
-            <span>{{ t('common.footer.madeWith') }}</span>
-            <Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
-            <span>{{ t('common.footer.forDevelopers') }}</span>
-          </div>
-          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <NuxtLink to="/" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{{ t('common.nav.home') }}</NuxtLink>
-            <NuxtLink to="/about" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{{ t('common.nav.about') }}</NuxtLink>
-            <a
-              href="/rss/feed.xml"
-              type="application/rss+xml"
-              class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-              :title="t('common.footer.subscribeRss')"
-            >
-              <span class="inline-flex items-center gap-1.5">
-                <Icon icon="lucide:rss" class="w-4 h-4" />
-                {{ t('common.footer.subscribeRss') }}
-              </span>
-            </a>
-            <a href="https://github.com/pplmx/x-blog" target="_blank" rel="noopener noreferrer" class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">GitHub</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-    <RateLimitNotice />
-  </div>
+						<span>© {{ new Date().getFullYear() }} X-Blog.</span>
+						<span>{{ t("common.footer.madeWith") }}</span>
+						<Icon icon="lucide:heart" class="w-3.5 h-3.5 text-red-500 fill-red-500" />
+						<span>{{ t("common.footer.forDevelopers") }}</span>
+					</div>
+					<div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+						<NuxtLink
+							to="/"
+							class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+							>{{ t("common.nav.home") }}</NuxtLink
+						>
+						<NuxtLink
+							to="/about"
+							class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+							>{{ t("common.nav.about") }}</NuxtLink
+						>
+						<a
+							href="/rss/feed.xml"
+							type="application/rss+xml"
+							class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+							:title="t('common.footer.subscribeRss')"
+						>
+							<span class="inline-flex items-center gap-1.5">
+								<Icon icon="lucide:rss" class="w-4 h-4" />
+								{{ t("common.footer.subscribeRss") }}
+							</span>
+						</a>
+						<a
+							href="https://github.com/pplmx/x-blog"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+							>GitHub</a
+						>
+					</div>
+				</div>
+			</div>
+		</footer>
+		<RateLimitNotice />
+	</div>
 </template>
 
 <style scoped>

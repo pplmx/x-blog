@@ -1,521 +1,596 @@
 <template>
-  <section ref="listEl">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('components.commentList.title') }} ({{ total }})</h2>
-      <!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
+	<section ref="listEl">
+		<div class="flex items-center justify-between mb-4">
+			<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+				{{ t("components.commentList.title") }} ({{ total }})
+			</h2>
+			<!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
            to this discussion and get a push on each newly approved comment.
            Guests get the email variant (round 380, DEC-427) — it renders
            nothing for signed-in readers, so the two never overlap. -->
-      <ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
-      <GuestThreadFollow v-if="props.postId" :post-id="props.postId" />
-    </div>
-    <p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
-    <p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
-    <!-- Edited-comment acknowledgement (set by saveEdit; cleared on the next
+			<ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
+			<GuestThreadFollow v-if="props.postId" :post-id="props.postId" />
+		</div>
+		<p v-if="likeError" class="mb-3 text-sm text-red-500">{{ likeError }}</p>
+		<p v-if="actionError" class="mb-3 text-sm text-red-500">{{ actionError }}</p>
+		<!-- Edited-comment acknowledgement (set by saveEdit; cleared on the next
          action so it never lingers under unrelated context). -->
-    <p v-if="editFeedback" role="status" class="mb-3 text-sm text-green-600 dark:text-green-400">
-      {{ editFeedback }}
-    </p>
-    <p v-if="flagError" class="mb-3 text-sm text-red-500">{{ flagError }}</p>
-    <!-- Sort/pagination refresh failures used to be silent — an offline reader
+		<p v-if="editFeedback" role="status" class="mb-3 text-sm text-green-600 dark:text-green-400">
+			{{ editFeedback }}
+		</p>
+		<p v-if="flagError" class="mb-3 text-sm text-red-500">{{ flagError }}</p>
+		<!-- Sort/pagination refresh failures used to be silent — an offline reader
          flipped the sort arrow and saw nothing change. Surfaced + retryable. -->
-    <p v-if="refreshError" role="alert" class="mb-3 flex items-center gap-2 text-sm text-red-500">
-      {{ refreshError }}
-      <button
-        type="button"
-        class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
-        :disabled="refreshing"
-        @click="retryRefresh"
-      >
-        {{ t('components.commentList.retry') }}
-      </button>
-    </p>
+		<p v-if="refreshError" role="alert" class="mb-3 flex items-center gap-2 text-sm text-red-500">
+			{{ refreshError }}
+			<button
+				type="button"
+				class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
+				:disabled="refreshing"
+				@click="retryRefresh"
+			>
+				{{ t("components.commentList.retry") }}
+			</button>
+		</p>
 
-    <!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
+		<!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
-    <div v-if="total > 0" class="flex flex-wrap items-center justify-end gap-2 mb-3 text-sm">
-      <label for="comment-sort" class="text-gray-500 dark:text-gray-400">{{ t('components.commentList.sortBy') }}</label>
-      <select
-        id="comment-sort"
-        class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1"
-        :value="currentSort"
-        @change="onSortChange"
-      >
-        <option value="newest">{{ t('components.commentList.sortNewest') }}</option>
-        <option value="oldest">{{ t('components.commentList.sortOldest') }}</option>
-        <option value="likes">{{ t('components.commentList.sortLikes') }}</option>
-      </select>
-      <!-- Search inside the thread (DEC-442/TASK-452): debounced keyword box
+		<div v-if="total > 0" class="flex flex-wrap items-center justify-end gap-2 mb-3 text-sm">
+			<label for="comment-sort" class="text-gray-500 dark:text-gray-400">{{
+				t("components.commentList.sortBy")
+			}}</label>
+			<select
+				id="comment-sort"
+				class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1"
+				:value="currentSort"
+				@change="onSortChange"
+			>
+				<option value="newest">{{ t("components.commentList.sortNewest") }}</option>
+				<option value="oldest">{{ t("components.commentList.sortOldest") }}</option>
+				<option value="likes">{{ t("components.commentList.sortLikes") }}</option>
+			</select>
+			<!-- Search inside the thread (DEC-442/TASK-452): debounced keyword box
            that narrows the list to matching approved comments. -->
-      <div class="relative">
-        <input
-          id="comment-search"
-          v-model="queryInput"
-          type="search"
-          class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 pl-7 pr-7 py-1 text-sm w-44 max-w-full"
-          :placeholder="t('components.commentList.searchPlaceholder')"
-          :aria-label="t('components.commentList.searchLabel')"
-          @input="onQueryInput"
-        />
-        <Icon
-          icon="lucide:search"
-          class="w-3.5 h-3.5 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none"
-          aria-hidden="true"
-        />
-        <button
-          v-if="queryInput"
-          type="button"
-          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-          :aria-label="t('components.commentList.clearSearch')"
-          @click="clearQuery"
-        >
-          <Icon icon="lucide:x" class="w-3.5 h-3.5" aria-hidden="true" />
-        </button>
-      </div>
-      <!-- In-flight feedback for sort/pagination refetches (pending only covers
+			<div class="relative">
+				<input
+					id="comment-search"
+					v-model="queryInput"
+					type="search"
+					class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 pl-7 pr-7 py-1 text-sm w-44 max-w-full"
+					:placeholder="t('components.commentList.searchPlaceholder')"
+					:aria-label="t('components.commentList.searchLabel')"
+					@input="onQueryInput"
+				/>
+				<Icon
+					icon="lucide:search"
+					class="w-3.5 h-3.5 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none"
+					aria-hidden="true"
+				/>
+				<button
+					v-if="queryInput"
+					type="button"
+					class="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+					:aria-label="t('components.commentList.clearSearch')"
+					@click="clearQuery"
+				>
+					<Icon icon="lucide:x" class="w-3.5 h-3.5" aria-hidden="true" />
+				</button>
+			</div>
+			<!-- In-flight feedback for sort/pagination refetches (pending only covers
            the initial mount; ISS-130). -->
-      <Icon
-        v-if="refreshing"
-        icon="lucide:loader-2"
-        class="w-4 h-4 animate-spin text-gray-400"
-        aria-hidden="true"
-        role="presentation"
-      />
-    </div>
+			<Icon
+				v-if="refreshing"
+				icon="lucide:loader-2"
+				class="w-4 h-4 animate-spin text-gray-400"
+				aria-hidden="true"
+				role="presentation"
+			/>
+		</div>
 
-    <!-- Loading -->
-    <div v-if="pending" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="animate-pulse">
-        <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
-        <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
-      </div>
-    </div>
+		<!-- Loading -->
+		<div v-if="pending" class="space-y-3">
+			<div v-for="i in 3" :key="i" class="animate-pulse">
+				<div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
+				<div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
+			</div>
+		</div>
 
-    <!-- Initial-load failure: `useFetch`'s error, not an empty thread. A null
+		<!-- Initial-load failure: `useFetch`'s error, not an empty thread. A null
          data payload used to fall through to "be the first to comment!" above
          an active form (deep-dive finding); the reader gets a distinct error
          with a retry that re-runs the same initial fetch. -->
-    <div
-      v-else-if="initialLoadError"
-      role="alert"
-      class="text-center py-8 text-red-500 dark:text-red-400"
-    >
-      <p class="mb-3">{{ t('components.commentList.loadError') }}</p>
-      <button
-        type="button"
-        class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
-        :disabled="pending"
-        @click="retryInitialLoad()"
-      >
-        {{ t('components.commentList.retry') }}
-      </button>
-    </div>
+		<div
+			v-else-if="initialLoadError"
+			role="alert"
+			class="text-center py-8 text-red-500 dark:text-red-400"
+		>
+			<p class="mb-3">{{ t("components.commentList.loadError") }}</p>
+			<button
+				type="button"
+				class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
+				:disabled="pending"
+				@click="retryInitialLoad()"
+			>
+				{{ t("components.commentList.retry") }}
+			</button>
+		</div>
 
-    <!-- Empty state: only a genuinely empty discussion says "be the first".
+		<!-- Empty state: only a genuinely empty discussion says "be the first".
          An empty page under a non-zero total means deletion just drained the
          last page — refreshing clamps back to it, and the copy stays truthful.
          Gates on the blocked-filtered visibleComments (round 386, DEC-437): a
          page whose every row is by a blocked reader renders the empty state
          instead of a blank thread. -->
-    <div
-      v-else-if="visibleComments.length === 0"
-      class="text-center py-8 text-gray-500 dark:text-gray-400"
-    >
-      {{ total === 0 ? t('components.commentList.empty') : t('components.commentList.emptyPage') }}
-    </div>
+		<div
+			v-else-if="visibleComments.length === 0"
+			class="text-center py-8 text-gray-500 dark:text-gray-400"
+		>
+			{{ total === 0 ? t("components.commentList.empty") : t("components.commentList.emptyPage") }}
+		</div>
 
-    <!-- Comment list -->
-    <ul v-else class="space-y-4">
-      <li
-        v-for="comment in topLevelComments"
-        :key="comment.id"
-        :id="`comment-${comment.id}`"
-        class="border border-gray-100 dark:border-gray-700 rounded-lg p-3 scroll-mt-28"
-      >
-        <div class="flex items-start gap-2">
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <!-- A verified reader's backend-stamped nickname IS their display
+		<!-- Comment list -->
+		<ul v-else class="space-y-4">
+			<li
+				v-for="comment in topLevelComments"
+				:key="comment.id"
+				:id="`comment-${comment.id}`"
+				class="border border-gray-100 dark:border-gray-700 rounded-lg p-3 scroll-mt-28"
+			>
+				<div class="flex items-start gap-2">
+					<div class="flex-1">
+						<div class="flex items-center gap-2 mb-1">
+							<!-- A verified reader's backend-stamped nickname IS their display
                    name, so the identity is the name itself (DEC-294/TASK-376):
                    render it as a link to their public profile. A reader without
                    a display_name must NOT fall back to their stored nickname
                    (that is their email — crud stamps display_name or email,
                    TASK-377), so render a generic identity instead; only a truly
                    anonymous commenter keeps their free-typed nickname. -->
-              <!-- Avatar (DEC-299/TASK-378): a reader-set picture beside the
+							<!-- Avatar (DEC-299/TASK-378): a reader-set picture beside the
                    verified identity, linking to the same public profile. The
                    shared ReaderAvatar degrades to the letter if the file is
                    gone (round-446) — a deleted avatar must not leave a broken
                    image icon in the thread. -->
-              <ReaderAvatar
-                v-if="comment.reader"
-                :url="comment.reader.avatar_url"
-                :name="comment.reader.display_name"
-                :alt="comment.reader.display_name || 'avatar'"
-                size="w-5 h-5"
-              />
-              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
-                <NuxtLink
-                  v-if="comment.reader && comment.reader.display_name"
-                  :to="`/readers/${comment.reader.id}`"
-                  class="hover:underline"
-                >
-                  {{ comment.reader.display_name }}
-                </NuxtLink>
-                <template v-else-if="comment.reader">{{ t('components.commentList.readerNoName') }}</template>
-                <template v-else>{{ comment.nickname }}</template>
-              </span>
-              <!-- Author reply (DEC-192): an official answer from the blog owner,
+							<ReaderAvatar
+								v-if="comment.reader"
+								:url="comment.reader.avatar_url"
+								:name="comment.reader.display_name"
+								:alt="comment.reader.display_name || 'avatar'"
+								size="w-5 h-5"
+							/>
+							<span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+								<NuxtLink
+									v-if="comment.reader && comment.reader.display_name"
+									:to="`/readers/${comment.reader.id}`"
+									class="hover:underline"
+								>
+									{{ comment.reader.display_name }}
+								</NuxtLink>
+								<template v-else-if="comment.reader">{{
+									t("components.commentList.readerNoName")
+								}}</template>
+								<template v-else>{{ comment.nickname }}</template>
+							</span>
+							<!-- Author reply (DEC-192): an official answer from the blog owner,
                    distinguished from a commenter so readers trust the source. -->
-              <span
-                v-if="comment.is_author_reply"
-                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
-                :title="t('components.commentList.authorReply')"
-              >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
-                <span>{{ t("components.commentList.authorReply") }}</span>
-              </span>
-              <span
-                v-if="comment.reader"
-                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
-                :title="t('components.commentList.verifiedReader')"
-              >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
-                <span class="sr-only">{{ t('components.commentList.verifiedReader') }}</span>
-              </span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
-            </div>
-            <!-- Comment markdown rendering (DEC-088): sanitized via the same
+							<span
+								v-if="comment.is_author_reply"
+								class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
+								:title="t('components.commentList.authorReply')"
+							>
+								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5" />
+								<span>{{ t("components.commentList.authorReply") }}</span>
+							</span>
+							<span
+								v-if="comment.reader"
+								class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
+								:title="t('components.commentList.verifiedReader')"
+							>
+								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
+								<span class="sr-only">{{ t("components.commentList.verifiedReader") }}</span>
+							</span>
+							<span class="text-xs text-gray-500 dark:text-gray-400">{{
+								formatDate(comment.created_at)
+							}}</span>
+						</div>
+						<!-- Comment markdown rendering (DEC-088): sanitized via the same
                  pipeline as post content, with line breaks preserved. -->
-            <div
-              class="comment-body text-sm text-gray-700 dark:text-gray-300"
-              v-html="commentBodyHtml(comment.content)"
-            />
+						<div
+							class="comment-body text-sm text-gray-700 dark:text-gray-300"
+							v-html="commentBodyHtml(comment.content)"
+						/>
 
-            <div class="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                @click="toggleReply(comment)"
-              >
-                {{ replyTo?.id === comment.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
-              </button>
-              <!-- Comment likes (DEC-092/TASK-158): anonymous upvote with a
+						<div class="mt-2 flex items-center gap-3">
+							<button
+								type="button"
+								class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+								@click="toggleReply(comment)"
+							>
+								{{
+									replyTo?.id === comment.id
+										? t("components.commentList.cancelReply")
+										: t("components.commentList.reply")
+								}}
+							</button>
+							<!-- Comment likes (DEC-092/TASK-158): anonymous upvote with a
                    localStorage dedup so one browser registers at most one like. -->
-              <button
-                type="button"
-                class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="isCommentLiked(comment.id) || likingIds.has(comment.id)"
-                :title="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
-                :aria-pressed="isCommentLiked(comment.id) ? 'true' : 'false'"
-                :aria-label="isCommentLiked(comment.id) ? t('components.commentList.liked') : t('components.commentList.like')"
-                @click="handleCommentLike(comment)"
-              >
-                <Icon
-                  :icon="likingIds.has(comment.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'animate-spin': likingIds.has(comment.id) }"
-                />
-                <span class="like-count">{{ comment.likes ?? 0 }}</span>
-              </button>
-              <!-- Live region: per-comment count changes after a round-trip;
+							<button
+								type="button"
+								class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								:disabled="isCommentLiked(comment.id) || likingIds.has(comment.id)"
+								:title="
+									isCommentLiked(comment.id)
+										? t('components.commentList.liked')
+										: t('components.commentList.like')
+								"
+								:aria-pressed="isCommentLiked(comment.id) ? 'true' : 'false'"
+								:aria-label="
+									isCommentLiked(comment.id)
+										? t('components.commentList.liked')
+										: t('components.commentList.like')
+								"
+								@click="handleCommentLike(comment)"
+							>
+								<Icon
+									:icon="likingIds.has(comment.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
+									class="w-3.5 h-3.5"
+									:class="{ 'animate-spin': likingIds.has(comment.id) }"
+								/>
+								<span class="like-count">{{ comment.likes ?? 0 }}</span>
+							</button>
+							<!-- Live region: per-comment count changes after a round-trip;
                    announce the settled count (HeaderSearch pattern). -->
-              <span class="sr-only" role="status" aria-live="polite">
-                {{ t('components.commentList.likesCount', { count: comment.likes ?? 0 }) }}
-              </span>
-              <!-- Comment flag/report for moderation (DEC-108, TASK-166): a
+							<span class="sr-only" role="status" aria-live="polite">
+								{{ t("components.commentList.likesCount", { count: comment.likes ?? 0 }) }}
+							</span>
+							<!-- Comment flag/report for moderation (DEC-108, TASK-166): a
                    visitor flags an inappropriate comment; one per browser. -->
-              <button
-                type="button"
-                class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="isCommentFlagged(comment.id) || flaggingIds.has(comment.id)"
-                :title="isCommentFlagged(comment.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
-                :aria-pressed="isCommentFlagged(comment.id) ? 'true' : 'false'"
-                @click="handleCommentFlag(comment)"
-              >
-                <Icon
-                  icon="lucide:flag"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'text-amber-500': isCommentFlagged(comment.id) }"
-                />
-                <span>{{ isCommentFlagged(comment.id) ? t('components.commentList.flagged') : t('components.commentList.flag') }}</span>
-              </button>
-              <!-- Own-comment edit/delete (DEC-096, TASK-160): only the author
+							<button
+								type="button"
+								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								:disabled="isCommentFlagged(comment.id) || flaggingIds.has(comment.id)"
+								:title="
+									isCommentFlagged(comment.id)
+										? t('components.commentList.flagged')
+										: t('components.commentList.flag')
+								"
+								:aria-pressed="isCommentFlagged(comment.id) ? 'true' : 'false'"
+								@click="handleCommentFlag(comment)"
+							>
+								<Icon
+									icon="lucide:flag"
+									class="w-3.5 h-3.5"
+									:class="{ 'text-amber-500': isCommentFlagged(comment.id) }"
+								/>
+								<span>{{
+									isCommentFlagged(comment.id)
+										? t("components.commentList.flagged")
+										: t("components.commentList.flag")
+								}}</span>
+							</button>
+							<!-- Own-comment edit/delete (DEC-096, TASK-160): only the author
                    sees these; "edited" marks a self-edit. -->
-              <span v-if="comment.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{ t('components.commentList.edited') }}</span>
-              <template v-if="isOwnComment(comment)">
-                <button
-                  type="button"
-                  class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
-                  :disabled="actionIds.has(comment.id)"
-                  @click="startEdit(comment)"
-                >
-                  {{ t('components.commentList.edit') }}
-                </button>
-                <button
-                  type="button"
-                  class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
-                  :disabled="actionIds.has(comment.id)"
-                  @click="confirmDelete(comment)"
-                >
-                  {{ t('components.commentList.delete') }}
-                </button>
-              </template>
-            </div>
+							<span v-if="comment.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{
+								t("components.commentList.edited")
+							}}</span>
+							<template v-if="isOwnComment(comment)">
+								<button
+									type="button"
+									class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+									:disabled="actionIds.has(comment.id)"
+									@click="startEdit(comment)"
+								>
+									{{ t("components.commentList.edit") }}
+								</button>
+								<button
+									type="button"
+									class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
+									:disabled="actionIds.has(comment.id)"
+									@click="confirmDelete(comment)"
+								>
+									{{ t("components.commentList.delete") }}
+								</button>
+							</template>
+						</div>
 
-            <!-- Inline reply form -->
-            <div v-if="replyTo?.id === comment.id" class="mt-3">
-              <CommentForm
-                :post-id="props.postId"
-                :parent-id="comment.id"
-                :replying-to="comment.nickname"
-                :submit-label="t('components.commentList.reply')"
-                autofocus
-                @submitted="handleReplied"
-                @cancel="cancelReply"
-                @update:dirty="replyDirty = $event"
-              />
-            </div>
+						<!-- Inline reply form -->
+						<div v-if="replyTo?.id === comment.id" class="mt-3">
+							<CommentForm
+								:post-id="props.postId"
+								:parent-id="comment.id"
+								:replying-to="comment.nickname"
+								:submit-label="t('components.commentList.reply')"
+								autofocus
+								@submitted="handleReplied"
+								@cancel="cancelReply"
+								@update:dirty="replyDirty = $event"
+							/>
+						</div>
 
-            <!-- Inline edit form for the author's own comment (DEC-096) -->
-            <div
-              v-if="editingId === comment.id"
-              class="mt-3 space-y-2"
-              @keydown.exact.esc.prevent="cancelEditGuarded"
-            >
-              <textarea
-                ref="editTextarea"
-                v-model="editContent"
-                rows="3"
-                :aria-label="t('components.commentList.editLabel')"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
-                @keydown.ctrl.enter.prevent="saveEdit(comment)"
-                @keydown.meta.enter.prevent="saveEdit(comment)"
-              ></textarea>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
-                  :disabled="actionIds.has(comment.id)"
-                  @click="saveEdit(comment)"
-                >
-                  <Icon v-if="actionIds.has(comment.id)" data-testid="comment-edit-save-spinner" icon="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                  {{ actionIds.has(comment.id) ? t('components.commentList.saving') : t('components.commentList.save') }}
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  @click="cancelEditGuarded"
-                >
-                  {{ t('components.commentList.cancel') }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+						<!-- Inline edit form for the author's own comment (DEC-096) -->
+						<div
+							v-if="editingId === comment.id"
+							class="mt-3 space-y-2"
+							@keydown.exact.esc.prevent="cancelEditGuarded"
+						>
+							<textarea
+								ref="editTextarea"
+								v-model="editContent"
+								rows="3"
+								:aria-label="t('components.commentList.editLabel')"
+								class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+								@keydown.ctrl.enter.prevent="saveEdit(comment)"
+								@keydown.meta.enter.prevent="saveEdit(comment)"
+							></textarea>
+							<div class="flex gap-2">
+								<button
+									type="button"
+									class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+									:disabled="actionIds.has(comment.id)"
+									@click="saveEdit(comment)"
+								>
+									<Icon
+										v-if="actionIds.has(comment.id)"
+										data-testid="comment-edit-save-spinner"
+										icon="lucide:loader-2"
+										class="w-3.5 h-3.5 animate-spin"
+										aria-hidden="true"
+									/>
+									{{
+										actionIds.has(comment.id)
+											? t("components.commentList.saving")
+											: t("components.commentList.save")
+									}}
+								</button>
+								<button
+									type="button"
+									class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+									@click="cancelEditGuarded"
+								>
+									{{ t("components.commentList.cancel") }}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
 
-        <!-- Nested replies (all descendants, incl. replies-to-replies) -->
-        <ul v-if="descendantsOf(comment.id).length" class="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-          <li
-            v-for="reply in descendantsOf(comment.id)"
-            :key="reply.id"
-            :id="`comment-${reply.id}`"
-            class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 scroll-mt-28"
-          >
-            <div class="flex items-center gap-2 mb-1">
-              <span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
-                <Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
-              </span>
-              <!-- Avatar (DEC-299/TASK-378): same treatment as the top-level
+				<!-- Nested replies (all descendants, incl. replies-to-replies) -->
+				<ul
+					v-if="descendantsOf(comment.id).length"
+					class="mt-3 space-y-3 pl-4 border-l-2 border-gray-200 dark:border-gray-700"
+				>
+					<li
+						v-for="reply in descendantsOf(comment.id)"
+						:key="reply.id"
+						:id="`comment-${reply.id}`"
+						class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 scroll-mt-28"
+					>
+						<div class="flex items-center gap-2 mb-1">
+							<span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
+								<Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
+							</span>
+							<!-- Avatar (DEC-299/TASK-378): same treatment as the top-level
                    comment — shown for any reader who has set a picture. -->
-              <img
-                v-if="reply.reader && reply.reader.avatar_url"
-                :src="reply.reader.avatar_url"
-                :alt="reply.reader.display_name || 'avatar'"
-                class="w-5 h-5 rounded-full object-cover"
-              />
-              <span class="font-medium text-sm text-gray-900 dark:text-gray-100">
-                <NuxtLink
-                  v-if="reply.reader && reply.reader.display_name"
-                  :to="`/readers/${reply.reader.id}`"
-                  class="hover:underline"
-                >
-                  {{ reply.reader.display_name }}
-                </NuxtLink>
-                <template v-else-if="reply.reader">{{ t('components.commentList.readerNoName') }}</template>
-                <template v-else>{{ reply.nickname }}</template>
-              </span>
-              <span
-                v-if="reply.is_author_reply"
-                class="text-[11px] text-blue-600 dark:text-blue-400"
-                :title="t('components.commentList.authorReply')"
-              >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5 inline" />
-                {{ t("components.commentList.authorReply") }}
-              </span>
-              <span
-                v-if="reply.reader"
-                class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
-                :title="t('components.commentList.verifiedReader')"
-              >
-                <Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
-                <span class="sr-only">{{ t('components.commentList.verifiedReader') }}</span>
-              </span>
-              <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.created_at) }}</span>
-            </div>
-            <div
-              class="comment-body text-sm text-gray-700 dark:text-gray-300"
-              v-html="commentBodyHtml(reply.content)"
-            />
+							<img
+								v-if="reply.reader && reply.reader.avatar_url"
+								:src="reply.reader.avatar_url"
+								:alt="reply.reader.display_name || 'avatar'"
+								class="w-5 h-5 rounded-full object-cover"
+							/>
+							<span class="font-medium text-sm text-gray-900 dark:text-gray-100">
+								<NuxtLink
+									v-if="reply.reader && reply.reader.display_name"
+									:to="`/readers/${reply.reader.id}`"
+									class="hover:underline"
+								>
+									{{ reply.reader.display_name }}
+								</NuxtLink>
+								<template v-else-if="reply.reader">{{
+									t("components.commentList.readerNoName")
+								}}</template>
+								<template v-else>{{ reply.nickname }}</template>
+							</span>
+							<span
+								v-if="reply.is_author_reply"
+								class="text-[11px] text-blue-600 dark:text-blue-400"
+								:title="t('components.commentList.authorReply')"
+							>
+								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5 inline" />
+								{{ t("components.commentList.authorReply") }}
+							</span>
+							<span
+								v-if="reply.reader"
+								class="inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400"
+								:title="t('components.commentList.verifiedReader')"
+							>
+								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
+								<span class="sr-only">{{ t("components.commentList.verifiedReader") }}</span>
+							</span>
+							<span class="text-xs text-gray-500 dark:text-gray-400">{{
+								formatDate(reply.created_at)
+							}}</span>
+						</div>
+						<div
+							class="comment-body text-sm text-gray-700 dark:text-gray-300"
+							v-html="commentBodyHtml(reply.content)"
+						/>
 
-            <div class="mt-2 flex items-center gap-3">
-              <button
-                type="button"
-                class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                @click="toggleReply(reply)"
-              >
-                {{ replyTo?.id === reply.id ? t('components.commentList.cancelReply') : t('components.commentList.reply') }}
-              </button>
-              <button
-                type="button"
-                class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="isCommentLiked(reply.id) || likingIds.has(reply.id)"
-                :title="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
-                :aria-pressed="isCommentLiked(reply.id) ? 'true' : 'false'"
-                :aria-label="isCommentLiked(reply.id) ? t('components.commentList.liked') : t('components.commentList.like')"
-                @click="handleCommentLike(reply)"
-              >
-                <Icon
-                  :icon="likingIds.has(reply.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'animate-spin': likingIds.has(reply.id) }"
-                />
-                <span class="like-count">{{ reply.likes ?? 0 }}</span>
-              </button>
-              <!-- Live region: the reply like count. -->
-              <span class="sr-only" role="status" aria-live="polite">
-                {{ t('components.commentList.likesCount', { count: reply.likes ?? 0 }) }}
-              </span>
-              <button
-                type="button"
-                class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                :disabled="isCommentFlagged(reply.id) || flaggingIds.has(reply.id)"
-                :title="isCommentFlagged(reply.id) ? t('components.commentList.flagged') : t('components.commentList.flag')"
-                :aria-pressed="isCommentFlagged(reply.id) ? 'true' : 'false'"
-                @click="handleCommentFlag(reply)"
-              >
-                <Icon
-                  icon="lucide:flag"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'text-amber-500': isCommentFlagged(reply.id) }"
-                />
-                <span>{{ isCommentFlagged(reply.id) ? t('components.commentList.flagged') : t('components.commentList.flag') }}</span>
-              </button>
-              <span v-if="reply.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{ t('components.commentList.edited') }}</span>
-              <template v-if="isOwnComment(reply)">
-                <button
-                  type="button"
-                  class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
-                  :disabled="actionIds.has(reply.id)"
-                  @click="startEdit(reply)"
-                >
-                  {{ t('components.commentList.edit') }}
-                </button>
-                <button
-                  type="button"
-                  class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
-                  :disabled="actionIds.has(reply.id)"
-                  @click="confirmDelete(reply)"
-                >
-                  {{ t('components.commentList.delete') }}
-                </button>
-              </template>
-            </div>
+						<div class="mt-2 flex items-center gap-3">
+							<button
+								type="button"
+								class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+								@click="toggleReply(reply)"
+							>
+								{{
+									replyTo?.id === reply.id
+										? t("components.commentList.cancelReply")
+										: t("components.commentList.reply")
+								}}
+							</button>
+							<button
+								type="button"
+								class="comment-like inline-flex items-center gap-1 text-xs text-gray-500 hover:text-pink-600 dark:text-gray-400 dark:hover:text-pink-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								:disabled="isCommentLiked(reply.id) || likingIds.has(reply.id)"
+								:title="
+									isCommentLiked(reply.id)
+										? t('components.commentList.liked')
+										: t('components.commentList.like')
+								"
+								:aria-pressed="isCommentLiked(reply.id) ? 'true' : 'false'"
+								:aria-label="
+									isCommentLiked(reply.id)
+										? t('components.commentList.liked')
+										: t('components.commentList.like')
+								"
+								@click="handleCommentLike(reply)"
+							>
+								<Icon
+									:icon="likingIds.has(reply.id) ? 'lucide:loader-2' : 'lucide:thumbs-up'"
+									class="w-3.5 h-3.5"
+									:class="{ 'animate-spin': likingIds.has(reply.id) }"
+								/>
+								<span class="like-count">{{ reply.likes ?? 0 }}</span>
+							</button>
+							<!-- Live region: the reply like count. -->
+							<span class="sr-only" role="status" aria-live="polite">
+								{{ t("components.commentList.likesCount", { count: reply.likes ?? 0 }) }}
+							</span>
+							<button
+								type="button"
+								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								:disabled="isCommentFlagged(reply.id) || flaggingIds.has(reply.id)"
+								:title="
+									isCommentFlagged(reply.id)
+										? t('components.commentList.flagged')
+										: t('components.commentList.flag')
+								"
+								:aria-pressed="isCommentFlagged(reply.id) ? 'true' : 'false'"
+								@click="handleCommentFlag(reply)"
+							>
+								<Icon
+									icon="lucide:flag"
+									class="w-3.5 h-3.5"
+									:class="{ 'text-amber-500': isCommentFlagged(reply.id) }"
+								/>
+								<span>{{
+									isCommentFlagged(reply.id)
+										? t("components.commentList.flagged")
+										: t("components.commentList.flag")
+								}}</span>
+							</button>
+							<span v-if="reply.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{
+								t("components.commentList.edited")
+							}}</span>
+							<template v-if="isOwnComment(reply)">
+								<button
+									type="button"
+									class="comment-edit text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+									:disabled="actionIds.has(reply.id)"
+									@click="startEdit(reply)"
+								>
+									{{ t("components.commentList.edit") }}
+								</button>
+								<button
+									type="button"
+									class="comment-delete text-xs text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors disabled:opacity-60"
+									:disabled="actionIds.has(reply.id)"
+									@click="confirmDelete(reply)"
+								>
+									{{ t("components.commentList.delete") }}
+								</button>
+							</template>
+						</div>
 
-            <!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
-            <div v-if="replyTo?.id === reply.id" class="mt-3">
-              <CommentForm
-                :post-id="props.postId"
-                :parent-id="reply.id"
-                :replying-to="reply.nickname"
-                :submit-label="t('components.commentList.reply')"
-                autofocus
-                @submitted="handleReplied"
-                @cancel="cancelReply"
-                @update:dirty="replyDirty = $event"
-              />
-            </div>
+						<!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
+						<div v-if="replyTo?.id === reply.id" class="mt-3">
+							<CommentForm
+								:post-id="props.postId"
+								:parent-id="reply.id"
+								:replying-to="reply.nickname"
+								:submit-label="t('components.commentList.reply')"
+								autofocus
+								@submitted="handleReplied"
+								@cancel="cancelReply"
+								@update:dirty="replyDirty = $event"
+							/>
+						</div>
 
-            <!-- Inline edit form for the author's own reply (DEC-096) -->
-            <div
-              v-if="editingId === reply.id"
-              class="mt-3 space-y-2"
-              @keydown.exact.esc.prevent="cancelEditGuarded"
-            >
-              <textarea
-                ref="editTextarea"
-                v-model="editContent"
-                rows="3"
-                :aria-label="t('components.commentList.editLabel')"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
-                @keydown.ctrl.enter.prevent="saveEdit(reply)"
-                @keydown.meta.enter.prevent="saveEdit(reply)"
-              ></textarea>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
-                  :disabled="actionIds.has(reply.id)"
-                  @click="saveEdit(reply)"
-                >
-                  <Icon v-if="actionIds.has(reply.id)" icon="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                  {{ actionIds.has(reply.id) ? t('components.commentList.saving') : t('components.commentList.save') }}
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  @click="cancelEditGuarded"
-                >
-                  {{ t('components.commentList.cancel') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </li>
-    </ul>
+						<!-- Inline edit form for the author's own reply (DEC-096) -->
+						<div
+							v-if="editingId === reply.id"
+							class="mt-3 space-y-2"
+							@keydown.exact.esc.prevent="cancelEditGuarded"
+						>
+							<textarea
+								ref="editTextarea"
+								v-model="editContent"
+								rows="3"
+								:aria-label="t('components.commentList.editLabel')"
+								class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300 p-2"
+								@keydown.ctrl.enter.prevent="saveEdit(reply)"
+								@keydown.meta.enter.prevent="saveEdit(reply)"
+							></textarea>
+							<div class="flex gap-2">
+								<button
+									type="button"
+									class="inline-flex items-center gap-1.5 px-3 py-1 rounded text-sm bg-blue-600 text-white disabled:opacity-60"
+									:disabled="actionIds.has(reply.id)"
+									@click="saveEdit(reply)"
+								>
+									<Icon
+										v-if="actionIds.has(reply.id)"
+										icon="lucide:loader-2"
+										class="w-3.5 h-3.5 animate-spin"
+										aria-hidden="true"
+									/>
+									{{
+										actionIds.has(reply.id)
+											? t("components.commentList.saving")
+											: t("components.commentList.save")
+									}}
+								</button>
+								<button
+									type="button"
+									class="px-3 py-1 rounded text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+									@click="cancelEditGuarded"
+								>
+									{{ t("components.commentList.cancel") }}
+								</button>
+							</div>
+						</div>
+					</li>
+				</ul>
+			</li>
+		</ul>
 
-    <!-- Pagination (DEC-102, TASK-163; ISS-370: first/current/last + ellipsis
+		<!-- Pagination (DEC-102, TASK-163; ISS-370: first/current/last + ellipsis
          like the my-comments/feed pages, so deep history can reach the far
          pages instead of a fixed local window) -->
-    <nav
-      v-if="totalPages > 1"
-      class="flex justify-center gap-2 mt-6"
-    >
-      <button
-        type="button"
-        v-for="(pg, i) in paginationTokens"
-        :key="pg === '…' ? `ellipsis-${i}` : pg"
-        :disabled="pg === '…' || pg === currentPage"
-        :aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
-        @click="loadPage(pg)"
-        :class="[
-          'px-3 py-1 rounded text-sm',
-          pg === '…'
-            ? 'cursor-default text-gray-400'
-            : pg === currentPage
-              ? 'bg-blue-600 text-white cursor-default'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
-        ]"
-      >
-        {{ pg }}
-      </button>
-    </nav>
+		<nav v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
+			<button
+				type="button"
+				v-for="(pg, i) in paginationTokens"
+				:key="pg === '…' ? `ellipsis-${i}` : pg"
+				:disabled="pg === '…' || pg === currentPage"
+				:aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
+				@click="loadPage(pg)"
+				:class="[
+					'px-3 py-1 rounded text-sm',
+					pg === '…'
+						? 'cursor-default text-gray-400'
+						: pg === currentPage
+							? 'bg-blue-600 text-white cursor-default'
+							: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+				]"
+			>
+				{{ pg }}
+			</button>
+		</nav>
 
-    <!-- Comment-image lightbox (DEC-308/TASK-382): the same fullscreen viewer
+		<!-- Comment-image lightbox (DEC-308/TASK-382): the same fullscreen viewer
          the post body opens, driven by the delegated click above. -->
-    <MarkdownLightbox :images="lightboxImages" v-model:index="lightboxIndex" />
-  </section>
+		<MarkdownLightbox :images="lightboxImages" v-model:index="lightboxIndex" />
+	</section>
 </template>
 
 <script setup lang="ts">

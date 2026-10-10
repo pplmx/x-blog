@@ -54,12 +54,10 @@ async function submit() {
 </script>
 
 <template>
-	<form
-		v-if="!isAuthenticated"
-		class="flex items-center gap-2"
-		@submit.prevent="submit"
-	>
-		<label class="sr-only" :for="`guest-thread-${postId}`">{{ t("components.commentList.guestFollow.label") }}</label>
+	<form v-if="!isAuthenticated" class="flex items-center gap-2" @submit.prevent="submit">
+		<label class="sr-only" :for="`guest-thread-${postId}`">{{
+			t("components.commentList.guestFollow.label")
+		}}</label>
 		<input
 			:id="`guest-thread-${postId}`"
 			v-model="email"

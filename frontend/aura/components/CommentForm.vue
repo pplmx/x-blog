@@ -1,250 +1,264 @@
 <template>
-  <section>
-    <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">{{ submitLabel || t('components.commentForm.title') }}</h2>
+	<section>
+		<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+			{{ submitLabel || t("components.commentForm.title") }}
+		</h2>
 
-    <!-- Reply context (keydown.esc bubbles from the panel below to cancel
+		<!-- Reply context (keydown.esc bubbles from the panel below to cancel
          without reaching for the Cancel button) -->
-    <div
-      v-if="replyingTo"
-      @keydown.esc.prevent="emit('cancel')"
-      class="flex items-center justify-between gap-2 mb-4 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40"
-    >
-      <p class="text-sm text-blue-700 dark:text-blue-300">
-        {{ t('components.commentForm.replyingTo', { name: replyingTo }) }}
-      </p>
-      <button
-        type="button"
-        class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 transition-colors"
-        @click="emit('cancel')"
-      >
-        {{ t('components.commentForm.cancelReply') }}
-      </button>
-    </div>
+		<div
+			v-if="replyingTo"
+			@keydown.esc.prevent="emit('cancel')"
+			class="flex items-center justify-between gap-2 mb-4 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40"
+		>
+			<p class="text-sm text-blue-700 dark:text-blue-300">
+				{{ t("components.commentForm.replyingTo", { name: replyingTo }) }}
+			</p>
+			<button
+				type="button"
+				class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 transition-colors"
+				@click="emit('cancel')"
+			>
+				{{ t("components.commentForm.cancelReply") }}
+			</button>
+		</div>
 
-    <form @submit.prevent="handleSubmit" class="space-y-4">
-      <!-- Anti-spam honeypot: visually hidden, screens off for AT/human users.
+		<form @submit.prevent="handleSubmit" class="space-y-4">
+			<!-- Anti-spam honeypot: visually hidden, screens off for AT/human users.
            A bot filling every field lands here and the backend rejects it. -->
-      <div class="absolute left-[-9999px] top-auto h-1 w-1 overflow-hidden" aria-hidden="true">
-        <label :for="fieldId('comment-hp')">Website</label>
-        <input :id="fieldId('comment-hp')" v-model="form.website" type="text" tabindex="-1" autocomplete="off" />
-      </div>
+			<div class="absolute left-[-9999px] top-auto h-1 w-1 overflow-hidden" aria-hidden="true">
+				<label :for="fieldId('comment-hp')">Website</label>
+				<input
+					:id="fieldId('comment-hp')"
+					v-model="form.website"
+					type="text"
+					tabindex="-1"
+					autocomplete="off"
+				/>
+			</div>
 
-      <!-- Signed-in reader: identity comes from the account, no name/email
+			<!-- Signed-in reader: identity comes from the account, no name/email
            inputs (the backend stamps the verified display_name). -->
-      <div
-        v-if="signedIn"
-        id="reader-comment-identity"
-        class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-      >
-        <Icon icon="lucide:badge-check" class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-        <span>{{ t('components.commentForm.asReader', { name: identityLabel }) }}</span>
-      </div>
+			<div
+				v-if="signedIn"
+				id="reader-comment-identity"
+				class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+			>
+				<Icon icon="lucide:badge-check" class="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+				<span>{{ t("components.commentForm.asReader", { name: identityLabel }) }}</span>
+			</div>
 
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label
-            :for="fieldId('comment-nickname')"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-          >{{ t('components.commentForm.nickname') }}</label>
-          <input
-            :id="fieldId('comment-nickname')"
-            v-model="form.nickname"
-            type="text"
-            required
-            autocomplete="nickname"
-            :placeholder="t('components.commentForm.nickname')"
-            class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-        </div>
-        <div>
-          <label
-            :for="fieldId('comment-email')"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-          >{{ t('components.commentForm.email') }}</label>
-          <input
-            :id="fieldId('comment-email')"
-            v-model="form.email"
-            type="email"
-            required
-            autocomplete="email"
-            :placeholder="t('components.commentForm.email')"
-            class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-        </div>
-        <!-- Guest reply-email consent (DEC-332/TASK-392): an anonymous
+			<div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div>
+					<label
+						:for="fieldId('comment-nickname')"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+						>{{ t("components.commentForm.nickname") }}</label
+					>
+					<input
+						:id="fieldId('comment-nickname')"
+						v-model="form.nickname"
+						type="text"
+						required
+						autocomplete="nickname"
+						:placeholder="t('components.commentForm.nickname')"
+						class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+					/>
+				</div>
+				<div>
+					<label
+						:for="fieldId('comment-email')"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+						>{{ t("components.commentForm.email") }}</label
+					>
+					<input
+						:id="fieldId('comment-email')"
+						v-model="form.email"
+						type="email"
+						required
+						autocomplete="email"
+						:placeholder="t('components.commentForm.email')"
+						class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+					/>
+				</div>
+				<!-- Guest reply-email consent (DEC-332/TASK-392): an anonymous
              commenter's email is otherwise collected and stored but never used;
              this checkbox opts them into a best-effort email when a reply to
              their comment is approved. Signed-in readers get reply email from
              their account-level preference (DEC-197), so the control only
              renders in the guest form (this grid is the v-else of signedIn). -->
-        <div class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
-          <input
-            :id="fieldId('comment-reply-notify')"
-            v-model="form.replyNotifyEmail"
-            type="checkbox"
-            class="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500"
-          >
-          <label
-            :for="fieldId('comment-reply-notify')"
-            class="font-normal"
-          >{{ t('components.commentForm.replyNotify') }}</label>
-        </div>
-      </div>
+				<div class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
+					<input
+						:id="fieldId('comment-reply-notify')"
+						v-model="form.replyNotifyEmail"
+						type="checkbox"
+						class="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-500 focus:ring-blue-500"
+					/>
+					<label :for="fieldId('comment-reply-notify')" class="font-normal">{{
+						t("components.commentForm.replyNotify")
+					}}</label>
+				</div>
+			</div>
 
-      <div>
-        <label
-          :for="fieldId('comment-content')"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-        >{{ t('components.commentForm.content') }}</label>
-        <!-- Write/Preview toggle (DEC-306/TASK-381): the comment form advertises
+			<div>
+				<label
+					:for="fieldId('comment-content')"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+					>{{ t("components.commentForm.content") }}</label
+				>
+				<!-- Write/Preview toggle (DEC-306/TASK-381): the comment form advertises
              sanitized-Markdown rendering (DEC-088) and comments wait in the
              moderation queue (DEC-066), so a commenter must see their draft
              render BEFORE submitting — a malformed markup draft would otherwise
              burn an approval cycle with no feedback. Both tabs reuse the exact
              pipeline the comment list ships (commentMarkdownToHtml + lazy
              highlight.js), so "what you see here" IS "what gets posted". -->
-        <div
-          role="tablist"
-          :aria-label="t('components.commentForm.tablistAria')"
-          class="flex items-center border-b border-gray-200 dark:border-gray-700 mb-2"
-          @keydown="onTablistKeydown"
-        >
-          <button
-            type="button"
-            role="tab"
-            data-tab="write"
-            :aria-selected="!previewing"
-            :tabindex="previewing ? -1 : 0"
-            class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
-            :class="
-              !previewing
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            "
-            @click="previewing = false"
-          >{{ t('components.commentForm.write') }}</button>
-          <button
-            type="button"
-            role="tab"
-            data-tab="preview"
-            :aria-selected="previewing"
-            :tabindex="previewing ? 0 : -1"
-            class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
-            :class="
-              previewing
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            "
-            @click="previewing = true"
-          >{{ t('components.commentForm.preview') }}</button>
-        </div>
+				<div
+					role="tablist"
+					:aria-label="t('components.commentForm.tablistAria')"
+					class="flex items-center border-b border-gray-200 dark:border-gray-700 mb-2"
+					@keydown="onTablistKeydown"
+				>
+					<button
+						type="button"
+						role="tab"
+						data-tab="write"
+						:aria-selected="!previewing"
+						:tabindex="previewing ? -1 : 0"
+						class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
+						:class="
+							!previewing
+								? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
+								: 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+						"
+						@click="previewing = false"
+					>
+						{{ t("components.commentForm.write") }}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						data-tab="preview"
+						:aria-selected="previewing"
+						:tabindex="previewing ? 0 : -1"
+						class="px-3 py-1.5 text-sm transition-colors border-b-2 -mb-px"
+						:class="
+							previewing
+								? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
+								: 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+						"
+						@click="previewing = true"
+					>
+						{{ t("components.commentForm.preview") }}
+					</button>
+				</div>
 
-        <!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity).
+				<!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity).
              The wrapper is `relative` so the '@'-mention picker (DEC-324) can
              drop below the textarea's full width. -->
-        <div v-if="!previewing" class="relative">
-          <textarea
-            :id="fieldId('comment-content')"
-            ref="contentRef"
-            v-model="form.content"
-            required
-            rows="4"
-            :disabled="submitting || disabled"
-            :placeholder="t('components.commentForm.content')"
-            role="combobox"
-            aria-autocomplete="list"
-            :aria-expanded="mentionOpen ? 'true' : 'false'"
-            :aria-controls="mentionOpen ? fieldId('mention-list') : undefined"
-            :aria-activedescendant="
-              mentionOpen && mentionSuggestions[mentionIndex]
-                ? mentionOptionId(mentionIndex)
-                : undefined
-            "
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y disabled:opacity-60 disabled:cursor-not-allowed"
-            @input="onContentInput"
-            @keydown="onTextareaKeydown"
-            @keydown.exact.esc.prevent="onEscape()"
-            @keydown.ctrl.enter.prevent="submitWithShortcut()"
-            @keydown.meta.enter.prevent="submitWithShortcut()"
-          />
-          <div
-            v-if="mentionOpen"
-            :id="fieldId('mention-list')"
-            role="listbox"
-            data-testid="mention-list"
-            class="absolute z-20 left-0 right-0 top-full mt-1 max-h-56 overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1"
-          >
-            <button
-              v-for="(s, i) in mentionSuggestions"
-              :key="s.id"
-              :id="mentionOptionId(i)"
-              type="button"
-              role="option"
-              :aria-selected="i === mentionIndex"
-              data-testid="mention-option"
-              :class="[
-                'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-amber-50 dark:hover:bg-amber-950/40',
-                { 'bg-amber-50 dark:bg-amber-950/40': i === mentionIndex },
-              ]"
-              @mousedown.prevent="insertMention(i)"
-            >
-              <span
-                aria-hidden="true"
-                class="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-semibold shrink-0 overflow-hidden"
-              >
-                <img
-                  v-if="s.avatar_url"
-                  :src="s.avatar_url"
-                  alt=""
-                  class="w-full h-full object-cover"
-                />
-                <template v-else>{{ (s.display_name[0] ?? '?').toUpperCase() }}</template>
-              </span>
-              <span data-testid="mention-name" class="min-w-0 truncate">{{ s.display_name }}</span>
-            </button>
-          </div>
-        </div>
+				<div v-if="!previewing" class="relative">
+					<textarea
+						:id="fieldId('comment-content')"
+						ref="contentRef"
+						v-model="form.content"
+						required
+						rows="4"
+						:disabled="submitting || disabled"
+						:placeholder="t('components.commentForm.content')"
+						role="combobox"
+						aria-autocomplete="list"
+						:aria-expanded="mentionOpen ? 'true' : 'false'"
+						:aria-controls="mentionOpen ? fieldId('mention-list') : undefined"
+						:aria-activedescendant="
+							mentionOpen && mentionSuggestions[mentionIndex]
+								? mentionOptionId(mentionIndex)
+								: undefined
+						"
+						class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-y disabled:opacity-60 disabled:cursor-not-allowed"
+						@input="onContentInput"
+						@keydown="onTextareaKeydown"
+						@keydown.exact.esc.prevent="onEscape()"
+						@keydown.ctrl.enter.prevent="submitWithShortcut()"
+						@keydown.meta.enter.prevent="submitWithShortcut()"
+					/>
+					<div
+						v-if="mentionOpen"
+						:id="fieldId('mention-list')"
+						role="listbox"
+						data-testid="mention-list"
+						class="absolute z-20 left-0 right-0 top-full mt-1 max-h-56 overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg py-1"
+					>
+						<button
+							v-for="(s, i) in mentionSuggestions"
+							:key="s.id"
+							:id="mentionOptionId(i)"
+							type="button"
+							role="option"
+							:aria-selected="i === mentionIndex"
+							data-testid="mention-option"
+							:class="[
+								'w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-amber-50 dark:hover:bg-amber-950/40',
+								{ 'bg-amber-50 dark:bg-amber-950/40': i === mentionIndex },
+							]"
+							@mousedown.prevent="insertMention(i)"
+						>
+							<span
+								aria-hidden="true"
+								class="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs font-semibold shrink-0 overflow-hidden"
+							>
+								<img
+									v-if="s.avatar_url"
+									:src="s.avatar_url"
+									alt=""
+									class="w-full h-full object-cover"
+								/>
+								<template v-else>{{ (s.display_name[0] ?? "?").toUpperCase() }}</template>
+							</span>
+							<span data-testid="mention-name" class="min-w-0 truncate">{{ s.display_name }}</span>
+						</button>
+					</div>
+				</div>
 
-        <!-- Preview tab (role="tabpanel"): the same commentMarkdownToHtml the
+				<!-- Preview tab (role="tabpanel"): the same commentMarkdownToHtml the
              list uses, so a draft renders byte-for-byte as the shipped comment
              would. Empty drafts show a hint instead of a blank box. -->
-        <div
-          v-if="previewing"
-          :id="fieldId('comment-preview')"
-          role="tabpanel"
-          ref="previewEl"
-          class="comment-body comment-preview min-h-16 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm text-gray-700 dark:text-gray-300"
-        >
-          <p v-if="!form.content.trim()" class="text-gray-400 dark:text-gray-500">
-            {{ t('components.commentForm.previewEmpty') }}
-          </p>
-          <div v-else v-html="previewHtml"></div>
-        </div>
+				<div
+					v-if="previewing"
+					:id="fieldId('comment-preview')"
+					role="tabpanel"
+					ref="previewEl"
+					class="comment-body comment-preview min-h-16 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm text-gray-700 dark:text-gray-300"
+				>
+					<p v-if="!form.content.trim()" class="text-gray-400 dark:text-gray-500">
+						{{ t("components.commentForm.previewEmpty") }}
+					</p>
+					<div v-else v-html="previewHtml"></div>
+				</div>
 
-        <!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
-        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-          <Icon icon="lucide:braces" class="w-3 h-3 inline mr-0.5" />
-          {{ t('components.commentForm.markdownHint') }}
-        </p>
-      </div>
+				<!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
+				<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+					<Icon icon="lucide:braces" class="w-3 h-3 inline mr-0.5" />
+					{{ t("components.commentForm.markdownHint") }}
+				</p>
+			</div>
 
-      <button
-        type="submit"
-        :disabled="submitting || disabled"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-      >
-        <Icon
-          v-if="submitting"
-          icon="lucide:loader-2"
-          class="w-4 h-4 animate-spin"
-        />
-        {{ submitting ? t('components.commentForm.submitting') : t('components.commentForm.submit') }}
-      </button>
+			<button
+				type="submit"
+				:disabled="submitting || disabled"
+				class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+			>
+				<Icon v-if="submitting" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+				{{
+					submitting ? t("components.commentForm.submitting") : t("components.commentForm.submit")
+				}}
+			</button>
 
-      <p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-      <p v-if="success" role="status" class="text-sm text-green-600 dark:text-green-400">{{ t('components.commentForm.submitSuccess') }}</p>
-    </form>
-  </section>
+			<p v-if="error" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+			<p v-if="success" role="status" class="text-sm text-green-600 dark:text-green-400">
+				{{ t("components.commentForm.submitSuccess") }}
+			</p>
+		</form>
+	</section>
 </template>
 
 <script setup lang="ts">

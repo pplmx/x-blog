@@ -32,76 +32,84 @@ function printPage() {
 </script>
 
 <template>
-  <div class="print-shell">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      <!-- Screen-only toolbar (hidden in print) -->
-      <div
-        class="no-print flex items-center justify-between gap-3 mb-8 pb-5 border-b border-gray-100 dark:border-gray-800"
-      >
-        <NuxtLink
-          :to="`/posts/${route.params.slug}`"
-          class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-        >
-          <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-          {{ t('post.backToArticle') }}
-        </NuxtLink>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="printPage"
-        >
-          <Icon icon="lucide:printer" class="w-4 h-4" />
-          {{ t('post.printPdf') }}
-        </button>
-      </div>
+	<div class="print-shell">
+		<div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+			<!-- Screen-only toolbar (hidden in print) -->
+			<div
+				class="no-print flex items-center justify-between gap-3 mb-8 pb-5 border-b border-gray-100 dark:border-gray-800"
+			>
+				<NuxtLink
+					:to="`/posts/${route.params.slug}`"
+					class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+				>
+					<Icon icon="lucide:arrow-left" class="w-4 h-4" />
+					{{ t("post.backToArticle") }}
+				</NuxtLink>
+				<button
+					type="button"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="printPage"
+				>
+					<Icon icon="lucide:printer" class="w-4 h-4" />
+					{{ t("post.printPdf") }}
+				</button>
+			</div>
 
-      <!-- Loading skeleton -->
-      <div v-if="pending" class="space-y-6">
-        <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
-        <div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
-        <div class="space-y-3">
-          <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
-          <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse" />
-        </div>
-      </div>
+			<!-- Loading skeleton -->
+			<div v-if="pending" class="space-y-6">
+				<div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
+				<div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
+				<div class="space-y-3">
+					<div class="h-4 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+					<div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse" />
+				</div>
+			</div>
 
-      <div v-else-if="error || !post" class="text-center py-20 text-gray-500">
-        <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-        <p class="mb-4">{{ t('post.notFound') }}</p>
-        <!-- A stale share/bookmark print link must not be a dead end (round-299
+			<div v-else-if="error || !post" class="text-center py-20 text-gray-500">
+				<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+				<p class="mb-4">{{ t("post.notFound") }}</p>
+				<!-- A stale share/bookmark print link must not be a dead end (round-299
              deep-dive): give the reader a path back home, like the article page. -->
-        <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-          {{ t('common.action.backHome') }}
-        </NuxtLink>
-      </div>
+				<NuxtLink
+					to="/"
+					class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+				>
+					{{ t("common.action.backHome") }}
+				</NuxtLink>
+			</div>
 
-      <!-- Print-ready article -->
-      <article v-else class="print-article">
-        <header class="mb-8">
-          <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-4 text-balance">
-            {{ post.title }}
-          </h1>
-          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <span class="inline-flex items-center gap-1.5">
-              <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ formatPostDate(effectivePublishTs(post), locale) }}
-            </span>
-            <span class="inline-flex items-center gap-1.5">
-              <Icon icon="lucide:clock" class="w-3.5 h-3.5" />
-              {{ t('post.readingTime', { count: readingTime }) }}
-            </span>
-          </div>
-          <p v-if="post.excerpt" class="mt-5 text-base text-gray-600 dark:text-gray-400 leading-relaxed">
-            {{ post.excerpt }}
-          </p>
-        </header>
+			<!-- Print-ready article -->
+			<article v-else class="print-article">
+				<header class="mb-8">
+					<h1
+						class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-4 text-balance"
+					>
+						{{ post.title }}
+					</h1>
+					<div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+						<span class="inline-flex items-center gap-1.5">
+							<Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
+							{{ formatPostDate(effectivePublishTs(post), locale) }}
+						</span>
+						<span class="inline-flex items-center gap-1.5">
+							<Icon icon="lucide:clock" class="w-3.5 h-3.5" />
+							{{ t("post.readingTime", { count: readingTime }) }}
+						</span>
+					</div>
+					<p
+						v-if="post.excerpt"
+						class="mt-5 text-base text-gray-600 dark:text-gray-400 leading-relaxed"
+					>
+						{{ post.excerpt }}
+					</p>
+				</header>
 
-        <div class="prose-config print-content">
-          <MarkdownContent :content="post.content" />
-        </div>
-      </article>
-    </div>
-  </div>
+				<div class="prose-config print-content">
+					<MarkdownContent :content="post.content" />
+				</div>
+			</article>
+		</div>
+	</div>
 </template>
 
 <style scoped>

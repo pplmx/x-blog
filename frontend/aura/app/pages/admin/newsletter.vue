@@ -166,238 +166,313 @@ async function removeSubscriber(id: number, email: string) {
 </script>
 
 <template>
-  <div>
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t("admin.newsletter.title") }}</h1>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.description") }}</p>
-    </header>
+	<div>
+		<header class="mb-6">
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+				{{ t("admin.newsletter.title") }}
+			</h1>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.newsletter.description") }}
+			</p>
+		</header>
 
-    <!-- Weekly digest panel (DEC-423, TASK-436): the operator reading surface
+		<!-- Weekly digest panel (DEC-423, TASK-436): the operator reading surface
          for the digest job — who is on the weekly cadence, when the last one
          went out, what the next window would carry, and live preview/send
          controls wired to the existing send-weekly endpoint. -->
-    <section
-      class="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
-      :aria-label="t('admin.newsletter.digestPanel.title')"
-    >
-      <header class="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-          {{ t("admin.newsletter.digestPanel.title") }}
-        </h2>
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            :disabled="digestBusy"
-            :aria-busy="digestBusy"
-            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="runDigest(true)"
-          >
-            <Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            <Icon v-else icon="lucide:eye" class="w-4 h-4" />
-            {{ t("admin.newsletter.digestPanel.preview") }}
-          </button>
-          <button
-            type="button"
-            :disabled="digestBusy"
-            :aria-busy="digestBusy"
-            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            @click="sendDigest"
-          >
-            <Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            <Icon v-else icon="lucide:send" class="w-4 h-4" />
-            {{ t("admin.newsletter.digestPanel.send") }}
-          </button>
-        </div>
-      </header>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.description") }}</p>
+		<section
+			class="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+			:aria-label="t('admin.newsletter.digestPanel.title')"
+		>
+			<header class="flex flex-wrap items-baseline justify-between gap-2">
+				<h2 class="text-base font-semibold text-gray-900 dark:text-white">
+					{{ t("admin.newsletter.digestPanel.title") }}
+				</h2>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						:disabled="digestBusy"
+						:aria-busy="digestBusy"
+						class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						@click="runDigest(true)"
+					>
+						<Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						<Icon v-else icon="lucide:eye" class="w-4 h-4" />
+						{{ t("admin.newsletter.digestPanel.preview") }}
+					</button>
+					<button
+						type="button"
+						:disabled="digestBusy"
+						:aria-busy="digestBusy"
+						class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						@click="sendDigest"
+					>
+						<Icon v-if="digestBusy" icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						<Icon v-else icon="lucide:send" class="w-4 h-4" />
+						{{ t("admin.newsletter.digestPanel.send") }}
+					</button>
+				</div>
+			</header>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.newsletter.digestPanel.description") }}
+			</p>
 
-      <div v-if="overviewPending && !digestOverview" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin inline" />
-        {{ t("common.state.loading") }}
-      </div>
-      <p v-else-if="overviewError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
-        {{ t("admin.newsletter.loadFailed") }}
-      </p>
-      <dl v-else-if="digestOverview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.readerSubs") }}</dt>
-          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.reader_digest_subscribers }}</dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.guestSubs") }}</dt>
-          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.guest_digest_subscribers }}</dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.lastSent") }}</dt>
-          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
-            {{ digestOverview.last_sent_at ? formatDate(digestOverview.last_sent_at) : t("admin.newsletter.digestPanel.neverSent") }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ t("admin.newsletter.digestPanel.windowPosts") }}</dt>
-          <dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">{{ digestOverview.window_posts }}</dd>
-        </div>
-      </dl>
+			<div
+				v-if="overviewPending && !digestOverview"
+				class="mt-3 text-sm text-gray-500 dark:text-gray-400"
+			>
+				<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin inline" />
+				{{ t("common.state.loading") }}
+			</div>
+			<p v-else-if="overviewError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+				{{ t("admin.newsletter.loadFailed") }}
+			</p>
+			<dl v-else-if="digestOverview" class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+				<div>
+					<dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						{{ t("admin.newsletter.digestPanel.readerSubs") }}
+					</dt>
+					<dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
+						{{ digestOverview.reader_digest_subscribers }}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						{{ t("admin.newsletter.digestPanel.guestSubs") }}
+					</dt>
+					<dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
+						{{ digestOverview.guest_digest_subscribers }}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						{{ t("admin.newsletter.digestPanel.lastSent") }}
+					</dt>
+					<dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
+						{{
+							digestOverview.last_sent_at
+								? formatDate(digestOverview.last_sent_at)
+								: t("admin.newsletter.digestPanel.neverSent")
+						}}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+						{{ t("admin.newsletter.digestPanel.windowPosts") }}
+					</dt>
+					<dd class="mt-0.5 text-lg font-semibold text-gray-900 dark:text-white">
+						{{ digestOverview.window_posts }}
+					</dd>
+				</div>
+			</dl>
 
-      <!-- Preview / send result summary -->
-      <div v-if="digestResult" class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-sm">
-        <p class="font-medium text-gray-900 dark:text-white">
-          {{ digestResult.dry_run ? t("admin.newsletter.digestPanel.previewResultTitle") : t("admin.newsletter.digestPanel.sendResultTitle") }}
-        </p>
-        <!-- The summary numbers: readers, guest subscribers, posts, skipped. -->
-        <ul class="mt-1 list-disc list-inside text-gray-600 dark:text-gray-300">
-          <li>{{ t("admin.newsletter.digestPanel.readerSubs") }}: {{ digestResult.readers }}</li>
-          <li>{{ t("admin.newsletter.digestPanel.guestSubs") }}: {{ digestResult.subscribers }}</li>
-          <li>{{ t("admin.newsletter.digestPanel.windowPosts") }}: {{ digestResult.posts }}</li>
-          <li>{{ t("admin.newsletter.digestPanel.skippedLabel") }}: {{ digestResult.skipped }}</li>
-        </ul>
-        <p v-if="digestResult.emails_sent > 0" class="mt-1 text-green-700 dark:text-green-400">
-          {{ t("admin.newsletter.digestPanel.emailsSent", { count: digestResult.emails_sent }) }}
-        </p>
-        <p v-else-if="digestResult.locked" class="mt-1 text-amber-700 dark:text-amber-400">
-          {{ t("admin.newsletter.digestPanel.locked") }}
-        </p>
-        <p v-else-if="digestResult.reason === 'no_recipients'" class="mt-1 text-amber-700 dark:text-amber-400">
-          {{ t("admin.newsletter.digestPanel.noRecipients") }}
-        </p>
-      </div>
-      <p v-if="digestError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
-        {{ digestError }}
-      </p>
-    </section>
+			<!-- Preview / send result summary -->
+			<div
+				v-if="digestResult"
+				class="mt-3 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-3 text-sm"
+			>
+				<p class="font-medium text-gray-900 dark:text-white">
+					{{
+						digestResult.dry_run
+							? t("admin.newsletter.digestPanel.previewResultTitle")
+							: t("admin.newsletter.digestPanel.sendResultTitle")
+					}}
+				</p>
+				<!-- The summary numbers: readers, guest subscribers, posts, skipped. -->
+				<ul class="mt-1 list-disc list-inside text-gray-600 dark:text-gray-300">
+					<li>{{ t("admin.newsletter.digestPanel.readerSubs") }}: {{ digestResult.readers }}</li>
+					<li>{{ t("admin.newsletter.digestPanel.guestSubs") }}: {{ digestResult.subscribers }}</li>
+					<li>{{ t("admin.newsletter.digestPanel.windowPosts") }}: {{ digestResult.posts }}</li>
+					<li>{{ t("admin.newsletter.digestPanel.skippedLabel") }}: {{ digestResult.skipped }}</li>
+				</ul>
+				<p v-if="digestResult.emails_sent > 0" class="mt-1 text-green-700 dark:text-green-400">
+					{{ t("admin.newsletter.digestPanel.emailsSent", { count: digestResult.emails_sent }) }}
+				</p>
+				<p v-else-if="digestResult.locked" class="mt-1 text-amber-700 dark:text-amber-400">
+					{{ t("admin.newsletter.digestPanel.locked") }}
+				</p>
+				<p
+					v-else-if="digestResult.reason === 'no_recipients'"
+					class="mt-1 text-amber-700 dark:text-amber-400"
+				>
+					{{ t("admin.newsletter.digestPanel.noRecipients") }}
+				</p>
+			</div>
+			<p v-if="digestError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+				{{ digestError }}
+			</p>
+		</section>
 
-    <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
-      <input
-        v-model="searchInput"
-        type="search"
-        :placeholder="t('admin.newsletter.searchPlaceholder')"
-        :aria-label="t('admin.newsletter.searchPlaceholder')"
-        class="w-full sm:max-w-xs px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        @input="onSearchInput"
-      />
-      <div class="flex items-center gap-1 rounded-xl border border-gray-200 dark:border-gray-700 p-1"
-        role="group" :aria-label="t('admin.newsletter.filterLabel')">
-        <button
-          v-for="s in (['all', 'confirmed', 'pending'] as const)"
-          :key="s"
-          type="button"
-          :aria-pressed="statusFilter === s"
-          class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
-          :class="statusFilter === s
-            ? 'bg-blue-600 text-white'
-            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
-          @click="setStatus(s)"
-        >
-          {{ t(`admin.newsletter.filter.${s}`) }}
-        </button>
-      </div>
-      <p v-if="total > 0" class="text-xs text-gray-500 dark:text-gray-400 sm:ml-auto">
-        {{ t("admin.newsletter.total", { count: total }) }}
-      </p>
-    </div>
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+			<input
+				v-model="searchInput"
+				type="search"
+				:placeholder="t('admin.newsletter.searchPlaceholder')"
+				:aria-label="t('admin.newsletter.searchPlaceholder')"
+				class="w-full sm:max-w-xs px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+				@input="onSearchInput"
+			/>
+			<div
+				class="flex items-center gap-1 rounded-xl border border-gray-200 dark:border-gray-700 p-1"
+				role="group"
+				:aria-label="t('admin.newsletter.filterLabel')"
+			>
+				<button
+					v-for="s in ['all', 'confirmed', 'pending'] as const"
+					:key="s"
+					type="button"
+					:aria-pressed="statusFilter === s"
+					class="px-3 py-1 text-xs font-medium rounded-lg transition-colors"
+					:class="
+						statusFilter === s
+							? 'bg-blue-600 text-white'
+							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+					"
+					@click="setStatus(s)"
+				>
+					{{ t(`admin.newsletter.filter.${s}`) }}
+				</button>
+			</div>
+			<p v-if="total > 0" class="text-xs text-gray-500 dark:text-gray-400 sm:ml-auto">
+				{{ t("admin.newsletter.total", { count: total }) }}
+			</p>
+		</div>
 
-    <p v-if="actionError" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
-      {{ actionError }}
-    </p>
-    <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3">
-      <p role="alert">{{ t("admin.newsletter.loadFailed") }}</p>
-      <button
-        type="button"
-        class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-        @click="() => refresh()"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<p
+			v-if="actionError"
+			role="alert"
+			class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm"
+		>
+			{{ actionError }}
+		</p>
+		<div
+			v-if="error"
+			class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3"
+		>
+			<p role="alert">{{ t("admin.newsletter.loadFailed") }}</p>
+			<button
+				type="button"
+				class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+				@click="() => refresh()"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <div v-if="pending && items.length === 0" role="status" class="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
-      <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin mx-auto mb-2" />
-      {{ t("common.state.loading") }}
-    </div>
+		<div
+			v-if="pending && items.length === 0"
+			role="status"
+			class="p-8 text-center text-sm text-gray-500 dark:text-gray-400"
+		>
+			<Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin mx-auto mb-2" />
+			{{ t("common.state.loading") }}
+		</div>
 
-    <div v-else-if="items.length === 0" class="p-8 text-center text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-      {{ statusFilter === "all" ? t("admin.newsletter.empty") : t("admin.newsletter.emptyFilter") }}
-    </div>
+		<div
+			v-else-if="items.length === 0"
+			class="p-8 text-center text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+		>
+			{{ statusFilter === "all" ? t("admin.newsletter.empty") : t("admin.newsletter.emptyFilter") }}
+		</div>
 
-    <div v-else class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-            <th class="px-4 py-3">{{ t("admin.newsletter.colEmail") }}</th>
-            <th class="px-4 py-3">{{ t("admin.newsletter.colStatus") }}</th>
-            <th class="px-4 py-3 hidden sm:table-cell">{{ t("admin.newsletter.colSubscribed") }}</th>
-            <th class="px-4 py-3 sm:w-24 sr-only">{{ t("admin.newsletter.colActions") }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="sub in items"
-            :key="sub.id"
-            class="border-b border-gray-100 dark:border-gray-800 last:border-0"
-          >
-            <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ sub.email }}</td>
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
-                :class="sub.is_confirmed
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'"
-              >
-                {{ t(sub.is_confirmed ? "admin.newsletter.status.confirmed" : "admin.newsletter.status.pending") }}
-              </span>
-              <!-- Weekly-digest cadence marker (DEC-355): a confirmed address
+		<div
+			v-else
+			class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+		>
+			<table class="w-full text-sm">
+				<thead>
+					<tr
+						class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
+					>
+						<th class="px-4 py-3">{{ t("admin.newsletter.colEmail") }}</th>
+						<th class="px-4 py-3">{{ t("admin.newsletter.colStatus") }}</th>
+						<th class="px-4 py-3 hidden sm:table-cell">
+							{{ t("admin.newsletter.colSubscribed") }}
+						</th>
+						<th class="px-4 py-3 sm:w-24 sr-only">{{ t("admin.newsletter.colActions") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr
+						v-for="sub in items"
+						:key="sub.id"
+						class="border-b border-gray-100 dark:border-gray-800 last:border-0"
+					>
+						<td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{{ sub.email }}</td>
+						<td class="px-4 py-3">
+							<span
+								class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+								:class="
+									sub.is_confirmed
+										? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+										: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+								"
+							>
+								{{
+									t(
+										sub.is_confirmed
+											? "admin.newsletter.status.confirmed"
+											: "admin.newsletter.status.pending",
+									)
+								}}
+							</span>
+							<!-- Weekly-digest cadence marker (DEC-355): a confirmed address
                    with this flag is served by the weekly digest, not the
                    per-post fan-out — the operator can see the split at a glance. -->
-              <span
-                v-if="sub.digest_weekly"
-                class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
-              >
-                {{ t("admin.newsletter.digestWeekly") }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-              {{ formatDate(sub.created_at) }}
-            </td>
-            <td class="px-4 py-3 text-right">
-              <button
-                type="button"
-                :disabled="busyIds.has(sub.id)"
-                :aria-busy="busyIds.has(sub.id)"
-                class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :aria-label="t('admin.newsletter.deleteAria', { email: sub.email })"
-                @click="removeSubscriber(sub.id, sub.email)"
-              >
-                <Icon v-if="busyIds.has(sub.id)" icon="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" />
-                <Icon v-else icon="lucide:trash-2" class="w-3.5 h-3.5" />
-                {{ t("admin.newsletter.delete") }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+							<span
+								v-if="sub.digest_weekly"
+								class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400"
+							>
+								{{ t("admin.newsletter.digestWeekly") }}
+							</span>
+						</td>
+						<td class="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+							{{ formatDate(sub.created_at) }}
+						</td>
+						<td class="px-4 py-3 text-right">
+							<button
+								type="button"
+								:disabled="busyIds.has(sub.id)"
+								:aria-busy="busyIds.has(sub.id)"
+								class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								:aria-label="t('admin.newsletter.deleteAria', { email: sub.email })"
+								@click="removeSubscriber(sub.id, sub.email)"
+							>
+								<Icon
+									v-if="busyIds.has(sub.id)"
+									icon="lucide:loader-2"
+									class="w-3.5 h-3.5 animate-spin"
+								/>
+								<Icon v-else icon="lucide:trash-2" class="w-3.5 h-3.5" />
+								{{ t("admin.newsletter.delete") }}
+							</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 
-    <!-- Pagination (guarded prev/next, same as the readers list). -->
-    <div v-if="totalPages > 1" class="mt-4 flex items-center justify-center gap-2">
-      <button
-        type="button"
-        :disabled="currentPage <= 1"
-        class="px-3 py-1.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-        @click="goToPage(currentPage - 1)"
-      >
-        {{ t("common.action.prev") }}
-      </button>
-      <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ currentPage }} / {{ totalPages }}
-      </span>
-      <button
-        type="button"
-        :disabled="currentPage >= totalPages"
-        class="px-3 py-1.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-        @click="goToPage(currentPage + 1)"
-      >
-        {{ t("common.action.next") }}
-      </button>
-    </div>
-  </div>
+		<!-- Pagination (guarded prev/next, same as the readers list). -->
+		<div v-if="totalPages > 1" class="mt-4 flex items-center justify-center gap-2">
+			<button
+				type="button"
+				:disabled="currentPage <= 1"
+				class="px-3 py-1.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+				@click="goToPage(currentPage - 1)"
+			>
+				{{ t("common.action.prev") }}
+			</button>
+			<span class="text-sm text-gray-500 dark:text-gray-400">
+				{{ currentPage }} / {{ totalPages }}
+			</span>
+			<button
+				type="button"
+				:disabled="currentPage >= totalPages"
+				class="px-3 py-1.5 rounded-lg text-sm border border-gray-200 dark:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+				@click="goToPage(currentPage + 1)"
+			>
+				{{ t("common.action.next") }}
+			</button>
+		</div>
+	</div>
 </template>

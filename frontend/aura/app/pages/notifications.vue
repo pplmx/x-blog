@@ -445,240 +445,299 @@ function kindIcon(kind: string): string {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Icon icon="lucide:bell" class="w-7 h-7 text-amber-500" />
-          {{ t('notifications.title') }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {{ t('notifications.seoDesc') }}
-        </p>
-      </div>
-      <button
-        v-if="unread > 0"
-        type="button"
-        :disabled="markingAll"
-        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-        @click="markAllRead"
-      >
-        <Icon :icon="markingAll ? 'lucide:loader-2' : 'lucide:check-check'" class="w-4 h-4" :class="{ 'animate-spin': markingAll }" />
-        {{ t('notifications.markAllRead') }}
-      </button>
-    </div>
+	<div class="max-w-3xl mx-auto">
+		<div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+			<div>
+				<h1
+					class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"
+				>
+					<Icon icon="lucide:bell" class="w-7 h-7 text-amber-500" />
+					{{ t("notifications.title") }}
+				</h1>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					{{ t("notifications.seoDesc") }}
+				</p>
+			</div>
+			<button
+				v-if="unread > 0"
+				type="button"
+				:disabled="markingAll"
+				class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+				@click="markAllRead"
+			>
+				<Icon
+					:icon="markingAll ? 'lucide:loader-2' : 'lucide:check-check'"
+					class="w-4 h-4"
+					:class="{ 'animate-spin': markingAll }"
+				/>
+				{{ t("notifications.markAllRead") }}
+			</button>
+		</div>
 
-    <!-- Each failure carries its own copy + a targeted retry (ISS-611): a
+		<!-- Each failure carries its own copy + a targeted retry (ISS-611): a
          failed mark-read or delete must not read as a failed inbox load. -->
-    <div v-if="error || markActionFailed || deleteFailed" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
-      <p v-if="error">{{ t('notifications.loadFailed') }}</p>
-      <p v-else-if="markActionFailed">{{ t('notifications.markReadFailed') }}</p>
-      <p v-else-if="deleteFailed">{{ t('notifications.deleteFailed') }}</p>
-      <button
-        v-if="error"
-        type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-        @click="load"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-      <button
-        v-else-if="markActionFailed"
-        type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-        @click="retryMarkRead"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-      <button
-        v-else-if="deleteFailed"
-        type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-        @click="retryDelete"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
+		<div
+			v-if="error || markActionFailed || deleteFailed"
+			class="mb-4 flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400"
+		>
+			<p v-if="error">{{ t("notifications.loadFailed") }}</p>
+			<p v-else-if="markActionFailed">{{ t("notifications.markReadFailed") }}</p>
+			<p v-else-if="deleteFailed">{{ t("notifications.deleteFailed") }}</p>
+			<button
+				v-if="error"
+				type="button"
+				class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+				@click="load"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+			<button
+				v-else-if="markActionFailed"
+				type="button"
+				class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+				@click="retryMarkRead"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+			<button
+				v-else-if="deleteFailed"
+				type="button"
+				class="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+				@click="retryDelete"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <section
-      v-if="isAuthenticated"
-      class="mb-8 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
-    >
-      <h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-        <Icon icon="lucide:settings-2" class="w-4 h-4 text-amber-500" />
-        {{ t('notifications.prefs.title') }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ t('notifications.prefs.subtitle') }}
-      </p>
-      <p
-        v-if="prefsLoading"
-        class="mt-4 flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-      >
-        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-        {{ t('notifications.prefs.loading') }}
-      </p>
-      <ul v-else class="mt-4 space-y-4">
-        <li v-for="row in prefRows" :key="row.key" class="flex items-start justify-between gap-4">
-          <div class="flex items-start gap-3">
-            <Icon :icon="row.icon" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
-            <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ row.label }}</p>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ row.desc }}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <!-- Per-row in-flight indicator (deep-dive finding): while a save
+		<section
+			v-if="isAuthenticated"
+			class="mb-8 rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+		>
+			<h2 class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+				<Icon icon="lucide:settings-2" class="w-4 h-4 text-amber-500" />
+				{{ t("notifications.prefs.title") }}
+			</h2>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ t("notifications.prefs.subtitle") }}
+			</p>
+			<p
+				v-if="prefsLoading"
+				class="mt-4 flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+			>
+				<Icon
+					icon="lucide:loader-2"
+					class="w-4 h-4 animate-spin"
+					aria-hidden="true"
+					role="presentation"
+				/>
+				{{ t("notifications.prefs.loading") }}
+			</p>
+			<ul v-else class="mt-4 space-y-4">
+				<li v-for="row in prefRows" :key="row.key" class="flex items-start justify-between gap-4">
+					<div class="flex items-start gap-3">
+						<Icon :icon="row.icon" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+						<div>
+							<p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ row.label }}</p>
+							<p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ row.desc }}</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-2">
+						<!-- Per-row in-flight indicator (deep-dive finding): while a save
                  round-trips, every toggle is disabled to serialize the requests,
                  but the touched row needs to say SO — a bare disable looked like
                  the tap did nothing (the switch flips optimistically in
                  togglePref, then this spinner marks the persistence). -->
-            <span
-              v-if="prefsSaving === row.key"
-              class="flex items-center justify-center w-5 h-5 text-amber-500"
-              role="status"
-              :aria-label="t('notifications.prefs.saving')"
-            >
-              <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" data-testid="pref-saving" />
-            </span>
-            <button
-              type="button"
-              role="switch"
-              :aria-checked="row.on ? 'true' : 'false'"
-              :aria-label="row.label"
-              :disabled="prefsSaving !== null"
-              class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
-              :class="row.on
-                ? 'bg-amber-500'
-                : 'bg-gray-200 dark:bg-gray-700'"
-              @click="togglePref(row.key)"
-            >
-              <span
-                class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
-                :class="row.on ? 'translate-x-[22px]' : 'translate-x-0.5'"
-              />
-            </button>
-          </div>
-        </li>
-      </ul>
-      <p
-        v-if="prefsError"
-        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-red-600 dark:text-red-400"
-      >
-        {{ t('common.errors.network') }}
-        <button
-          type="button"
-          :disabled="prefsLoading"
-          class="px-2 py-1 rounded-lg text-[11px] font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          @click="loadPrefs"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </p>
-    </section>
+						<span
+							v-if="prefsSaving === row.key"
+							class="flex items-center justify-center w-5 h-5 text-amber-500"
+							role="status"
+							:aria-label="t('notifications.prefs.saving')"
+						>
+							<Icon
+								icon="lucide:loader-2"
+								class="w-4 h-4 animate-spin"
+								aria-hidden="true"
+								role="presentation"
+								data-testid="pref-saving"
+							/>
+						</span>
+						<button
+							type="button"
+							role="switch"
+							:aria-checked="row.on ? 'true' : 'false'"
+							:aria-label="row.label"
+							:disabled="prefsSaving !== null"
+							class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+							:class="row.on ? 'bg-amber-500' : 'bg-gray-200 dark:bg-gray-700'"
+							@click="togglePref(row.key)"
+						>
+							<span
+								class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
+								:class="row.on ? 'translate-x-[22px]' : 'translate-x-0.5'"
+							/>
+						</button>
+					</div>
+				</li>
+			</ul>
+			<p
+				v-if="prefsError"
+				class="mt-3 flex flex-wrap items-center gap-2 text-xs text-red-600 dark:text-red-400"
+			>
+				{{ t("common.errors.network") }}
+				<button
+					type="button"
+					:disabled="prefsLoading"
+					class="px-2 py-1 rounded-lg text-[11px] font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+					@click="loadPrefs"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</p>
+		</section>
 
-    <div v-if="loading" class="py-12 text-center text-gray-400">
-      <Icon icon="lucide:loader-2" class="w-8 h-8 animate-spin mx-auto" />
-    </div>
+		<div v-if="loading" class="py-12 text-center text-gray-400">
+			<Icon icon="lucide:loader-2" class="w-8 h-8 animate-spin mx-auto" />
+		</div>
 
-    <!-- A failed initial load must NOT masquerade as an empty inbox: when error
+		<!-- A failed initial load must NOT masquerade as an empty inbox: when error
          is set the banner above already explains + offers retry, so neither the
          "no notifications" empty state nor an empty list renders beneath it. -->
-    <div v-else-if="!error && items.length === 0" class="py-16 text-center">
-      <Icon icon="lucide:bell-off" class="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-      <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">{{ t('notifications.empty') }}</p>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('notifications.emptyDesc') }}</p>
-    </div>
+		<div v-else-if="!error && items.length === 0" class="py-16 text-center">
+			<Icon
+				icon="lucide:bell-off"
+				class="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-4"
+			/>
+			<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">
+				{{ t("notifications.empty") }}
+			</p>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ t("notifications.emptyDesc") }}
+			</p>
+		</div>
 
-    <ul v-else-if="!error" class="space-y-3">
-      <li
-        v-for="item in items"
-        :key="item.id"
-        class="rounded-xl border transition-colors"
-        :class="item.read
-          ? 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900'
-          : 'border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20'"
-      >
-        <!-- With a URL the row is a link; without one it falls back to a
+		<ul v-else-if="!error" class="space-y-3">
+			<li
+				v-for="item in items"
+				:key="item.id"
+				class="rounded-xl border transition-colors"
+				:class="
+					item.read
+						? 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900'
+						: 'border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20'
+				"
+			>
+				<!-- With a URL the row is a link; without one it falls back to a
              focusable row that still marks-read on activation — a bare .url-less
              anchor (href=undefined) was neither focusable nor keyboard-
              activatable, a dead interactive-looking row (deep-dive finding).
              The mark-read control must NOT nest inside the link (invalid HTML,
              two focus stops in one row) — it is a sibling in the flex row. -->
-        <div class="flex items-stretch">
-          <component
-            :is="item.url ? 'a' : 'button'"
-            :href="item.url || undefined"
-            :type="item.url ? undefined : 'button'"
-            class="flex items-start gap-3 p-4 text-left flex-1 min-w-0 rounded-l-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:z-10"
-            @click="markRead(item)"
-          >
-            <Icon :icon="kindIcon(item.kind)" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="text-sm text-amber-600 dark:text-amber-400">{{ kindLabel(item) }}</span>
-                <span v-if="!item.read" class="shrink-0 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                  {{ t('notifications.unread') }}
-                </span>
-              </div>
-              <p class="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.title }}</p>
-              <p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ item.body }}</p>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ timeLabel(item) }}</p>
-            </div>
-          </component>
-          <button
-            v-if="!item.read && item.url"
-            type="button"
-            :disabled="markingIds.has(item.id)"
-            :aria-label="t('notifications.markRead')"
-            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            @click.stop="markRead(item)"
-          >
-            <span v-if="markingIds.has(item.id)" class="inline-flex items-center gap-1">
-              <Icon icon="lucide:loader-2" class="w-3 h-3 animate-spin" aria-hidden="true" role="presentation" />
-            </span>
-            <template v-else>{{ t('notifications.markRead') }}</template>
-          </button>
-          <!-- Delete the row (DEC-312/TASK-384): the durable inbox had no prune
+				<div class="flex items-stretch">
+					<component
+						:is="item.url ? 'a' : 'button'"
+						:href="item.url || undefined"
+						:type="item.url ? undefined : 'button'"
+						class="flex items-start gap-3 p-4 text-left flex-1 min-w-0 rounded-l-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:z-10"
+						@click="markRead(item)"
+					>
+						<Icon :icon="kindIcon(item.kind)" class="w-5 h-5 mt-0.5 shrink-0 text-amber-500" />
+						<div class="min-w-0 flex-1">
+							<div class="flex items-center gap-2">
+								<span class="text-sm text-amber-600 dark:text-amber-400">{{
+									kindLabel(item)
+								}}</span>
+								<span
+									v-if="!item.read"
+									class="shrink-0 text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-400"
+								>
+									{{ t("notifications.unread") }}
+								</span>
+							</div>
+							<p class="mt-0.5 text-sm font-medium text-gray-900 dark:text-gray-100">
+								{{ item.title }}
+							</p>
+							<p v-if="item.body" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+								{{ item.body }}
+							</p>
+							<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ timeLabel(item) }}</p>
+						</div>
+					</component>
+					<button
+						v-if="!item.read && item.url"
+						type="button"
+						:disabled="markingIds.has(item.id)"
+						:aria-label="t('notifications.markRead')"
+						class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+						@click.stop="markRead(item)"
+					>
+						<span v-if="markingIds.has(item.id)" class="inline-flex items-center gap-1">
+							<Icon
+								icon="lucide:loader-2"
+								class="w-3 h-3 animate-spin"
+								aria-hidden="true"
+								role="presentation"
+							/>
+						</span>
+						<template v-else>{{ t("notifications.markRead") }}</template>
+					</button>
+					<!-- Delete the row (DEC-312/TASK-384): the durable inbox had no prune
                path, so consumed rows accumulated forever. A sibling to the link
                (like mark-read) so it never nests in invalid HTML; scoped
                in-flight state disables it while deleting. -->
-          <button
-            type="button"
-            :disabled="deletingIds.has(item.id)"
-            :aria-label="t('notifications.deleteRow')"
-            class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            @click.stop="deleteRow(item)"
-          >
-            <Icon
-              v-if="deletingIds.has(item.id)"
-              icon="lucide:loader-2"
-              class="w-3 h-3 animate-spin"
-              aria-hidden="true"
-              role="presentation"
-            />
-            <Icon v-else icon="lucide:trash-2" class="w-3.5 h-3.5" aria-hidden="true" role="presentation" />
-          </button>
-        </div>
-      </li>
-    </ul>
+					<button
+						type="button"
+						:disabled="deletingIds.has(item.id)"
+						:aria-label="t('notifications.deleteRow')"
+						class="shrink-0 self-center p-4 text-xs font-medium whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-r-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+						@click.stop="deleteRow(item)"
+					>
+						<Icon
+							v-if="deletingIds.has(item.id)"
+							icon="lucide:loader-2"
+							class="w-3 h-3 animate-spin"
+							aria-hidden="true"
+							role="presentation"
+						/>
+						<Icon
+							v-else
+							icon="lucide:trash-2"
+							class="w-3.5 h-3.5"
+							aria-hidden="true"
+							role="presentation"
+						/>
+					</button>
+				</div>
+			</li>
+		</ul>
 
-    <!-- Load-more: a paged inbox must not trap older notifications behind the
+		<!-- Load-more: a paged inbox must not trap older notifications behind the
          first 100 (bounded reachability, deep-dive finding). A failure keeps
          the rows already shown and offers retry instead of a dead end. -->
-    <div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
-      <button
-        type="button"
-        :disabled="loadingMore"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        @click="loadMore"
-      >
-        <Icon v-if="loadingMore" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-        {{ loadingMore ? t('notifications.loadingMore') : loadMoreError ? t('common.action.retry') : t('notifications.loadMore') }}
-      </button>
-      <p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
-        {{ t('common.errors.network') }}
-      </p>
-    </div>
-  </div>
+		<div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
+			<button
+				type="button"
+				:disabled="loadingMore"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+				@click="loadMore"
+			>
+				<Icon
+					v-if="loadingMore"
+					icon="lucide:loader-2"
+					class="w-4 h-4 animate-spin"
+					aria-hidden="true"
+					role="presentation"
+				/>
+				{{
+					loadingMore
+						? t("notifications.loadingMore")
+						: loadMoreError
+							? t("common.action.retry")
+							: t("notifications.loadMore")
+				}}
+			</button>
+			<p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
+				{{ t("common.errors.network") }}
+			</p>
+		</div>
+	</div>
 </template>

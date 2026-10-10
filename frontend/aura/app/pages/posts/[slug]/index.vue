@@ -567,638 +567,721 @@ function handleCommentSubmitted(created: Comment | undefined) {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto">
-    <!-- Reading progress bar -->
-    <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-100 dark:bg-gray-800">
-      <div
-        class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-150 ease-out"
-        :style="{ width: scrollProgress + '%' }"
-      />
-    </div>
+	<div class="max-w-7xl mx-auto">
+		<!-- Reading progress bar -->
+		<div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-100 dark:bg-gray-800">
+			<div
+				class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-150 ease-out"
+				:style="{ width: scrollProgress + '%' }"
+			/>
+		</div>
 
-    <!-- Resume-reading chip (DEC-167, TASK-200): shown briefly when the page
+		<!-- Resume-reading chip (DEC-167, TASK-200): shown briefly when the page
          jumped the reader back to their saved position; lets them return to
          the top in one click and then fades. -->
-    <transition name="fade">
-      <div
-        v-if="resumeChipVisible && resumePercent != null"
-        class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2 text-sm text-gray-700 dark:text-gray-200"
-        role="status"
-        data-testid="resume-chip"
-      >
-        <Icon icon="lucide:bookmark" class="w-4 h-4 text-blue-500" />
-        <span>{{ t('post.resumeReading', { percent: resumePercent }) }}</span>
-        <button
-          class="text-blue-600 dark:text-blue-400 font-medium hover:underline shrink-0"
-          data-testid="resume-back-to-top"
-          @click="resume.jumpToTop(); resumeChipVisible = false"
-        >
-          {{ t('post.backToTop') }}
-        </button>
-      </div>
-    </transition>
+		<transition name="fade">
+			<div
+				v-if="resumeChipVisible && resumePercent != null"
+				class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2 text-sm text-gray-700 dark:text-gray-200"
+				role="status"
+				data-testid="resume-chip"
+			>
+				<Icon icon="lucide:bookmark" class="w-4 h-4 text-blue-500" />
+				<span>{{ t("post.resumeReading", { percent: resumePercent }) }}</span>
+				<button
+					class="text-blue-600 dark:text-blue-400 font-medium hover:underline shrink-0"
+					data-testid="resume-back-to-top"
+					@click="
+						resume.jumpToTop();
+						resumeChipVisible = false;
+					"
+				>
+					{{ t("post.backToTop") }}
+				</button>
+			</div>
+		</transition>
 
-    <!-- Mobile/tablet TOC (TASK-223): below xl the sticky sidebar is hidden, so
+		<!-- Mobile/tablet TOC (TASK-223): below xl the sticky sidebar is hidden, so
          a floating trigger opens a slide-up sheet with the same outline. The
          trigger appears once the reader scrolls past the header (never over the
          hero); the sheet reuses the shared scroll-spy to highlight the active
          section. -->
-    <button
-      v-if="toc.length > 1 && tocFabVisible"
-      ref="tocFabEl"
-      type="button"
-      class="xl:hidden fixed bottom-20 right-4 z-40 inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-      :aria-expanded="tocOpen ? 'true' : 'false'"
-      aria-controls="mobile-toc-sheet"
-      :aria-label="t('post.tableOfContents')"
-      data-testid="toc-fab"
-      @click="openToc"
-    >
-      <Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
-      {{ t('post.tableOfContents') }}
-    </button>
+		<button
+			v-if="toc.length > 1 && tocFabVisible"
+			ref="tocFabEl"
+			type="button"
+			class="xl:hidden fixed bottom-20 right-4 z-40 inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+			:aria-expanded="tocOpen ? 'true' : 'false'"
+			aria-controls="mobile-toc-sheet"
+			:aria-label="t('post.tableOfContents')"
+			data-testid="toc-fab"
+			@click="openToc"
+		>
+			<Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
+			{{ t("post.tableOfContents") }}
+		</button>
 
-    <transition name="toc-sheet">
-      <div
-        v-if="tocOpen"
-        id="mobile-toc-sheet"
-        class="xl:hidden fixed inset-0 z-50"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="t('post.tableOfContents')"
-        data-testid="mobile-toc-sheet"
-      >
-        <!-- Backdrop: click anywhere outside the panel to dismiss. A plain div
+		<transition name="toc-sheet">
+			<div
+				v-if="tocOpen"
+				id="mobile-toc-sheet"
+				class="xl:hidden fixed inset-0 z-50"
+				role="dialog"
+				aria-modal="true"
+				:aria-label="t('post.tableOfContents')"
+				data-testid="mobile-toc-sheet"
+			>
+				<!-- Backdrop: click anywhere outside the panel to dismiss. A plain div
              (role=presentation, aria-hidden) so it is NOT a focusable tab stop —
              the sheet's dialog must keep keyboard focus inside the panel; Escape
              and the close button cover keyboard dismissal. -->
-        <div
-          role="presentation"
-          aria-hidden="true"
-          class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"
-          data-testid="toc-backdrop"
-          @click="closeToc"
-        />
-        <div
-          ref="tocSheetEl"
-          tabindex="-1"
-          class="toc-sheet-panel absolute bottom-0 inset-x-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl outline-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-          @keydown.esc="closeToc"
-          @keydown="onSheetKeydown"
-        >
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
-              {{ t('post.tableOfContents') }}
-            </h2>
-            <button
-              type="button"
-              class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              :aria-label="t('common.action.close')"
-              data-testid="toc-close"
-              @click="closeToc"
-            >
-              <Icon icon="lucide:x" class="w-5 h-5" />
-            </button>
-          </div>
-          <nav class="space-y-1" :aria-label="t('post.tableOfContents')">
-            <a
-              v-for="item in toc"
-              :key="item.id"
-              :href="`#${item.id}`"
-              :style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
-              :class="[
-                'block text-sm py-1.5 rounded-lg transition-colors',
-                activeTocId === item.id
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
-              ]"
-              @click="handleSheetTocSelect"
-            >
-              {{ item.text }}
-            </a>
-          </nav>
-        </div>
-      </div>
-    </transition>
+				<div
+					role="presentation"
+					aria-hidden="true"
+					class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"
+					data-testid="toc-backdrop"
+					@click="closeToc"
+				/>
+				<div
+					ref="tocSheetEl"
+					tabindex="-1"
+					class="toc-sheet-panel absolute bottom-0 inset-x-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl outline-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+					@keydown.esc="closeToc"
+					@keydown="onSheetKeydown"
+				>
+					<div class="flex items-center justify-between mb-3">
+						<h2
+							class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"
+						>
+							<Icon icon="lucide:list-tree" class="w-4 h-4 text-blue-500" />
+							{{ t("post.tableOfContents") }}
+						</h2>
+						<button
+							type="button"
+							class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+							:aria-label="t('common.action.close')"
+							data-testid="toc-close"
+							@click="closeToc"
+						>
+							<Icon icon="lucide:x" class="w-5 h-5" />
+						</button>
+					</div>
+					<nav class="space-y-1" :aria-label="t('post.tableOfContents')">
+						<a
+							v-for="item in toc"
+							:key="item.id"
+							:href="`#${item.id}`"
+							:style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
+							:class="[
+								'block text-sm py-1.5 rounded-lg transition-colors',
+								activeTocId === item.id
+									? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-medium'
+									: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
+							]"
+							@click="handleSheetTocSelect"
+						>
+							{{ item.text }}
+						</a>
+					</nav>
+				</div>
+			</div>
+		</transition>
 
-    <!-- In-place refetch bar: SPA navigation to the prev/next post keeps the
+		<!-- In-place refetch bar: SPA navigation to the prev/next post keeps the
          current article mounted (reading continuity — no full-page pulse) while
          the new post loads; the article below swaps when it resolves. -->
-    <div v-if="pending && post" class="fixed top-1 left-0 right-0 z-40 h-0.5 overflow-hidden">
-      <div class="h-full w-full bg-blue-500/60 animate-pulse" />
-    </div>
+		<div v-if="pending && post" class="fixed top-1 left-0 right-0 z-40 h-0.5 overflow-hidden">
+			<div class="h-full w-full bg-blue-500/60 animate-pulse" />
+		</div>
 
-    <!-- Loading skeleton: only the very first load, when no content exists yet. -->
-    <div v-if="pending && !post" class="max-w-4xl mx-auto space-y-6 pt-8">
-      <div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
-      <div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
-      <div class="space-y-3">
-        <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
-        <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse" />
-        <div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-4/6 animate-pulse" />
-      </div>
-    </div>
+		<!-- Loading skeleton: only the very first load, when no content exists yet. -->
+		<div v-if="pending && !post" class="max-w-4xl mx-auto space-y-6 pt-8">
+			<div class="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg w-3/4 animate-pulse" />
+			<div class="h-64 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
+			<div class="space-y-3">
+				<div class="h-4 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+				<div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6 animate-pulse" />
+				<div class="h-4 bg-gray-200 dark:bg-gray-800 rounded w-4/6 animate-pulse" />
+			</div>
+		</div>
 
-    <!-- A real 404 (deleted/renamed post opened from a share/bookmark link):
+		<!-- A real 404 (deleted/renamed post opened from a share/bookmark link):
          the friendly not-found state, not "load failed" + a Retry that can
          never succeed. A useFetch 404 sets `error` (statusCode 404), so without
          this branch the not-found message below was unreachable for real 404s. -->
-    <div v-else-if="error && error.statusCode === 404" class="text-center py-20 text-gray-500">
-      <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="mb-4">{{ t('post.notFound') }}</p>
-      <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-        {{ t('common.action.backHome') }}
-      </NuxtLink>
-    </div>
+		<div v-else-if="error && error.statusCode === 404" class="text-center py-20 text-gray-500">
+			<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("post.notFound") }}</p>
+			<NuxtLink
+				to="/"
+				class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+			>
+				{{ t("common.action.backHome") }}
+			</NuxtLink>
+		</div>
 
-    <!-- Load error (or a failed refetch to a new slug): give the reader a way
+		<!-- Load error (or a failed refetch to a new slug): give the reader a way
          onward instead of a dead end (they often arrive via a share link). -->
-    <div v-else-if="error && error.statusCode !== 404" class="text-center py-20 text-gray-500">
-      <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="mb-4">{{ t('common.state.loadFailed') }}</p>
-      <div class="flex items-center justify-center gap-3">
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retryLoad"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-        <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-          {{ t('common.action.backHome') }}
-        </NuxtLink>
-      </div>
-    </div>
+		<div v-else-if="error && error.statusCode !== 404" class="text-center py-20 text-gray-500">
+			<Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("common.state.loadFailed") }}</p>
+			<div class="flex items-center justify-center gap-3">
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retryLoad"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+				<NuxtLink
+					to="/"
+					class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+				>
+					{{ t("common.action.backHome") }}
+				</NuxtLink>
+			</div>
+		</div>
 
-    <!-- Not found: a path back home instead of a bare dead end. -->
-    <div v-else-if="!post" class="text-center py-20 text-gray-500">
-      <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="mb-4">{{ t('post.notFound') }}</p>
-      <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-        {{ t('common.action.backHome') }}
-      </NuxtLink>
-    </div>
+		<!-- Not found: a path back home instead of a bare dead end. -->
+		<div v-else-if="!post" class="text-center py-20 text-gray-500">
+			<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("post.notFound") }}</p>
+			<NuxtLink
+				to="/"
+				class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+			>
+				{{ t("common.action.backHome") }}
+			</NuxtLink>
+		</div>
 
-    <div v-else class="flex gap-10 relative">
-      <!-- TOC sidebar -->
-      <nav
-        v-if="toc.length > 1"
-        class="hidden xl:block w-64 shrink-0"
-      >
-        <div class="sticky top-24">
-          <div class="border-l-2 border-gray-100 dark:border-gray-800 pl-4 space-y-1">
-            <a
-              v-for="item in toc"
-              :key="item.id"
-              :href="`#${item.id}`"
-              :style="{ marginLeft: item.level === 1 ? '0px' : `${(item.level - 1) * 16}px` }"
-              :class="[
-                'block text-sm py-1.5 transition-all duration-200 border-l-2 -ml-[18px] pl-3',
-                activeTocId === item.id
-                  ? 'text-blue-600 dark:text-blue-400 border-blue-500 font-medium'
-                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
-              ]"
-              @click="scrollToHeading"
-            >
-              {{ item.text }}
-            </a>
-          </div>
-        </div>
-      </nav>
+		<div v-else class="flex gap-10 relative">
+			<!-- TOC sidebar -->
+			<nav v-if="toc.length > 1" class="hidden xl:block w-64 shrink-0">
+				<div class="sticky top-24">
+					<div class="border-l-2 border-gray-100 dark:border-gray-800 pl-4 space-y-1">
+						<a
+							v-for="item in toc"
+							:key="item.id"
+							:href="`#${item.id}`"
+							:style="{ marginLeft: item.level === 1 ? '0px' : `${(item.level - 1) * 16}px` }"
+							:class="[
+								'block text-sm py-1.5 transition-all duration-200 border-l-2 -ml-[18px] pl-3',
+								activeTocId === item.id
+									? 'text-blue-600 dark:text-blue-400 border-blue-500 font-medium'
+									: 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
+							]"
+							@click="scrollToHeading"
+						>
+							{{ item.text }}
+						</a>
+					</div>
+				</div>
+			</nav>
 
-      <!-- Main content -->
-      <article class="flex-1 min-w-0 max-w-4xl">
-        <!-- Header -->
-        <header class="mb-10">
-          <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-6">
-            <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
-            {{ t('common.action.backHome') }}
-          </NuxtLink>
+			<!-- Main content -->
+			<article class="flex-1 min-w-0 max-w-4xl">
+				<!-- Header -->
+				<header class="mb-10">
+					<NuxtLink
+						to="/"
+						class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-6"
+					>
+						<Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+						{{ t("common.action.backHome") }}
+					</NuxtLink>
 
-          <!-- Category badge + meta -->
-          <div class="flex flex-wrap items-center gap-3 mb-4">
-            <NuxtLink
-              v-if="post.category"
-              :to="{ path: '/', query: { category_id: String(post.category.id) } }"
-              class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors"
-            >
-              <Icon icon="lucide:folder" class="w-3 h-3" />
-              {{ post.category.name }}
-            </NuxtLink>
-            <NuxtLink
-              v-if="post.series"
-              :to="`/series/${post.series.slug}`"
-              class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-indigo-50 dark:from-indigo-900/30 to-purple-50 dark:to-purple-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-medium hover:from-indigo-100 dark:hover:from-indigo-900/50 hover:to-purple-100 dark:hover:to-purple-900/50 transition-colors"
-            >
-              <Icon icon="lucide:layers" class="w-3 h-3" />
-              <span v-if="seriesNav">{{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}</span>
-              <span v-else>{{ post.series.title }}</span>
-            </NuxtLink>
-            <span class="text-xs text-gray-400 flex items-center gap-1">
-              <Icon icon="lucide:clock" class="w-3 h-3" />
-              {{ t('post.readingTime', { count: readingTime }) }}
-            </span>
-            <span class="text-xs text-gray-400 flex items-center gap-1">
-              <Icon icon="lucide:eye" class="w-3 h-3" />
-              {{ t('post.views', { count: post.views }) }}
-            </span>
+					<!-- Category badge + meta -->
+					<div class="flex flex-wrap items-center gap-3 mb-4">
+						<NuxtLink
+							v-if="post.category"
+							:to="{ path: '/', query: { category_id: String(post.category.id) } }"
+							class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors"
+						>
+							<Icon icon="lucide:folder" class="w-3 h-3" />
+							{{ post.category.name }}
+						</NuxtLink>
+						<NuxtLink
+							v-if="post.series"
+							:to="`/series/${post.series.slug}`"
+							class="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-indigo-50 dark:from-indigo-900/30 to-purple-50 dark:to-purple-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-medium hover:from-indigo-100 dark:hover:from-indigo-900/50 hover:to-purple-100 dark:hover:to-purple-900/50 transition-colors"
+						>
+							<Icon icon="lucide:layers" class="w-3 h-3" />
+							<span v-if="seriesNav">{{
+								t("series.partLabel", { position: seriesNav.position, count: seriesNav.total })
+							}}</span>
+							<span v-else>{{ post.series.title }}</span>
+						</NuxtLink>
+						<span class="text-xs text-gray-400 flex items-center gap-1">
+							<Icon icon="lucide:clock" class="w-3 h-3" />
+							{{ t("post.readingTime", { count: readingTime }) }}
+						</span>
+						<span class="text-xs text-gray-400 flex items-center gap-1">
+							<Icon icon="lucide:eye" class="w-3 h-3" />
+							{{ t("post.views", { count: post.views }) }}
+						</span>
 
-            <!-- Print / PDF view (DEC-112, TASK-168): SEO-consistent link to the
+						<!-- Print / PDF view (DEC-112, TASK-168): SEO-consistent link to the
                  print-friendly route; the print button itself calls window.print(). -->
-            <NuxtLink
-              :to="`/posts/${post.slug}/print`"
-              class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-              :aria-label="t('post.printPdf')"
-            >
-              <Icon icon="lucide:printer" class="w-3.5 h-3.5" />
-              {{ t('post.printPdf') }}
-            </NuxtLink>
-          </div>
+						<NuxtLink
+							:to="`/posts/${post.slug}/print`"
+							class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+							:aria-label="t('post.printPdf')"
+						>
+							<Icon icon="lucide:printer" class="w-3.5 h-3.5" />
+							{{ t("post.printPdf") }}
+						</NuxtLink>
+					</div>
 
-          <h1
-            ref="postTitleEl"
-            tabindex="-1"
-            class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-6 text-balance focus:outline-none"
-          >
-            {{ post.title }}
-          </h1>
+					<h1
+						ref="postTitleEl"
+						tabindex="-1"
+						class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-gray-100 leading-tight mb-6 text-balance focus:outline-none"
+					>
+						{{ post.title }}
+					</h1>
 
-          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-            <!-- Author byline (DEC-359/TASK-405): present only when the writing
+					<div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+						<!-- Author byline (DEC-359/TASK-405): present only when the writing
                  admin chose a public pen name; links to their archive. The
                  inline follow control (round 353) is the primary surface where
                  a reader subscribes to this writer's new posts. -->
-            <NuxtLink
-              v-if="post.author"
-              :to="`/authors/${post.author.id}`"
-              class="flex items-center gap-1.5 hover:text-blue-500 transition-colors"
-            >
-              <img
-                v-if="post.author.avatar_url"
-                :src="post.author.avatar_url"
-                :alt="post.author.display_name"
-                class="w-4 h-4 rounded-full object-cover"
-              >
-              <Icon v-else icon="lucide:user" class="w-3.5 h-3.5" />
-              {{ post.author.display_name }}
-            </NuxtLink>
-            <AuthorFollowButton
-              v-if="post.author"
-              :author-id="post.author.id"
-              :author-name="post.author.display_name"
-            />
-            <span class="flex items-center gap-1.5">
-              <Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
-              {{ parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' }) ?? "" }}
-            </span>
-          </div>
+						<NuxtLink
+							v-if="post.author"
+							:to="`/authors/${post.author.id}`"
+							class="flex items-center gap-1.5 hover:text-blue-500 transition-colors"
+						>
+							<img
+								v-if="post.author.avatar_url"
+								:src="post.author.avatar_url"
+								:alt="post.author.display_name"
+								class="w-4 h-4 rounded-full object-cover"
+							/>
+							<Icon v-else icon="lucide:user" class="w-3.5 h-3.5" />
+							{{ post.author.display_name }}
+						</NuxtLink>
+						<AuthorFollowButton
+							v-if="post.author"
+							:author-id="post.author.id"
+							:author-name="post.author.display_name"
+						/>
+						<span class="flex items-center gap-1.5">
+							<Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
+							{{
+								parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(
+									locale === "zh" ? "zh-CN" : "en-US",
+									{ year: "numeric", month: "long", day: "numeric" },
+								) ?? ""
+							}}
+						</span>
+					</div>
 
-          <p v-if="post.excerpt" class="mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed border-l-4 border-blue-200 dark:border-blue-800 pl-4 italic">
-            {{ post.excerpt }}
-          </p>
-        </header>
+					<p
+						v-if="post.excerpt"
+						class="mt-6 text-lg text-gray-600 dark:text-gray-400 leading-relaxed border-l-4 border-blue-200 dark:border-blue-800 pl-4 italic"
+					>
+						{{ post.excerpt }}
+					</p>
+				</header>
 
-        <!-- Cover image -->
-        <div class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-10 shadow-lg">
-          <img :src="coverImageUrl" :alt="post.title" class="w-full h-full object-cover" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-        </div>
+				<!-- Cover image -->
+				<div class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-10 shadow-lg">
+					<img :src="coverImageUrl" :alt="post.title" class="w-full h-full object-cover" />
+					<div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+				</div>
 
-        <!-- Markdown content (density: the em-based body font/leading in
+				<!-- Markdown content (density: the em-based body font/leading in
              MarkdownContent scale with the inherited --reader-density var set
              on <html> by useReadingDensity, DEC-288/TASK-373) -->
-        <div v-if="post.content" class="prose-config">
-          <MarkdownContent :content="post.content" />
-        </div>
+				<div v-if="post.content" class="prose-config">
+					<MarkdownContent :content="post.content" />
+				</div>
 
-        <!-- Tags (each chip is followable in place for signed-in readers, DEC-196/TASK-216) -->
-        <footer v-if="post.tags?.length" class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800">
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="tag in post.tags"
-              :key="tag.id"
-              class="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium"
-            >
-              <NuxtLink
-                :to="{ path: '/', query: { tag_id: String(tag.id) } }"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition-colors"
-              >
-                <Icon icon="lucide:tag" class="w-3 h-3" />
-                {{ tag.name }}
-              </NuxtLink>
-              <TagFollowButton :tag-id="tag.id" :tag-name="tag.name" />
-            </span>
-          </div>
-        </footer>
+				<!-- Tags (each chip is followable in place for signed-in readers, DEC-196/TASK-216) -->
+				<footer
+					v-if="post.tags?.length"
+					class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800"
+				>
+					<div class="flex flex-wrap gap-2">
+						<span
+							v-for="tag in post.tags"
+							:key="tag.id"
+							class="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium"
+						>
+							<NuxtLink
+								:to="{ path: '/', query: { tag_id: String(tag.id) } }"
+								class="inline-flex items-center gap-1.5 px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-full transition-colors"
+							>
+								<Icon icon="lucide:tag" class="w-3 h-3" />
+								{{ tag.name }}
+							</NuxtLink>
+							<TagFollowButton :tag-id="tag.id" :tag-name="tag.name" />
+						</span>
+					</div>
+				</footer>
 
-        <!-- Actions. While the main post is mid-SPA-refetch (prev/next or
+				<!-- Actions. While the main post is mid-SPA-refetch (prev/next or
              in-series "next part"), these controls still visibly belong to the
              OLD article the reader is looking at — a click would act on the
              wrong post. Disable them during the in-place refetch window (deep-
              dive: the related/adjacent/series sections already gate on their
              own pending; the action row was the one live surface left). -->
-        <div class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4" :class="{ 'opacity-60': pending }">
-          <BookmarkButton :post-id="post.id" :post="post" variant="full" :disabled="pending" />
-          <span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-          <!-- Like (round 359): a signed-in reader's like is a durable cloud
+				<div
+					class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4"
+					:class="{ 'opacity-60': pending }"
+				>
+					<BookmarkButton :post-id="post.id" :post="post" variant="full" :disabled="pending" />
+					<span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+					<!-- Like (round 359): a signed-in reader's like is a durable cloud
                row and the button is a real toggle (second click un-likes and
                decrements the count); a guest's like stays the one-shot
                client-deduped POST /like (disabled once liked, no unlike). -->
-          <button
-            type="button"
-            :disabled="likeLoading || (!isAuthenticated && likedThisPost) || pending"
-            :title="likedThisPost ? t('post.liked') : t('post.likes')"
-            :aria-pressed="likedThisPost ? 'true' : 'false'"
-            :aria-label="likedThisPost ? t('post.liked') : t('post.likes')"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed"
-            :class="likedThisPost ? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400' : 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'"
-            @click="likedThisPost && isAuthenticated ? handleUnlike() : handleLike()"
-          >
-            <Icon :icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'" class="w-4 h-4" :class="{ 'animate-spin': likeLoading }" />
-            {{ (post.likes ?? 0).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}
-          </button>
-          <!-- Live region: the like count mutates after a round-trip; a screen
+					<button
+						type="button"
+						:disabled="likeLoading || (!isAuthenticated && likedThisPost) || pending"
+						:title="likedThisPost ? t('post.liked') : t('post.likes')"
+						:aria-pressed="likedThisPost ? 'true' : 'false'"
+						:aria-label="likedThisPost ? t('post.liked') : t('post.likes')"
+						class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border disabled:opacity-60 disabled:cursor-not-allowed"
+						:class="
+							likedThisPost
+								? 'border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400'
+								: 'border-gray-200 dark:border-gray-700 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-200 dark:hover:border-pink-800 active:scale-95'
+						"
+						@click="likedThisPost && isAuthenticated ? handleUnlike() : handleLike()"
+					>
+						<Icon
+							:icon="likeLoading ? 'lucide:loader-2' : 'lucide:heart'"
+							class="w-4 h-4"
+							:class="{ 'animate-spin': likeLoading }"
+						/>
+						{{ (post.likes ?? 0).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") }}
+					</button>
+					<!-- Live region: the like count mutates after a round-trip; a screen
                reader that has moved focus never sees the button aria-label
                change, so announce the settled count here (HeaderSearch
                pattern). -->
-          <span class="sr-only" role="status" aria-live="polite">
-            {{
-              likedThisPost
-                ? t('post.liked')
-                : t('post.likes')
-            }} · {{ t('post.likesCount', { count: post.likes ?? 0 }) }}
-          </span>
-          <span v-if="likeError" role="alert" class="text-sm text-red-500">{{ likeError }}</span>
-        </div>
+					<span class="sr-only" role="status" aria-live="polite">
+						{{ likedThisPost ? t("post.liked") : t("post.likes") }} ·
+						{{ t("post.likesCount", { count: post.likes ?? 0 }) }}
+					</span>
+					<span v-if="likeError" role="alert" class="text-sm text-red-500">{{ likeError }}</span>
+				</div>
 
-        <!-- Share -->
-        <div class="mt-6">
-          <ShareButtons :title="post.title" />
-        </div>
+				<!-- Share -->
+				<div class="mt-6">
+					<ShareButtons :title="post.title" />
+				</div>
 
-        <!-- Reading density (DEC-288/TASK-373): A-/A+ body-text scale for
+				<!-- Reading density (DEC-288/TASK-373): A-/A+ body-text scale for
              long-form comfort, remembered per device. The buttons apply a CSS
              var to the prose wrapper; heading sizes intentionally stay so the
              hierarchy survives the scale. -->
-        <div class="mt-8 flex items-center gap-3">
-          <span class="text-sm text-gray-500 dark:text-gray-400">{{ t("post.density.label") }}</span>
-          <span class="inline-flex items-center gap-1 border border-gray-200 dark:border-gray-700 rounded-full px-1 py-0.5" role="group" :aria-label="t('post.density.label')">
-            <button
-              type="button"
-              :disabled="densityMin"
-              :aria-label="t('post.density.decrease')"
-              class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              @click="densityDecrease"
-            >
-              A−
-            </button>
-            <button
-              type="button"
-              :disabled="densityMax"
-              :aria-label="t('post.density.increase')"
-              class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-base text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              @click="densityIncrease"
-            >
-              A+
-            </button>
-          </span>
-        </div>
+				<div class="mt-8 flex items-center gap-3">
+					<span class="text-sm text-gray-500 dark:text-gray-400">{{
+						t("post.density.label")
+					}}</span>
+					<span
+						class="inline-flex items-center gap-1 border border-gray-200 dark:border-gray-700 rounded-full px-1 py-0.5"
+						role="group"
+						:aria-label="t('post.density.label')"
+					>
+						<button
+							type="button"
+							:disabled="densityMin"
+							:aria-label="t('post.density.decrease')"
+							class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+							@click="densityDecrease"
+						>
+							A−
+						</button>
+						<button
+							type="button"
+							:disabled="densityMax"
+							:aria-label="t('post.density.increase')"
+							class="w-7 h-7 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-base text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+							@click="densityIncrease"
+						>
+							A+
+						</button>
+					</span>
+				</div>
 
-        <!-- Comments: keyed by post id so SPA navigation (prev/next, related,
+				<!-- Comments: keyed by post id so SPA navigation (prev/next, related,
              TOC) between posts remounts the thread — useComments builds its path
              once at setup, so a reused instance would keep showing the previous
              article's comments (deep-dive finding). -->
-        <section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
-          <CommentList :key="post.id" ref="commentListRef" :post-id="post.id" />
-          <!-- Round 351: a closed post keeps its existing conversation but
+				<section v-if="post.id" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
+					<CommentList :key="post.id" ref="commentListRef" :post-id="post.id" />
+					<!-- Round 351: a closed post keeps its existing conversation but
                stops new comments — the form is replaced by a notice. -->
-          <div v-if="post.comments_enabled !== false" class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800" :class="{ 'opacity-60': pending }">
-            <CommentForm :key="post.id" :post-id="post.id" :disabled="pending" @submitted="handleCommentSubmitted" />
-          </div>
-          <p
-            v-else
-            role="note"
-            class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-400 dark:text-gray-500 flex items-center gap-2"
-          >
-            <Icon icon="lucide:message-square-off" class="w-4 h-4" />
-            {{ t('post.commentsClosed') }}
-          </p>
-        </section>
+					<div
+						v-if="post.comments_enabled !== false"
+						class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800"
+						:class="{ 'opacity-60': pending }"
+					>
+						<CommentForm
+							:key="post.id"
+							:post-id="post.id"
+							:disabled="pending"
+							@submitted="handleCommentSubmitted"
+						/>
+					</div>
+					<p
+						v-else
+						role="note"
+						class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-400 dark:text-gray-500 flex items-center gap-2"
+					>
+						<Icon icon="lucide:message-square-off" class="w-4 h-4" />
+						{{ t("post.commentsClosed") }}
+					</p>
+				</section>
 
-        <!-- Related Posts (gated on its own pending; on SPA nav it refetches for
+				<!-- Related Posts (gated on its own pending; on SPA nav it refetches for
              the new post and would otherwise keep showing the old post's set) -->
-        <section v-if="!relatedPending && relatedPosts?.length" class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-            <Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
-            {{ t('post.related') }}
-          </h2>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <NuxtLink
-              v-for="rp in relatedPosts"
-              :key="rp.id"
-              :to="`/posts/${rp.slug}`"
-              class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-                {{ rp.title }}
-              </h3>
-              <p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
-                {{ rp.excerpt }}
-              </p>
-              <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
-                <span>{{ rp.category?.name }}</span>
-                <span>{{ t('post.views', { count: rp.views }) }}</span>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
+				<section
+					v-if="!relatedPending && relatedPosts?.length"
+					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+				>
+					<h2
+						class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
+					>
+						<Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
+						{{ t("post.related") }}
+					</h2>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<NuxtLink
+							v-for="rp in relatedPosts"
+							:key="rp.id"
+							:to="`/posts/${rp.slug}`"
+							class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
+						>
+							<h3
+								class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
+							>
+								{{ rp.title }}
+							</h3>
+							<p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
+								{{ rp.excerpt }}
+							</p>
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+								<span>{{ rp.category?.name }}</span>
+								<span>{{ t("post.views", { count: rp.views }) }}</span>
+							</div>
+						</NuxtLink>
+					</div>
+				</section>
 
-        <!-- More from this author (round 356): the person-shaped discovery strip.
+				<!-- More from this author (round 356): the person-shaped discovery strip.
              Related Posts is topic-shaped; this is the writer's own recent work,
              so a reader who just enjoyed one post can browse the author in place.
              Hidden when the writer has nothing else public (or no pen name). -->
-        <section
-          v-if="post.author && moreByAuthorVisible"
-          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
-        >
-          <h2
-            class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
-          >
-            <img
-              v-if="post.author.avatar_url"
-              :src="post.author.avatar_url"
-              :alt="post.author.display_name"
-              class="w-6 h-6 rounded-full object-cover"
-            >
-            <Icon v-else icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
-            {{ t('post.moreFromAuthor', { author: post.author.display_name }) }}
-            <NuxtLink
-              :to="`/authors/${post.author.id}`"
-              class="ml-auto inline-flex items-center gap-1 text-xs font-medium text-fuchsia-600 dark:text-fuchsia-400 hover:text-fuchsia-700 dark:hover:text-fuchsia-300 transition-colors"
-            >
-              {{ t('post.moreFromAuthorAll') }}
-              <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
-            </NuxtLink>
-          </h2>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <NuxtLink
-              v-for="ap in moreByAuthor"
-              :key="ap.id"
-              :to="`/posts/${ap.slug}`"
-              class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
-            >
-              <h3
-                class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2"
-              >
-                {{ ap.title }}
-              </h3>
-              <p v-if="ap.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
-                {{ ap.excerpt }}
-              </p>
-              <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
-                <span v-if="ap.category">{{ ap.category.name }}</span>
-                <span>{{ t('post.views', { count: ap.views }) }}</span>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
+				<section
+					v-if="post.author && moreByAuthorVisible"
+					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+				>
+					<h2
+						class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
+					>
+						<img
+							v-if="post.author.avatar_url"
+							:src="post.author.avatar_url"
+							:alt="post.author.display_name"
+							class="w-6 h-6 rounded-full object-cover"
+						/>
+						<Icon v-else icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
+						{{ t("post.moreFromAuthor", { author: post.author.display_name }) }}
+						<NuxtLink
+							:to="`/authors/${post.author.id}`"
+							class="ml-auto inline-flex items-center gap-1 text-xs font-medium text-fuchsia-600 dark:text-fuchsia-400 hover:text-fuchsia-700 dark:hover:text-fuchsia-300 transition-colors"
+						>
+							{{ t("post.moreFromAuthorAll") }}
+							<Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+						</NuxtLink>
+					</h2>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<NuxtLink
+							v-for="ap in moreByAuthor"
+							:key="ap.id"
+							:to="`/posts/${ap.slug}`"
+							class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
+						>
+							<h3
+								class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2"
+							>
+								{{ ap.title }}
+							</h3>
+							<p v-if="ap.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
+								{{ ap.excerpt }}
+							</p>
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+								<span v-if="ap.category">{{ ap.category.name }}</span>
+								<span>{{ t("post.views", { count: ap.views }) }}</span>
+							</div>
+						</NuxtLink>
+					</div>
+				</section>
 
-        <!-- Recommended for you (round 362, DEC-397): personalized, signed-in
+				<!-- Recommended for you (round 362, DEC-397): personalized, signed-in
              only, affinity-scored from this reader's history/bookmarks. Related
              Posts is topic-similar to THIS article; this strip is keyed to what
              the reader actually likes across the whole site — the article-end
              "what should I read next?" moment. Hidden for guests and when the
              response is empty/loading (no orphaned heading, ISS-134 pattern). -->
-        <section
-          v-if="isAuthenticated && (personalRecsLoading || personalRecs.length)"
-          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
-        >
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
-            <Icon icon="lucide:sparkles" class="w-5 h-5 text-fuchsia-500" />
-            {{ t('post.recommendedForYou') }}
-          </h2>
-          <div v-if="personalRecsLoading" class="grid gap-4 sm:grid-cols-2">
-            <div v-for="i in 2" :key="i" class="h-28 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse" />
-          </div>
-          <div v-else class="grid gap-4 sm:grid-cols-2">
-            <NuxtLink
-              v-for="rp in personalRecs.slice(0, 6)"
-              :key="rp.id"
-              :to="`/posts/${rp.slug}`"
-              class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
-            >
-              <h3 class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
-                {{ rp.title }}
-              </h3>
-              <p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
-                {{ rp.excerpt }}
-              </p>
-              <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
-                <span>{{ rp.category?.name }}</span>
-                <span>{{ t('post.views', { count: rp.views }) }}</span>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
+				<section
+					v-if="isAuthenticated && (personalRecsLoading || personalRecs.length)"
+					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+				>
+					<h2
+						class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2"
+					>
+						<Icon icon="lucide:sparkles" class="w-5 h-5 text-fuchsia-500" />
+						{{ t("post.recommendedForYou") }}
+					</h2>
+					<div v-if="personalRecsLoading" class="grid gap-4 sm:grid-cols-2">
+						<div
+							v-for="i in 2"
+							:key="i"
+							class="h-28 rounded-2xl border border-gray-100 dark:border-gray-800 animate-pulse"
+						/>
+					</div>
+					<div v-else class="grid gap-4 sm:grid-cols-2">
+						<NuxtLink
+							v-for="rp in personalRecs.slice(0, 6)"
+							:key="rp.id"
+							:to="`/posts/${rp.slug}`"
+							class="group relative p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-lg transition-all duration-200"
+						>
+							<h3
+								class="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2"
+							>
+								{{ rp.title }}
+							</h3>
+							<p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
+								{{ rp.excerpt }}
+							</p>
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+								<span>{{ rp.category?.name }}</span>
+								<span>{{ t("post.views", { count: rp.views }) }}</span>
+							</div>
+						</NuxtLink>
+					</div>
+				</section>
 
-        <!-- Prev / Next linear navigation (public feed order); gated on its
+				<!-- Prev / Next linear navigation (public feed order); gated on its
              pending like Related so the old post's neighbors vanish on SPA nav -->
-        <nav
-          v-if="!adjacentPending && (adjacent?.previous || adjacent?.next)"
-          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 grid gap-4 sm:grid-cols-2"
-          :aria-label="t('post.navigation')"
-        >
-          <NuxtLink
-            v-if="adjacent?.previous"
-            :to="`/posts/${adjacent.previous.slug}`"
-            class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
-          >
-            <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors">
-              <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
-              {{ t('post.previousPost') }}
-            </span>
-            <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-              {{ adjacent.previous.title }}
-            </h3>
-          </NuxtLink>
+				<nav
+					v-if="!adjacentPending && (adjacent?.previous || adjacent?.next)"
+					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 grid gap-4 sm:grid-cols-2"
+					:aria-label="t('post.navigation')"
+				>
+					<NuxtLink
+						v-if="adjacent?.previous"
+						:to="`/posts/${adjacent.previous.slug}`"
+						class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
+					>
+						<span
+							class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors"
+						>
+							<Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+							{{ t("post.previousPost") }}
+						</span>
+						<h3
+							class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
+						>
+							{{ adjacent.previous.title }}
+						</h3>
+					</NuxtLink>
 
-          <NuxtLink
-            v-if="adjacent?.next"
-            :to="`/posts/${adjacent.next.slug}`"
-            class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200 sm:text-right"
-          >
-            <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors sm:flex-row-reverse">
-              {{ t('post.nextPost') }}
-              <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
-            </span>
-            <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
-              {{ adjacent.next.title }}
-            </h3>
-          </NuxtLink>
-        </nav>
+					<NuxtLink
+						v-if="adjacent?.next"
+						:to="`/posts/${adjacent.next.slug}`"
+						class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200 sm:text-right"
+					>
+						<span
+							class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-blue-500 transition-colors sm:flex-row-reverse"
+						>
+							{{ t("post.nextPost") }}
+							<Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+						</span>
+						<h3
+							class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
+						>
+							{{ adjacent.next.title }}
+						</h3>
+					</NuxtLink>
+				</nav>
 
-        <!-- In-series navigation (DEC-056): prev/next within the series order,
+				<!-- In-series navigation (DEC-056): prev/next within the series order,
              shown only when the post belongs to a series with a resolved
              position. Gated on seriesPending so an SPA switch to a post from a
              DIFFERENT series never shows the old series' next/prev links. -->
-        <nav
-          v-if="!seriesPending && seriesNav"
-          class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
-          :aria-label="t('series.serialLabel')"
-        >
-          <div class="flex items-center justify-between gap-4 mb-4">
-            <NuxtLink
-              :to="`/series/${seriesNav.series.slug}`"
-              class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
-            >
-              <Icon icon="lucide:layers" class="w-4 h-4" />
-              <span>{{ t('series.serialLabel') }} — {{ seriesNav.series.title }}</span>
-            </NuxtLink>
-            <span class="flex items-center gap-3 shrink-0">
-              <!-- In-place series-follow (DEC-290/TASK-374): a signed-in reader
+				<nav
+					v-if="!seriesPending && seriesNav"
+					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
+					:aria-label="t('series.serialLabel')"
+				>
+					<div class="flex items-center justify-between gap-4 mb-4">
+						<NuxtLink
+							:to="`/series/${seriesNav.series.slug}`"
+							class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+						>
+							<Icon icon="lucide:layers" class="w-4 h-4" />
+							<span>{{ t("series.serialLabel") }} — {{ seriesNav.series.title }}</span>
+						</NuxtLink>
+						<span class="flex items-center gap-3 shrink-0">
+							<!-- In-place series-follow (DEC-290/TASK-374): a signed-in reader
                    reading part N can subscribe to future parts without leaving
                    the post — the identical discoverability gap DEC-196 closed
                    for tags. Renders nothing for guests. -->
-              <SeriesFollowButton
-                :series-id="seriesNav.series.id"
-                :series-title="seriesNav.series.title"
-              />
-              <span class="text-xs text-gray-400">
-                {{ t('series.partLabel', { position: seriesNav.position, count: seriesNav.total }) }}
-              </span>
-            </span>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <NuxtLink
-              v-if="seriesNav.previous"
-              :to="`/posts/${seriesNav.previous.slug}`"
-              class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200"
-            >
-              <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors">
-                <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
-                {{ t('series.previousPart') }}
-              </span>
-              <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
-                {{ seriesNav.previous.title }}
-              </h3>
-            </NuxtLink>
-            <NuxtLink
-              v-if="seriesNav.next"
-              :to="`/posts/${seriesNav.next.slug}`"
-              class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200 sm:text-right"
-            >
-              <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors sm:flex-row-reverse">
-                {{ t('series.nextPart') }}
-                <Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
-              </span>
-              <h3 class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
-                {{ seriesNav.next.title }}
-              </h3>
-            </NuxtLink>
-          </div>
-        </nav>
-      </article>
-    </div>
-  </div>
+							<SeriesFollowButton
+								:series-id="seriesNav.series.id"
+								:series-title="seriesNav.series.title"
+							/>
+							<span class="text-xs text-gray-400">
+								{{
+									t("series.partLabel", { position: seriesNav.position, count: seriesNav.total })
+								}}
+							</span>
+						</span>
+					</div>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<NuxtLink
+							v-if="seriesNav.previous"
+							:to="`/posts/${seriesNav.previous.slug}`"
+							class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200"
+						>
+							<span
+								class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors"
+							>
+								<Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+								{{ t("series.previousPart") }}
+							</span>
+							<h3
+								class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2"
+							>
+								{{ seriesNav.previous.title }}
+							</h3>
+						</NuxtLink>
+						<NuxtLink
+							v-if="seriesNav.next"
+							:to="`/posts/${seriesNav.next.slug}`"
+							class="group p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-lg transition-all duration-200 sm:text-right"
+						>
+							<span
+								class="inline-flex items-center gap-1.5 text-xs text-gray-400 group-hover:text-indigo-500 transition-colors sm:flex-row-reverse"
+							>
+								{{ t("series.nextPart") }}
+								<Icon icon="lucide:arrow-right" class="w-3.5 h-3.5" />
+							</span>
+							<h3
+								class="mt-2 font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2"
+							>
+								{{ seriesNav.next.title }}
+							</h3>
+						</NuxtLink>
+					</div>
+				</nav>
+			</article>
+		</div>
+	</div>
 </template>

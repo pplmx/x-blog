@@ -286,7 +286,11 @@ const pageAnnouncement = computed(() =>
 		<!-- Loading -->
 		<div v-if="loading" class="space-y-4" role="status" aria-busy="true">
 			<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-20 rounded-2xl w-2/3" />
-			<div v-for="i in 3" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-16 rounded-xl" />
+			<div
+				v-for="i in 3"
+				:key="i"
+				class="bg-gray-100 dark:bg-gray-800 animate-pulse h-16 rounded-xl"
+			/>
 		</div>
 
 		<!-- Not found -->
@@ -320,7 +324,9 @@ const pageAnnouncement = computed(() =>
 
 		<template v-else-if="data">
 			<!-- Profile header -->
-			<div class="flex items-center gap-4 mb-6 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+			<div
+				class="flex items-center gap-4 mb-6 rounded-2xl border border-gray-100 dark:border-gray-800 p-6"
+			>
 				<!-- Avatar (DEC-299/TASK-378): the reader's uploaded picture when
 					 set, else the initial-letter placeholder (text-only identity).
 					 ReaderAvatar also replaces a file that vanished server-side with
@@ -343,7 +349,9 @@ const pageAnnouncement = computed(() =>
 						</span>
 					</h1>
 					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-						{{ t("readerProfile.joined", { date: formatPostDate(data.profile.created_at, locale) }) }}
+						{{
+							t("readerProfile.joined", { date: formatPostDate(data.profile.created_at, locale) })
+						}}
 					</p>
 					<!-- Reader-written "about me" (round 352): plain text under the
 						 name when the reader wrote one. -->
@@ -392,9 +400,11 @@ const pageAnnouncement = computed(() =>
 					role="tab"
 					:aria-selected="view === 'comments'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
-					:class="view === 'comments'
-						? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-						: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+					:class="
+						view === 'comments'
+							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
 					@click="view !== 'comments' && setView('comments')"
 				>
 					<Icon icon="lucide:message-square" class="w-4 h-4 inline-block mr-1" />
@@ -406,9 +416,11 @@ const pageAnnouncement = computed(() =>
 					role="tab"
 					:aria-selected="view === 'likes'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
-					:class="view === 'likes'
-						? 'bg-white dark:bg-gray-700 text-pink-600 dark:text-pink-400 shadow-sm'
-						: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+					:class="
+						view === 'likes'
+							? 'bg-white dark:bg-gray-700 text-pink-600 dark:text-pink-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
 					@click="view !== 'likes' && setView('likes')"
 				>
 					<Icon icon="lucide:heart" class="w-4 h-4 inline-block mr-1" />
@@ -420,9 +432,11 @@ const pageAnnouncement = computed(() =>
 					role="tab"
 					:aria-selected="view === 'saved'"
 					class="py-2 px-4 text-sm font-medium rounded-lg transition-colors"
-					:class="view === 'saved'
-						? 'bg-white dark:bg-gray-700 text-fuchsia-600 dark:text-fuchsia-400 shadow-sm'
-						: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+					:class="
+						view === 'saved'
+							? 'bg-white dark:bg-gray-700 text-fuchsia-600 dark:text-fuchsia-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
 					@click="view !== 'saved' && setView('saved')"
 				>
 					<Icon icon="lucide:bookmark" class="w-4 h-4 inline-block mr-1" />
@@ -479,14 +493,14 @@ const pageAnnouncement = computed(() =>
 			<!-- Liked-posts tab (round 360, DEC-393) -->
 			<template v-else-if="view === 'likes'">
 				<div v-if="likedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					<div v-for="i in 3" :key="i" class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+					<div
+						v-for="i in 3"
+						:key="i"
+						class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse"
+					/>
 				</div>
 
-				<p
-					v-else-if="likedFailed"
-					class="text-center py-12 text-gray-500"
-					role="alert"
-				>
+				<p v-else-if="likedFailed" class="text-center py-12 text-gray-500" role="alert">
 					{{ t("readerProfile.likesLoadFailed") }}
 				</p>
 
@@ -502,7 +516,9 @@ const pageAnnouncement = computed(() =>
 							:to="`/posts/${post.slug}`"
 							class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
 						>
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
+							<h3
+								class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2"
+							>
 								{{ post.title }}
 							</h3>
 							<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
@@ -524,14 +540,14 @@ const pageAnnouncement = computed(() =>
 			<!-- Saved-posts tab (round 363, DEC-399) -->
 			<template v-else>
 				<div v-if="savedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					<div v-for="i in 3" :key="i" class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+					<div
+						v-for="i in 3"
+						:key="i"
+						class="h-24 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse"
+					/>
 				</div>
 
-				<p
-					v-else-if="savedFailed"
-					class="text-center py-12 text-gray-500"
-					role="alert"
-				>
+				<p v-else-if="savedFailed" class="text-center py-12 text-gray-500" role="alert">
 					{{ t("readerProfile.savedLoadFailed") }}
 				</p>
 
@@ -547,7 +563,9 @@ const pageAnnouncement = computed(() =>
 							:to="`/posts/${post.slug}`"
 							class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 hover:shadow-md transition-all duration-200"
 						>
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2">
+							<h3
+								class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-fuchsia-600 dark:group-hover:text-fuchsia-400 transition-colors line-clamp-2"
+							>
 								{{ post.title }}
 							</h3>
 							<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
@@ -571,7 +589,13 @@ const pageAnnouncement = computed(() =>
 				v-if="activePagination?.total_pages && activePagination.total_pages > 1"
 				class="flex items-center justify-center gap-2 mt-8"
 				role="navigation"
-				:aria-label="view === 'likes' ? t('readerProfile.likesTab') : view === 'saved' ? t('readerProfile.savedTab') : t('readerProfile.commentsTitle')"
+				:aria-label="
+					view === 'likes'
+						? t('readerProfile.likesTab')
+						: view === 'saved'
+							? t('readerProfile.savedTab')
+							: t('readerProfile.commentsTitle')
+				"
 			>
 				<button
 					v-for="(pg, i) in paginationTokens"

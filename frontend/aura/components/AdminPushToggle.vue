@@ -88,24 +88,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="px-4 py-2.5">
-    <button
-      type="button"
-      :disabled="pushBlocked || busy"
-      :title="pushBlocked ? t('admin.moderationPush.hint') : label"
-      :aria-pressed="status === 'subscribed' ? 'true' : 'false'"
-      :aria-label="label"
-      class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-      @click="onClick"
-    >
-      <Icon :icon="icon" class="h-4 w-4" :class="{ 'animate-spin': busy }" />
-      <span>{{ label }}</span>
-    </button>
-    <p class="mt-1 px-4 text-xs text-gray-400 dark:text-gray-500">
-      {{ t('admin.moderationPush.hint') }}
-    </p>
-    <p v-if="errorVisible" role="alert" class="mt-1 px-4 text-xs text-red-600 dark:text-red-400">
-      {{ t('admin.moderationPush.subscribeFailed') }}
-    </p>
-  </div>
+	<div class="px-4 py-2.5">
+		<button
+			type="button"
+			:disabled="pushBlocked || busy"
+			:title="pushBlocked ? t('admin.moderationPush.hint') : label"
+			:aria-pressed="status === 'subscribed' ? 'true' : 'false'"
+			:aria-label="label"
+			class="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+			@click="onClick"
+		>
+			<Icon :icon="icon" class="h-4 w-4" :class="{ 'animate-spin': busy }" />
+			<span>{{ label }}</span>
+		</button>
+		<p class="mt-1 px-4 text-xs text-gray-400 dark:text-gray-500">
+			{{ t("admin.moderationPush.hint") }}
+		</p>
+		<p v-if="errorVisible" role="alert" class="mt-1 px-4 text-xs text-red-600 dark:text-red-400">
+			{{ t("admin.moderationPush.subscribeFailed") }}
+		</p>
+	</div>
 </template>

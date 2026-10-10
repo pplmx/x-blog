@@ -158,18 +158,12 @@ onUnmounted(() => {
 			aria-hidden="true"
 			role="presentation"
 		/>
-		{{ t('common.sessionExpired') }}
-		<NuxtLink
-			to="/login"
-			class="font-semibold underline underline-offset-2 hover:opacity-80"
-		>
-			{{ t('reader.nav.signIn') }}
+		{{ t("common.sessionExpired") }}
+		<NuxtLink to="/login" class="font-semibold underline underline-offset-2 hover:opacity-80">
+			{{ t("reader.nav.signIn") }}
 		</NuxtLink>
 	</span>
-	<span
-		v-if="signedIn"
-		class="relative inline-flex items-center gap-2"
-	>
+	<span v-if="signedIn" class="relative inline-flex items-center gap-2">
 		<!-- Transient failure bubble: visible and announced via role=status when a
 		     follow/notify call rejects. Anchored absolutely so it never shifts the
 		     series nav row; dropped BELOW the control into the whitespace. -->
@@ -179,7 +173,7 @@ onUnmounted(() => {
 			aria-live="polite"
 			class="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap pointer-events-none rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
 		>
-			{{ t('series.followFailed') }}
+			{{ t("series.followFailed") }}
 		</span>
 		<button
 			type="button"
@@ -191,11 +185,11 @@ onUnmounted(() => {
 			@click="toggleFollow"
 		>
 			<Icon
-				:icon="followBusy ? 'lucide:loader-2' : (followsSeries ? 'lucide:bell-ring' : 'lucide:bell')"
+				:icon="followBusy ? 'lucide:loader-2' : followsSeries ? 'lucide:bell-ring' : 'lucide:bell'"
 				class="w-4 h-4"
 				:class="{ 'animate-spin': followBusy }"
 			/>
-			{{ t(followsSeries ? 'series.followingNewParts' : 'series.followNewParts') }}
+			{{ t(followsSeries ? "series.followingNewParts" : "series.followNewParts") }}
 		</button>
 		<button
 			v-if="followsSeries"
@@ -208,11 +202,11 @@ onUnmounted(() => {
 			@click="toggleNotify"
 		>
 			<Icon
-				:icon="followBusy ? 'lucide:loader-2' : (followNotify ? 'lucide:bell' : 'lucide:bell-off')"
+				:icon="followBusy ? 'lucide:loader-2' : followNotify ? 'lucide:bell' : 'lucide:bell-off'"
 				class="w-4 h-4"
 				:class="{ 'animate-spin': followBusy }"
 			/>
-			{{ t(followNotify ? 'series.notifyOn' : 'series.notifyOff') }}
+			{{ t(followNotify ? "series.notifyOn" : "series.notifyOff") }}
 		</button>
 	</span>
 </template>

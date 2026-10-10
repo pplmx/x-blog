@@ -11,9 +11,5 @@ defineProps<{
 </script>
 
 <template>
-  <Icon
-    :icon="icon"
-    :width="width"
-    :height="height"
-  />
+	<Icon :icon="icon" :width="width" :height="height" />
 </template>

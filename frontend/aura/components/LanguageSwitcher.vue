@@ -119,59 +119,63 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="relative select-none">
-    <button
-      ref="trigger"
-      type="button"
-      class="flex w-24 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-      aria-haspopup="menu"
-      :aria-expanded="open"
-      :aria-label="currentLabel"
-      @click="toggle"
-    >
-      {{ currentLabel }}
-      <Icon
-        icon="lucide:chevron-down"
-        class="w-3 h-3 transition-transform duration-200"
-        :class="open ? 'rotate-180' : ''"
-      />
-    </button>
+	<div ref="root" class="relative select-none">
+		<button
+			ref="trigger"
+			type="button"
+			class="flex w-24 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+			aria-haspopup="menu"
+			:aria-expanded="open"
+			:aria-label="currentLabel"
+			@click="toggle"
+		>
+			{{ currentLabel }}
+			<Icon
+				icon="lucide:chevron-down"
+				class="w-3 h-3 transition-transform duration-200"
+				:class="open ? 'rotate-180' : ''"
+			/>
+		</button>
 
-    <Transition name="lang-dropdown">
-      <div
-        v-if="open"
-        role="menu"
-        class="absolute right-0 mt-1.5 z-50 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1 shadow-lg"
-      >
-        <button
-          v-for="l in locales"
-          :key="l.code"
-          type="button"
-          role="menuitem"
-          class="flex w-full items-center justify-between gap-3 whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium transition-colors"
-          :class="locale === l.code
-            ? 'text-blue-600 dark:text-blue-400'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-          :aria-current="locale === l.code ? 'true' : undefined"
-          @click="onSelect(l.code)"
-        >
-          {{ l.native }}
-          <Icon v-if="locale === l.code" icon="lucide:check" class="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </Transition>
-  </div>
+		<Transition name="lang-dropdown">
+			<div
+				v-if="open"
+				role="menu"
+				class="absolute right-0 mt-1.5 z-50 w-36 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-1 shadow-lg"
+			>
+				<button
+					v-for="l in locales"
+					:key="l.code"
+					type="button"
+					role="menuitem"
+					class="flex w-full items-center justify-between gap-3 whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium transition-colors"
+					:class="
+						locale === l.code
+							? 'text-blue-600 dark:text-blue-400'
+							: 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+					"
+					:aria-current="locale === l.code ? 'true' : undefined"
+					@click="onSelect(l.code)"
+				>
+					{{ l.native }}
+					<Icon v-if="locale === l.code" icon="lucide:check" class="h-3.5 w-3.5" />
+				</button>
+			</div>
+		</Transition>
+	</div>
 </template>
 
 <style scoped>
 .lang-dropdown-enter-active,
 .lang-dropdown-leave-active {
-  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-  transform-origin: top right;
+	transition:
+		opacity 0.15s ease-out,
+		transform 0.15s ease-out;
+	transform-origin: top right;
 }
 .lang-dropdown-enter-from,
 .lang-dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-2px);
+	opacity: 0;
+	transform: scale(0.95) translateY(-2px);
 }
 </style>

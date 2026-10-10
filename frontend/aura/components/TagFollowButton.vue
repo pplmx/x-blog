@@ -114,10 +114,7 @@ onUnmounted(() => {
 			role="presentation"
 		/>
 		{{ t("common.sessionExpired") }}
-		<NuxtLink
-			to="/login"
-			class="font-semibold underline underline-offset-2 hover:opacity-80"
-		>
+		<NuxtLink to="/login" class="font-semibold underline underline-offset-2 hover:opacity-80">
 			{{ t("reader.nav.signIn") }}
 		</NuxtLink>
 	</span>
@@ -139,7 +136,7 @@ onUnmounted(() => {
 			aria-live="polite"
 			class="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap pointer-events-none rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
 		>
-			{{ t('tags.followFailed') }}
+			{{ t("tags.followFailed") }}
 		</span>
 		<!-- Hit-target + in-flight feedback (deep-dive ISS-380): p-1 padding made
 		     ~22px touch targets well under the 44px guideline, and while busy the
@@ -154,13 +151,15 @@ onUnmounted(() => {
 			:aria-pressed="following ? 'true' : 'false'"
 			:aria-busy="busy"
 			class="inline-flex items-center p-2 rounded-full transition-colors disabled:opacity-40"
-			:class="error
-				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
-				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
+			:class="
+				error
+					? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
+					: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'
+			"
 			@click="handleToggleFollow"
 		>
 			<Icon
-				:icon="busy ? 'lucide:loader-2' : (following ? 'lucide:bookmark-check' : 'lucide:bookmark')"
+				:icon="busy ? 'lucide:loader-2' : following ? 'lucide:bookmark-check' : 'lucide:bookmark'"
 				class="w-3.5 h-3.5"
 				:class="{ 'animate-spin': busy }"
 			/>
@@ -174,13 +173,15 @@ onUnmounted(() => {
 			:aria-pressed="notify ? 'true' : 'false'"
 			:aria-busy="busy"
 			class="inline-flex items-center p-2 rounded-full transition-colors disabled:opacity-40"
-			:class="error
-				? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
-				: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'"
+			:class="
+				error
+					? 'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300'
+					: 'text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400'
+			"
 			@click="handleSetNotify"
 		>
 			<Icon
-				:icon="busy ? 'lucide:loader-2' : (notify ? 'lucide:bell' : 'lucide:bell-off')"
+				:icon="busy ? 'lucide:loader-2' : notify ? 'lucide:bell' : 'lucide:bell-off'"
 				class="w-3.5 h-3.5"
 				:class="{ 'animate-spin': busy }"
 			/>

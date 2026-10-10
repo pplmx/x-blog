@@ -316,225 +316,249 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Login page — no sidebar -->
-    <div v-if="isLoginPage" class="min-h-screen flex items-center justify-center">
-      <slot />
-    </div>
+	<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+		<!-- Login page — no sidebar -->
+		<div v-if="isLoginPage" class="min-h-screen flex items-center justify-center">
+			<slot />
+		</div>
 
-    <!-- Authenticated layout — with sidebar -->
-    <div
-      v-else-if="isAuthenticated"
-      class="flex min-h-screen"
-    >
-      <!-- Mobile overlay (Escape / focus handling lives in onSidebarKeydown). -->
-      <div
-        v-if="sidebarOpen"
-        class="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        @click="closeMobileSidebar"
-        aria-hidden="true"
-      />
+		<!-- Authenticated layout — with sidebar -->
+		<div v-else-if="isAuthenticated" class="flex min-h-screen">
+			<!-- Mobile overlay (Escape / focus handling lives in onSidebarKeydown). -->
+			<div
+				v-if="sidebarOpen"
+				class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+				@click="closeMobileSidebar"
+				aria-hidden="true"
+			/>
 
-      <!-- Sidebar (mobile drawer focus + Tab trap via onSidebarKeydown).
+			<!-- Sidebar (mobile drawer focus + Tab trap via onSidebarKeydown).
            `inert` drops the closed mobile drawer's links from the tab order
            (they are translated off-canvas but were still focusable) while
            leaving the desktop static column fully interactive; the open-mobile
            drawer clears it (tracked by isMobileSidebar). -->
-      <aside
-        ref="sidebarAsideRef"
-        class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen transform transition-transform duration-200"
-        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-        :inert="isMobileSidebar && !sidebarOpen"
-        @keydown="onSidebarKeydown"
-      >
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {{ t('admin.title') }}
-          </h2>
-          <button
-            ref="sidebarCloseRef"
-            type="button"
-            class="lg:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            @click="closeMobileSidebar"
-            :aria-label="t('common.menu.close')"
-          >
-            <Icon icon="lucide:x" class="w-5 h-5" />
-          </button>
-        </div>
+			<aside
+				ref="sidebarAsideRef"
+				class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen transform transition-transform duration-200"
+				:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+				:inert="isMobileSidebar && !sidebarOpen"
+				@keydown="onSidebarKeydown"
+			>
+				<div
+					class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700"
+				>
+					<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+						{{ t("admin.title") }}
+					</h2>
+					<button
+						ref="sidebarCloseRef"
+						type="button"
+						class="lg:hidden p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+						@click="closeMobileSidebar"
+						:aria-label="t('common.menu.close')"
+					>
+						<Icon icon="lucide:x" class="w-5 h-5" />
+					</button>
+				</div>
 
-        <nav class="p-3 space-y-0.5">
-          <NuxtLink
-            v-for="item in navItems"
-            :key="item.href"
-            :to="item.href"
-            :class="[
-              'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-              isNavActive(item.href, route.path)
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
-            ]"
-            :aria-current="isNavActive(item.href, route.path) ? 'page' : undefined"
-            @click="sidebarOpen = false"
-          >
-            <Icon :icon="item.icon" class="w-4 h-4" />
-            {{ t(item.labelKey) }}
-          </NuxtLink>
+				<nav class="p-3 space-y-0.5">
+					<NuxtLink
+						v-for="item in navItems"
+						:key="item.href"
+						:to="item.href"
+						:class="[
+							'flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+							isNavActive(item.href, route.path)
+								? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm'
+								: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
+						]"
+						:aria-current="isNavActive(item.href, route.path) ? 'page' : undefined"
+						@click="sidebarOpen = false"
+					>
+						<Icon :icon="item.icon" class="w-4 h-4" />
+						{{ t(item.labelKey) }}
+					</NuxtLink>
 
-          <div class="my-3 border-t border-gray-100 dark:border-gray-700/50" />
+					<div class="my-3 border-t border-gray-100 dark:border-gray-700/50" />
 
-          <NuxtLink
-            to="/"
-            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
-            @click="sidebarOpen = false"
-          >
-            <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-            {{ t('admin.backToSite') }}
-          </NuxtLink>
+					<NuxtLink
+						to="/"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
+						@click="sidebarOpen = false"
+					>
+						<Icon icon="lucide:arrow-left" class="w-4 h-4" />
+						{{ t("admin.backToSite") }}
+					</NuxtLink>
 
-          <!-- Theme toggle (shared useTheme): the admin UI had no control and
+					<!-- Theme toggle (shared useTheme): the admin UI had no control and
                ignored the saved preference until this addition (deep-dive). -->
-          <button
-            type="button"
-            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
-            @click="toggleTheme"
-            :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
-          >
-            <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
-            {{ isDark ? t('common.theme.light') : t('common.theme.dark') }}
-          </button>
+					<button
+						type="button"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
+						@click="toggleTheme"
+						:aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
+					>
+						<Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-4 h-4" />
+						{{ isDark ? t("common.theme.light") : t("common.theme.dark") }}
+					</button>
 
-          <!-- Comment-moderation alerts (DEC-080): opt this browser into a push
+					<!-- Comment-moderation alerts (DEC-080): opt this browser into a push
                when a new comment awaits approval. Admin-context only. -->
-          <AdminPushToggle />
+					<AdminPushToggle />
 
-          <button
-            type="button"
-            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
-            @click="showPasswordModal = true"
-          >
-            <Icon icon="lucide:key-round" class="w-4 h-4" />
-            {{ t('admin.changePassword') }}
-          </button>
+					<button
+						type="button"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 w-full"
+						@click="showPasswordModal = true"
+					>
+						<Icon icon="lucide:key-round" class="w-4 h-4" />
+						{{ t("admin.changePassword") }}
+					</button>
 
-          <button
-            type="button"
-            class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 w-full"
-            @click="logout"
-          >
-            <Icon icon="lucide:log-out" class="w-4 h-4" />
-            {{ t('admin.logout') }}
-          </button>
-        </nav>
-      </aside>
+					<button
+						type="button"
+						class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 w-full"
+						@click="logout"
+					>
+						<Icon icon="lucide:log-out" class="w-4 h-4" />
+						{{ t("admin.logout") }}
+					</button>
+				</nav>
+			</aside>
 
-      <!-- Main content -->
-      <div class="flex-1 flex flex-col min-h-screen">
-        <!-- Mobile header -->
-        <header class="lg:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center">
-          <button
-            type="button"
-            class="p-2 -ml-2 mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            @click="sidebarOpen = true"
-            :aria-expanded="sidebarOpen"
-            :aria-label="t('common.menu.open')"
-          >
-            <Icon icon="lucide:menu" class="w-6 h-6" />
-          </button>
-          <span class="font-bold text-gray-900 dark:text-gray-100">{{ t('admin.title') }}</span>
-          <button
-            type="button"
-            class="ml-auto p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-            @click="toggleTheme"
-            :aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
-          >
-            <Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
-          </button>
-        </header>
+			<!-- Main content -->
+			<div class="flex-1 flex flex-col min-h-screen">
+				<!-- Mobile header -->
+				<header
+					class="lg:hidden border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center"
+				>
+					<button
+						type="button"
+						class="p-2 -ml-2 mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+						@click="sidebarOpen = true"
+						:aria-expanded="sidebarOpen"
+						:aria-label="t('common.menu.open')"
+					>
+						<Icon icon="lucide:menu" class="w-6 h-6" />
+					</button>
+					<span class="font-bold text-gray-900 dark:text-gray-100">{{ t("admin.title") }}</span>
+					<button
+						type="button"
+						class="ml-auto p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+						@click="toggleTheme"
+						:aria-label="isDark ? t('common.theme.toggleLight') : t('common.theme.toggleDark')"
+					>
+						<Icon :icon="isDark ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
+					</button>
+				</header>
 
-        <main class="flex-1 p-6 lg:p-8 overflow-x-auto">
-          <slot />
-        </main>
-      </div>
-    </div>
+				<main class="flex-1 p-6 lg:p-8 overflow-x-auto">
+					<slot />
+				</main>
+			</div>
+		</div>
 
-    <!-- Password modal -->
-    <Teleport to="body">
-      <div
-        v-if="showPasswordModal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="password-modal-title"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-        @click.self="closePasswordModal"
-        @keydown="onPasswordKeydown"
-      >
-        <div
-          ref="passwordPanelRef"
-          class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4"
-        >
-          <button
-            type="button"
-            :aria-label="t('common.menu.close')"
-            :title="t('common.menu.close')"
-            class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            @click="closePasswordModal"
-          >
-            <Icon icon="lucide:x" class="w-4 h-4" />
-          </button>
-          <h3 id="password-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ t('admin.password.title') }}</h3>
+		<!-- Password modal -->
+		<Teleport to="body">
+			<div
+				v-if="showPasswordModal"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="password-modal-title"
+				class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+				@click.self="closePasswordModal"
+				@keydown="onPasswordKeydown"
+			>
+				<div
+					ref="passwordPanelRef"
+					class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-sm mx-4"
+				>
+					<button
+						type="button"
+						:aria-label="t('common.menu.close')"
+						:title="t('common.menu.close')"
+						class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+						@click="closePasswordModal"
+					>
+						<Icon icon="lucide:x" class="w-4 h-4" />
+					</button>
+					<h3
+						id="password-modal-title"
+						class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4"
+					>
+						{{ t("admin.password.title") }}
+					</h3>
 
-          <div v-if="passwordSuccess" class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm mb-4">
-            {{ t('admin.password.success') }}
-          </div>
+					<div
+						v-if="passwordSuccess"
+						class="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm mb-4"
+					>
+						{{ t("admin.password.success") }}
+					</div>
 
-          <form @submit.prevent="handleChangePassword" class="space-y-4">
-            <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.current') }}</label>
-              <input
-                ref="passwordCurrentInput"
-                v-model="passwordForm.current_password"
-                type="password"
-                autocomplete="current-password"
-                required
-                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-            </div>
-            <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.new') }}</label>
-              <input
-                v-model="passwordForm.new_password"
-                type="password"
-                autocomplete="new-password"
-                required
-                minlength="8"
-                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-            </div>
-            <div>
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{ t('admin.password.confirm') }}</label>
-              <input
-                v-model="passwordForm.confirm"
-                type="password"
-                autocomplete="new-password"
-                required
-                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-            </div>
+					<form @submit.prevent="handleChangePassword" class="space-y-4">
+						<div>
+							<label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{
+								t("admin.password.current")
+							}}</label>
+							<input
+								ref="passwordCurrentInput"
+								v-model="passwordForm.current_password"
+								type="password"
+								autocomplete="current-password"
+								required
+								class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+							/>
+						</div>
+						<div>
+							<label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{
+								t("admin.password.new")
+							}}</label>
+							<input
+								v-model="passwordForm.new_password"
+								type="password"
+								autocomplete="new-password"
+								required
+								minlength="8"
+								class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+							/>
+						</div>
+						<div>
+							<label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">{{
+								t("admin.password.confirm")
+							}}</label>
+							<input
+								v-model="passwordForm.confirm"
+								type="password"
+								autocomplete="new-password"
+								required
+								class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+							/>
+						</div>
 
-            <div v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</div>
+						<div v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</div>
 
-            <div class="flex gap-3 pt-2">
-              <button type="submit" :disabled="passwordBusy" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors">
-                {{ passwordBusy ? t('admin.password.saving') : t('common.action.save') }}
-              </button>
-              <button type="button" :disabled="passwordBusy" class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="closePasswordModal">
-                {{ t('common.action.cancel') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Teleport>
-    <RateLimitNotice />
-  </div>
+						<div class="flex gap-3 pt-2">
+							<button
+								type="submit"
+								:disabled="passwordBusy"
+								class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
+							>
+								{{ passwordBusy ? t("admin.password.saving") : t("common.action.save") }}
+							</button>
+							<button
+								type="button"
+								:disabled="passwordBusy"
+								class="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+								@click="closePasswordModal"
+							>
+								{{ t("common.action.cancel") }}
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</Teleport>
+		<RateLimitNotice />
+	</div>
 </template>

@@ -123,51 +123,59 @@ async function toggle() {
 </script>
 
 <template>
-  <!-- Signed-in: the follow toggle. Guest branch below replaces the button so
+	<!-- Signed-in: the follow toggle. Guest branch below replaces the button so
        the feature is discoverable instead of silently absent. -->
-  <button
-    v-if="isAuthenticated"
-    type="button"
-    :disabled="busy || pushBlocked"
-    :title="pushBlocked ? t('components.threadSubscribe.pushNeeded') : label"
-    :aria-pressed="following ? 'true' : 'false'"
-    :aria-label="label"
-    :aria-busy="busy"
-    class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-    @click="toggle"
-  >
-    <Icon :icon="following ? 'lucide:bell-ring' : 'lucide:bell'" :class="{ 'animate-spin': busy }" class="h-4 w-4" />
-    {{ label }}
-  </button>
-  <!-- Pre-denied push state: the disabled button's :title tooltip is the ONLY
+	<button
+		v-if="isAuthenticated"
+		type="button"
+		:disabled="busy || pushBlocked"
+		:title="pushBlocked ? t('components.threadSubscribe.pushNeeded') : label"
+		:aria-pressed="following ? 'true' : 'false'"
+		:aria-label="label"
+		:aria-busy="busy"
+		class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+		@click="toggle"
+	>
+		<Icon
+			:icon="following ? 'lucide:bell-ring' : 'lucide:bell'"
+			:class="{ 'animate-spin': busy }"
+			class="h-4 w-4"
+		/>
+		{{ label }}
+	</button>
+	<!-- Pre-denied push state: the disabled button's :title tooltip is the ONLY
        explanation, and tooltips don't reliably appear on disabled buttons and
        never on touch — surface a persistent inline line instead (ISS-382). -->
-  <p
-    v-if="isAuthenticated && pushBlocked"
-    role="status"
-    class="mt-1 text-xs text-amber-600 dark:text-amber-400"
-  >
-    {{ deniedHint }}
-  </p>
-  <p
-    v-else-if="blocked && isAuthenticated"
-    role="status"
-    class="mt-1 text-xs text-amber-600 dark:text-amber-400"
-  >
-    {{ t("components.threadSubscribe.blockedHint") }}
-  </p>
-  <p v-else-if="error && isAuthenticated" role="alert" class="mt-1 text-xs text-red-600 dark:text-red-400">
-    {{ t("components.threadSubscribe.error") }}
-  </p>
-  <!-- Guest: the feature needs an account (follows are not anonymous) — instead
+	<p
+		v-if="isAuthenticated && pushBlocked"
+		role="status"
+		class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+	>
+		{{ deniedHint }}
+	</p>
+	<p
+		v-else-if="blocked && isAuthenticated"
+		role="status"
+		class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+	>
+		{{ t("components.threadSubscribe.blockedHint") }}
+	</p>
+	<p
+		v-else-if="error && isAuthenticated"
+		role="alert"
+		class="mt-1 text-xs text-red-600 dark:text-red-400"
+	>
+		{{ t("components.threadSubscribe.error") }}
+	</p>
+	<!-- Guest: the feature needs an account (follows are not anonymous) — instead
        of hiding the affordance entirely, point sign-in at the current page so a
        guest discovers the discussion can be followed (ISS-382). -->
-  <NuxtLink
-    v-else
-    :to="signInTarget"
-    class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-  >
-    <Icon icon="lucide:log-in" class="h-4 w-4" />
-    {{ t("components.threadSubscribe.guestPrompt") }}
-  </NuxtLink>
+	<NuxtLink
+		v-else
+		:to="signInTarget"
+		class="inline-flex shrink-0 items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 dark:text-gray-400 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+	>
+		<Icon icon="lucide:log-in" class="h-4 w-4" />
+		{{ t("components.threadSubscribe.guestPrompt") }}
+	</NuxtLink>
 </template>

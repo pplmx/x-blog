@@ -220,243 +220,246 @@ function formatDate(dateStr: string): string {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-12">
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-        >
-          {{ t('myComments.title') }}
-        </h1>
-        <p v-if="isAuthenticated && total > 0" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          {{ t('myComments.countLabel', { count: total }) }}
-        </p>
-      </div>
-    </div>
+	<div class="max-w-3xl mx-auto px-4 py-12">
+		<div class="flex items-center justify-between mb-8">
+			<div>
+				<h1
+					class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+				>
+					{{ t("myComments.title") }}
+				</h1>
+				<p
+					v-if="isAuthenticated && total > 0"
+					class="text-sm text-gray-500 dark:text-gray-400 mt-2"
+				>
+					{{ t("myComments.countLabel", { count: total }) }}
+				</p>
+			</div>
+		</div>
 
-    <!-- Status filter buttons (DEC-102, TASK-163). These are mutually
+		<!-- Status filter buttons (DEC-102, TASK-163). These are mutually
          exclusive filter buttons, not a roving-tabindex tablist — plain
          buttons with aria-pressed is the honest semantics (a fake role="tab"
          promised arrow-key navigation the buttons don't implement). -->
-    <div
-      v-if="isAuthenticated"
-      class="flex items-center gap-2 mb-6 flex-wrap"
-    >
-      <button
-        v-for="status in (['all', 'pending', 'approved', 'rejected'] as const)"
-        :key="status"
-        type="button"
-        :aria-pressed="statusFilter === status"
-        :class="[
-          'px-3 py-1 rounded-full text-sm transition-colors',
-          statusFilter === status
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
-        ]"
-        @click="setStatus(status)"
-      >
-        {{ t(`myComments.filter.${status}`) }}
-      </button>
-    </div>
+		<div v-if="isAuthenticated" class="flex items-center gap-2 mb-6 flex-wrap">
+			<button
+				v-for="status in ['all', 'pending', 'approved', 'rejected'] as const"
+				:key="status"
+				type="button"
+				:aria-pressed="statusFilter === status"
+				:class="[
+					'px-3 py-1 rounded-full text-sm transition-colors',
+					statusFilter === status
+						? 'bg-blue-600 text-white'
+						: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+				]"
+				@click="setStatus(status)"
+			>
+				{{ t(`myComments.filter.${status}`) }}
+			</button>
+		</div>
 
-    <!-- Keyword search over the reader's own comment history (DEC-411,
+		<!-- Keyword search over the reader's own comment history (DEC-411,
          TASK-431): mirrors history's recall-search — debounced, server-side,
          composes with the status filter. -->
-    <div
-      v-if="isAuthenticated"
-      class="relative mb-6 max-w-sm"
-    >
-      <Icon
-        icon="lucide:search"
-        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-      />
-      <input
-        v-model="searchQuery"
-        type="search"
-        :placeholder="t('myComments.searchPlaceholder')"
-        :aria-label="t('myComments.searchAria')"
-        class="w-full pl-9 pr-9 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        @input="onSearch"
-      />
-      <button
-        v-if="searchQuery"
-        type="button"
-        :aria-label="t('myComments.searchClear')"
-        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-        @click="clearSearch"
-      >
-        <Icon icon="lucide:x" class="w-4 h-4" />
-      </button>
-    </div>
+		<div v-if="isAuthenticated" class="relative mb-6 max-w-sm">
+			<Icon
+				icon="lucide:search"
+				class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+			/>
+			<input
+				v-model="searchQuery"
+				type="search"
+				:placeholder="t('myComments.searchPlaceholder')"
+				:aria-label="t('myComments.searchAria')"
+				class="w-full pl-9 pr-9 py-2 rounded-lg text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				@input="onSearch"
+			/>
+			<button
+				v-if="searchQuery"
+				type="button"
+				:aria-label="t('myComments.searchClear')"
+				class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+				@click="clearSearch"
+			>
+				<Icon icon="lucide:x" class="w-4 h-4" />
+			</button>
+		</div>
 
-    <!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
+		<!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
          in" prompt never flashes at an already-authenticated reader. -->
-    <div
-      v-if="!hydrated"
-      class="flex items-center justify-center py-12 text-gray-300 dark:text-gray-600"
-      aria-hidden="true"
-    >
-      <Icon icon="lucide:message-square" class="w-8 h-8" />
-    </div>
+		<div
+			v-if="!hydrated"
+			class="flex items-center justify-center py-12 text-gray-300 dark:text-gray-600"
+			aria-hidden="true"
+		>
+			<Icon icon="lucide:message-square" class="w-8 h-8" />
+		</div>
 
-    <!-- Logged out: this page is reader-scoped, prompt to sign in -->
-    <div
-      v-else-if="!isAuthenticated"
-      class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
-    >
-      <p class="mb-3">{{ t('myComments.signInPrompt') }}</p>
-      <NuxtLink
-        :to="{ path: '/login', query: { redirect: '/comments' } }"
-        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-      >
-        <Icon icon="lucide:log-in" class="w-4 h-4" />
-        {{ t('myComments.signInLink') }}
-      </NuxtLink>
-    </div>
+		<!-- Logged out: this page is reader-scoped, prompt to sign in -->
+		<div
+			v-else-if="!isAuthenticated"
+			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+		>
+			<p class="mb-3">{{ t("myComments.signInPrompt") }}</p>
+			<NuxtLink
+				:to="{ path: '/login', query: { redirect: '/comments' } }"
+				class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+			>
+				<Icon icon="lucide:log-in" class="w-4 h-4" />
+				{{ t("myComments.signInLink") }}
+			</NuxtLink>
+		</div>
 
-    <!-- Loading -->
-    <div v-else-if="loading" class="space-y-3">
-      <div v-for="i in 3" :key="i" class="animate-pulse">
-        <div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
-        <div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
-      </div>
-    </div>
+		<!-- Loading -->
+		<div v-else-if="loading" class="space-y-3">
+			<div v-for="i in 3" :key="i" class="animate-pulse">
+				<div class="bg-gray-200 dark:bg-gray-700 h-4 rounded w-3/4 mb-2" />
+				<div class="bg-gray-200 dark:bg-gray-700 h-3 rounded w-1/2" />
+			</div>
+		</div>
 
-    <!-- Error (distinct from an empty list, ISS-129) -->
-    <div
-      v-else-if="loadFailed"
-      class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
-    >
-      <p class="mb-3">{{ t('common.errors.network') }}</p>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        @click="void load()"
-      >
-        <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
+		<!-- Error (distinct from an empty list, ISS-129) -->
+		<div
+			v-else-if="loadFailed"
+			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+		>
+			<p class="mb-3">{{ t("common.errors.network") }}</p>
+			<button
+				type="button"
+				class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+				@click="void load()"
+			>
+				<Icon icon="lucide:refresh-cw" class="w-4 h-4" />
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Empty: a non-'all' filter that returns zero must not claim the reader
+		<!-- Empty: a non-'all' filter that returns zero must not claim the reader
          has "never commented" — it's this filter that has nothing. Per-filter
          copy plus a one-click reset to the full list (ISS-385). Only the
          genuinely-empty 'all' view keeps the browse-to-posts CTA. -->
-    <div
-      v-else-if="comments.length === 0"
-      class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
-    >
-      <!-- Search with no matches names the term and offers a one-click reset
+		<div
+			v-else-if="comments.length === 0"
+			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+		>
+			<!-- Search with no matches names the term and offers a one-click reset
            (same shape as the ISS-385 filtered-empty branch). -->
-      <template v-if="searching">
-        <p class="mb-3">{{ t('myComments.emptySearch', { q: searchQuery.trim() }) }}</p>
-        <button
-          type="button"
-          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          @click="clearSearch"
-        >
-          {{ t('myComments.clearSearch') }}
-        </button>
-      </template>
-      <template v-else-if="statusFilter !== 'all'">
-        <p class="mb-3">
-          {{ t('myComments.emptyFilter', { status: t(`myComments.filter.${statusFilter}`) }) }}
-        </p>
-        <button
-          type="button"
-          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          @click="setStatus('all')"
-        >
-          {{ t('myComments.showAll') }}
-        </button>
-      </template>
-      <template v-else>
-        <p class="mb-3">{{ t('myComments.empty') }}</p>
-        <NuxtLink
-          to="/"
-          class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-        >
-          {{ t('myComments.browse') }}
-        </NuxtLink>
-      </template>
-    </div>
+			<template v-if="searching">
+				<p class="mb-3">{{ t("myComments.emptySearch", { q: searchQuery.trim() }) }}</p>
+				<button
+					type="button"
+					class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+					@click="clearSearch"
+				>
+					{{ t("myComments.clearSearch") }}
+				</button>
+			</template>
+			<template v-else-if="statusFilter !== 'all'">
+				<p class="mb-3">
+					{{ t("myComments.emptyFilter", { status: t(`myComments.filter.${statusFilter}`) }) }}
+				</p>
+				<button
+					type="button"
+					class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+					@click="setStatus('all')"
+				>
+					{{ t("myComments.showAll") }}
+				</button>
+			</template>
+			<template v-else>
+				<p class="mb-3">{{ t("myComments.empty") }}</p>
+				<NuxtLink
+					to="/"
+					class="text-sm text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+				>
+					{{ t("myComments.browse") }}
+				</NuxtLink>
+			</template>
+		</div>
 
-    <!-- Comment list -->
-    <ul v-else class="space-y-3">
-      <!-- Screen-reader page announcement (round 398, same pattern as home):
+		<!-- Comment list -->
+		<ul v-else class="space-y-3">
+			<!-- Screen-reader page announcement (round 398, same pattern as home):
            pagination swaps the list in place, invisible to assistive tech. -->
-      <li class="sr-only" role="status" aria-live="polite">
-        {{ t("common.state.pageAnnounce", { page: currentPage }) }}
-      </li>
-      <li
-        v-for="comment in comments"
-        :key="comment.id"
-        class="border border-gray-100 dark:border-gray-700 rounded-lg p-4"
-      >
-        <div class="flex items-center gap-2 mb-1">
-          <span
-            class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
-            :class="statusClasses[comment.status]"
-            :title="t(`myComments.statusTitle.${comment.status}`)"
-          >
-            <Icon :icon="statusIcon(comment.status)" class="w-3 h-3" />
-            {{ t(`myComments.status.${comment.status}`) }}
-          </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
-        </div>
+			<li class="sr-only" role="status" aria-live="polite">
+				{{ t("common.state.pageAnnounce", { page: currentPage }) }}
+			</li>
+			<li
+				v-for="comment in comments"
+				:key="comment.id"
+				class="border border-gray-100 dark:border-gray-700 rounded-lg p-4"
+			>
+				<div class="flex items-center gap-2 mb-1">
+					<span
+						class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium"
+						:class="statusClasses[comment.status]"
+						:title="t(`myComments.statusTitle.${comment.status}`)"
+					>
+						<Icon :icon="statusIcon(comment.status)" class="w-3 h-3" />
+						{{ t(`myComments.status.${comment.status}`) }}
+					</span>
+					<span class="text-xs text-gray-500 dark:text-gray-400">{{
+						formatDate(comment.created_at)
+					}}</span>
+				</div>
 
-        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-2">{{ comment.content }}</p>
+				<p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap mb-2">
+					{{ comment.content }}
+				</p>
 
-        <div class="flex items-center justify-between">
-          <NuxtLink
-            v-if="comment.post"
-            :to="`/posts/${comment.post.slug}#comment-${comment.id}`"
-            class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors truncate"
-          >
-            {{ t('myComments.onPost', { title: comment.post.title }) }}
-          </NuxtLink>
-          <span v-else class="text-xs text-gray-500 dark:text-gray-400">{{ t('myComments.onPost', { title: '—' }) }}</span>
+				<div class="flex items-center justify-between">
+					<NuxtLink
+						v-if="comment.post"
+						:to="`/posts/${comment.post.slug}#comment-${comment.id}`"
+						class="text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors truncate"
+					>
+						{{ t("myComments.onPost", { title: comment.post.title }) }}
+					</NuxtLink>
+					<span v-else class="text-xs text-gray-500 dark:text-gray-400">{{
+						t("myComments.onPost", { title: "—" })
+					}}</span>
 
-          <button
-            type="button"
-            :disabled="deletingIds.has(comment.id)"
-            :aria-busy="deletingIds.has(comment.id)"
-            class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-            @click="removeComment(comment)"
-          >
-            <Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
-            {{ t('myComments.delete') }}
-          </button>
-        </div>
-      </li>
-    </ul>
+					<button
+						type="button"
+						:disabled="deletingIds.has(comment.id)"
+						:aria-busy="deletingIds.has(comment.id)"
+						class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+						@click="removeComment(comment)"
+					>
+						<Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
+						{{ t("myComments.delete") }}
+					</button>
+				</div>
+			</li>
+		</ul>
 
-    <p v-if="deleteFailed" class="mt-3 text-sm text-red-500 dark:text-red-400">
-      {{ t('myComments.deleteFailed') }}
-    </p>
+		<p v-if="deleteFailed" class="mt-3 text-sm text-red-500 dark:text-red-400">
+			{{ t("myComments.deleteFailed") }}
+		</p>
 
-    <!-- Pagination (DEC-102, TASK-163; round 265: shared first/last + ellipsis
+		<!-- Pagination (DEC-102, TASK-163; round 265: shared first/last + ellipsis
          tokens like the archive/search feeds, so deep history can reach the
          far pages instead of a fixed local window) -->
-    <nav v-if="isAuthenticated && totalPages > 1" class="flex justify-center gap-2 mt-6">
-      <button
-        type="button"
-        v-for="(pg, i) in paginationTokens"
-        :key="pg === '…' ? `ellipsis-${i}` : pg"
-        :disabled="pg === '…' || pg === currentPage"
-        :aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
-        :class="[
-          'px-3 py-1 rounded text-sm',
-          pg === '…'
-            ? 'cursor-default text-gray-400'
-            : pg === currentPage
-              ? 'bg-blue-600 text-white cursor-default'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
-        ]"
-        @click="pg !== '…' && pg !== currentPage && goToPage(pg)"
-      >
-        {{ pg }}
-      </button>
-    </nav>
-  </div>
+		<nav v-if="isAuthenticated && totalPages > 1" class="flex justify-center gap-2 mt-6">
+			<button
+				type="button"
+				v-for="(pg, i) in paginationTokens"
+				:key="pg === '…' ? `ellipsis-${i}` : pg"
+				:disabled="pg === '…' || pg === currentPage"
+				:aria-current="pg !== '…' && pg === currentPage ? 'page' : undefined"
+				:class="[
+					'px-3 py-1 rounded text-sm',
+					pg === '…'
+						? 'cursor-default text-gray-400'
+						: pg === currentPage
+							? 'bg-blue-600 text-white cursor-default'
+							: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
+				]"
+				@click="pg !== '…' && pg !== currentPage && goToPage(pg)"
+			>
+				{{ pg }}
+			</button>
+		</nav>
+	</div>
 </template>

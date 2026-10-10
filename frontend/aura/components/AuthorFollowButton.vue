@@ -108,7 +108,7 @@ onUnmounted(() => {
 			aria-live="polite"
 			class="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap pointer-events-none rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
 		>
-			{{ t('post.followAuthorFailed') }}
+			{{ t("post.followAuthorFailed") }}
 		</span>
 		<button
 			v-if="signedIn"
@@ -118,24 +118,23 @@ onUnmounted(() => {
 			:aria-pressed="followsAuthor ? 'true' : 'false'"
 			:aria-busy="followBusy"
 			class="inline-flex items-center gap-1 text-sm font-medium transition-colors disabled:opacity-60"
-			:class="followsAuthor
-				? 'text-fuchsia-500 hover:text-fuchsia-700'
-				: 'text-gray-400 hover:text-blue-500'"
+			:class="
+				followsAuthor
+					? 'text-fuchsia-500 hover:text-fuchsia-700'
+					: 'text-gray-400 hover:text-blue-500'
+			"
 			@click="toggleFollow"
 		>
-			<Icon
-				:icon="followsAuthor ? 'lucide:user-check' : 'lucide:user-plus'"
-				class="w-3.5 h-3.5"
-			/>
-			{{ t(followsAuthor ? 'post.followingAuthor' : 'post.followAuthor') }}
+			<Icon :icon="followsAuthor ? 'lucide:user-check' : 'lucide:user-plus'" class="w-3.5 h-3.5" />
+			{{ t(followsAuthor ? "post.followingAuthor" : "post.followAuthor") }}
 		</button>
 		<span
 			v-if="sessionExpired"
 			class="inline-flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
 		>
-			{{ t('common.sessionExpired') }}
+			{{ t("common.sessionExpired") }}
 			<NuxtLink to="/login" class="font-semibold underline underline-offset-2 hover:opacity-80">
-				{{ t('reader.nav.signIn') }}
+				{{ t("reader.nav.signIn") }}
 			</NuxtLink>
 		</span>
 	</span>

@@ -153,7 +153,11 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 
 		<!-- Loading -->
 		<div v-if="pending" class="space-y-4" role="status" aria-busy="true">
-			<div v-for="i in 4" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-xl" />
+			<div
+				v-for="i in 4"
+				:key="i"
+				class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-xl"
+			/>
 		</div>
 
 		<!-- Load failure -->
@@ -195,13 +199,19 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 				>
 					{{ item.content }}
 				</NuxtLink>
-				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-500 dark:text-gray-400">
+				<div
+					class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-500 dark:text-gray-400"
+				>
 					<span class="inline-flex items-center gap-1">
 						<Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
 						{{ commentAuthorName(item, t("components.commentList.readerNoName")) }}
 					</span>
 					<span v-if="item.post">
-						<Icon icon="lucide:file-text" class="w-3.5 h-3.5 inline-block mr-1" aria-hidden="true" />
+						<Icon
+							icon="lucide:file-text"
+							class="w-3.5 h-3.5 inline-block mr-1"
+							aria-hidden="true"
+						/>
 						{{ item.post.title }}
 					</span>
 					<span>
@@ -211,10 +221,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 			</div>
 
 			<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
-			<div
-				v-if="feed.pagination.total_pages > 1"
-				class="flex justify-center gap-2 mt-8"
-			>
+			<div v-if="feed.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
 				<button
 					v-for="(pg, i) in paginationTokens"
 					:key="pg === '…' ? `ellipsis-${i}` : pg"

@@ -130,7 +130,7 @@ export function command<T>(path: string, options?: ApiCommandOptions): Promise<T
 	// error for local handling.
 	return $fetch<T>(path, {
 		baseURL: apiBaseUrl(),
-		...(options ?? {}),
+		...options,
 	} as ApiCommandOptions).catch((error: unknown) => {
 		flagRateLimit(fetcherResponseError(error));
 		flagAdminUnauthorized(fetcherResponseError(error), path);

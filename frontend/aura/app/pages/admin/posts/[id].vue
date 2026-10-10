@@ -952,632 +952,835 @@ function handleFileInput(e: Event) {
 </script>
 
 <template>
-  <div class="max-w-4xl">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-        {{ effIsNew ? t('admin.postEdit.titleNew') : t('admin.postEdit.titleEdit') }}
-      </h1>
-      <NuxtLink
-        to="/admin/posts"
-        class="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
-      >
-        <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-        {{ t("admin.postEdit.backToPosts") }}
-      </NuxtLink>
-    </div>
+	<div class="max-w-4xl">
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+				{{ effIsNew ? t("admin.postEdit.titleNew") : t("admin.postEdit.titleEdit") }}
+			</h1>
+			<NuxtLink
+				to="/admin/posts"
+				class="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+			>
+				<Icon icon="lucide:arrow-left" class="w-4 h-4" />
+				{{ t("admin.postEdit.backToPosts") }}
+			</NuxtLink>
+		</div>
 
-    <div v-if="!isNew && postPending" class="text-center py-12">
-      <div class="inline-flex items-center gap-2 text-gray-500">
-        <svg :aria-label="t('admin.postEdit.loading')" class="animate-spin w-5 h-5" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-        {{ t("admin.postEdit.loading") }}
-      </div>
-    </div>
+		<div v-if="!isNew && postPending" class="text-center py-12">
+			<div class="inline-flex items-center gap-2 text-gray-500">
+				<svg
+					:aria-label="t('admin.postEdit.loading')"
+					class="animate-spin w-5 h-5"
+					viewBox="0 0 24 24"
+				>
+					<circle
+						class="opacity-25"
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						stroke-width="4"
+						fill="none"
+					/>
+					<path
+						class="opacity-75"
+						fill="currentColor"
+						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+					/>
+				</svg>
+				{{ t("admin.postEdit.loading") }}
+			</div>
+		</div>
 
-    <div v-else-if="!isNew && postError" class="text-center py-12 text-red-500">
-      <p class="mb-4">{{ postError?.message || t('admin.postEdit.loadErrorFallback') }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="() => postRefresh()"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
+		<div v-else-if="!isNew && postError" class="text-center py-12 text-red-500">
+			<p class="mb-4">{{ postError?.message || t("admin.postEdit.loadErrorFallback") }}</p>
+			<button
+				type="button"
+				class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				@click="() => postRefresh()"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <form v-else @submit.prevent="handleSubmit" class="space-y-6">
-      <!-- Taxonomy load failure: never let the pickers render as empty lists
+		<form v-else @submit.prevent="handleSubmit" class="space-y-6">
+			<!-- Taxonomy load failure: never let the pickers render as empty lists
            when the fetch failed — surface it with a retry (deep-dive finding). -->
-      <div
-        v-if="taxonomyFailed"
-        role="alert"
-        class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-      >
-        <span>{{ t('admin.postEdit.taxonomyLoadFailed') }}</span>
-        <button
-          type="button"
-          class="shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
-          @click="retryTaxonomy"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </div>
+			<div
+				v-if="taxonomyFailed"
+				role="alert"
+				class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+			>
+				<span>{{ t("admin.postEdit.taxonomyLoadFailed") }}</span>
+				<button
+					type="button"
+					class="shrink-0 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+					@click="retryTaxonomy"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <!-- Auto-save status indicator (RIL TASK-190) -->
-      <div
-        v-if="autoSaveStatus !== 'idle'"
-        data-testid="autosave-status"
-        :role="autoSaveStatus === 'error' ? 'alert' : 'status'"
-        class="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border"
-        :class="autoSaveStatus === 'saving'
-          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300'
-          : autoSaveStatus === 'saved'
-            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'"
-      >
-        <Icon
-          :icon="autoSaveStatus === 'saving' ? 'lucide:loader-2' : autoSaveStatus === 'saved' ? 'lucide:check-circle-2' : 'lucide:alert-triangle'"
-          :class="{ 'animate-spin': autoSaveStatus === 'saving' }"
-          class="w-4 h-4"
-        />
-        <template v-if="autoSaveStatus === 'saving'">{{ t('admin.postEdit.autoSaving') }}</template>
-        <template v-else-if="autoSaveStatus === 'saved'">{{ t('admin.postEdit.autoSaved') }}</template>
-        <template v-else>{{ autoSaveError || t('admin.postEdit.autoSaveError') }}</template>
-      </div>
-      <div v-if="submitError" role="alert" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
-        {{ submitError }}
-      </div>
-      <!-- Manual-save success flash (ISS-391): saving an existing post stays in
+			<!-- Auto-save status indicator (RIL TASK-190) -->
+			<div
+				v-if="autoSaveStatus !== 'idle'"
+				data-testid="autosave-status"
+				:role="autoSaveStatus === 'error' ? 'alert' : 'status'"
+				class="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border"
+				:class="
+					autoSaveStatus === 'saving'
+						? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-300'
+						: autoSaveStatus === 'saved'
+							? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+							: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+				"
+			>
+				<Icon
+					:icon="
+						autoSaveStatus === 'saving'
+							? 'lucide:loader-2'
+							: autoSaveStatus === 'saved'
+								? 'lucide:check-circle-2'
+								: 'lucide:alert-triangle'
+					"
+					:class="{ 'animate-spin': autoSaveStatus === 'saving' }"
+					class="w-4 h-4"
+				/>
+				<template v-if="autoSaveStatus === 'saving'">{{ t("admin.postEdit.autoSaving") }}</template>
+				<template v-else-if="autoSaveStatus === 'saved'">{{
+					t("admin.postEdit.autoSaved")
+				}}</template>
+				<template v-else>{{ autoSaveError || t("admin.postEdit.autoSaveError") }}</template>
+			</div>
+			<div
+				v-if="submitError"
+				role="alert"
+				class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400"
+			>
+				{{ submitError }}
+			</div>
+			<!-- Manual-save success flash (ISS-391): saving an existing post stays in
            the editor, so confirm the save landed explicitly instead of the old
            silent navigate-to-list-page-1. -->
-      <div
-        v-else-if="saveSuccess"
-        data-testid="save-success"
-        role="status"
-        class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300"
-      >
-        {{ t("admin.postEdit.saveSuccess") }}
-      </div>
-      <div
-        v-if="notifyMessage"
-        :role="notifyFailed ? 'alert' : 'status'"
-        :class="notifyFailed
-          ? 'p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400'
-          : 'p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300'"
-      >
-        {{ notifyMessage }}
-      </div>
+			<div
+				v-else-if="saveSuccess"
+				data-testid="save-success"
+				role="status"
+				class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300"
+			>
+				{{ t("admin.postEdit.saveSuccess") }}
+			</div>
+			<div
+				v-if="notifyMessage"
+				:role="notifyFailed ? 'alert' : 'status'"
+				:class="
+					notifyFailed
+						? 'p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400'
+						: 'p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-700 dark:text-green-300'
+				"
+			>
+				{{ notifyMessage }}
+			</div>
 
-      <!-- Version history (DEC-158, TASK-191) -->
-      <div v-if="!effIsNew" data-testid="revision-history" class="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-        <button
-          type="button"
-          data-testid="revision-toggle"
-          @click="toggleRevisions"
-          class="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        >
-          <span class="flex items-center gap-2">
-            <Icon icon="lucide:history" class="w-4 h-4 text-amber-500" />
-            {{ t("admin.postEdit.revisionHistory") }}
-          </span>
-          <Icon :icon="revisionsOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="w-4 h-4 text-gray-400" />
-        </button>
-        <div v-if="revisionsOpen" class="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40">
-          <div
-            v-if="revisionMessage"
-            data-testid="revision-message"
-            :role="revisionFailed ? 'alert' : 'status'"
-            :class="revisionFailed
-              ? 'text-sm text-red-600 dark:text-red-400'
-              : 'text-sm text-green-600 dark:text-green-400'"
-          >
-            {{ revisionMessage }}
-          </div>
-          <div v-if="revisionsError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ revisionsError }}</div>
-          <div v-if="revisionsLoading" class="flex items-center gap-2 text-sm text-gray-500">
-            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            {{ t("admin.postEdit.revisionLoading") }}
-          </div>
-          <ul v-else-if="revisions.length > 0" class="space-y-2">
-            <li
-              v-for="rev in revisions"
-              :key="rev.id"
-              data-testid="revision-row"
-              class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
-            >
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{{ rev.title }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatRevisionTime(rev.created_at) }}</p>
-              </div>
-              <button
-                type="button"
-                :disabled="restoringId !== null"
-                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
-                :class="restoringId === rev.id ? 'text-gray-400' : 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'"
-                @click="handleRestoreRevision(rev.id)"
-              >
-                <Icon
-                  :icon="restoringId === rev.id ? 'lucide:loader-2' : 'lucide:rotate-ccw'"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'animate-spin': restoringId === rev.id }"
-                />
-                {{ t("admin.postEdit.revisionRestore") }}
-              </button>
-            </li>
-          </ul>
-          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t("admin.postEdit.revisionEmpty") }}</p>
-        </div>
-      </div>
+			<!-- Version history (DEC-158, TASK-191) -->
+			<div
+				v-if="!effIsNew"
+				data-testid="revision-history"
+				class="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden"
+			>
+				<button
+					type="button"
+					data-testid="revision-toggle"
+					@click="toggleRevisions"
+					class="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				>
+					<span class="flex items-center gap-2">
+						<Icon icon="lucide:history" class="w-4 h-4 text-amber-500" />
+						{{ t("admin.postEdit.revisionHistory") }}
+					</span>
+					<Icon
+						:icon="revisionsOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
+						class="w-4 h-4 text-gray-400"
+					/>
+				</button>
+				<div
+					v-if="revisionsOpen"
+					class="border-t border-gray-100 dark:border-gray-800 p-4 space-y-3 bg-gray-50/50 dark:bg-gray-800/40"
+				>
+					<div
+						v-if="revisionMessage"
+						data-testid="revision-message"
+						:role="revisionFailed ? 'alert' : 'status'"
+						:class="
+							revisionFailed
+								? 'text-sm text-red-600 dark:text-red-400'
+								: 'text-sm text-green-600 dark:text-green-400'
+						"
+					>
+						{{ revisionMessage }}
+					</div>
+					<div v-if="revisionsError" role="alert" class="text-sm text-red-600 dark:text-red-400">
+						{{ revisionsError }}
+					</div>
+					<div v-if="revisionsLoading" class="flex items-center gap-2 text-sm text-gray-500">
+						<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						{{ t("admin.postEdit.revisionLoading") }}
+					</div>
+					<ul v-else-if="revisions.length > 0" class="space-y-2">
+						<li
+							v-for="rev in revisions"
+							:key="rev.id"
+							data-testid="revision-row"
+							class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
+						>
+							<div class="min-w-0">
+								<p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+									{{ rev.title }}
+								</p>
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									{{ formatRevisionTime(rev.created_at) }}
+								</p>
+							</div>
+							<button
+								type="button"
+								:disabled="restoringId !== null"
+								class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+								:class="
+									restoringId === rev.id
+										? 'text-gray-400'
+										: 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+								"
+								@click="handleRestoreRevision(rev.id)"
+							>
+								<Icon
+									:icon="restoringId === rev.id ? 'lucide:loader-2' : 'lucide:rotate-ccw'"
+									class="w-3.5 h-3.5"
+									:class="{ 'animate-spin': restoringId === rev.id }"
+								/>
+								{{ t("admin.postEdit.revisionRestore") }}
+							</button>
+						</li>
+					</ul>
+					<p v-else class="text-sm text-gray-500 dark:text-gray-400">
+						{{ t("admin.postEdit.revisionEmpty") }}
+					</p>
+				</div>
+			</div>
 
-      <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5">
-        <div>
-          <label for="post-title" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            <Icon icon="lucide:file-text" class="w-4 h-4 text-blue-500" />
-            {{ t("admin.postEdit.title") }} <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="post-title"
-            v-model="formData.title"
-            type="text"
-            required
-            :placeholder="t('admin.postEdit.titlePlaceholder')"
-            class="w-full text-lg h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
-          <button
-            v-if="!isNew || !formData.slug"
-            type="button"
-            @click="formData.slug = generateSlug(formData.title || '')"
-            class="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-          >
-            {{ t("admin.postEdit.autoSlug") }}
-          </button>
-        </div>
+			<div
+				class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-5"
+			>
+				<div>
+					<label
+						for="post-title"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+					>
+						<Icon icon="lucide:file-text" class="w-4 h-4 text-blue-500" />
+						{{ t("admin.postEdit.title") }} <span class="text-red-500">*</span>
+					</label>
+					<input
+						id="post-title"
+						v-model="formData.title"
+						type="text"
+						required
+						:placeholder="t('admin.postEdit.titlePlaceholder')"
+						class="w-full text-lg h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+					/>
+					<button
+						v-if="!isNew || !formData.slug"
+						type="button"
+						@click="formData.slug = generateSlug(formData.title || '')"
+						class="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+					>
+						{{ t("admin.postEdit.autoSlug") }}
+					</button>
+				</div>
 
-        <div>
-          <label for="post-slug" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            <Icon icon="lucide:link" class="w-4 h-4 text-gray-400" />
-            {{ t("admin.postEdit.slug") }}
-          </label>
-          <input
-            id="post-slug"
-            v-model="formData.slug"
-            type="text"
-            :placeholder="t('admin.postEdit.slugPlaceholder')"
-            class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-            {{ t("admin.postEdit.urlPreview", { slug: formData.slug || 'slug' }) }}
-          </p>
-        </div>
+				<div>
+					<label
+						for="post-slug"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+					>
+						<Icon icon="lucide:link" class="w-4 h-4 text-gray-400" />
+						{{ t("admin.postEdit.slug") }}
+					</label>
+					<input
+						id="post-slug"
+						v-model="formData.slug"
+						type="text"
+						:placeholder="t('admin.postEdit.slugPlaceholder')"
+						class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+					/>
+					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+						{{ t("admin.postEdit.urlPreview", { slug: formData.slug || "slug" }) }}
+					</p>
+				</div>
 
-        <div>
-          <label for="post-excerpt" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            <Icon icon="lucide:align-left" class="w-4 h-4 text-gray-400" />
-            {{ t("admin.postEdit.excerpt") }}
-          </label>
-          <textarea
-            id="post-excerpt"
-            v-model="formData.excerpt"
-            rows="2"
-            :placeholder="t('admin.postEdit.excerptPlaceholder')"
-            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-          />
-        </div>
-      </div>
+				<div>
+					<label
+						for="post-excerpt"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+					>
+						<Icon icon="lucide:align-left" class="w-4 h-4 text-gray-400" />
+						{{ t("admin.postEdit.excerpt") }}
+					</label>
+					<textarea
+						id="post-excerpt"
+						v-model="formData.excerpt"
+						rows="2"
+						:placeholder="t('admin.postEdit.excerptPlaceholder')"
+						class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+					/>
+				</div>
+			</div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="bg-gradient-to-br from-amber-50 dark:from-amber-900/20 to-white dark:to-gray-900 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-5">
-          <label for="post-author" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            <Icon icon="lucide:user" class="w-4 h-4 text-amber-500" />
-            {{ t("admin.postEdit.author") }}
-          </label>
-          <select
-            id="post-author"
-            v-model="formData.author_id"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-            :disabled="!!authorsError || !authorOptions.length"
-          >
-            <!-- Only pen-named admins are assignable (the only public writers);
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div
+					class="bg-gradient-to-br from-amber-50 dark:from-amber-900/20 to-white dark:to-gray-900 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-5"
+				>
+					<label
+						for="post-author"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+					>
+						<Icon icon="lucide:user" class="w-4 h-4 text-amber-500" />
+						{{ t("admin.postEdit.author") }}
+					</label>
+					<select
+						id="post-author"
+						v-model="formData.author_id"
+						class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+						:disabled="!!authorsError || !authorOptions.length"
+					>
+						<!-- Only pen-named admins are assignable (the only public writers);
                  "me" is always the default. -->
-            <option v-for="a in authorOptions" :key="a.id" :value="a.id">
-              {{ a.label }}
-            </option>
-          </select>
-          <button
-            v-if="authorsError"
-            type="button"
-            class="mt-2 text-xs text-red-500 hover:underline"
-            @click="refreshAuthors()"
-          >
-            {{ t("admin.postEdit.authorLoadFailed") }}
-          </button>
-          <p v-else class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            {{ t("admin.postEdit.authorHint") }}
-          </p>
-        </div>
+						<option v-for="a in authorOptions" :key="a.id" :value="a.id">
+							{{ a.label }}
+						</option>
+					</select>
+					<button
+						v-if="authorsError"
+						type="button"
+						class="mt-2 text-xs text-red-500 hover:underline"
+						@click="refreshAuthors()"
+					>
+						{{ t("admin.postEdit.authorLoadFailed") }}
+					</button>
+					<p v-else class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+						{{ t("admin.postEdit.authorHint") }}
+					</p>
+				</div>
 
-        <div class="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5">
-          <label for="post-category" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            <Icon icon="lucide:folder" class="w-4 h-4 text-purple-500" />
-            {{ t("admin.postEdit.category") }}
-          </label>
-          <select
-            id="post-category"
-            v-model="formData.category_id"
-            class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-          >
-            <option :value="undefined">{{ t("admin.postEdit.selectCategory") }}</option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
-        </div>
+				<div
+					class="bg-gradient-to-br from-purple-50 dark:from-purple-900/20 to-white dark:to-gray-900 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-5"
+				>
+					<label
+						for="post-category"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+					>
+						<Icon icon="lucide:folder" class="w-4 h-4 text-purple-500" />
+						{{ t("admin.postEdit.category") }}
+					</label>
+					<select
+						id="post-category"
+						v-model="formData.category_id"
+						class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+					>
+						<option :value="undefined">{{ t("admin.postEdit.selectCategory") }}</option>
+						<option v-for="cat in categories" :key="cat.id" :value="cat.id">
+							{{ cat.name }}
+						</option>
+					</select>
+				</div>
 
-        <div class="bg-gradient-to-br from-pink-50 dark:from-pink-900/20 to-white dark:to-gray-900 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-5">
-          <!-- Section heading for the tag multi-select; the per-tag labels
+				<div
+					class="bg-gradient-to-br from-pink-50 dark:from-pink-900/20 to-white dark:to-gray-900 border border-pink-100 dark:border-pink-900/30 rounded-2xl p-5"
+				>
+					<!-- Section heading for the tag multi-select; the per-tag labels
                below are the accessible names for the checkboxes, so this
                heading stays a plain <p>, not a <label> with no target. -->
-          <p class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            <Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
-            {{ t("admin.postEdit.tags") }}
-          </p>
-          <div v-if="tags.length > 0">
-            <div class="relative mb-2">
-              <Icon icon="lucide:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-              <input
-                v-model="tagSearch"
-                type="text"
-                :placeholder="t('admin.postEdit.searchTags')"
-                :aria-label="t('admin.postEdit.searchTags')"
-                class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
-              />
-            </div>
-            <div
-              v-if="visibleEditorTags.length === 0"
-              class="text-sm text-gray-400 dark:text-gray-500 mb-2"
-            >
-              {{ t("admin.postEdit.noMatchingTags") }}
-            </div>
-            <div v-else class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-              <label
-                v-for="tag in visibleEditorTags"
-                :key="tag.id"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all"
-                :class="formData.tag_ids?.includes(tag.id)
-                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-pink-100 dark:hover:bg-pink-900/50'"
-              >
-                <input
-                  type="checkbox"
-                  class="sr-only"
-                  :checked="formData.tag_ids?.includes(tag.id) ?? false"
-                  @change="toggleTag(tag.id)"
-                >
-                #{{ tag.name }}
-              </label>
-            </div>
-          </div>
-          <p v-else class="text-sm text-gray-500 dark:text-gray-400">{{ t("admin.postEdit.noTags") }}</p>
-        </div>
+					<p
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+					>
+						<Icon icon="lucide:tag" class="w-4 h-4 text-pink-500" />
+						{{ t("admin.postEdit.tags") }}
+					</p>
+					<div v-if="tags.length > 0">
+						<div class="relative mb-2">
+							<Icon
+								icon="lucide:search"
+								class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+							/>
+							<input
+								v-model="tagSearch"
+								type="text"
+								:placeholder="t('admin.postEdit.searchTags')"
+								:aria-label="t('admin.postEdit.searchTags')"
+								class="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+							/>
+						</div>
+						<div
+							v-if="visibleEditorTags.length === 0"
+							class="text-sm text-gray-400 dark:text-gray-500 mb-2"
+						>
+							{{ t("admin.postEdit.noMatchingTags") }}
+						</div>
+						<div v-else class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+							<label
+								v-for="tag in visibleEditorTags"
+								:key="tag.id"
+								class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all"
+								:class="
+									formData.tag_ids?.includes(tag.id)
+										? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
+										: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-pink-100 dark:hover:bg-pink-900/50'
+								"
+							>
+								<input
+									type="checkbox"
+									class="sr-only"
+									:checked="formData.tag_ids?.includes(tag.id) ?? false"
+									@change="toggleTag(tag.id)"
+								/>
+								#{{ tag.name }}
+							</label>
+						</div>
+					</div>
+					<p v-else class="text-sm text-gray-500 dark:text-gray-400">
+						{{ t("admin.postEdit.noTags") }}
+					</p>
+				</div>
 
-        <div class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/20 to-white dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-5">
-          <label for="post-series" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            <Icon icon="lucide:layers" class="w-4 h-4 text-indigo-500" />
-            {{ t("admin.postEdit.series") }}
-          </label>
-          <div class="space-y-3">
-            <select
-              id="post-series"
-              v-model="formData.series_id"
-              class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            >
-              <option :value="undefined">{{ t("admin.postEdit.seriesNone") }}</option>
-              <option v-for="s in series" :key="s.id" :value="s.id">
-                {{ s.title }}
-              </option>
-            </select>
-            <!-- series_order is only meaningful inside a series; when the admin
+				<div
+					class="bg-gradient-to-br from-indigo-50 dark:from-indigo-900/20 to-white dark:to-gray-900 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-5"
+				>
+					<label
+						for="post-series"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3"
+					>
+						<Icon icon="lucide:layers" class="w-4 h-4 text-indigo-500" />
+						{{ t("admin.postEdit.series") }}
+					</label>
+					<div class="space-y-3">
+						<select
+							id="post-series"
+							v-model="formData.series_id"
+							class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+						>
+							<option :value="undefined">{{ t("admin.postEdit.seriesNone") }}</option>
+							<option v-for="s in series" :key="s.id" :value="s.id">
+								{{ s.title }}
+							</option>
+						</select>
+						<!-- series_order is only meaningful inside a series; when the admin
                  clears the membership, drop the order back to 0 so a standalone
                  post never carries a stray position -->
-            <div class="flex items-center gap-3">
-              <label for="post-series-order" class="text-sm text-gray-600 dark:text-gray-400 shrink-0">
-                {{ t("admin.postEdit.seriesOrder") }}
-              </label>
-              <input
-                id="post-series-order"
-                v-model.number="formData.series_order"
-                type="number"
-                min="0"
-                :disabled="!formData.series_id"
-                class="w-28 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              >
-            </div>
-          </div>
-        </div>
-      </div>
+						<div class="flex items-center gap-3">
+							<label
+								for="post-series-order"
+								class="text-sm text-gray-600 dark:text-gray-400 shrink-0"
+							>
+								{{ t("admin.postEdit.seriesOrder") }}
+							</label>
+							<input
+								id="post-series-order"
+								v-model.number="formData.series_order"
+								type="number"
+								min="0"
+								:disabled="!formData.series_id"
+								class="w-28 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
 
-      <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <label for="post-content" class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-            <Icon icon="lucide:edit-3" class="w-4 h-4 text-blue-500" />
-            {{ t("admin.postEdit.contentLabel") }} <span class="text-red-500">*</span>
-          </label>
-          <button
-            type="button"
-            @click="showPreview = !showPreview"
-            class="text-xs px-3 py-1 rounded-lg transition-colors"
-            :class="showPreview
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'"
-          >
-            <Icon :icon="showPreview ? 'lucide:edit-3' : 'lucide:eye'" class="w-3.5 h-3.5 inline mr-1" />
-            {{ showPreview ? t('admin.postEdit.edit') : t('admin.postEdit.preview') }}
-          </button>
-        </div>
+			<div
+				class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5"
+			>
+				<div class="flex items-center justify-between mb-3">
+					<label
+						for="post-content"
+						class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300"
+					>
+						<Icon icon="lucide:edit-3" class="w-4 h-4 text-blue-500" />
+						{{ t("admin.postEdit.contentLabel") }} <span class="text-red-500">*</span>
+					</label>
+					<button
+						type="button"
+						@click="showPreview = !showPreview"
+						class="text-xs px-3 py-1 rounded-lg transition-colors"
+						:class="
+							showPreview
+								? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+								: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+						"
+					>
+						<Icon
+							:icon="showPreview ? 'lucide:edit-3' : 'lucide:eye'"
+							class="w-3.5 h-3.5 inline mr-1"
+						/>
+						{{ showPreview ? t("admin.postEdit.edit") : t("admin.postEdit.preview") }}
+					</button>
+				</div>
 
-        <div class="flex items-center gap-1 mb-3 flex-wrap">
-          <button type="button" @click="wrapSelection('**', '**')" :title="t('admin.postEdit.toolbar.bold')" :aria-label="t('admin.postEdit.toolbar.bold')" class="toolbar-btn">
-            <b>B</b>
-          </button>
-          <button type="button" @click="wrapSelection('*', '*')" :title="t('admin.postEdit.toolbar.italic')" :aria-label="t('admin.postEdit.toolbar.italic')" class="toolbar-btn italic">
-            <i>I</i>
-          </button>
-          <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertHeading(1)" :title="t('admin.postEdit.toolbar.heading1')" :aria-label="t('admin.postEdit.toolbar.heading1')" class="toolbar-btn">H1</button>
-          <button type="button" @click="insertHeading(2)" :title="t('admin.postEdit.toolbar.heading2')" :aria-label="t('admin.postEdit.toolbar.heading2')" class="toolbar-btn">H2</button>
-          <button type="button" @click="insertHeading(3)" :title="t('admin.postEdit.toolbar.heading3')" :aria-label="t('admin.postEdit.toolbar.heading3')" class="toolbar-btn">H3</button>
-          <span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
-          <button type="button" @click="insertLink()" :title="t('admin.postEdit.toolbar.link')" :aria-label="t('admin.postEdit.toolbar.link')" class="toolbar-btn">
-            <Icon icon="lucide:link" class="w-3.5 h-3.5" />
-          </button>
-          <button type="button" @click="triggerImagePicker" :disabled="isUploading" :title="t('admin.postEdit.toolbar.uploadImage')" :aria-label="t('admin.postEdit.toolbar.uploadImage')" class="toolbar-btn">
-            <Icon :icon="isUploading ? 'lucide:loader-2' : 'lucide:image'" :class="{ 'animate-spin': isUploading }" class="w-3.5 h-3.5" />
-          </button>
-          <button type="button" @click="showMediaPicker = true" :title="t('admin.postEdit.toolbar.mediaLibrary')" :aria-label="t('admin.postEdit.toolbar.mediaLibrary')" class="toolbar-btn">
-            <Icon icon="lucide:images" class="w-3.5 h-3.5" />
-          </button>
-          <input id="image-upload-input" type="file" accept="image/*" class="hidden" @change="handleFileInput">
-          <MediaPickerModal :open="showMediaPicker" @close="showMediaPicker = false" @select="insertFromLibrary" />
-        </div>
+				<div class="flex items-center gap-1 mb-3 flex-wrap">
+					<button
+						type="button"
+						@click="wrapSelection('**', '**')"
+						:title="t('admin.postEdit.toolbar.bold')"
+						:aria-label="t('admin.postEdit.toolbar.bold')"
+						class="toolbar-btn"
+					>
+						<b>B</b>
+					</button>
+					<button
+						type="button"
+						@click="wrapSelection('*', '*')"
+						:title="t('admin.postEdit.toolbar.italic')"
+						:aria-label="t('admin.postEdit.toolbar.italic')"
+						class="toolbar-btn italic"
+					>
+						<i>I</i>
+					</button>
+					<span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+					<button
+						type="button"
+						@click="insertHeading(1)"
+						:title="t('admin.postEdit.toolbar.heading1')"
+						:aria-label="t('admin.postEdit.toolbar.heading1')"
+						class="toolbar-btn"
+					>
+						H1
+					</button>
+					<button
+						type="button"
+						@click="insertHeading(2)"
+						:title="t('admin.postEdit.toolbar.heading2')"
+						:aria-label="t('admin.postEdit.toolbar.heading2')"
+						class="toolbar-btn"
+					>
+						H2
+					</button>
+					<button
+						type="button"
+						@click="insertHeading(3)"
+						:title="t('admin.postEdit.toolbar.heading3')"
+						:aria-label="t('admin.postEdit.toolbar.heading3')"
+						class="toolbar-btn"
+					>
+						H3
+					</button>
+					<span class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+					<button
+						type="button"
+						@click="insertLink()"
+						:title="t('admin.postEdit.toolbar.link')"
+						:aria-label="t('admin.postEdit.toolbar.link')"
+						class="toolbar-btn"
+					>
+						<Icon icon="lucide:link" class="w-3.5 h-3.5" />
+					</button>
+					<button
+						type="button"
+						@click="triggerImagePicker"
+						:disabled="isUploading"
+						:title="t('admin.postEdit.toolbar.uploadImage')"
+						:aria-label="t('admin.postEdit.toolbar.uploadImage')"
+						class="toolbar-btn"
+					>
+						<Icon
+							:icon="isUploading ? 'lucide:loader-2' : 'lucide:image'"
+							:class="{ 'animate-spin': isUploading }"
+							class="w-3.5 h-3.5"
+						/>
+					</button>
+					<button
+						type="button"
+						@click="showMediaPicker = true"
+						:title="t('admin.postEdit.toolbar.mediaLibrary')"
+						:aria-label="t('admin.postEdit.toolbar.mediaLibrary')"
+						class="toolbar-btn"
+					>
+						<Icon icon="lucide:images" class="w-3.5 h-3.5" />
+					</button>
+					<input
+						id="image-upload-input"
+						type="file"
+						accept="image/*"
+						class="hidden"
+						@change="handleFileInput"
+					/>
+					<MediaPickerModal
+						:open="showMediaPicker"
+						@close="showMediaPicker = false"
+						@select="insertFromLibrary"
+					/>
+				</div>
 
-        <div
-          class="relative"
-          @dragover="onDragOver"
-          @drop="onDrop"
-        >
-          <div v-if="showPreview" class="grid grid-cols-2 gap-4">
-            <textarea
-              id="post-content"
-              ref="textareaRef"
-              v-model="formData.content"
-              rows="15"
-              required
-              :placeholder="t('admin.postEdit.contentPlaceholder')"
-              class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-              @paste="onPaste"
-            />
-            <div
-              class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
-            >
-              <!-- Preview must render the SAME way the public article does
+				<div class="relative" @dragover="onDragOver" @drop="onDrop">
+					<div v-if="showPreview" class="grid grid-cols-2 gap-4">
+						<textarea
+							id="post-content"
+							ref="textareaRef"
+							v-model="formData.content"
+							rows="15"
+							required
+							:placeholder="t('admin.postEdit.contentPlaceholder')"
+							class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+							@paste="onPaste"
+						/>
+						<div
+							class="prose prose-sm dark:prose-invert max-w-none overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4"
+						>
+							<!-- Preview must render the SAME way the public article does
                    (markdown -> segments -> sanitized HTML), otherwise the
                    editor shows raw markdown source and misleads the author.
                    MarkdownContent (auto-imported) is exactly the component
                    /posts/[slug] uses. (RIL TASK-043, ISS-030) -->
-              <MarkdownContent :content="formData.content || ''" />
-            </div>
-          </div>
-          <textarea
-            v-else
-            id="post-content"
-            ref="textareaRef"
-            v-model="formData.content"
-            rows="15"
-            required
-            :placeholder="t('admin.postEdit.contentPlaceholder')"
-            class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-            @paste="onPaste"
-          />
-          <div
-            v-if="isUploading"
-            class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 rounded-xl"
-          >
-            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin" />
-              {{ t("admin.postEdit.uploading") }}
-            </div>
-          </div>
-          <div
-            v-if="uploadError"
-            role="alert"
-            class="mt-2 text-xs text-red-500"
-          >
-            {{ uploadError }}
-          </div>
-        </div>
+							<MarkdownContent :content="formData.content || ''" />
+						</div>
+					</div>
+					<textarea
+						v-else
+						id="post-content"
+						ref="textareaRef"
+						v-model="formData.content"
+						rows="15"
+						required
+						:placeholder="t('admin.postEdit.contentPlaceholder')"
+						class="w-full font-mono text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+						@paste="onPaste"
+					/>
+					<div
+						v-if="isUploading"
+						class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 rounded-xl"
+					>
+						<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+							<Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin" />
+							{{ t("admin.postEdit.uploading") }}
+						</div>
+					</div>
+					<div v-if="uploadError" role="alert" class="mt-2 text-xs text-red-500">
+						{{ uploadError }}
+					</div>
+				</div>
 
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-          {{ t("admin.postEdit.contentHint") }}
-        </p>
-      </div>
+				<p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+					{{ t("admin.postEdit.contentHint") }}
+				</p>
+			</div>
 
-      <div class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-4">
-        <div class="flex items-start gap-3">
-          <input
-            id="published"
-            v-model="formData.published"
-            type="checkbox"
-            class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
-          >
-          <label for="published" class="cursor-pointer">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ formData.published ? t('admin.postEdit.publishedOn') : t('admin.postEdit.saveAsDraft') }}
-            </span>
-            <!-- A published post with a future publish_at is scheduled — mirror
+			<div
+				class="bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 space-y-4"
+			>
+				<div class="flex items-start gap-3">
+					<input
+						id="published"
+						v-model="formData.published"
+						type="checkbox"
+						class="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+					/>
+					<label for="published" class="cursor-pointer">
+						<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							{{
+								formData.published
+									? t("admin.postEdit.publishedOn")
+									: t("admin.postEdit.saveAsDraft")
+							}}
+						</span>
+						<!-- A published post with a future publish_at is scheduled — mirror
                  the list page's Scheduled chip so the two surfaces agree. -->
-            <span
-              v-if="isScheduledFuture"
-              class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-            >
-              {{ t('admin.postEdit.scheduledBadge') }}
-            </span>
-          </label>
-        </div>
+						<span
+							v-if="isScheduledFuture"
+							class="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+						>
+							{{ t("admin.postEdit.scheduledBadge") }}
+						</span>
+					</label>
+				</div>
 
-        <div class="flex items-start gap-3">
-          <input
-            id="pinned"
-            v-model="formData.pinned"
-            type="checkbox"
-            class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mt-0.5"
-          >
-          <label for="pinned" class="cursor-pointer">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ formData.pinned ? t('admin.postEdit.pinned') : t('admin.postEdit.pin') }}
-            </span>
-          </label>
-        </div>
+				<div class="flex items-start gap-3">
+					<input
+						id="pinned"
+						v-model="formData.pinned"
+						type="checkbox"
+						class="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mt-0.5"
+					/>
+					<label for="pinned" class="cursor-pointer">
+						<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							{{ formData.pinned ? t("admin.postEdit.pinned") : t("admin.postEdit.pin") }}
+						</span>
+					</label>
+				</div>
 
-        <!-- Per-post comments toggle (round 351): closing the door keeps the
+				<!-- Per-post comments toggle (round 351): closing the door keeps the
              existing conversation visible but stops new comments on this post
              (privacy, stale content, high-noise threads). -->
-        <div class="flex items-start gap-3">
-          <input
-            id="comments-enabled"
-            v-model="formData.comments_enabled"
-            type="checkbox"
-            class="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 mt-0.5"
-          >
-          <label for="comments-enabled" class="cursor-pointer">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {{ formData.comments_enabled ? t('admin.postEdit.commentsEnabled') : t('admin.postEdit.commentsDisabled') }}
-            </span>
-          </label>
-        </div>
+				<div class="flex items-start gap-3">
+					<input
+						id="comments-enabled"
+						v-model="formData.comments_enabled"
+						type="checkbox"
+						class="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 mt-0.5"
+					/>
+					<label for="comments-enabled" class="cursor-pointer">
+						<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							{{
+								formData.comments_enabled
+									? t("admin.postEdit.commentsEnabled")
+									: t("admin.postEdit.commentsDisabled")
+							}}
+						</span>
+					</label>
+				</div>
 
-        <div class="flex items-start gap-3">
-          <input
-            id="publish_at"
-            v-model="formData.publish_at"
-            type="datetime-local"
-            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
-          <label for="publish_at" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
-            {{ t("admin.postEdit.schedulePublish") }}
-          </label>
-        </div>
+				<div class="flex items-start gap-3">
+					<input
+						id="publish_at"
+						v-model="formData.publish_at"
+						type="datetime-local"
+						class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+					/>
+					<label
+						for="publish_at"
+						class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap"
+					>
+						{{ t("admin.postEdit.schedulePublish") }}
+					</label>
+				</div>
 
-        <!-- Scheduled-publish notification note (DEC-076/TASK-235): the blog has
+				<!-- Scheduled-publish notification note (DEC-076/TASK-235): the blog has
              no background scheduler, so a scheduled post goes live silently —
              followers/Web Push subscribers are NOT notified when publish_at
              crosses. Tell the operator up front so they can notify manually
              (the editor's notify button) instead of discovering the gap after
              the fact. -->
-        <p
-          v-if="formData.published && formData.publish_at"
-          class="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400"
-          role="note"
-        >
-          <Icon icon="lucide:info" class="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" role="presentation" />
-          {{ t("admin.postEdit.scheduledNoNotifyHint") }}
-        </p>
+				<p
+					v-if="formData.published && formData.publish_at"
+					class="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400"
+					role="note"
+				>
+					<Icon
+						icon="lucide:info"
+						class="w-3.5 h-3.5 mt-0.5 shrink-0"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("admin.postEdit.scheduledNoNotifyHint") }}
+				</p>
 
-        <div class="flex items-start gap-3">
-          <input
-            id="cover_image"
-            v-model="formData.cover_image"
-            type="text"
-            :placeholder="t('admin.postEdit.coverImagePlaceholder')"
-            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          >
-          <button
-            type="button"
-            class="shrink-0 px-2.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            :title="t('admin.postEdit.toolbar.coverFromLibrary')"
-            :aria-label="t('admin.postEdit.toolbar.coverFromLibrary')"
-            @click="showCoverPicker = true"
-          >
-            <Icon icon="lucide:images" class="w-4 h-4" />
-          </button>
-          <label for="cover_image" class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap">
-            {{ t("admin.postEdit.coverImage") }}
-          </label>
-          <MediaPickerModal :open="showCoverPicker" @close="showCoverPicker = false" @select="insertCoverFromLibrary" />
-        </div>
-      </div>
+				<div class="flex items-start gap-3">
+					<input
+						id="cover_image"
+						v-model="formData.cover_image"
+						type="text"
+						:placeholder="t('admin.postEdit.coverImagePlaceholder')"
+						class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+					/>
+					<button
+						type="button"
+						class="shrink-0 px-2.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+						:title="t('admin.postEdit.toolbar.coverFromLibrary')"
+						:aria-label="t('admin.postEdit.toolbar.coverFromLibrary')"
+						@click="showCoverPicker = true"
+					>
+						<Icon icon="lucide:images" class="w-4 h-4" />
+					</button>
+					<label
+						for="cover_image"
+						class="text-sm font-medium text-gray-700 dark:text-gray-300 pt-1.5 whitespace-nowrap"
+					>
+						{{ t("admin.postEdit.coverImage") }}
+					</label>
+					<MediaPickerModal
+						:open="showCoverPicker"
+						@close="showCoverPicker = false"
+						@select="insertCoverFromLibrary"
+					/>
+				</div>
+			</div>
 
-      <!-- Per-post reading trend (DEC-287/TASK-372): a compact 30-day
+			<!-- Per-post reading trend (DEC-287/TASK-372): a compact 30-day
            sparkline so the operator can tell a gaining post from a decaying
            one at a glance. The card renders only for existing posts (new
            drafts have no views); a failed fetch shows an inline retry instead
            of blocking editing — analytics is garnish, not a gate. -->
-      <div v-if="currentPostId" class="mt-6 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-        <template v-if="viewsTrend && !viewsTrendFailed">
-          <div class="flex items-baseline justify-between mb-2">
-            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {{ t("admin.postEdit.readingTrend.title") }}
-            </span>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              {{ t("admin.postEdit.readingTrend.total", { total: viewsTrend.total }) }}
-            </span>
-          </div>
-          <div class="flex items-end gap-[2px] h-12" aria-hidden="true">
-            <div
-              v-for="point in viewsTrend.series"
-              :key="point.day"
-              class="flex-1 rounded-sm bg-blue-500/70 dark:bg-blue-400/60"
-              :title="`${point.day}: ${point.views}`"
-              :style="{ height: `${Math.max(2, (point.views / trendMax) * 100)}%` }"
-            />
-          </div>
-          <p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
-            {{ t("admin.postEdit.readingTrend.hint") }}
-          </p>
-        </template>
-        <div v-else-if="viewsTrendFailed" class="flex items-center justify-between">
-          <span class="text-sm text-red-600 dark:text-red-400">
-            {{ t("admin.postEdit.readingTrend.failed") }}
-          </span>
-          <button
-            type="button"
-            class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            @click="loadViewsTrend"
-          >
-            {{ t("common.action.retry") }}
-          </button>
-        </div>
-      </div>
+			<div
+				v-if="currentPostId"
+				class="mt-6 border border-gray-200 dark:border-gray-700 rounded-xl p-4"
+			>
+				<template v-if="viewsTrend && !viewsTrendFailed">
+					<div class="flex items-baseline justify-between mb-2">
+						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+							{{ t("admin.postEdit.readingTrend.title") }}
+						</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">
+							{{ t("admin.postEdit.readingTrend.total", { total: viewsTrend.total }) }}
+						</span>
+					</div>
+					<div class="flex items-end gap-[2px] h-12" aria-hidden="true">
+						<div
+							v-for="point in viewsTrend.series"
+							:key="point.day"
+							class="flex-1 rounded-sm bg-blue-500/70 dark:bg-blue-400/60"
+							:title="`${point.day}: ${point.views}`"
+							:style="{ height: `${Math.max(2, (point.views / trendMax) * 100)}%` }"
+						/>
+					</div>
+					<p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+						{{ t("admin.postEdit.readingTrend.hint") }}
+					</p>
+				</template>
+				<div v-else-if="viewsTrendFailed" class="flex items-center justify-between">
+					<span class="text-sm text-red-600 dark:text-red-400">
+						{{ t("admin.postEdit.readingTrend.failed") }}
+					</span>
+					<button
+						type="button"
+						class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+						@click="loadViewsTrend"
+					>
+						{{ t("common.action.retry") }}
+					</button>
+				</div>
+			</div>
 
-      <div class="flex items-center gap-3 pt-4">
-        <button
-          v-if="formData.published"
-          type="button"
-          :disabled="isNotifying"
-          class="inline-flex items-center gap-2 px-6 py-3 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 rounded-xl font-medium hover:bg-green-50 dark:hover:bg-green-900/20 transition-all disabled:opacity-50"
-          @click="handleNotify"
-        >
-          <Icon :icon="isNotifying ? 'lucide:loader-2' : 'lucide:bell-ring'" class="w-4 h-4" :class="{ 'animate-spin': isNotifying }" />
-          {{ isNotifying ? t('admin.postEdit.notifying') : t('admin.postEdit.notifySubscribers') }}
-        </button>
-        <button
-          type="submit"
-          :disabled="isSubmitting"
-          class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
-        >
-          <Icon :icon="isSubmitting ? 'lucide:loader-2' : 'lucide:save'" class="w-4 h-4" :class="{ 'animate-spin': isSubmitting }" />
-          {{ isSubmitting ? t('admin.postEdit.saving') : t('admin.postEdit.save') }}
-        </button>
-        <button
-          type="button"
-          @click="handleCancel"
-          class="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
-        >
-          <Icon icon="lucide:x" class="w-4 h-4" />
-          {{ t("common.action.cancel") }}
-        </button>
-      </div>
-    </form>
-  </div>
+			<div class="flex items-center gap-3 pt-4">
+				<button
+					v-if="formData.published"
+					type="button"
+					:disabled="isNotifying"
+					class="inline-flex items-center gap-2 px-6 py-3 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 rounded-xl font-medium hover:bg-green-50 dark:hover:bg-green-900/20 transition-all disabled:opacity-50"
+					@click="handleNotify"
+				>
+					<Icon
+						:icon="isNotifying ? 'lucide:loader-2' : 'lucide:bell-ring'"
+						class="w-4 h-4"
+						:class="{ 'animate-spin': isNotifying }"
+					/>
+					{{ isNotifying ? t("admin.postEdit.notifying") : t("admin.postEdit.notifySubscribers") }}
+				</button>
+				<button
+					type="submit"
+					:disabled="isSubmitting"
+					class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+				>
+					<Icon
+						:icon="isSubmitting ? 'lucide:loader-2' : 'lucide:save'"
+						class="w-4 h-4"
+						:class="{ 'animate-spin': isSubmitting }"
+					/>
+					{{ isSubmitting ? t("admin.postEdit.saving") : t("admin.postEdit.save") }}
+				</button>
+				<button
+					type="button"
+					@click="handleCancel"
+					class="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+				>
+					<Icon icon="lucide:x" class="w-4 h-4" />
+					{{ t("common.action.cancel") }}
+				</button>
+			</div>
+		</form>
+	</div>
 </template>

@@ -247,348 +247,346 @@ async function handleDelete(id: number) {
 </script>
 
 <template>
-  <div>
-    <div v-if="!isSuperuserView" class="text-center py-16">
-      <Icon icon="lucide:lock" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
-      <h2 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {{ t("admin.users.accessDenied") }}
-      </h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        {{ t("admin.users.editorNoAccess") }}
-      </p>
-    </div>
+	<div>
+		<div v-if="!isSuperuserView" class="text-center py-16">
+			<Icon icon="lucide:lock" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
+			<h2 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+				{{ t("admin.users.accessDenied") }}
+			</h2>
+			<p class="text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.users.editorNoAccess") }}
+			</p>
+		</div>
 
-    <template v-if="isSuperuserView">
-    <div class="mb-8">
-      <h1
-        class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-      >
-        {{ t("admin.users.title") }}
-      </h1>
-      <!-- Never claim "0 admin users" while the list is still loading or failed —
+		<template v-if="isSuperuserView">
+			<div class="mb-8">
+				<h1
+					class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+				>
+					{{ t("admin.users.title") }}
+				</h1>
+				<!-- Never claim "0 admin users" while the list is still loading or failed —
            the count is only honest once the fetch has actually resolved. -->
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {{ pending
-          ? t("admin.users.loading")
-          : error
-            ? t("common.state.loadFailed")
-            : t("admin.users.summary", { n: users?.length || 0 }) }}
-      </p>
-    </div>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					{{
+						pending
+							? t("admin.users.loading")
+							: error
+								? t("common.state.loadFailed")
+								: t("admin.users.summary", { n: users?.length || 0 })
+					}}
+				</p>
+			</div>
 
-    <!-- Feedback -->
-    <div
-      v-if="actionError"
-      role="alert"
-      class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-    >
-      {{ actionError }}
-    </div>
-    <div
-      v-if="actionSuccess"
-      role="status"
-      class="mb-6 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-600 dark:text-green-400"
-    >
-      {{ actionSuccess }}
-    </div>
+			<!-- Feedback -->
+			<div
+				v-if="actionError"
+				role="alert"
+				class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+			>
+				{{ actionError }}
+			</div>
+			<div
+				v-if="actionSuccess"
+				role="status"
+				class="mb-6 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-600 dark:text-green-400"
+			>
+				{{ actionSuccess }}
+			</div>
 
-    <!-- Create form -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6">
-      <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-        {{ t("admin.users.createTitle") }}
-      </h2>
-      <form class="grid gap-3 sm:grid-cols-2" @submit.prevent="handleCreate">
-        <input
-          v-model="newUsername"
-          type="text"
-          autocomplete="off"
-          :placeholder="t('admin.users.usernamePlaceholder')"
-          :aria-label="t('admin.users.usernamePlaceholder')"
-          required
-          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-        <input
-          v-model="newPassword"
-          type="password"
-          autocomplete="new-password"
-          :placeholder="t('admin.users.passwordPlaceholder')"
-          :aria-label="t('admin.users.passwordPlaceholder')"
-          required
-          minlength="8"
-          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-        <input
-          v-model="confirmPassword"
-          type="password"
-          autocomplete="new-password"
-          :placeholder="t('admin.users.confirmPasswordPlaceholder')"
-          :aria-label="t('admin.users.confirmPasswordPlaceholder')"
-          required
-          minlength="8"
-          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-        <!-- Public pen name (DEC-359/TASK-405): optional at create — the byline
+			<!-- Create form -->
+			<div
+				class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6"
+			>
+				<h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+					{{ t("admin.users.createTitle") }}
+				</h2>
+				<form class="grid gap-3 sm:grid-cols-2" @submit.prevent="handleCreate">
+					<input
+						v-model="newUsername"
+						type="text"
+						autocomplete="off"
+						:placeholder="t('admin.users.usernamePlaceholder')"
+						:aria-label="t('admin.users.usernamePlaceholder')"
+						required
+						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+					<input
+						v-model="newPassword"
+						type="password"
+						autocomplete="new-password"
+						:placeholder="t('admin.users.passwordPlaceholder')"
+						:aria-label="t('admin.users.passwordPlaceholder')"
+						required
+						minlength="8"
+						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+					<input
+						v-model="confirmPassword"
+						type="password"
+						autocomplete="new-password"
+						:placeholder="t('admin.users.confirmPasswordPlaceholder')"
+						:aria-label="t('admin.users.confirmPasswordPlaceholder')"
+						required
+						minlength="8"
+						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+					<!-- Public pen name (DEC-359/TASK-405): optional at create — the byline
              the new account will show on published posts. Leave empty for no
              public identity (the login username stays private). -->
-        <input
-          v-model="newDisplayName"
-          type="text"
-          :placeholder="t('admin.users.penNamePlaceholder')"
-          :aria-label="t('admin.users.penNamePlaceholder')"
-          maxlength="50"
-          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-        <!-- Public "about this writer" (round 357): optional at create — the
+					<input
+						v-model="newDisplayName"
+						type="text"
+						:placeholder="t('admin.users.penNamePlaceholder')"
+						:aria-label="t('admin.users.penNamePlaceholder')"
+						maxlength="50"
+						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+					<!-- Public "about this writer" (round 357): optional at create — the
              plain-text bio rendered on the author's archive header. Leave
              empty for no bio (same blank-to-null rule as the pen name). -->
-        <textarea
-          v-model="newBio"
-          :placeholder="t('admin.users.bioPlaceholder')"
-          :aria-label="t('admin.users.bioPlaceholder')"
-          maxlength="500"
-          rows="2"
-          class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y sm:col-span-2"
-        />
-        <button
-          type="submit"
-          :disabled="isProcessing"
-          class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
-        >
-          {{ t("admin.users.create") }}
-        </button>
-      </form>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
-        {{ t("admin.users.hint") }}
-      </p>
-    </div>
+					<textarea
+						v-model="newBio"
+						:placeholder="t('admin.users.bioPlaceholder')"
+						:aria-label="t('admin.users.bioPlaceholder')"
+						maxlength="500"
+						rows="2"
+						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y sm:col-span-2"
+					/>
+					<button
+						type="submit"
+						:disabled="isProcessing"
+						class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
+					>
+						{{ t("admin.users.create") }}
+					</button>
+				</form>
+				<p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+					{{ t("admin.users.hint") }}
+				</p>
+			</div>
 
-    <!-- Users list -->
-    <div v-if="pending" class="text-center py-12">
-      <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin inline-block mr-2" />
-      {{ t("admin.users.loading") }}
-    </div>
+			<!-- Users list -->
+			<div v-if="pending" class="text-center py-12">
+				<Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin inline-block mr-2" />
+				{{ t("admin.users.loading") }}
+			</div>
 
-    <div v-else-if="error" class="text-center py-12" role="alert">
-      <!-- Localized, never error.message: an HTTP failure's message is only
+			<div v-else-if="error" class="text-center py-12" role="alert">
+				<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
            line (round-445 audit). -->
-      <p class="text-red-500 mb-4">{{ t("admin.users.loadFailed") }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="refresh()"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+				<p class="text-red-500 mb-4">{{ t("admin.users.loadFailed") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="refresh()"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-    <div
-      v-else-if="!users || users.length === 0"
-      class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
-    >
-      <Icon icon="lucide:users" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
-      <p class="text-gray-500 dark:text-gray-400">
-        {{ t("admin.users.empty") }}
-      </p>
-    </div>
+			<div
+				v-else-if="!users || users.length === 0"
+				class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
+			>
+				<Icon icon="lucide:users" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
+				<p class="text-gray-500 dark:text-gray-400">
+					{{ t("admin.users.empty") }}
+				</p>
+			</div>
 
-    <div v-else class="space-y-3">
-      <div
-        v-for="user in users"
-        :key="user.id"
-        class="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
-      >
-        <div class="flex items-center gap-3 min-w-0">
-          <Icon icon="lucide:user" class="w-5 h-5 text-gray-400 shrink-0" />
-          <div class="min-w-0">
-            <span class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2">
-              {{ user.username }}
-              <span
-                v-if="user.role === 'superuser' || user.is_superuser"
-                class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
-              >
-                {{ t("admin.users.superuser") }}
-              </span>
-              <span
-                v-else
-                class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
-              >
-                {{ t("admin.users.editor") }}
-              </span>
-            </span>
+			<div v-else class="space-y-3">
+				<div
+					v-for="user in users"
+					:key="user.id"
+					class="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
+				>
+					<div class="flex items-center gap-3 min-w-0">
+						<Icon icon="lucide:user" class="w-5 h-5 text-gray-400 shrink-0" />
+						<div class="min-w-0">
+							<span
+								class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2"
+							>
+								{{ user.username }}
+								<span
+									v-if="user.role === 'superuser' || user.is_superuser"
+									class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+								>
+									{{ t("admin.users.superuser") }}
+								</span>
+								<span
+									v-else
+									class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
+								>
+									{{ t("admin.users.editor") }}
+								</span>
+							</span>
 
-            <!-- Public pen name (DEC-359/TASK-405): shown when set; an inline
+							<!-- Public pen name (DEC-359/TASK-405): shown when set; an inline
                  editor sets/clears it. An admin with no pen name has no byline
                  on the public site — the login username must never surface. -->
-            <div
-              v-if="editingPenId === user.id"
-              class="mt-2 flex items-center gap-2"
-            >
-              <input
-                v-model="editingPenValue"
-                type="text"
-                :placeholder="t('admin.users.penNamePlaceholder')"
-                :aria-label="t('admin.users.penNamePlaceholder')"
-                maxlength="50"
-                @keyup.enter="savePenName(user.id)"
-                @keyup.esc="cancelEditPen"
-                class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-              >
-              <button
-                type="button"
-                :disabled="penBusy"
-                class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                @click="savePenName(user.id)"
-              >
-                {{ t("admin.users.penSave") }}
-              </button>
-              <button
-                type="button"
-                :disabled="penBusy"
-                class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                @click="cancelEditPen"
-              >
-                {{ t("admin.users.penCancel") }}
-              </button>
-            </div>
-            <div
-              v-else
-              class="mt-0.5 flex items-center gap-1.5 text-sm"
-            >
-              <Icon icon="lucide:file-pen" class="w-3.5 h-3.5 text-gray-400" />
-              <span
-                :class="user.display_name
-                  ? 'text-gray-600 dark:text-gray-300'
-                  : 'text-gray-400 dark:text-gray-500'"
-              >
-                {{ user.display_name || t("admin.users.noPenName") }}
-              </span>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
-                :aria-label="t('admin.users.editPenName')"
-                @click="startEditPen(user.id, user.display_name)"
-              >
-                <Icon icon="lucide:pencil" class="w-3 h-3" />
-                {{ t("admin.users.editPenName") }}
-              </button>
-            </div>
+							<div v-if="editingPenId === user.id" class="mt-2 flex items-center gap-2">
+								<input
+									v-model="editingPenValue"
+									type="text"
+									:placeholder="t('admin.users.penNamePlaceholder')"
+									:aria-label="t('admin.users.penNamePlaceholder')"
+									maxlength="50"
+									@keyup.enter="savePenName(user.id)"
+									@keyup.esc="cancelEditPen"
+									class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								/>
+								<button
+									type="button"
+									:disabled="penBusy"
+									class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+									@click="savePenName(user.id)"
+								>
+									{{ t("admin.users.penSave") }}
+								</button>
+								<button
+									type="button"
+									:disabled="penBusy"
+									class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+									@click="cancelEditPen"
+								>
+									{{ t("admin.users.penCancel") }}
+								</button>
+							</div>
+							<div v-else class="mt-0.5 flex items-center gap-1.5 text-sm">
+								<Icon icon="lucide:file-pen" class="w-3.5 h-3.5 text-gray-400" />
+								<span
+									:class="
+										user.display_name
+											? 'text-gray-600 dark:text-gray-300'
+											: 'text-gray-400 dark:text-gray-500'
+									"
+								>
+									{{ user.display_name || t("admin.users.noPenName") }}
+								</span>
+								<button
+									type="button"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+									:aria-label="t('admin.users.editPenName')"
+									@click="startEditPen(user.id, user.display_name)"
+								>
+									<Icon icon="lucide:pencil" class="w-3 h-3" />
+									{{ t("admin.users.editPenName") }}
+								</button>
+							</div>
 
-            <!-- Public "about this writer" bio (round 357): a plain-text line
+							<!-- Public "about this writer" bio (round 357): a plain-text line
                  rendered on the writer's archive header. Inline edit mirrors
                  the pen-name editor; Save with an empty field clears it. -->
-            <div
-              v-if="editingBioId === user.id"
-              class="mt-2 flex items-start gap-2"
-            >
-              <textarea
-                v-model="editingBioValue"
-                rows="2"
-                maxlength="500"
-                :placeholder="t('admin.users.bioPlaceholder')"
-                :aria-label="t('admin.users.bioPlaceholder')"
-                class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y flex-1"
-              />
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  :disabled="penBusy"
-                  class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                  @click="saveBio(user.id)"
-                >
-                  {{ t("admin.users.penSave") }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="penBusy"
-                  class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  @click="cancelEditBio"
-                >
-                  {{ t("admin.users.penCancel") }}
-                </button>
-              </div>
-            </div>
-            <div
-              v-else
-              class="mt-1 items-start gap-1.5 text-sm"
-            >
-              <Icon icon="lucide:user-round" class="w-3.5 h-3.5 text-gray-400 inline-block" />
-              <span
-                :class="user.bio
-                  ? 'text-gray-600 dark:text-gray-300'
-                  : 'text-gray-400 dark:text-gray-500'"
-                class="inline-block align-middle"
-              >
-                {{ user.bio || t("admin.users.noBio") }}
-              </span>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors ml-1"
-                :aria-label="t('admin.users.editBio')"
-                @click="startEditBio(user.id, user.bio)"
-              >
-                <Icon icon="lucide:pencil" class="w-3 h-3" />
-                {{ t("admin.users.editBio") }}
-              </button>
-            </div>
+							<div v-if="editingBioId === user.id" class="mt-2 flex items-start gap-2">
+								<textarea
+									v-model="editingBioValue"
+									rows="2"
+									maxlength="500"
+									:placeholder="t('admin.users.bioPlaceholder')"
+									:aria-label="t('admin.users.bioPlaceholder')"
+									class="px-2.5 py-1.5 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-y flex-1"
+								/>
+								<div class="flex items-center gap-2">
+									<button
+										type="button"
+										:disabled="penBusy"
+										class="px-2.5 py-1.5 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+										@click="saveBio(user.id)"
+									>
+										{{ t("admin.users.penSave") }}
+									</button>
+									<button
+										type="button"
+										:disabled="penBusy"
+										class="px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+										@click="cancelEditBio"
+									>
+										{{ t("admin.users.penCancel") }}
+									</button>
+								</div>
+							</div>
+							<div v-else class="mt-1 items-start gap-1.5 text-sm">
+								<Icon icon="lucide:user-round" class="w-3.5 h-3.5 text-gray-400 inline-block" />
+								<span
+									:class="
+										user.bio
+											? 'text-gray-600 dark:text-gray-300'
+											: 'text-gray-400 dark:text-gray-500'
+									"
+									class="inline-block align-middle"
+								>
+									{{ user.bio || t("admin.users.noBio") }}
+								</span>
+								<button
+									type="button"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors ml-1"
+									:aria-label="t('admin.users.editBio')"
+									@click="startEditBio(user.id, user.bio)"
+								>
+									<Icon icon="lucide:pencil" class="w-3 h-3" />
+									{{ t("admin.users.editBio") }}
+								</button>
+							</div>
 
-            <!-- Public profile picture (round 358): a small avatar a
+							<!-- Public profile picture (round 358): a small avatar a
                  superuser uploads/removes — the face of the pen-named writer,
                  rendered on bylines, the /authors index card and the archive
                  header. Mirrors the reader avatar in /account: raw upload,
                  backend re-encodes; remove is idempotent. -->
-            <div class="mt-2 flex items-center gap-2">
-              <img
-                v-if="user.avatar_url"
-                :src="user.avatar_url"
-                :alt="t('admin.users.avatarAlt', { name: user.display_name || user.username })"
-                class="w-8 h-8 rounded-full object-cover bg-gray-100 dark:bg-gray-800"
-              >
-              <Icon
-                v-else
-                icon="lucide:user-round"
-                class="w-8 h-8 text-gray-300 dark:text-gray-600"
-              />
-              <label
-                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
-              >
-                <Icon icon="lucide:image-plus" class="w-3 h-3" />
-                <span v-if="!user.avatar_url">{{ t("admin.users.avatarUpload") }}</span>
-                <span v-else>{{ t("admin.users.avatarReplace") }}</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  class="hidden"
-                  :disabled="avatarBusyId !== null"
-                  :aria-label="t('admin.users.avatarUpload')"
-                  @change="handleAvatarPick(user.id, $event)"
-                >
-              </label>
-              <button
-                v-if="user.avatar_url"
-                type="button"
-                :disabled="avatarBusyId !== null"
-                class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
-                :aria-label="t('admin.users.avatarRemove')"
-                @click="handleAvatarRemove(user.id)"
-              >
-                <Icon icon="lucide:trash-2" class="w-3 h-3" />
-                {{ t("admin.users.avatarRemove") }}
-              </button>
-            </div>
-          </div>
-        </div>
+							<div class="mt-2 flex items-center gap-2">
+								<img
+									v-if="user.avatar_url"
+									:src="user.avatar_url"
+									:alt="t('admin.users.avatarAlt', { name: user.display_name || user.username })"
+									class="w-8 h-8 rounded-full object-cover bg-gray-100 dark:bg-gray-800"
+								/>
+								<Icon
+									v-else
+									icon="lucide:user-round"
+									class="w-8 h-8 text-gray-300 dark:text-gray-600"
+								/>
+								<label
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+								>
+									<Icon icon="lucide:image-plus" class="w-3 h-3" />
+									<span v-if="!user.avatar_url">{{ t("admin.users.avatarUpload") }}</span>
+									<span v-else>{{ t("admin.users.avatarReplace") }}</span>
+									<input
+										type="file"
+										accept="image/jpeg,image/png,image/gif,image/webp"
+										class="hidden"
+										:disabled="avatarBusyId !== null"
+										:aria-label="t('admin.users.avatarUpload')"
+										@change="handleAvatarPick(user.id, $event)"
+									/>
+								</label>
+								<button
+									v-if="user.avatar_url"
+									type="button"
+									:disabled="avatarBusyId !== null"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+									:aria-label="t('admin.users.avatarRemove')"
+									@click="handleAvatarRemove(user.id)"
+								>
+									<Icon icon="lucide:trash-2" class="w-3 h-3" />
+									{{ t("admin.users.avatarRemove") }}
+								</button>
+							</div>
+						</div>
+					</div>
 
-        <button
-          type="button"
-          :disabled="isProcessing || user.id === currentUserId"
-          class="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          @click="handleDelete(user.id)"
-        >
-          {{ t("admin.users.delete") }}
-        </button>
-      </div>
-    </div>
-    </template>
-  </div>
+					<button
+						type="button"
+						:disabled="isProcessing || user.id === currentUserId"
+						class="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						@click="handleDelete(user.id)"
+					>
+						{{ t("admin.users.delete") }}
+					</button>
+				</div>
+			</div>
+		</template>
+	</div>
 </template>

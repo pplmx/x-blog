@@ -100,145 +100,170 @@ async function toggleActive(reader: AdminReader) {
 </script>
 
 <template>
-  <div>
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t("admin.readers.title") }}</h1>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t("admin.readers.description") }}</p>
-    </header>
+	<div>
+		<header class="mb-6">
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+				{{ t("admin.readers.title") }}
+			</h1>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.readers.description") }}
+			</p>
+		</header>
 
-    <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
-      <input
-        v-model="searchInput"
-        type="search"
-        :placeholder="t('admin.readers.searchPlaceholder')"
-        :aria-label="t('admin.readers.searchPlaceholder')"
-        class="w-full sm:max-w-xs px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        @input="onSearchInput"
-      />
-      <p v-if="total > 0" class="text-xs text-gray-500 dark:text-gray-400 sm:ml-auto">
-        {{ t("admin.readers.total", { count: total }) }}
-      </p>
-    </div>
+		<div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+			<input
+				v-model="searchInput"
+				type="search"
+				:placeholder="t('admin.readers.searchPlaceholder')"
+				:aria-label="t('admin.readers.searchPlaceholder')"
+				class="w-full sm:max-w-xs px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+				@input="onSearchInput"
+			/>
+			<p v-if="total > 0" class="text-xs text-gray-500 dark:text-gray-400 sm:ml-auto">
+				{{ t("admin.readers.total", { count: total }) }}
+			</p>
+		</div>
 
-    <p v-if="actionError" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
-      {{ actionError }}
-    </p>
-    <div v-if="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3">
-      <p role="alert">{{ t("admin.readers.loadFailed") }}</p>
-      <button
-        type="button"
-        class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-        @click="() => refresh()"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<p
+			v-if="actionError"
+			role="alert"
+			class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm"
+		>
+			{{ actionError }}
+		</p>
+		<div
+			v-if="error"
+			class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm flex flex-wrap items-center gap-3"
+		>
+			<p role="alert">{{ t("admin.readers.loadFailed") }}</p>
+			<button
+				type="button"
+				class="px-2 py-1 rounded-lg text-xs font-medium border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+				@click="() => refresh()"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-            <th class="px-4 py-3">{{ t("admin.readers.colEmail") }}</th>
-            <th class="hidden md:table-cell px-4 py-3">{{ t("admin.readers.colDisplayName") }}</th>
-            <th class="hidden sm:table-cell px-4 py-3">{{ t("admin.readers.colJoined") }}</th>
-            <th class="hidden lg:table-cell px-4 py-3">{{ t("admin.readers.colLastLogin") }}</th>
-            <th class="px-4 py-3 text-center">{{ t("admin.readers.colComments") }}</th>
-            <th class="hidden md:table-cell px-4 py-3 text-center">{{ t("admin.readers.colBookmarks") }}</th>
-            <th class="px-4 py-3">{{ t("admin.readers.colStatus") }}</th>
-            <th class="px-4 py-3 text-right">{{ t("admin.readers.colAction") }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="reader in items"
-            :key="reader.id"
-            class="border-b border-gray-100 dark:border-gray-700/60 last:border-0"
-          >
-            <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ reader.email }}</td>
-            <td class="hidden md:table-cell px-4 py-3 text-gray-600 dark:text-gray-300">
-              {{ reader.display_name || "—" }}
-            </td>
-            <td class="hidden sm:table-cell px-4 py-3 text-gray-500 dark:text-gray-400">
-              {{ formatDate(reader.created_at) }}
-            </td>
-            <td class="hidden lg:table-cell px-4 py-3 text-gray-500 dark:text-gray-400">
-              {{ formatDate(reader.last_login_at) }}
-            </td>
-            <td class="px-4 py-3 text-center text-gray-600 dark:text-gray-300">{{ reader.comment_count }}</td>
-            <td class="hidden md:table-cell px-4 py-3 text-center text-gray-600 dark:text-gray-300">
-              {{ reader.bookmark_count }}
-            </td>
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
-                :class="
-                  reader.is_active
-                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
-                "
-              >
-                {{ t(reader.is_active ? "admin.readers.statusActive" : "admin.readers.statusDeactivated") }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-right">
-              <button
-                type="button"
-                :disabled="busyIds.has(reader.id)"
-                :aria-busy="busyIds.has(reader.id)"
-                class="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                :class="
-                  reader.is_active
-                    ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
-                    : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
-                "
-                @click="toggleActive(reader)"
-              >
-                {{
-                  busyIds.has(reader.id)
-                    ? t("admin.readers.pending")
-                    : t(reader.is_active ? "admin.readers.deactivate" : "admin.readers.activate")
-                }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div
-        v-if="pending"
-        class="flex items-center justify-center gap-2 px-4 py-12 text-sm text-gray-500 dark:text-gray-400"
-        role="status"
-      >
-        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-        {{ t("admin.readers.loading") }}
-      </div>
-      <div
-        v-else-if="!error && items.length === 0"
-        class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
-      >
-        {{ t("admin.readers.empty") }}
-      </div>
-    </div>
+		<div
+			class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+		>
+			<table class="w-full text-sm">
+				<thead>
+					<tr
+						class="text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700"
+					>
+						<th class="px-4 py-3">{{ t("admin.readers.colEmail") }}</th>
+						<th class="hidden md:table-cell px-4 py-3">{{ t("admin.readers.colDisplayName") }}</th>
+						<th class="hidden sm:table-cell px-4 py-3">{{ t("admin.readers.colJoined") }}</th>
+						<th class="hidden lg:table-cell px-4 py-3">{{ t("admin.readers.colLastLogin") }}</th>
+						<th class="px-4 py-3 text-center">{{ t("admin.readers.colComments") }}</th>
+						<th class="hidden md:table-cell px-4 py-3 text-center">
+							{{ t("admin.readers.colBookmarks") }}
+						</th>
+						<th class="px-4 py-3">{{ t("admin.readers.colStatus") }}</th>
+						<th class="px-4 py-3 text-right">{{ t("admin.readers.colAction") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr
+						v-for="reader in items"
+						:key="reader.id"
+						class="border-b border-gray-100 dark:border-gray-700/60 last:border-0"
+					>
+						<td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ reader.email }}</td>
+						<td class="hidden md:table-cell px-4 py-3 text-gray-600 dark:text-gray-300">
+							{{ reader.display_name || "—" }}
+						</td>
+						<td class="hidden sm:table-cell px-4 py-3 text-gray-500 dark:text-gray-400">
+							{{ formatDate(reader.created_at) }}
+						</td>
+						<td class="hidden lg:table-cell px-4 py-3 text-gray-500 dark:text-gray-400">
+							{{ formatDate(reader.last_login_at) }}
+						</td>
+						<td class="px-4 py-3 text-center text-gray-600 dark:text-gray-300">
+							{{ reader.comment_count }}
+						</td>
+						<td class="hidden md:table-cell px-4 py-3 text-center text-gray-600 dark:text-gray-300">
+							{{ reader.bookmark_count }}
+						</td>
+						<td class="px-4 py-3">
+							<span
+								class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
+								:class="
+									reader.is_active
+										? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+										: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+								"
+							>
+								{{
+									t(
+										reader.is_active
+											? "admin.readers.statusActive"
+											: "admin.readers.statusDeactivated",
+									)
+								}}
+							</span>
+						</td>
+						<td class="px-4 py-3 text-right">
+							<button
+								type="button"
+								:disabled="busyIds.has(reader.id)"
+								:aria-busy="busyIds.has(reader.id)"
+								class="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+								:class="
+									reader.is_active
+										? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
+										: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+								"
+								@click="toggleActive(reader)"
+							>
+								{{
+									busyIds.has(reader.id)
+										? t("admin.readers.pending")
+										: t(reader.is_active ? "admin.readers.deactivate" : "admin.readers.activate")
+								}}
+							</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<div
+				v-if="pending"
+				class="flex items-center justify-center gap-2 px-4 py-12 text-sm text-gray-500 dark:text-gray-400"
+				role="status"
+			>
+				<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+				{{ t("admin.readers.loading") }}
+			</div>
+			<div
+				v-else-if="!error && items.length === 0"
+				class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400"
+			>
+				{{ t("admin.readers.empty") }}
+			</div>
+		</div>
 
-    <div v-if="totalPages > 1" class="mt-4 flex items-center justify-end gap-2">
-      <button
-        type="button"
-        :disabled="currentPage <= 1"
-        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="goToPage(currentPage - 1)"
-      >
-        {{ t("admin.readers.prevPage") }}
-      </button>
-      <span class="text-sm text-gray-500 dark:text-gray-400">
-        {{ t("admin.readers.pageOf", { page: currentPage, total: totalPages }) }}
-      </span>
-      <button
-        type="button"
-        :disabled="currentPage >= totalPages"
-        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="goToPage(currentPage + 1)"
-      >
-        {{ t("admin.readers.nextPage") }}
-      </button>
-    </div>
-  </div>
+		<div v-if="totalPages > 1" class="mt-4 flex items-center justify-end gap-2">
+			<button
+				type="button"
+				:disabled="currentPage <= 1"
+				class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+				@click="goToPage(currentPage - 1)"
+			>
+				{{ t("admin.readers.prevPage") }}
+			</button>
+			<span class="text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.readers.pageOf", { page: currentPage, total: totalPages }) }}
+			</span>
+			<button
+				type="button"
+				:disabled="currentPage >= totalPages"
+				class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+				@click="goToPage(currentPage + 1)"
+			>
+				{{ t("admin.readers.nextPage") }}
+			</button>
+		</div>
+	</div>
 </template>

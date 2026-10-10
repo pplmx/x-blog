@@ -74,10 +74,18 @@ onMounted(() => void run());
 					{{ t("reader.commentSubscribe.unsubProcessing") }}
 				</p>
 			</div>
-			<p v-else-if="state === 'done'" role="status" class="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+			<p
+				v-else-if="state === 'done'"
+				role="status"
+				class="mt-3 text-sm text-emerald-700 dark:text-emerald-400"
+			>
 				{{ t("reader.commentSubscribe.unsubSuccess") }}
 			</p>
-			<p v-else-if="state === 'invalid'" role="status" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
+			<p
+				v-else-if="state === 'invalid'"
+				role="status"
+				class="mt-3 text-sm text-amber-700 dark:text-amber-400"
+			>
 				{{ t("reader.commentSubscribe.unsubInvalid") }}
 			</p>
 			<p v-else role="status" class="mt-3 text-sm text-red-600 dark:text-red-400">

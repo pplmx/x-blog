@@ -43,20 +43,18 @@ const mockMarkRead = vi.fn(async (id: number) => ({
 }));
 const mockMarkAllRead = vi.fn(async () => ({ updated: 2 }));
 const mockDeleteRow = vi.fn(async (_id: number) => undefined);
-const mockFetchPrefs = vi.fn(
-	async (): Promise<ReaderNotificationPrefs> => ({
-		new_post: true,
-		reply: true,
-		thread_comment: true,
-		mention: true,
-		reader_comment: true,
-		email_new_post: false,
-		email_reply: false,
-		email_thread_comment: false,
-		email_mention: false,
-		email_weekly_digest: false,
-	}),
-);
+const mockFetchPrefs = vi.fn(async (): Promise<ReaderNotificationPrefs> => ({
+	new_post: true,
+	reply: true,
+	thread_comment: true,
+	mention: true,
+	reader_comment: true,
+	email_new_post: false,
+	email_reply: false,
+	email_thread_comment: false,
+	email_mention: false,
+	email_weekly_digest: false,
+}));
 const mockUpdatePref = vi.fn(
 	async (
 		kind: keyof ReaderNotificationPrefs,

@@ -313,7 +313,7 @@ async function handleUnlike(post: PostList) {
 					:aria-label="t('liked.searchAria')"
 					class="w-full pl-9 pr-9 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-500"
 					@input="onSearch"
-				>
+				/>
 				<button
 					v-if="searchQuery"
 					type="button"
@@ -339,11 +339,10 @@ async function handleUnlike(post: PostList) {
 					:key="post.id"
 					class="relative group rounded-xl border border-gray-100 dark:border-gray-800 hover:border-pink-200 dark:hover:border-pink-800 hover:shadow-md transition-all duration-200"
 				>
-					<NuxtLink
-						:to="`/posts/${post.slug}`"
-						class="block p-4 rounded-xl"
-					>
-						<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2">
+					<NuxtLink :to="`/posts/${post.slug}`" class="block p-4 rounded-xl">
+						<h2
+							class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors line-clamp-2"
+						>
 							{{ post.title }}
 						</h2>
 						<div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
@@ -353,7 +352,7 @@ async function handleUnlike(post: PostList) {
 									:src="post.author.avatar_url"
 									:alt="post.author.display_name"
 									class="w-3.5 h-3.5 rounded-full object-cover"
-								>
+								/>
 								<Icon v-else icon="lucide:user" class="w-3 h-3" />
 								{{ post.author.display_name }}
 							</span>

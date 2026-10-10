@@ -111,9 +111,11 @@ onUnmounted(() => {
 			:aria-busy="blockBusy"
 			:title="t(blocked ? 'readerProfile.blockedTitle' : 'readerProfile.blockTitle')"
 			class="inline-flex items-center gap-1 text-sm font-medium transition-colors disabled:opacity-60"
-			:class="blocked
-				? 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300'
-				: 'text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400'"
+			:class="
+				blocked
+					? 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300'
+					: 'text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400'
+			"
 			@click="toggleBlock"
 		>
 			<Icon :icon="blocked ? 'lucide:user-x' : 'lucide:user-minus'" class="w-4 h-4" />

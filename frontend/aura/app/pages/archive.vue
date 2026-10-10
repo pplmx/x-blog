@@ -223,235 +223,226 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <!-- Archive index view (no year/month selected). Gates on the archive
+	<div class="max-w-5xl mx-auto">
+		<!-- Archive index view (no year/month selected). Gates on the archive
          fetch alone: the index URL never changes on year→month SPA navigation,
          so this branch stays mounted instead of flashing a whole-page skeleton
          the way the combined pending/error did (which also unmounted the
          year/month list mid-refetch). -->
-    <div v-if="!hasPeriod">
-      <div v-if="archivePending" class="space-y-4" role="status" aria-busy="true">
-        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-        <div class="space-y-2">
-          <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
-        </div>
-      </div>
+		<div v-if="!hasPeriod">
+			<div v-if="archivePending" class="space-y-4" role="status" aria-busy="true">
+				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div class="space-y-2">
+					<div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
+				</div>
+			</div>
 
-      <!-- Index load failed — distinct from "empty": never tell the reader the
+			<!-- Index load failed — distinct from "empty": never tell the reader the
            archive has no years when we simply couldn't load it. -->
-      <div v-else-if="archiveError" class="text-center py-12" role="alert">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retryArchive"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </div>
+			<div v-else-if="archiveError" class="text-center py-12" role="alert">
+				<p class="text-gray-500 dark:text-gray-400 mb-4">{{ t("common.state.loadFailed") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retryArchive"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <div v-else class="space-y-8">
-        <div>
-          <h1
-            class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
-          >
-            {{ t('archive.title') }}
-          </h1>
-          <p class="text-gray-500 dark:text-gray-400">
-            {{ t('archive.desc') }}
-          </p>
-        </div>
+			<div v-else class="space-y-8">
+				<div>
+					<h1
+						class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
+					>
+						{{ t("archive.title") }}
+					</h1>
+					<p class="text-gray-500 dark:text-gray-400">
+						{{ t("archive.desc") }}
+					</p>
+				</div>
 
-        <div
-          v-if="years.length"
-          class="space-y-6"
-        >
-          <!-- Narrowing filter (survey finding): matches the tags/categories
+				<div v-if="years.length" class="space-y-6">
+					<!-- Narrowing filter (survey finding): matches the tags/categories
                filter the ISS-381 fix added — a long multi-year archive is
                otherwise unscannable. Rendered only when there is something to
                filter. -->
-          <div class="relative max-w-sm">
-            <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            <input
-              v-model="archiveQuery"
-              type="search"
-              :placeholder="t('archive.searchPlaceholder')"
-              :aria-label="t('archive.searchAria')"
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
-            >
-          </div>
-          <p v-if="archiveQuery.trim() && filteredYears.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-            {{ t('archive.noResults') }}
-          </p>
+					<div class="relative max-w-sm">
+						<Icon
+							icon="lucide:search"
+							class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+						/>
+						<input
+							v-model="archiveQuery"
+							type="search"
+							:placeholder="t('archive.searchPlaceholder')"
+							:aria-label="t('archive.searchAria')"
+							class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"
+						/>
+					</div>
+					<p
+						v-if="archiveQuery.trim() && filteredYears.length === 0"
+						class="text-sm text-gray-500 dark:text-gray-400"
+					>
+						{{ t("archive.noResults") }}
+					</p>
 
-          <section
-            v-for="y in filteredYears"
-            :key="y.year"
-          >
-            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">
-              {{ y.year }}
-            </h2>
-            <div class="flex flex-wrap gap-3">
-              <NuxtLink
-                v-for="m in y.months"
-                :key="m.month"
-                :to="{ query: { year: String(m.year), month: String(m.month) } }"
-                class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
-              >
-                {{
-                  new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
-                    locale === "zh" ? "zh-CN" : "en-US",
-                    { month: "long" },
-                  )
-                }}
-                <span class="opacity-80 text-xs">({{ m.count }})</span>
-              </NuxtLink>
-            </div>
-          </section>
-        </div>
+					<section v-for="y in filteredYears" :key="y.year">
+						<h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">
+							{{ y.year }}
+						</h2>
+						<div class="flex flex-wrap gap-3">
+							<NuxtLink
+								v-for="m in y.months"
+								:key="m.month"
+								:to="{ query: { year: String(m.year), month: String(m.month) } }"
+								class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+							>
+								{{
+									new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
+										locale === "zh" ? "zh-CN" : "en-US",
+										{ month: "long" },
+									)
+								}}
+								<span class="opacity-80 text-xs">({{ m.count }})</span>
+							</NuxtLink>
+						</div>
+					</section>
+				</div>
 
-          <div
-            v-else
-            class="text-center py-12 text-gray-500"
-          >
-            {{ t('archive.empty') }}
-          </div>
-        </div>
-    </div>
+				<div v-else class="text-center py-12 text-gray-500">
+					{{ t("archive.empty") }}
+				</div>
+			</div>
+		</div>
 
-    <!-- Posts for a selected year/month. Chrome — back link, adjacent-month
+		<!-- Posts for a selected year/month. Chrome — back link, adjacent-month
          navigation, title, count — stays mounted across year/month SPA
          navigation; only the posts region below reflects pending/error, so a
          period switch refreshes the list without the header flickering away
          (search.vue pattern). -->
-    <div v-else>
-      <div class="mb-8">
-        <div class="flex items-center justify-between gap-3 mb-4">
-          <NuxtLink
-            to="/archive"
-            class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors"
-          >
-            <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-            {{ t('archive.backToAll') }}
-          </NuxtLink>
-          <!-- Adjacent-month navigation (ISS-376): the selected-month view used
+		<div v-else>
+			<div class="mb-8">
+				<div class="flex items-center justify-between gap-3 mb-4">
+					<NuxtLink
+						to="/archive"
+						class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors"
+					>
+						<Icon icon="lucide:arrow-left" class="w-4 h-4" />
+						{{ t("archive.backToAll") }}
+					</NuxtLink>
+					<!-- Adjacent-month navigation (ISS-376): the selected-month view used
                to dead-end in "back to all" — step to the previous/next month
                that actually has posts directly, bounded at the archive ends. -->
-          <div class="flex items-center gap-2">
-            <NuxtLink
-              v-if="prevAdjacent"
-              :to="{ query: { year: String(prevAdjacent.year), month: String(prevAdjacent.month) } }"
-              class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors"
-            >
-              <Icon icon="lucide:chevron-left" class="w-4 h-4" />
-              {{ adjacentLabel(prevAdjacent) }}
-            </NuxtLink>
-            <NuxtLink
-              v-if="nextAdjacent"
-              :to="{ query: { year: String(nextAdjacent.year), month: String(nextAdjacent.month) } }"
-              class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors text-right"
-            >
-              {{ adjacentLabel(nextAdjacent) }}
-              <Icon icon="lucide:chevron-right" class="w-4 h-4" />
-            </NuxtLink>
-          </div>
-        </div>
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-          {{ t('archive.monthTitle', { year: year ?? '', month: monthLabel }) }}
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">
-          {{ t('archive.countLabel', { count: posts?.pagination?.total ?? 0 }) }}
-        </p>
-      </div>
+					<div class="flex items-center gap-2">
+						<NuxtLink
+							v-if="prevAdjacent"
+							:to="{
+								query: { year: String(prevAdjacent.year), month: String(prevAdjacent.month) },
+							}"
+							class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors"
+						>
+							<Icon icon="lucide:chevron-left" class="w-4 h-4" />
+							{{ adjacentLabel(prevAdjacent) }}
+						</NuxtLink>
+						<NuxtLink
+							v-if="nextAdjacent"
+							:to="{
+								query: { year: String(nextAdjacent.year), month: String(nextAdjacent.month) },
+							}"
+							class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600 transition-colors text-right"
+						>
+							{{ adjacentLabel(nextAdjacent) }}
+							<Icon icon="lucide:chevron-right" class="w-4 h-4" />
+						</NuxtLink>
+					</div>
+				</div>
+				<h1
+					class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+				>
+					{{ t("archive.monthTitle", { year: year ?? "", month: monthLabel }) }}
+				</h1>
+				<p class="text-gray-500 dark:text-gray-400 mt-1">
+					{{ t("archive.countLabel", { count: posts?.pagination?.total ?? 0 }) }}
+				</p>
+			</div>
 
-      <!-- Posts region: only this swaps on pending/error — the chrome above
+			<!-- Posts region: only this swaps on pending/error — the chrome above
            stays mounted while a year→month (or page) navigation refetches. -->
-      <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
-      <div v-if="postsPending" class="space-y-4">
-        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-        <div class="space-y-2">
-          <div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
-        </div>
-      </div>
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
+			<div v-if="postsPending" class="space-y-4">
+				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div class="space-y-2">
+					<div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
+				</div>
+			</div>
 
-      <!-- Posts load failed — distinct from "empty": never tell the reader this
+			<!-- Posts load failed — distinct from "empty": never tell the reader this
            period has no posts when we simply couldn't load them. -->
-      <div v-else-if="postsError" class="text-center py-12" role="alert">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retryPosts"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </div>
+			<div v-else-if="postsError" class="text-center py-12" role="alert">
+				<p class="text-gray-500 dark:text-gray-400 mb-4">{{ t("common.state.loadFailed") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retryPosts"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <!-- Posts list -->
-      <div
-        v-else-if="posts?.items?.length"
-        class="space-y-6"
-      >
-        <div
-          v-for="post in posts.items"
-          :key="post.id"
-          class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-        >
-          <NuxtLink
-            :to="`/posts/${post.slug}`"
-            class="text-xl font-bold hover:text-purple-600"
-          >
-            {{ post.title }}
-          </NuxtLink>
-          <p
-            v-if="post.excerpt"
-            class="text-gray-600 mt-2 line-clamp-2"
-          >
-            {{ post.excerpt }}
-          </p>
-          <div class="flex gap-4 mt-3 text-sm text-gray-500">
-            <span v-if="post.category">
-              {{ post.category.name }}
-            </span>
-            <span>
-              {{ formatPostDate(effectivePublishTs(post), locale) }}
-            </span>
-            <span>{{ t('archive.views', { count: post.views }) }}</span>
-          </div>
-        </div>
+			<!-- Posts list -->
+			<div v-else-if="posts?.items?.length" class="space-y-6">
+				<div
+					v-for="post in posts.items"
+					:key="post.id"
+					class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+				>
+					<NuxtLink :to="`/posts/${post.slug}`" class="text-xl font-bold hover:text-purple-600">
+						{{ post.title }}
+					</NuxtLink>
+					<p v-if="post.excerpt" class="text-gray-600 mt-2 line-clamp-2">
+						{{ post.excerpt }}
+					</p>
+					<div class="flex gap-4 mt-3 text-sm text-gray-500">
+						<span v-if="post.category">
+							{{ post.category.name }}
+						</span>
+						<span>
+							{{ formatPostDate(effectivePublishTs(post), locale) }}
+						</span>
+						<span>{{ t("archive.views", { count: post.views }) }}</span>
+					</div>
+				</div>
 
-        <!-- Pagination (windowed with ellipsis, matching home/search) -->
-        <div
-          v-if="posts && posts.pagination.total_pages > 1"
-          class="flex items-center justify-center gap-2 mt-8"
-        >
-          <button
-            v-for="(pg, i) in paginationTokens"
-            :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…' || pg === page"
-            :aria-current="pg !== '…' && pg === page ? 'page' : undefined"
-            :class="[
-              'px-3 py-1 rounded transition-colors',
-              pg === '…'
-                ? 'cursor-default text-gray-400'
-                : pg === page
-                  ? 'bg-purple-600 text-white cursor-default'
-                  : 'border hover:bg-gray-50',
-            ]"
-            @click="pg !== '…' && pg !== page && goToPage(pg)"
-          >
-            {{ pg }}
-          </button>
-        </div>
-      </div>
+				<!-- Pagination (windowed with ellipsis, matching home/search) -->
+				<div
+					v-if="posts && posts.pagination.total_pages > 1"
+					class="flex items-center justify-center gap-2 mt-8"
+				>
+					<button
+						v-for="(pg, i) in paginationTokens"
+						:key="pg === '…' ? `ellipsis-${i}` : pg"
+						:disabled="pg === '…' || pg === page"
+						:aria-current="pg !== '…' && pg === page ? 'page' : undefined"
+						:class="[
+							'px-3 py-1 rounded transition-colors',
+							pg === '…'
+								? 'cursor-default text-gray-400'
+								: pg === page
+									? 'bg-purple-600 text-white cursor-default'
+									: 'border hover:bg-gray-50',
+						]"
+						@click="pg !== '…' && pg !== page && goToPage(pg)"
+					>
+						{{ pg }}
+					</button>
+				</div>
+			</div>
 
-      <!-- Empty posts -->
-      <div
-        v-else
-        class="text-center py-12 text-gray-500"
-      >
-        {{ t('archive.postsEmpty') }}
-      </div>
-    </div>
-  </div>
+			<!-- Empty posts -->
+			<div v-else class="text-center py-12 text-gray-500">
+				{{ t("archive.postsEmpty") }}
+			</div>
+		</div>
+	</div>
 </template>

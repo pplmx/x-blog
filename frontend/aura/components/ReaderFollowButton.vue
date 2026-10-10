@@ -112,7 +112,7 @@ onUnmounted(() => {
 			aria-live="polite"
 			class="absolute top-full left-1/2 z-10 mt-1.5 -translate-x-1/2 whitespace-nowrap pointer-events-none rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
 		>
-			{{ t('readerProfile.followFailed') }}
+			{{ t("readerProfile.followFailed") }}
 		</span>
 		<!-- Follower count — public, every visitor sees it (like an author-follow
 			 count). Rendered as a span even for guests, so the profile header is
@@ -135,24 +135,23 @@ onUnmounted(() => {
 			:aria-pressed="following ? 'true' : 'false'"
 			:aria-busy="followBusy"
 			class="inline-flex items-center gap-1 text-sm font-medium transition-colors disabled:opacity-60"
-			:class="following
-				? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
-				: 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'"
+			:class="
+				following
+					? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
+					: 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+			"
 			@click="toggleFollow"
 		>
-			<Icon
-				:icon="following ? 'lucide:user-check' : 'lucide:user-plus'"
-				class="w-4 h-4"
-			/>
-			{{ t(following ? 'readerProfile.following' : 'readerProfile.follow') }}
+			<Icon :icon="following ? 'lucide:user-check' : 'lucide:user-plus'" class="w-4 h-4" />
+			{{ t(following ? "readerProfile.following" : "readerProfile.follow") }}
 		</button>
 		<span
 			v-if="sessionExpired"
 			class="inline-flex items-center gap-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
 		>
-			{{ t('common.sessionExpired') }}
+			{{ t("common.sessionExpired") }}
 			<NuxtLink to="/login" class="font-semibold underline underline-offset-2 hover:opacity-80">
-				{{ t('reader.nav.signIn') }}
+				{{ t("reader.nav.signIn") }}
 			</NuxtLink>
 		</span>
 	</span>

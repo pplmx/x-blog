@@ -168,118 +168,129 @@ function onBlur(): void {
 </script>
 
 <template>
-  <div class="relative w-full">
-    <div class="relative">
-      <Icon
-        icon="lucide:search"
-        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-      />
-      <input
-        v-model="query"
-        type="search"
-        role="combobox"
-        data-header-search
-        :aria-expanded="open"
-        aria-controls="header-search-listbox"
-        aria-haspopup="listbox"
-        :aria-activedescendant="activeIndex >= 0 ? `header-search-option-${activeIndex}` : undefined"
-        :placeholder="t('headerSearch.placeholder')"
-        :aria-label="t('headerSearch.ariaInput')"
-        autocomplete="off"
-        class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-        @input="onInput"
-        @keydown="onKeydown"
-        @focus="onFocus"
-        @blur="onBlur"
-      />
-      <!-- "/" shortcut chip (round 262): advertises the global press-/ shortcut
+	<div class="relative w-full">
+		<div class="relative">
+			<Icon
+				icon="lucide:search"
+				class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+			/>
+			<input
+				v-model="query"
+				type="search"
+				role="combobox"
+				data-header-search
+				:aria-expanded="open"
+				aria-controls="header-search-listbox"
+				aria-haspopup="listbox"
+				:aria-activedescendant="
+					activeIndex >= 0 ? `header-search-option-${activeIndex}` : undefined
+				"
+				:placeholder="t('headerSearch.placeholder')"
+				:aria-label="t('headerSearch.ariaInput')"
+				autocomplete="off"
+				class="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+				@input="onInput"
+				@keydown="onKeydown"
+				@focus="onFocus"
+				@blur="onBlur"
+			/>
+			<!-- "/" shortcut chip (round 262): advertises the global press-/ shortcut
            the reader layout installs (composables/useSearchShortcut.ts). Shown
            only while the box is empty AND unfocused — once the reader is typing
            in here the chip has said its piece. Purely decorative (aria-hidden);
            the input already carries a real label for screen readers. -->
-      <kbd
-        v-if="!query.trim() && !focused"
-        aria-hidden="true"
-        :title="t('headerSearch.kbdHint')"
-        class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500"
-      >/</kbd>
-      <div v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
-        <Icon icon="lucide:loader-2" class="w-4 h-4 text-gray-400 animate-spin" />
-      </div>
-    </div>
+			<kbd
+				v-if="!query.trim() && !focused"
+				aria-hidden="true"
+				:title="t('headerSearch.kbdHint')"
+				class="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-[10px] font-medium leading-none text-gray-400 dark:text-gray-500"
+				>/</kbd
+			>
+			<div v-if="loading" class="absolute right-3 top-1/2 -translate-y-1/2">
+				<Icon icon="lucide:loader-2" class="w-4 h-4 text-gray-400 animate-spin" />
+			</div>
+		</div>
 
-    <div
-      v-if="open"
-      class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden"
-    >
-      <!-- Focused, still-empty dropdown: explain what this box does instead of
+		<div
+			v-if="open"
+			class="absolute z-50 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden"
+		>
+			<!-- Focused, still-empty dropdown: explain what this box does instead of
            a bare list-less popup (resolves the verifiably-dead headerSearch.hint
            key — the intent was always to show it here). Disappears the moment
            the reader types; not rendered for the settled no-results/failed
            states (those are the dedicated blocks below). -->
-      <p
-        v-if="!query.trim()"
-        data-testid="header-search-hint"
-        class="px-3 pt-3 pb-1 text-xs text-gray-400"
-      >
-        {{ t('headerSearch.hint') }}
-      </p>
+			<p
+				v-if="!query.trim()"
+				data-testid="header-search-hint"
+				class="px-3 pt-3 pb-1 text-xs text-gray-400"
+			>
+				{{ t("headerSearch.hint") }}
+			</p>
 
-      <ul id="header-search-listbox" role="listbox" class="max-h-80 overflow-auto py-1">
-        <li
-          v-for="(post, index) in results"
-          :key="post.id"
-          :id="`header-search-option-${index}`"
-          role="option"
-          :aria-selected="index === activeIndex"
-          class="px-3 py-2 flex items-center gap-3 cursor-pointer transition-colors"
-          :class="index === activeIndex
-            ? 'bg-gray-50 dark:bg-gray-800'
-            : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
-          @mousedown.prevent="pick(post)"
-          @mouseenter="activeIndex = index"
-        >
-          <span class="flex-1 min-w-0">
-            <span class="block text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
-              {{ post.title }}
-            </span>
-          </span>
-          <span class="shrink-0 text-xs text-gray-400">{{ post.views }} · {{ post.category?.name ?? "" }}</span>
-        </li>
-      </ul>
+			<ul id="header-search-listbox" role="listbox" class="max-h-80 overflow-auto py-1">
+				<li
+					v-for="(post, index) in results"
+					:key="post.id"
+					:id="`header-search-option-${index}`"
+					role="option"
+					:aria-selected="index === activeIndex"
+					class="px-3 py-2 flex items-center gap-3 cursor-pointer transition-colors"
+					:class="
+						index === activeIndex
+							? 'bg-gray-50 dark:bg-gray-800'
+							: 'hover:bg-gray-50 dark:hover:bg-gray-800'
+					"
+					@mousedown.prevent="pick(post)"
+					@mouseenter="activeIndex = index"
+				>
+					<span class="flex-1 min-w-0">
+						<span class="block text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
+							{{ post.title }}
+						</span>
+					</span>
+					<span class="shrink-0 text-xs text-gray-400"
+						>{{ post.views }} · {{ post.category?.name ?? "" }}</span
+					>
+				</li>
+			</ul>
 
-      <div
-        v-if="searched && !loading && failed"
-        class="px-3 py-3 text-sm text-red-600 dark:text-red-400"
-      >
-        {{ t('headerSearch.searchFailed') }}
-      </div>
+			<div
+				v-if="searched && !loading && failed"
+				class="px-3 py-3 text-sm text-red-600 dark:text-red-400"
+			>
+				{{ t("headerSearch.searchFailed") }}
+			</div>
 
-      <div
-        v-else-if="searched && !loading && results.length === 0"
-        class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400"
-      >
-        {{ t('headerSearch.noResults') }}
-      </div>
+			<div
+				v-else-if="searched && !loading && results.length === 0"
+				class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400"
+			>
+				{{ t("headerSearch.noResults") }}
+			</div>
 
-      <!-- Live region: announces the settled result count to screen readers,
+			<!-- Live region: announces the settled result count to screen readers,
            and the zero-result state (the no-results div above is not live).
            A failed search announces the error too — never a false "no matches". -->
-      <span class="sr-only" role="status" aria-live="polite">
-        <template v-if="searched && !loading">
-          <template v-if="failed">{{ t('headerSearch.searchFailed') }}</template>
-          <template v-else>{{ results.length === 0 ? t('headerSearch.noResults') : t('headerSearch.resultsCount', { count: results.length }) }}</template>
-        </template>
-      </span>
+			<span class="sr-only" role="status" aria-live="polite">
+				<template v-if="searched && !loading">
+					<template v-if="failed">{{ t("headerSearch.searchFailed") }}</template>
+					<template v-else>{{
+						results.length === 0
+							? t("headerSearch.noResults")
+							: t("headerSearch.resultsCount", { count: results.length })
+					}}</template>
+				</template>
+			</span>
 
-      <button
-        type="button"
-        class="w-full px-3 py-2.5 text-left text-sm font-medium text-blue-600 dark:text-blue-400 border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @mousedown.prevent
-        @click="goToSearch"
-      >
-        {{ t('headerSearch.viewAll') }}
-      </button>
-    </div>
-  </div>
+			<button
+				type="button"
+				class="w-full px-3 py-2.5 text-left text-sm font-medium text-blue-600 dark:text-blue-400 border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				@mousedown.prevent
+				@click="goToSearch"
+			>
+				{{ t("headerSearch.viewAll") }}
+			</button>
+		</div>
+	</div>
 </template>

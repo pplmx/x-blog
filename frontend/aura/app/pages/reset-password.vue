@@ -73,122 +73,121 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="max-w-md mx-auto px-4 py-12">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8">
-      <div class="text-center mb-8">
-        <div
-          class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center mx-auto mb-4"
-        >
-          <Icon icon="lucide:shield-check" class="w-8 h-8 text-white" />
-        </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ t("reader.resetPassword.title") }}
-        </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ t("reader.resetPassword.subtitle") }}
-        </p>
-      </div>
+	<div class="max-w-md mx-auto px-4 py-12">
+		<div
+			class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8"
+		>
+			<div class="text-center mb-8">
+				<div
+					class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center mx-auto mb-4"
+				>
+					<Icon icon="lucide:shield-check" class="w-8 h-8 text-white" />
+				</div>
+				<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+					{{ t("reader.resetPassword.title") }}
+				</h1>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					{{ t("reader.resetPassword.subtitle") }}
+				</p>
+			</div>
 
-      <!-- Success state (TASK-486/round-408): the reader is now signed in; if
+			<!-- Success state (TASK-486/round-408): the reader is now signed in; if
            navigation to /account were interrupted, this is what they see
            instead of a blank page (round-342 pattern). -->
-      <div
-        v-if="done"
-        role="status"
-        class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
-      >
-        <p class="text-sm text-green-700 dark:text-green-300">
-          {{ t("reader.resetPassword.success") }}
-        </p>
-        <NuxtLink
-          to="/account"
-          class="mt-3 inline-block text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {{ t("reader.resetPassword.goAccount") }}
-        </NuxtLink>
-      </div>
+			<div
+				v-if="done"
+				role="status"
+				class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
+			>
+				<p class="text-sm text-green-700 dark:text-green-300">
+					{{ t("reader.resetPassword.success") }}
+				</p>
+				<NuxtLink
+					to="/account"
+					class="mt-3 inline-block text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+				>
+					{{ t("reader.resetPassword.goAccount") }}
+				</NuxtLink>
+			</div>
 
-      <form v-if="!done && token" @submit.prevent="handleSubmit" class="space-y-5">
-        <div>
-          <label
-            for="reset-password-new"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >{{ t("reader.resetPassword.password") }}
-          </label>
-          <input
-            id="reset-password-new"
-            v-model="password"
-            type="password"
-            autocomplete="new-password"
-            :placeholder="t('reader.resetPassword.passwordPlaceholder')"
-            required
-            :minlength="8"
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-        </div>
+			<form v-if="!done && token" @submit.prevent="handleSubmit" class="space-y-5">
+				<div>
+					<label
+						for="reset-password-new"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>{{ t("reader.resetPassword.password") }}
+					</label>
+					<input
+						id="reset-password-new"
+						v-model="password"
+						type="password"
+						autocomplete="new-password"
+						:placeholder="t('reader.resetPassword.passwordPlaceholder')"
+						required
+						:minlength="8"
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+				</div>
 
-        <div>
-          <label
-            for="reset-password-confirm"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >{{ t("reader.resetPassword.confirm") }}
-          </label>
-          <input
-            id="reset-password-confirm"
-            v-model="confirm"
-            type="password"
-            autocomplete="new-password"
-            :placeholder="t('reader.resetPassword.confirmPlaceholder')"
-            required
-            :minlength="8"
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-        </div>
+				<div>
+					<label
+						for="reset-password-confirm"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>{{ t("reader.resetPassword.confirm") }}
+					</label>
+					<input
+						id="reset-password-confirm"
+						v-model="confirm"
+						type="password"
+						autocomplete="new-password"
+						:placeholder="t('reader.resetPassword.confirmPlaceholder')"
+						required
+						:minlength="8"
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+				</div>
 
-        <div
-          v-if="error"
-          role="alert"
-          class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-        >
-          <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-        </div>
+				<div
+					v-if="error"
+					role="alert"
+					class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+				</div>
 
-        <button
-          type="submit"
-          :disabled="isPending || !password || !confirm"
-          class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
-        >
-          <span v-if="isPending" class="flex items-center justify-center gap-2">
-            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            {{ t("reader.resetPassword.submitting") }}
-          </span>
-          <span v-else>{{ t("reader.resetPassword.submit") }}</span>
-        </button>
-      </form>
+				<button
+					type="submit"
+					:disabled="isPending || !password || !confirm"
+					class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
+				>
+					<span v-if="isPending" class="flex items-center justify-center gap-2">
+						<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						{{ t("reader.resetPassword.submitting") }}
+					</span>
+					<span v-else>{{ t("reader.resetPassword.submit") }}</span>
+				</button>
+			</form>
 
-      <div
-        v-else-if="!token"
-        role="status"
-        class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
-      >
-        <p class="text-sm text-amber-700 dark:text-amber-300">
-          {{ t("reader.resetPassword.invalid") }}
-        </p>
-      </div>
+			<div
+				v-else-if="!token"
+				role="status"
+				class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+			>
+				<p class="text-sm text-amber-700 dark:text-amber-300">
+					{{ t("reader.resetPassword.invalid") }}
+				</p>
+			</div>
 
-      <div class="mt-6 pt-6 border-t text-center">
-        <!-- The link is labeled "Back to login", so it must go to /login in every
+			<div class="mt-6 pt-6 border-t text-center">
+				<!-- The link is labeled "Back to login", so it must go to /login in every
              state — a token-bearing landing (form shown or spent-link 400) is still
              a login-page visit, not a re-request (reader-auth deep-dive finding).
              Readers who need a fresh reset link re-trigger it from /login's
              "Forgot password?" link. -->
-        <NuxtLink
-          to="/login"
-          class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
-        >
-          ← {{ t("reader.forgotPassword.backToLogin") }}
-        </NuxtLink>
-      </div>
-    </div>
-  </div>
+				<NuxtLink to="/login" class="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+					← {{ t("reader.forgotPassword.backToLogin") }}
+				</NuxtLink>
+			</div>
+		</div>
+	</div>
 </template>

@@ -124,32 +124,34 @@ async function onClick() {
 </script>
 
 <template>
-  <span v-if="visible" class="relative inline-flex shrink-0">
-    <!-- Transient push-failure bubble (ISS-215): a failed subscribe/unsubscribe
+	<span v-if="visible" class="relative inline-flex shrink-0">
+		<!-- Transient push-failure bubble (ISS-215): a failed subscribe/unsubscribe
          is announced via role=alert instead of silently reverting. Anchored
          absolutely so it never shifts the header row. -->
-    <span
-      v-if="errorVisible"
-      role="alert"
-      class="absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
-    >
-      {{ t("common.push.subscribeFailed") }}
-    </span>
-    <button
-      type="button"
-      :disabled="status === 'denied' || busy"
-      :title="title"
-      :aria-label="label"
-      class="inline-flex items-center gap-1.5 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 disabled:opacity-50"
-      @click="onClick"
-    >
-      <Icon :icon="icon" class="w-4 h-4" :class="{ 'animate-spin': busy }" />
-      <!-- Compact (header) icon-only below 2xl: at xl the header row is tight
+		<span
+			v-if="errorVisible"
+			role="alert"
+			class="absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/40 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 shadow-sm"
+		>
+			{{ t("common.push.subscribeFailed") }}
+		</span>
+		<button
+			type="button"
+			:disabled="status === 'denied' || busy"
+			:title="title"
+			:aria-label="label"
+			class="inline-flex items-center gap-1.5 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 disabled:opacity-50"
+			@click="onClick"
+		>
+			<Icon :icon="icon" class="w-4 h-4" :class="{ 'animate-spin': busy }" />
+			<!-- Compact (header) icon-only below 2xl: at xl the header row is tight
            (English + signed-in + the wide "blocked" label would overflow), so
            the text shows only on very wide screens; the tooltip/aria-label
            always keep it meaningful. Non-compact (mobile menu) always shows the
            text. (ISS-125/TASK-225) -->
-      <span class="text-sm" :class="props.compact ? 'hidden 2xl:inline' : 'inline'">{{ label }}</span>
-    </button>
-  </span>
+			<span class="text-sm" :class="props.compact ? 'hidden 2xl:inline' : 'inline'">{{
+				label
+			}}</span>
+		</button>
+	</span>
 </template>

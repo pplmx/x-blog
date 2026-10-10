@@ -217,168 +217,197 @@ function goToPage(page: number) {
 </script>
 
 <template>
-  <div>
-    <div class="mb-8">
-      <h1
-        class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-      >
-        {{ t("admin.media.title") }}
-      </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ t("admin.media.summary", { n: total }) }}</p>
-    </div>
+	<div>
+		<div class="mb-8">
+			<h1
+				class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+			>
+				{{ t("admin.media.title") }}
+			</h1>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+				{{ t("admin.media.summary", { n: total }) }}
+			</p>
+		</div>
 
-    <div class="mb-4 flex flex-wrap items-center gap-3">
-      <div class="max-w-sm flex-1 min-w-56">
-        <input
-          v-model="searchInput"
-          type="search"
-          :placeholder="t('admin.media.searchPlaceholder')"
-          :aria-label="t('admin.media.searchPlaceholder')"
-          class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          @input="onSearchInput"
-        >
-      </div>
-      <div v-if="selectedCount > 0" class="flex items-center gap-2">
-        <span class="text-sm text-gray-600 dark:text-gray-300">
-          {{ t("admin.media.selectedCount", { n: selectedCount }) }}
-        </span>
-        <button
-          type="button"
-          :disabled="batchDeleting"
-          class="px-3 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-          @click="handleBatchDelete"
-        >
-          {{ t("admin.media.deleteSelected") }}
-        </button>
-      </div>
-    </div>
+		<div class="mb-4 flex flex-wrap items-center gap-3">
+			<div class="max-w-sm flex-1 min-w-56">
+				<input
+					v-model="searchInput"
+					type="search"
+					:placeholder="t('admin.media.searchPlaceholder')"
+					:aria-label="t('admin.media.searchPlaceholder')"
+					class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+					@input="onSearchInput"
+				/>
+			</div>
+			<div v-if="selectedCount > 0" class="flex items-center gap-2">
+				<span class="text-sm text-gray-600 dark:text-gray-300">
+					{{ t("admin.media.selectedCount", { n: selectedCount }) }}
+				</span>
+				<button
+					type="button"
+					:disabled="batchDeleting"
+					class="px-3 py-2 text-sm rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+					@click="handleBatchDelete"
+				>
+					{{ t("admin.media.deleteSelected") }}
+				</button>
+			</div>
+		</div>
 
-    <div v-if="actionError" role="alert" class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm">
-      {{ actionError }}
-    </div>
+		<div
+			v-if="actionError"
+			role="alert"
+			class="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm"
+		>
+			{{ actionError }}
+		</div>
 
-    <!-- pending / error / empty / grid are one mutually-exclusive chain: a failed
+		<!-- pending / error / empty / grid are one mutually-exclusive chain: a failed
          fetch must never render alongside the empty state ("Failed to load media"
          + "No uploads yet" was the pre-fix double render), and it gets a Retry
          affordance instead of being a reload-only dead end. -->
-    <div v-if="pending" class="py-16 text-center text-gray-500 dark:text-gray-400 text-sm" role="status">
-      {{ t("admin.media.loading") }}
-    </div>
+		<div
+			v-if="pending"
+			class="py-16 text-center text-gray-500 dark:text-gray-400 text-sm"
+			role="status"
+		>
+			{{ t("admin.media.loading") }}
+		</div>
 
-    <div v-else-if="error" class="py-16 text-center" role="alert">
-      <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-      <p class="mb-4 text-sm text-red-600 dark:text-red-400">{{ t("admin.media.loadFailed") }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="refresh()"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<div v-else-if="error" class="py-16 text-center" role="alert">
+			<Icon
+				icon="lucide:alert-circle"
+				class="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600"
+			/>
+			<p class="mb-4 text-sm text-red-600 dark:text-red-400">{{ t("admin.media.loadFailed") }}</p>
+			<button
+				type="button"
+				class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				@click="refresh()"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <div v-else-if="items.length === 0" class="py-16 text-center">
-      <Icon icon="lucide:image" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
-      <h2 class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
-        {{ q ? t("admin.media.searchEmpty.title") : t("admin.media.empty.title") }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ q ? t("admin.media.searchEmpty.hint") : t("admin.media.empty.hint") }}
-      </p>
-    </div>
+		<div v-else-if="items.length === 0" class="py-16 text-center">
+			<Icon icon="lucide:image" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" />
+			<h2 class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">
+				{{ q ? t("admin.media.searchEmpty.title") : t("admin.media.empty.title") }}
+			</h2>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{{ q ? t("admin.media.searchEmpty.hint") : t("admin.media.empty.hint") }}
+			</p>
+		</div>
 
-    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      <div
-        v-for="item in items"
-        :key="item.url"
-        class="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col"
-      >
-        <div class="relative aspect-video bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-          <img
-            :src="imageUrl(item)"
-            :alt="item.filename"
-            loading="lazy"
-            class="w-full h-full object-contain"
-          >
-          <span
-            class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-medium"
-            :class="item.referenced
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-              : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300'"
-            :title="item.referenced
-              ? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
-              : undefined"
-          >
-            {{ item.referenced ? t("admin.media.referenced") : t("admin.media.unreferenced") }}
-          </span>
-          <!-- Bulk-delete selection (DEC-191): only unreferenced cards are
+		<div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+			<div
+				v-for="item in items"
+				:key="item.url"
+				class="group rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col"
+			>
+				<div
+					class="relative aspect-video bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden"
+				>
+					<img
+						:src="imageUrl(item)"
+						:alt="item.filename"
+						loading="lazy"
+						class="w-full h-full object-contain"
+					/>
+					<span
+						class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-medium"
+						:class="
+							item.referenced
+								? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+								: 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300'
+						"
+						:title="
+							item.referenced
+								? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
+								: undefined
+						"
+					>
+						{{ item.referenced ? t("admin.media.referenced") : t("admin.media.unreferenced") }}
+					</span>
+					<!-- Bulk-delete selection (DEC-191): only unreferenced cards are
                selectable — referenced images cannot be deleted anyway. -->
-          <button
-            v-if="!item.referenced"
-            type="button"
-            :aria-label="t('admin.media.select')"
-            class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-md bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-            @click.stop="toggleSelect(item)"
-          >
-            <Icon
-              :icon="isSelected(item) ? 'lucide:check-square' : 'lucide:square'"
-              class="w-4 h-4"
-            />
-          </button>
-        </div>
+					<button
+						v-if="!item.referenced"
+						type="button"
+						:aria-label="t('admin.media.select')"
+						class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-md bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+						@click.stop="toggleSelect(item)"
+					>
+						<Icon
+							:icon="isSelected(item) ? 'lucide:check-square' : 'lucide:square'"
+							class="w-4 h-4"
+						/>
+					</button>
+				</div>
 
-        <div class="p-3 flex-1 flex flex-col gap-1">
-          <div class="text-xs text-gray-600 dark:text-gray-300 truncate" :title="item.filename">{{ item.filename }}</div>
-          <div class="text-[11px] text-gray-500 dark:text-gray-400">
-            {{ item.width && item.height ? t("admin.media.dimensions", { width: item.width, height: item.height }) + " · " : "" }}
-            {{ formatSize(item.size) }}
-          </div>
-          <div class="text-[11px] text-gray-500 dark:text-gray-400">
-            {{ t("admin.media.uploadedAt", { date: formatDate(item.uploaded_at) }) }}
-          </div>
+				<div class="p-3 flex-1 flex flex-col gap-1">
+					<div class="text-xs text-gray-600 dark:text-gray-300 truncate" :title="item.filename">
+						{{ item.filename }}
+					</div>
+					<div class="text-[11px] text-gray-500 dark:text-gray-400">
+						{{
+							item.width && item.height
+								? t("admin.media.dimensions", { width: item.width, height: item.height }) + " · "
+								: ""
+						}}
+						{{ formatSize(item.size) }}
+					</div>
+					<div class="text-[11px] text-gray-500 dark:text-gray-400">
+						{{ t("admin.media.uploadedAt", { date: formatDate(item.uploaded_at) }) }}
+					</div>
 
-          <div class="mt-auto pt-2 flex gap-1.5">
-            <button
-              type="button"
-              class="flex-1 text-xs px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              @click="copyUrl(item)"
-            >
-              {{ copiedUrl === item.url ? t("admin.media.copied") : t("admin.media.copyUrl") }}
-            </button>
-            <button
-              type="button"
-              :disabled="item.referenced || deletingUrls.has(item.url)"
-              class="text-xs px-2 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :title="item.referenced
-                ? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
-                : undefined"
-              @click="handleDelete(item)"
-            >
-              {{ t("admin.media.delete") }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+					<div class="mt-auto pt-2 flex gap-1.5">
+						<button
+							type="button"
+							class="flex-1 text-xs px-2 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+							@click="copyUrl(item)"
+						>
+							{{ copiedUrl === item.url ? t("admin.media.copied") : t("admin.media.copyUrl") }}
+						</button>
+						<button
+							type="button"
+							:disabled="item.referenced || deletingUrls.has(item.url)"
+							class="text-xs px-2 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+							:title="
+								item.referenced
+									? t('admin.media.referencedTitle', { n: item.referencing_posts.length })
+									: undefined
+							"
+							@click="handleDelete(item)"
+						>
+							{{ t("admin.media.delete") }}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
-      <button
-        type="button"
-        :disabled="pending || currentPage === 1"
-        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="goToPage(currentPage - 1)"
-      >
-        {{ t("admin.media.pagination.prev") }}
-      </button>
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ currentPage }} / {{ totalPages }}</span>
-      <button
-        type="button"
-        :disabled="pending || currentPage >= totalPages"
-        class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
-        @click="goToPage(currentPage + 1)"
-      >
-        {{ t("admin.media.pagination.next") }}
-      </button>
-    </div>
-  </div>
+		<div v-if="totalPages > 1" class="mt-6 flex items-center justify-between">
+			<button
+				type="button"
+				:disabled="pending || currentPage === 1"
+				class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+				@click="goToPage(currentPage - 1)"
+			>
+				{{ t("admin.media.pagination.prev") }}
+			</button>
+			<span class="text-sm text-gray-500 dark:text-gray-400"
+				>{{ currentPage }} / {{ totalPages }}</span
+			>
+			<button
+				type="button"
+				:disabled="pending || currentPage >= totalPages"
+				class="px-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 transition-colors"
+				@click="goToPage(currentPage + 1)"
+			>
+				{{ t("admin.media.pagination.next") }}
+			</button>
+		</div>
+	</div>
 </template>

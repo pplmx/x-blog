@@ -659,646 +659,729 @@ const stats = computed(() => [
 </script>
 
 <template>
-  <div>
-    <div class="mb-8">
-      <h1
-        class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-      >
-        {{ t("admin.dashboard.title") }}
-      </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {{ t("admin.dashboard.subtitle") }}
-      </p>
-    </div>
+	<div>
+		<div class="mb-8">
+			<h1
+				class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+			>
+				{{ t("admin.dashboard.title") }}
+			</h1>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+				{{ t("admin.dashboard.subtitle") }}
+			</p>
+		</div>
 
-    <!-- Data loads client-side after auth (ISS-032); brief loading hint -->
-    <div v-if="loading" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-      {{ t("admin.dashboard.loading") }}
-    </div>
+		<!-- Data loads client-side after auth (ISS-032); brief loading hint -->
+		<div v-if="loading" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+			{{ t("admin.dashboard.loading") }}
+		</div>
 
-    <!-- Load failure (401 from an expired admin token, network, an upstream
+		<!-- Load failure (401 from an expired admin token, network, an upstream
          error): surface the problem with a retry instead of rendering zeros
          that look like an empty installation (deep-dive finding). -->
-    <div
-      v-if="loadError"
-      class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-5"
-      role="alert"
-    >
-      <div class="flex items-start gap-3">
-        <Icon icon="lucide:alert-triangle" class="w-5 h-5 mt-0.5 text-red-500 dark:text-red-400 shrink-0" />
-        <div>
-          <p class="text-sm font-medium text-red-700 dark:text-red-300">
-            {{ t("admin.dashboard.loadError") }}
-          </p>
-          <p class="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
-            {{ t("admin.dashboard.loadErrorHint") }}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
-        @click="loadDashboard()"
-      >
-        <Icon icon="lucide:refresh-cw" class="w-3.5 h-3.5" />
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<div
+			v-if="loadError"
+			class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-5"
+			role="alert"
+		>
+			<div class="flex items-start gap-3">
+				<Icon
+					icon="lucide:alert-triangle"
+					class="w-5 h-5 mt-0.5 text-red-500 dark:text-red-400 shrink-0"
+				/>
+				<div>
+					<p class="text-sm font-medium text-red-700 dark:text-red-300">
+						{{ t("admin.dashboard.loadError") }}
+					</p>
+					<p class="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+						{{ t("admin.dashboard.loadErrorHint") }}
+					</p>
+				</div>
+			</div>
+			<button
+				type="button"
+				class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+				@click="loadDashboard()"
+			>
+				<Icon icon="lucide:refresh-cw" class="w-3.5 h-3.5" />
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Stats cards (hidden entirely on a failed load — the zeroed cards
+		<!-- Stats cards (hidden entirely on a failed load — the zeroed cards
          would otherwise masquerade as a real empty install) -->
-    <template v-if="!loadError">
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-      <div
-        v-for="stat in stats"
-        :key="stat.labelKey"
-        class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
-      >
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {{ t(stat.labelKey) }}
-          </span>
-          <div :class="['p-2.5 rounded-xl', stat.bg]">
-            <Icon :icon="stat.icon" :class="['h-5 w-5', stat.color]" />
-          </div>
-        </div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          {{ stat.value }}
-        </div>
-      </div>
-    </div>
-    </template>
+		<template v-if="!loadError">
+			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+				<div
+					v-for="stat in stats"
+					:key="stat.labelKey"
+					class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
+				>
+					<div class="flex items-center justify-between mb-3">
+						<span class="text-sm font-medium text-gray-500 dark:text-gray-400">
+							{{ t(stat.labelKey) }}
+						</span>
+						<div :class="['p-2.5 rounded-xl', stat.bg]">
+							<Icon :icon="stat.icon" :class="['h-5 w-5', stat.color]" />
+						</div>
+					</div>
+					<div class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+						{{ stat.value }}
+					</div>
+				</div>
+			</div>
+		</template>
 
-    <!-- Top posts by views + Category distribution -->
-    <div class="grid gap-6 lg:grid-cols-2 mb-8">
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
-          {{ t("admin.dashboard.topPosts.title") }}
-        </h3>
-        <div class="space-y-3">
-          <div
-            v-for="post in topPostsTop"
-            :key="post.id"
-            class="p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div class="flex items-center justify-between mb-1.5 gap-3">
-              <span class="font-medium text-gray-900 dark:text-gray-100 truncate">
-                {{ post.title }}
-              </span>
-              <span class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 shrink-0">
-                <Icon icon="lucide:eye" class="w-4 h-4" />
-                {{ post.views || 0 }}
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-              <div
-                class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
-                :style="{ width: topViewsPct(post.views || 0) + '%' }"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+		<!-- Top posts by views + Category distribution -->
+		<div class="grid gap-6 lg:grid-cols-2 mb-8">
+			<div
+				class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
+			>
+				<h3
+					class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+				>
+					<Icon icon="lucide:file-text" class="w-5 h-5 text-blue-500" />
+					{{ t("admin.dashboard.topPosts.title") }}
+				</h3>
+				<div class="space-y-3">
+					<div
+						v-for="post in topPostsTop"
+						:key="post.id"
+						class="p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					>
+						<div class="flex items-center justify-between mb-1.5 gap-3">
+							<span class="font-medium text-gray-900 dark:text-gray-100 truncate">
+								{{ post.title }}
+							</span>
+							<span
+								class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 shrink-0"
+							>
+								<Icon icon="lucide:eye" class="w-4 h-4" />
+								{{ post.views || 0 }}
+							</span>
+						</div>
+						<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+							<div
+								class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
+								:style="{ width: topViewsPct(post.views || 0) + '%' }"
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
 
-      <!-- Category distribution -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Icon icon="lucide:folder" class="w-5 h-5 text-purple-500" />
-          {{ t("admin.dashboard.categories.title") }}
-        </h3>
-        <div class="space-y-3">
-          <div
-            v-for="cat in categories"
-            :key="cat.id"
-            class="flex items-center gap-3"
-          >
-            <span class="text-sm text-gray-700 dark:text-gray-300 w-20 truncate">
-              {{ cat.name }}
-            </span>
-            <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                class="bg-purple-500 h-2 rounded-full transition-all"
-                :style="{ width: (postsInCategory(cat.id) / (posts.length || 1) * 100) + '%' }"
-              />
-            </div>
-            <span class="text-sm text-gray-500 dark:text-gray-400 w-8 text-right">
-              {{ postsInCategory(cat.id) }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+			<!-- Category distribution -->
+			<div
+				class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
+			>
+				<h3
+					class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+				>
+					<Icon icon="lucide:folder" class="w-5 h-5 text-purple-500" />
+					{{ t("admin.dashboard.categories.title") }}
+				</h3>
+				<div class="space-y-3">
+					<div v-for="cat in categories" :key="cat.id" class="flex items-center gap-3">
+						<span class="text-sm text-gray-700 dark:text-gray-300 w-20 truncate">
+							{{ cat.name }}
+						</span>
+						<div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+							<div
+								class="bg-purple-500 h-2 rounded-full transition-all"
+								:style="{ width: (postsInCategory(cat.id) / (posts.length || 1)) * 100 + '%' }"
+							/>
+						</div>
+						<span class="text-sm text-gray-500 dark:text-gray-400 w-8 text-right">
+							{{ postsInCategory(cat.id) }}
+						</span>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <!-- Follow analytics (DEC-144, TASK-184): what readers track -->
-    <div
-      v-if="followStats"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
-        <Icon icon="lucide:heart" class="w-5 h-5 text-rose-500" />
-        {{ t("admin.dashboard.follows.title") }}
-      </h3>
-      <p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.follows.note") }}</p>
+		<!-- Follow analytics (DEC-144, TASK-184): what readers track -->
+		<div
+			v-if="followStats"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2"
+			>
+				<Icon icon="lucide:heart" class="w-5 h-5 text-rose-500" />
+				{{ t("admin.dashboard.follows.title") }}
+			</h3>
+			<p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.follows.note") }}</p>
 
-      <div class="grid gap-4 sm:grid-cols-2 mb-4">
-        <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-          <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {{ followStats.total_series_follows }}
-          </div>
-          <div class="text-xs text-gray-500 mt-1">{{ t("admin.dashboard.follows.totalSeries") }}</div>
-        </div>
-        <div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-          <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {{ followStats.total_category_follows }}
-          </div>
-          <div class="text-xs text-gray-500 mt-1">{{ t("admin.dashboard.follows.totalCategories") }}</div>
-        </div>
-      </div>
+			<div class="grid gap-4 sm:grid-cols-2 mb-4">
+				<div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+					<div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+						{{ followStats.total_series_follows }}
+					</div>
+					<div class="text-xs text-gray-500 mt-1">
+						{{ t("admin.dashboard.follows.totalSeries") }}
+					</div>
+				</div>
+				<div class="rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+					<div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+						{{ followStats.total_category_follows }}
+					</div>
+					<div class="text-xs text-gray-500 mt-1">
+						{{ t("admin.dashboard.follows.totalCategories") }}
+					</div>
+				</div>
+			</div>
 
-      <div class="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            {{ t("admin.dashboard.follows.topSeries") }}
-          </h4>
-          <div v-if="followStats.top_series.length" class="space-y-3">
-            <div v-for="s in followStats.top_series" :key="s.id" class="flex items-center gap-3">
-              <span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate" :title="s.title">
-                {{ s.title }}
-              </span>
-              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                <div
-                  class="bg-rose-500 h-2 rounded-full transition-all"
-                  :style="{ width: followPct(s.count) + '%' }"
-                />
-              </div>
-              <span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
-            </div>
-          </div>
-          <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptySeries") }}</p>
-        </div>
-        <div>
-          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            {{ t("admin.dashboard.follows.topCategories") }}
-          </h4>
-          <div v-if="followStats.top_categories.length" class="space-y-3">
-            <div v-for="c in followStats.top_categories" :key="c.id" class="flex items-center gap-3">
-              <span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate">{{ c.name }}</span>
-              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                <div
-                  class="bg-rose-500 h-2 rounded-full transition-all"
-                  :style="{ width: followPct(c.count) + '%' }"
-                />
-              </div>
-              <span class="text-sm text-gray-500 w-8 text-right">{{ c.count }}</span>
-            </div>
-          </div>
-          <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptyCategories") }}</p>
-        </div>
-      </div>
-    </div>
-    <div
-      v-else-if="isAnalyticsFailed('follows')"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
-    >
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.follows.title") }}</h3>
-        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
-      </div>
-      <button
-        type="button"
-        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        @click="retryAnalyticsCard('follows')"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+			<div class="grid gap-6 lg:grid-cols-2">
+				<div>
+					<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+						{{ t("admin.dashboard.follows.topSeries") }}
+					</h4>
+					<div v-if="followStats.top_series.length" class="space-y-3">
+						<div v-for="s in followStats.top_series" :key="s.id" class="flex items-center gap-3">
+							<span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate" :title="s.title">
+								{{ s.title }}
+							</span>
+							<div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+								<div
+									class="bg-rose-500 h-2 rounded-full transition-all"
+									:style="{ width: followPct(s.count) + '%' }"
+								/>
+							</div>
+							<span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
+						</div>
+					</div>
+					<p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.follows.emptySeries") }}</p>
+				</div>
+				<div>
+					<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+						{{ t("admin.dashboard.follows.topCategories") }}
+					</h4>
+					<div v-if="followStats.top_categories.length" class="space-y-3">
+						<div
+							v-for="c in followStats.top_categories"
+							:key="c.id"
+							class="flex items-center gap-3"
+						>
+							<span class="text-sm text-gray-800 dark:text-gray-200 w-32 truncate">{{
+								c.name
+							}}</span>
+							<div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+								<div
+									class="bg-rose-500 h-2 rounded-full transition-all"
+									:style="{ width: followPct(c.count) + '%' }"
+								/>
+							</div>
+							<span class="text-sm text-gray-500 w-8 text-right">{{ c.count }}</span>
+						</div>
+					</div>
+					<p v-else class="text-sm text-gray-400">
+						{{ t("admin.dashboard.follows.emptyCategories") }}
+					</p>
+				</div>
+			</div>
+		</div>
+		<div
+			v-else-if="isAnalyticsFailed('follows')"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+		>
+			<div>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("admin.dashboard.follows.title") }}
+				</h3>
+				<p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+			</div>
+			<button
+				type="button"
+				class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+				@click="retryAnalyticsCard('follows')"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Search-term analytics (DEC-152, TASK-188): what readers look for -->
-    <div
-      v-if="topSearches"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
-        <Icon icon="lucide:search" class="w-5 h-5 text-sky-500" />
-        {{ t("admin.dashboard.searches.title") }}
-      </h3>
-      <p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.searches.note") }}</p>
+		<!-- Search-term analytics (DEC-152, TASK-188): what readers look for -->
+		<div
+			v-if="topSearches"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2"
+			>
+				<Icon icon="lucide:search" class="w-5 h-5 text-sky-500" />
+				{{ t("admin.dashboard.searches.title") }}
+			</h3>
+			<p class="text-xs text-gray-400 mb-4">{{ t("admin.dashboard.searches.note") }}</p>
 
-      <div v-if="topSearches.length" class="space-y-3">
-        <div v-for="s in topSearches" :key="s.query" class="flex items-center gap-3">
-          <span class="text-sm text-gray-800 dark:text-gray-200 w-48 truncate" :title="s.query">
-            {{ s.query }}
-          </span>
-          <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-            <div
-              class="bg-sky-500 h-2 rounded-full transition-all"
-              :style="{ width: searchPct(s.count) + '%' }"
-            />
-          </div>
-          <span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
-        </div>
-      </div>
-      <p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.searches.empty") }}</p>
-    </div>
-    <div
-      v-else-if="isAnalyticsFailed('searches')"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
-    >
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.searches.title") }}</h3>
-        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
-      </div>
-      <button
-        type="button"
-        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        @click="retryAnalyticsCard('searches')"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+			<div v-if="topSearches.length" class="space-y-3">
+				<div v-for="s in topSearches" :key="s.query" class="flex items-center gap-3">
+					<span class="text-sm text-gray-800 dark:text-gray-200 w-48 truncate" :title="s.query">
+						{{ s.query }}
+					</span>
+					<div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+						<div
+							class="bg-sky-500 h-2 rounded-full transition-all"
+							:style="{ width: searchPct(s.count) + '%' }"
+						/>
+					</div>
+					<span class="text-sm text-gray-500 w-8 text-right">{{ s.count }}</span>
+				</div>
+			</div>
+			<p v-else class="text-sm text-gray-400">{{ t("admin.dashboard.searches.empty") }}</p>
+		</div>
+		<div
+			v-else-if="isAnalyticsFailed('searches')"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+		>
+			<div>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("admin.dashboard.searches.title") }}
+				</h3>
+				<p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+			</div>
+			<button
+				type="button"
+				class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+				@click="retryAnalyticsCard('searches')"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Comment activity (DEC-154, TASK-189): engagement axis -->
-    <div
-      v-if="commentActivity"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <Icon icon="lucide:message-square" class="w-5 h-5 text-emerald-500" />
-        {{ t("admin.dashboard.comments.title") }}
-        <span class="ml-auto text-sm font-normal text-gray-500">
-          {{ t("admin.dashboard.comments.total", { n: commentActivity.total }) }}
-        </span>
-      </h3>
-      <div class="flex items-end gap-1 h-24">
-        <div
-          v-for="point in commentActivity.series"
-          :key="point.day"
-          class="flex-1 flex items-end justify-center h-full group"
-          :title="`${point.day} · ${point.count}`"
-        >
-          <div
-            class="w-full rounded-t bg-gradient-to-t from-emerald-500 to-teal-400 group-hover:from-emerald-600 group-hover:to-teal-500 transition-colors"
-            :style="{ height: commentPct(point.count) + '%' }"
-          />
-        </div>
-      </div>
-      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>{{ commentDayShort(commentActivity.series[0]?.day ?? "") }}</span>
-        <span>{{ commentDayShort(commentActivity.series[commentActivity.series.length - 1]?.day ?? "") }}</span>
-      </div>
-      <div
-        v-if="commentActivity.top_posts.length"
-        class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
-      >
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-          {{ t("admin.dashboard.comments.topTitle") }}
-        </p>
-        <ul class="space-y-1">
-          <li
-            v-for="cp in commentActivity.top_posts"
-            :key="cp.id"
-            class="flex items-center justify-between gap-3 text-sm"
-          >
-            <NuxtLink :to="`/admin/posts/${cp.id}`" class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600">
-              {{ cp.title }}
-            </NuxtLink>
-            <span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
-              <Icon icon="lucide:message-square" class="w-3.5 h-3.5" />
-              {{ cp.count }}
-            </span>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div
-      v-else-if="isAnalyticsFailed('comments')"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
-    >
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.comments.title") }}</h3>
-        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
-      </div>
-      <button
-        type="button"
-        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        @click="retryAnalyticsCard('comments')"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<!-- Comment activity (DEC-154, TASK-189): engagement axis -->
+		<div
+			v-if="commentActivity"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+			>
+				<Icon icon="lucide:message-square" class="w-5 h-5 text-emerald-500" />
+				{{ t("admin.dashboard.comments.title") }}
+				<span class="ml-auto text-sm font-normal text-gray-500">
+					{{ t("admin.dashboard.comments.total", { n: commentActivity.total }) }}
+				</span>
+			</h3>
+			<div class="flex items-end gap-1 h-24">
+				<div
+					v-for="point in commentActivity.series"
+					:key="point.day"
+					class="flex-1 flex items-end justify-center h-full group"
+					:title="`${point.day} · ${point.count}`"
+				>
+					<div
+						class="w-full rounded-t bg-gradient-to-t from-emerald-500 to-teal-400 group-hover:from-emerald-600 group-hover:to-teal-500 transition-colors"
+						:style="{ height: commentPct(point.count) + '%' }"
+					/>
+				</div>
+			</div>
+			<div class="flex justify-between text-[10px] text-gray-400 mt-1">
+				<span>{{ commentDayShort(commentActivity.series[0]?.day ?? "") }}</span>
+				<span>{{
+					commentDayShort(commentActivity.series[commentActivity.series.length - 1]?.day ?? "")
+				}}</span>
+			</div>
+			<div
+				v-if="commentActivity.top_posts.length"
+				class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
+			>
+				<p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+					{{ t("admin.dashboard.comments.topTitle") }}
+				</p>
+				<ul class="space-y-1">
+					<li
+						v-for="cp in commentActivity.top_posts"
+						:key="cp.id"
+						class="flex items-center justify-between gap-3 text-sm"
+					>
+						<NuxtLink
+							:to="`/admin/posts/${cp.id}`"
+							class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600"
+						>
+							{{ cp.title }}
+						</NuxtLink>
+						<span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
+							<Icon icon="lucide:message-square" class="w-3.5 h-3.5" />
+							{{ cp.count }}
+						</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<div
+			v-else-if="isAnalyticsFailed('comments')"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+		>
+			<div>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("admin.dashboard.comments.title") }}
+				</h3>
+				<p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+			</div>
+			<button
+				type="button"
+				class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+				@click="retryAnalyticsCard('comments')"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Reading trend (DEC-086): last-30-days view series + top posts -->
-    <div
-      v-if="viewsTrend"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <Icon icon="lucide:trending-up" class="w-5 h-5 text-blue-500" />
-        {{ t("admin.dashboard.trend.title") }}
-        <span class="ml-auto text-sm font-normal text-gray-500">
-          {{ t("admin.dashboard.trend.total", { n: viewsTrend.total }) }}
-        </span>
-      </h3>
-      <div class="flex items-end gap-1 h-24">
-        <div
-          v-for="point in viewsTrend.series"
-          :key="point.day"
-          class="flex-1 flex items-end justify-center h-full group"
-          :title="`${point.day} · ${point.views}`"
-        >
-          <div
-            class="w-full rounded-t bg-gradient-to-t from-blue-500 to-indigo-400 group-hover:from-blue-600 group-hover:to-indigo-500 transition-colors"
-            :style="{ height: trendPct(point.views) + '%' }"
-          />
-        </div>
-      </div>
-      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>{{ trendDayShort(viewsTrend.series[0]?.day ?? "") }}</span>
-        <span>{{ trendDayShort(viewsTrend.series[viewsTrend.series.length - 1]?.day ?? "") }}</span>
-      </div>
-      <div
-        v-if="viewsTrend.top_posts.length"
-        class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
-      >
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-          {{ t("admin.dashboard.trend.topTitle") }}
-        </p>
-        <ul class="space-y-1">
-          <li
-            v-for="tp in viewsTrend.top_posts"
-            :key="tp.id"
-            class="flex items-center justify-between gap-3 text-sm"
-          >
-            <NuxtLink :to="`/admin/posts/${tp.id}`" class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600">
-              {{ tp.title }}
-            </NuxtLink>
-            <span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
-              <Icon icon="lucide:eye" class="w-3.5 h-3.5" />
-              {{ tp.views }}
-            </span>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <div
-      v-else-if="isAnalyticsFailed('views')"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
-    >
-      <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{{ t("admin.dashboard.trend.title") }}</h3>
-        <p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
-      </div>
-      <button
-        type="button"
-        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        @click="retryAnalyticsCard('views')"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+		<!-- Reading trend (DEC-086): last-30-days view series + top posts -->
+		<div
+			v-if="viewsTrend"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+			>
+				<Icon icon="lucide:trending-up" class="w-5 h-5 text-blue-500" />
+				{{ t("admin.dashboard.trend.title") }}
+				<span class="ml-auto text-sm font-normal text-gray-500">
+					{{ t("admin.dashboard.trend.total", { n: viewsTrend.total }) }}
+				</span>
+			</h3>
+			<div class="flex items-end gap-1 h-24">
+				<div
+					v-for="point in viewsTrend.series"
+					:key="point.day"
+					class="flex-1 flex items-end justify-center h-full group"
+					:title="`${point.day} · ${point.views}`"
+				>
+					<div
+						class="w-full rounded-t bg-gradient-to-t from-blue-500 to-indigo-400 group-hover:from-blue-600 group-hover:to-indigo-500 transition-colors"
+						:style="{ height: trendPct(point.views) + '%' }"
+					/>
+				</div>
+			</div>
+			<div class="flex justify-between text-[10px] text-gray-400 mt-1">
+				<span>{{ trendDayShort(viewsTrend.series[0]?.day ?? "") }}</span>
+				<span>{{ trendDayShort(viewsTrend.series[viewsTrend.series.length - 1]?.day ?? "") }}</span>
+			</div>
+			<div
+				v-if="viewsTrend.top_posts.length"
+				class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800"
+			>
+				<p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+					{{ t("admin.dashboard.trend.topTitle") }}
+				</p>
+				<ul class="space-y-1">
+					<li
+						v-for="tp in viewsTrend.top_posts"
+						:key="tp.id"
+						class="flex items-center justify-between gap-3 text-sm"
+					>
+						<NuxtLink
+							:to="`/admin/posts/${tp.id}`"
+							class="truncate text-gray-700 dark:text-gray-300 hover:text-blue-600"
+						>
+							{{ tp.title }}
+						</NuxtLink>
+						<span class="text-gray-400 text-xs flex items-center gap-1 shrink-0">
+							<Icon icon="lucide:eye" class="w-3.5 h-3.5" />
+							{{ tp.views }}
+						</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<div
+			v-else-if="isAnalyticsFailed('views')"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8 flex items-center justify-between"
+		>
+			<div>
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("admin.dashboard.trend.title") }}
+				</h3>
+				<p class="text-xs text-gray-400">{{ t("admin.dashboard.analyticsFailed") }}</p>
+			</div>
+			<button
+				type="button"
+				class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+				@click="retryAnalyticsCard('views')"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Recent posts + Pending comments -->
-    <div class="grid gap-6 lg:grid-cols-2 mb-8">
-      <!-- Recent posts -->
-      <div
-        data-testid="recent-posts"
-        class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
-      >
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Icon icon="lucide:clock" class="w-5 h-5 text-green-500" />
-          {{ t("admin.dashboard.recentPosts.title") }}
-        </h3>
-        <div v-if="recentPosts.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
-          {{ t("admin.dashboard.recentPosts.empty") }}
-        </div>
-        <div v-else class="space-y-2">
-          <NuxtLink
-            v-for="post in recentPosts"
-            :key="post.id"
-            :to="`/admin/posts/${post.id}`"
-            class="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/10 dark:hover:to-indigo-900/10 transition-colors group"
-          >
-            <div>
-              <p
-                class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-              >
-                {{ post.title }}
-              </p>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ formatPostDate(effectivePublishTs(post), locale) }}
-              </p>
-            </div>
-            <div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
-              <span class="flex items-center gap-1">
-                <Icon icon="lucide:eye" class="w-4 h-4" />
-                {{ post.views || 0 }}
-              </span>
-              <span v-if="post.comment_count" class="flex items-center gap-1">
-                <Icon icon="lucide:message-square" class="w-4 h-4" />
-                {{ post.comment_count }}
-              </span>
-            </div>
-          </NuxtLink>
-        </div>
-      </div>
+		<!-- Recent posts + Pending comments -->
+		<div class="grid gap-6 lg:grid-cols-2 mb-8">
+			<!-- Recent posts -->
+			<div
+				data-testid="recent-posts"
+				class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
+			>
+				<h3
+					class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+				>
+					<Icon icon="lucide:clock" class="w-5 h-5 text-green-500" />
+					{{ t("admin.dashboard.recentPosts.title") }}
+				</h3>
+				<div v-if="recentPosts.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
+					{{ t("admin.dashboard.recentPosts.empty") }}
+				</div>
+				<div v-else class="space-y-2">
+					<NuxtLink
+						v-for="post in recentPosts"
+						:key="post.id"
+						:to="`/admin/posts/${post.id}`"
+						class="flex items-center justify-between p-4 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/10 dark:hover:to-indigo-900/10 transition-colors group"
+					>
+						<div>
+							<p
+								class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+							>
+								{{ post.title }}
+							</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								{{ formatPostDate(effectivePublishTs(post), locale) }}
+							</p>
+						</div>
+						<div class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
+							<span class="flex items-center gap-1">
+								<Icon icon="lucide:eye" class="w-4 h-4" />
+								{{ post.views || 0 }}
+							</span>
+							<span v-if="post.comment_count" class="flex items-center gap-1">
+								<Icon icon="lucide:message-square" class="w-4 h-4" />
+								{{ post.comment_count }}
+							</span>
+						</div>
+					</NuxtLink>
+				</div>
+			</div>
 
-      <!-- Pending comments -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Icon icon="lucide:message-square" class="w-5 h-5 text-red-500" />
-          {{ t("admin.dashboard.pendingComments.title") }}
-          <span v-if="pendingCommentsCount > 0" class="ml-auto text-sm font-normal text-gray-500">
-            {{ t("admin.dashboard.pendingComments.count", { n: pendingCommentsCount }) }}
-          </span>
-        </h3>
-        <div
-          v-if="approveError"
-          class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-        >
-          {{ approveError }}
-        </div>
-        <div v-if="recentPendingComments.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
-          {{ t("admin.dashboard.pendingComments.empty") }}
-        </div>
-        <div v-else class="space-y-3">
-          <div
-            v-for="comment in recentPendingComments"
-            :key="comment.id"
-            class="p-3 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20"
-          >
-            <div class="flex items-start justify-between mb-2">
-              <div class="text-sm">
-                <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.nickname }}</span>
-                <span class="text-gray-400 mx-1">·</span>
-                <NuxtLink :to="`/admin/comments`" class="text-blue-500 hover:text-blue-600">
-                  {{ comment.post_title }}
-                </NuxtLink>
-              </div>
-            </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-              {{ comment.content }}
-            </p>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                :disabled="approvingIds.has(comment.id)"
-                class="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="handleApprove(comment.id, true)"
-              >
-                {{ approvingIds.has(comment.id) ? t("admin.dashboard.approving") : t("admin.dashboard.approve") }}
-              </button>
-              <button
-                type="button"
-                :disabled="approvingIds.has(comment.id)"
-                class="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="handleApprove(comment.id, false)"
-              >
-                {{ t("admin.dashboard.reject") }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+			<!-- Pending comments -->
+			<div
+				class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5"
+			>
+				<h3
+					class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+				>
+					<Icon icon="lucide:message-square" class="w-5 h-5 text-red-500" />
+					{{ t("admin.dashboard.pendingComments.title") }}
+					<span v-if="pendingCommentsCount > 0" class="ml-auto text-sm font-normal text-gray-500">
+						{{ t("admin.dashboard.pendingComments.count", { n: pendingCommentsCount }) }}
+					</span>
+				</h3>
+				<div
+					v-if="approveError"
+					class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+				>
+					{{ approveError }}
+				</div>
+				<div
+					v-if="recentPendingComments.length === 0"
+					class="text-gray-500 dark:text-gray-400 text-sm"
+				>
+					{{ t("admin.dashboard.pendingComments.empty") }}
+				</div>
+				<div v-else class="space-y-3">
+					<div
+						v-for="comment in recentPendingComments"
+						:key="comment.id"
+						class="p-3 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20"
+					>
+						<div class="flex items-start justify-between mb-2">
+							<div class="text-sm">
+								<span class="font-medium text-gray-900 dark:text-gray-100">{{
+									comment.nickname
+								}}</span>
+								<span class="text-gray-400 mx-1">·</span>
+								<NuxtLink :to="`/admin/comments`" class="text-blue-500 hover:text-blue-600">
+									{{ comment.post_title }}
+								</NuxtLink>
+							</div>
+						</div>
+						<p class="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+							{{ comment.content }}
+						</p>
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								:disabled="approvingIds.has(comment.id)"
+								class="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								@click="handleApprove(comment.id, true)"
+							>
+								{{
+									approvingIds.has(comment.id)
+										? t("admin.dashboard.approving")
+										: t("admin.dashboard.approve")
+								}}
+							</button>
+							<button
+								type="button"
+								:disabled="approvingIds.has(comment.id)"
+								class="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								@click="handleApprove(comment.id, false)"
+							>
+								{{ t("admin.dashboard.reject") }}
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-    <!-- Data export (superuser-only, hidden for editors) -->
-    <div
-      v-if="canExport"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <Icon icon="lucide:download" class="w-5 h-5 text-indigo-500" />
-        {{ t("admin.dashboard.export.title") }}
-      </h3>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {{ t("admin.dashboard.export.subtitle") }}
-      </p>
-      <div v-if="exportError" class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
-        {{ exportError }}
-      </div>
+		<!-- Data export (superuser-only, hidden for editors) -->
+		<div
+			v-if="canExport"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+			>
+				<Icon icon="lucide:download" class="w-5 h-5 text-indigo-500" />
+				{{ t("admin.dashboard.export.title") }}
+			</h3>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+				{{ t("admin.dashboard.export.subtitle") }}
+			</p>
+			<div
+				v-if="exportError"
+				class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+			>
+				{{ exportError }}
+			</div>
 
-      <!-- Export filters (RIL TASK-079) -->
-      <div class="flex flex-wrap items-end gap-3 mb-4">
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("admin.dashboard.export.postStatus") }}
-          <select
-            v-model="exportStatus"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
-            <option value="published">{{ t("admin.dashboard.export.published") }}</option>
-            <option value="draft">{{ t("admin.dashboard.export.draft") }}</option>
-            <option value="scheduled">{{ t("admin.dashboard.export.scheduled") }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("admin.dashboard.export.commentStatus") }}
-          <select
-            v-model="exportApproved"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
-            <option value="approved">{{ t("admin.dashboard.export.approved") }}</option>
-            <option value="pending">{{ t("admin.dashboard.export.pending") }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("admin.dashboard.export.fromDate") }}
-          <input
-            v-model="exportDateFrom"
-            type="date"
-            :max="exportDateTo || undefined"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("admin.dashboard.export.toDate") }}
-          <input
-            v-model="exportDateTo"
-            type="date"
-            :min="exportDateFrom || undefined"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-        </label>
-      </div>
+			<!-- Export filters (RIL TASK-079) -->
+			<div class="flex flex-wrap items-end gap-3 mb-4">
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("admin.dashboard.export.postStatus") }}
+					<select
+						v-model="exportStatus"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					>
+						<option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
+						<option value="published">{{ t("admin.dashboard.export.published") }}</option>
+						<option value="draft">{{ t("admin.dashboard.export.draft") }}</option>
+						<option value="scheduled">{{ t("admin.dashboard.export.scheduled") }}</option>
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("admin.dashboard.export.commentStatus") }}
+					<select
+						v-model="exportApproved"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					>
+						<option value="all">{{ t("admin.dashboard.export.allStatuses") }}</option>
+						<option value="approved">{{ t("admin.dashboard.export.approved") }}</option>
+						<option value="pending">{{ t("admin.dashboard.export.pending") }}</option>
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("admin.dashboard.export.fromDate") }}
+					<input
+						v-model="exportDateFrom"
+						type="date"
+						:max="exportDateTo || undefined"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("admin.dashboard.export.toDate") }}
+					<input
+						v-model="exportDateTo"
+						type="date"
+						:min="exportDateFrom || undefined"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+				</label>
+			</div>
 
-      <div class="flex flex-wrap gap-3">
-        <button
-          type="button"
-          :disabled="exporting !== null"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-60 transition-all"
-          @click="downloadExport('posts')"
-        >
-          <Icon icon="lucide:file-text" class="w-4 h-4" />
-          {{ exporting === 'posts' ? t("admin.dashboard.export.exporting") : t("admin.dashboard.export.posts") }}
-        </button>
-        <button
-          type="button"
-          :disabled="exporting !== null"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-60 transition-all"
-          @click="downloadExport('comments')"
-        >
-          <Icon icon="lucide:message-square" class="w-4 h-4" />
-          {{ exporting === 'comments' ? t("admin.dashboard.export.exporting") : t("admin.dashboard.export.comments") }}
-        </button>
-      </div>
-    </div>
+			<div class="flex flex-wrap gap-3">
+				<button
+					type="button"
+					:disabled="exporting !== null"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 disabled:opacity-60 transition-all"
+					@click="downloadExport('posts')"
+				>
+					<Icon icon="lucide:file-text" class="w-4 h-4" />
+					{{
+						exporting === "posts"
+							? t("admin.dashboard.export.exporting")
+							: t("admin.dashboard.export.posts")
+					}}
+				</button>
+				<button
+					type="button"
+					:disabled="exporting !== null"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 disabled:opacity-60 transition-all"
+					@click="downloadExport('comments')"
+				>
+					<Icon icon="lucide:message-square" class="w-4 h-4" />
+					{{
+						exporting === "comments"
+							? t("admin.dashboard.export.exporting")
+							: t("admin.dashboard.export.comments")
+					}}
+				</button>
+			</div>
+		</div>
 
-    <!-- Full-blog backup & restore (DEC-082) -->
-    <div
-      v-if="canExport"
-      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
-    >
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <Icon icon="lucide:archive" class="w-5 h-5 text-amber-500" />
-        {{ t("admin.dashboard.backup.title") }}
-      </h3>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {{ t("admin.dashboard.backup.subtitle") }}
-      </p>
-      <div
-        v-if="backupError"
-        class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-      >
-        {{ backupError }}
-      </div>
-      <div
-        v-if="restoreSummary"
-        class="mb-4 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-400"
-      >
-        {{ t("admin.dashboard.backup.restored", { summary: restoreSummary }) }}
-      </div>
-      <div class="flex flex-wrap gap-3">
-        <button
-          type="button"
-          :disabled="backupState !== 'idle'"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-60 transition-all"
-          @click="downloadFullBackup"
-        >
-          <Icon icon="lucide:download" class="w-4 h-4" />
-          {{ backupState === 'downloading' ? t("admin.dashboard.backup.downloading") : t("admin.dashboard.backup.download") }}
-        </button>
-        <label
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 disabled:opacity-60 transition-all cursor-pointer"
-          :class="{ 'opacity-60 pointer-events-none': backupState !== 'idle' }"
-        >
-          <Icon icon="lucide:upload" class="w-4 h-4" />
-          {{ backupState === 'restoring' ? t("admin.dashboard.backup.restoring") : t("admin.dashboard.backup.restore") }}
-          <input
-            type="file"
-            accept="application/json,.json"
-            class="hidden"
-            :disabled="backupState !== 'idle'"
-            @change="onRestoreFileChange"
-          >
-        </label>
-      </div>
-    </div>
+		<!-- Full-blog backup & restore (DEC-082) -->
+		<div
+			v-if="canExport"
+			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
+		>
+			<h3
+				class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+			>
+				<Icon icon="lucide:archive" class="w-5 h-5 text-amber-500" />
+				{{ t("admin.dashboard.backup.title") }}
+			</h3>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+				{{ t("admin.dashboard.backup.subtitle") }}
+			</p>
+			<div
+				v-if="backupError"
+				class="mb-4 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+			>
+				{{ backupError }}
+			</div>
+			<div
+				v-if="restoreSummary"
+				class="mb-4 px-4 py-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-400"
+			>
+				{{ t("admin.dashboard.backup.restored", { summary: restoreSummary }) }}
+			</div>
+			<div class="flex flex-wrap gap-3">
+				<button
+					type="button"
+					:disabled="backupState !== 'idle'"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-60 transition-all"
+					@click="downloadFullBackup"
+				>
+					<Icon icon="lucide:download" class="w-4 h-4" />
+					{{
+						backupState === "downloading"
+							? t("admin.dashboard.backup.downloading")
+							: t("admin.dashboard.backup.download")
+					}}
+				</button>
+				<label
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-slate-500 to-slate-700 hover:from-slate-600 hover:to-slate-800 disabled:opacity-60 transition-all cursor-pointer"
+					:class="{ 'opacity-60 pointer-events-none': backupState !== 'idle' }"
+				>
+					<Icon icon="lucide:upload" class="w-4 h-4" />
+					{{
+						backupState === "restoring"
+							? t("admin.dashboard.backup.restoring")
+							: t("admin.dashboard.backup.restore")
+					}}
+					<input
+						type="file"
+						accept="application/json,.json"
+						class="hidden"
+						:disabled="backupState !== 'idle'"
+						@change="onRestoreFileChange"
+					/>
+				</label>
+			</div>
+		</div>
 
-    <!-- Data freshness -->
-    <div class="text-xs text-gray-400 dark:text-gray-600 text-right">
-      {{ t("admin.dashboard.updatedAt", { time: loadedAt }) }}
-    </div>
-  </div>
+		<!-- Data freshness -->
+		<div class="text-xs text-gray-400 dark:text-gray-600 text-right">
+			{{ t("admin.dashboard.updatedAt", { time: loadedAt }) }}
+		</div>
+	</div>
 </template>

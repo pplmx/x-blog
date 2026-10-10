@@ -2,6 +2,22 @@
 
 A Nuxt 4 alternative frontend for X-Blog, running in parallel with the Next.js app.
 
+## Toolchain (Vite+)
+
+The frontend toolchain is **Vite+** (`vite-plus`, the unified `vp` CLI) as the **outer
+command**. One standalone `vite.config.ts` holds the Vite/Vitest config; `vp` manages the
+package manager and owns the toolchain:
+
+- `pnpm install` → `vp install` (delegates to the resolved package manager)
+- `pnpm test` → `vp test` (Vitest 5, bundled)
+- `pnpm lint` / `pnpm check` / `pnpm format` → `vp lint` / `vp check` / `vp fmt` (Oxlint/Oxfmt)
+- `pnpm build` / `pnpm dev` / `pnpm typecheck` → `vp run nuxt:*` → Nuxt's own
+  `nuxt build` / `nuxt dev` / `nuxt typecheck` (Nitro/SSR build stays Nuxt's — the
+  `vp` built-in `dev`/`build` are for plain Vite apps only)
+
+Oxlint lints `.vue` `<script>` only, not the template (accepted tradeoff of the
+Biome→Oxlint switch).
+
 ## Development
 
 ```bash

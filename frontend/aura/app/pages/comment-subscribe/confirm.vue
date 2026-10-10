@@ -128,14 +128,26 @@ onMounted(() => void run());
 					/>
 					{{ t("reader.commentSubscribe.confirmDigestWeekly") }}
 				</label>
-				<p v-if="digestToggling" role="status" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+				<p
+					v-if="digestToggling"
+					role="status"
+					class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+				>
 					{{ t("reader.commentSubscribe.confirmDigestSaving") }}
 				</p>
-				<p v-if="digestToggleError" role="alert" class="text-xs text-red-600 dark:text-red-400 mt-1">
+				<p
+					v-if="digestToggleError"
+					role="alert"
+					class="text-xs text-red-600 dark:text-red-400 mt-1"
+				>
 					{{ t("reader.commentSubscribe.confirmDigestError") }}
 				</p>
 			</div>
-			<p v-else-if="state === 'invalid'" role="status" class="mt-3 text-sm text-amber-700 dark:text-amber-400">
+			<p
+				v-else-if="state === 'invalid'"
+				role="status"
+				class="mt-3 text-sm text-amber-700 dark:text-amber-400"
+			>
 				{{ t("reader.commentSubscribe.confirmInvalid") }}
 			</p>
 			<p

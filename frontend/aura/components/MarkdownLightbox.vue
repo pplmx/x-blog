@@ -163,80 +163,83 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="index !== null && current()"
-      ref="dialogRef"
-      class="fixed inset-0 z-[120] flex items-center justify-center p-4 print:hidden"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="t('components.markdown.lightboxDialogAria')"
-      tabindex="-1"
-      data-testid="lightbox"
-      @keydown="onKeydown"
-    >
-      <!-- Backdrop: click anywhere outside the image closes -->
-      <div class="absolute inset-0 bg-black/85" data-testid="lightbox-backdrop" @click="close" />
+	<Teleport to="body">
+		<div
+			v-if="index !== null && current()"
+			ref="dialogRef"
+			class="fixed inset-0 z-[120] flex items-center justify-center p-4 print:hidden"
+			role="dialog"
+			aria-modal="true"
+			:aria-label="t('components.markdown.lightboxDialogAria')"
+			tabindex="-1"
+			data-testid="lightbox"
+			@keydown="onKeydown"
+		>
+			<!-- Backdrop: click anywhere outside the image closes -->
+			<div class="absolute inset-0 bg-black/85" data-testid="lightbox-backdrop" @click="close" />
 
-      <!-- The image, at full resolution, fitting the viewport -->
-      <figure class="relative z-10 flex max-h-full max-w-full flex-col items-center gap-3">
-        <img
-          :src="current()!.src"
-          :alt="current()!.alt"
-          class="max-h-[78vh] max-w-full rounded-lg object-contain shadow-2xl"
-          data-testid="lightbox-image"
-        />
-        <figcaption
-          class="flex items-center gap-3 text-sm text-gray-200"
-        >
-          <!-- Sighted readers get the count; the sr-only aria-live region
+			<!-- The image, at full resolution, fitting the viewport -->
+			<figure class="relative z-10 flex max-h-full max-w-full flex-col items-center gap-3">
+				<img
+					:src="current()!.src"
+					:alt="current()!.alt"
+					class="max-h-[78vh] max-w-full rounded-lg object-contain shadow-2xl"
+					data-testid="lightbox-image"
+				/>
+				<figcaption class="flex items-center gap-3 text-sm text-gray-200">
+					<!-- Sighted readers get the count; the sr-only aria-live region
                announces the same position to screen readers (the visible
                "n / total" alone reads as bare numbers, and aria-hidden on it
                left SR users with no sense of which image they were on). -->
-          <span class="sr-only" role="status" aria-live="polite">
-            {{ t("components.markdown.lightboxCounter", { current: (index ?? 0) + 1, total: images.length }) }}
-          </span>
-          <span aria-hidden="true" data-testid="lightbox-counter">
-            {{ index! + 1 }} / {{ images.length }}
-          </span>
-          <span v-if="current()!.alt" class="max-w-xl truncate text-gray-300">
-            {{ current()!.alt }}
-          </span>
-        </figcaption>
-      </figure>
+					<span class="sr-only" role="status" aria-live="polite">
+						{{
+							t("components.markdown.lightboxCounter", {
+								current: (index ?? 0) + 1,
+								total: images.length,
+							})
+						}}
+					</span>
+					<span aria-hidden="true" data-testid="lightbox-counter">
+						{{ index! + 1 }} / {{ images.length }}
+					</span>
+					<span v-if="current()!.alt" class="max-w-xl truncate text-gray-300">
+						{{ current()!.alt }}
+					</span>
+				</figcaption>
+			</figure>
 
-      <!-- Close -->
-      <button
-        type="button"
-        class="absolute top-4 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
-        :aria-label="t('components.markdown.lightboxClose')"
-        data-testid="lightbox-close"
-        @click="close"
-      >
-        <span aria-hidden="true" class="text-2xl leading-none">&times;</span>
-      </button>
+			<!-- Close -->
+			<button
+				type="button"
+				class="absolute top-4 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
+				:aria-label="t('components.markdown.lightboxClose')"
+				data-testid="lightbox-close"
+				@click="close"
+			>
+				<span aria-hidden="true" class="text-2xl leading-none">&times;</span>
+			</button>
 
-      <!-- Image browsing (only meaningful with 2+ images) -->
-      <template v-if="images.length > 1">
-        <button
-          type="button"
-          class="absolute top-1/2 left-2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
-          :aria-label="t('components.markdown.lightboxPrevious')"
-          data-testid="lightbox-prev"
-          @click="step(-1)"
-        >
-          <Icon icon="lucide:chevron-left" class="h-6 w-6" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="absolute top-1/2 right-2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
-          :aria-label="t('components.markdown.lightboxNext')"
-          data-testid="lightbox-next"
-          @click="step(1)"
-        >
-          <Icon icon="lucide:chevron-right" class="h-6 w-6" aria-hidden="true" />
-        </button>
-      </template>
-    </div>
-  </Teleport>
+			<!-- Image browsing (only meaningful with 2+ images) -->
+			<template v-if="images.length > 1">
+				<button
+					type="button"
+					class="absolute top-1/2 left-2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
+					:aria-label="t('components.markdown.lightboxPrevious')"
+					data-testid="lightbox-prev"
+					@click="step(-1)"
+				>
+					<Icon icon="lucide:chevron-left" class="h-6 w-6" aria-hidden="true" />
+				</button>
+				<button
+					type="button"
+					class="absolute top-1/2 right-2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white"
+					:aria-label="t('components.markdown.lightboxNext')"
+					data-testid="lightbox-next"
+					@click="step(1)"
+				>
+					<Icon icon="lucide:chevron-right" class="h-6 w-6" aria-hidden="true" />
+				</button>
+			</template>
+		</div>
+	</Teleport>
 </template>

@@ -174,207 +174,220 @@ function cancel2fa() {
 </script>
 
 <template>
-  <div class="max-w-md mx-auto px-4 py-12">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8">
-      <div class="text-center mb-8">
-        <div
-          class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center mx-auto mb-4"
-        >
-          <Icon icon="lucide:bookmark" class="w-8 h-8 text-white" />
-        </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ twoFactorStep
-            ? t("reader.login.twoFactorTitle")
-            : mode === "login"
-              ? t("reader.login.title")
-              : t("reader.login.registerTitle") }}
-        </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{ twoFactorStep
-            ? t("reader.login.twoFactorSubtitle", { email })
-            : mode === "login"
-              ? t("reader.login.subtitle")
-              : t("reader.login.registerSubtitle") }}
-        </p>
-      </div>
+	<div class="max-w-md mx-auto px-4 py-12">
+		<div
+			class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8"
+		>
+			<div class="text-center mb-8">
+				<div
+					class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center mx-auto mb-4"
+				>
+					<Icon icon="lucide:bookmark" class="w-8 h-8 text-white" />
+				</div>
+				<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+					{{
+						twoFactorStep
+							? t("reader.login.twoFactorTitle")
+							: mode === "login"
+								? t("reader.login.title")
+								: t("reader.login.registerTitle")
+					}}
+				</h1>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					{{
+						twoFactorStep
+							? t("reader.login.twoFactorSubtitle", { email })
+							: mode === "login"
+								? t("reader.login.subtitle")
+								: t("reader.login.registerSubtitle")
+					}}
+				</p>
+			</div>
 
-      <!-- Mode toggle (disabled mid-request so an in-flight register/login
+			<!-- Mode toggle (disabled mid-request so an in-flight register/login
            result can't land while the form has already switched modes) -->
-      <div
-        v-if="!twoFactorStep"
-        class="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl mb-6"
-      >
-        <button
-          type="button"
-          :disabled="isPending"
-          :aria-pressed="mode === 'login'"
-          class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          :class="mode === 'login'
-            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="setMode('login')"
-        >
-          {{ t("reader.login.hasAccount") }}
-        </button>
-        <button
-          type="button"
-          :disabled="isPending"
-          :aria-pressed="mode === 'register'"
-          class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          :class="mode === 'register'
-            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="setMode('register')"
-        >
-          {{ t("reader.login.noAccount") }}
-        </button>
-      </div>
+			<div
+				v-if="!twoFactorStep"
+				class="grid grid-cols-2 gap-1 p-1 bg-gray-100 dark:bg-gray-900 rounded-xl mb-6"
+			>
+				<button
+					type="button"
+					:disabled="isPending"
+					:aria-pressed="mode === 'login'"
+					class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+					:class="
+						mode === 'login'
+							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
+					@click="setMode('login')"
+				>
+					{{ t("reader.login.hasAccount") }}
+				</button>
+				<button
+					type="button"
+					:disabled="isPending"
+					:aria-pressed="mode === 'register'"
+					class="py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+					:class="
+						mode === 'register'
+							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
+					@click="setMode('register')"
+				>
+					{{ t("reader.login.noAccount") }}
+				</button>
+			</div>
 
-      <form v-if="!twoFactorStep" @submit.prevent="handleSubmit" class="space-y-5">
-        <div v-if="mode === 'register'">
-          <label for="reader-display-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {{ t("reader.login.displayName") }}
-          </label>
-          <input
-            id="reader-display-name"
-            ref="displayNameInput"
-            v-model="displayName"
-            type="text"
-            autocomplete="name"
-            maxlength="50"
-            :placeholder="t('reader.login.displayNamePlaceholder')"
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-        </div>
+			<form v-if="!twoFactorStep" @submit.prevent="handleSubmit" class="space-y-5">
+				<div v-if="mode === 'register'">
+					<label
+						for="reader-display-name"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+					>
+						{{ t("reader.login.displayName") }}
+					</label>
+					<input
+						id="reader-display-name"
+						ref="displayNameInput"
+						v-model="displayName"
+						type="text"
+						autocomplete="name"
+						maxlength="50"
+						:placeholder="t('reader.login.displayNamePlaceholder')"
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+				</div>
 
-        <div>
-          <label
-            for="reader-email"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >{{ t("reader.login.email") }}
-          </label>
-          <input
-            id="reader-email"
-            v-model="email"
-            type="email"
-            autocomplete="email"
-            :placeholder="t('reader.login.emailPlaceholder')"
-            required
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-        </div>
+				<div>
+					<label
+						for="reader-email"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>{{ t("reader.login.email") }}
+					</label>
+					<input
+						id="reader-email"
+						v-model="email"
+						type="email"
+						autocomplete="email"
+						:placeholder="t('reader.login.emailPlaceholder')"
+						required
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+				</div>
 
-        <div>
-          <label
-            for="reader-password"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >{{ t("reader.login.password") }}
-          </label>
-          <input
-            id="reader-password"
-            v-model="password"
-            type="password"
-            :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
-            :placeholder="t('reader.login.passwordPlaceholder')"
-            required
-            :minlength="mode === 'register' ? 8 : undefined"
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-          <NuxtLink
-            v-if="mode === 'login'"
-            to="/forgot-password"
-            class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition-colors"
-          >
-            {{ t("reader.forgotPassword.link") }}
-          </NuxtLink>
-        </div>
+				<div>
+					<label
+						for="reader-password"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>{{ t("reader.login.password") }}
+					</label>
+					<input
+						id="reader-password"
+						v-model="password"
+						type="password"
+						:autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+						:placeholder="t('reader.login.passwordPlaceholder')"
+						required
+						:minlength="mode === 'register' ? 8 : undefined"
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+					/>
+					<NuxtLink
+						v-if="mode === 'login'"
+						to="/forgot-password"
+						class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+					>
+						{{ t("reader.forgotPassword.link") }}
+					</NuxtLink>
+				</div>
 
-        <div
-          v-if="error"
-          role="alert"
-          class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-        >
-          <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-        </div>
+				<div
+					v-if="error"
+					role="alert"
+					class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+				</div>
 
-        <button
-          type="submit"
-          :disabled="isPending || !email || !password"
-          class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
-        >
-          <span v-if="isPending" class="flex items-center justify-center gap-2">
-            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            {{ mode === "login" ? t("reader.login.loggingIn") : t("reader.login.registering") }}
-          </span>
-          <span v-else>
-            {{ mode === "login" ? t("reader.login.login") : t("reader.login.registerAction") }}
-          </span>
-        </button>
-      </form>
+				<button
+					type="submit"
+					:disabled="isPending || !email || !password"
+					class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
+				>
+					<span v-if="isPending" class="flex items-center justify-center gap-2">
+						<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						{{ mode === "login" ? t("reader.login.loggingIn") : t("reader.login.registering") }}
+					</span>
+					<span v-else>
+						{{ mode === "login" ? t("reader.login.login") : t("reader.login.registerAction") }}
+					</span>
+				</button>
+			</form>
 
-      <!-- Second step for a 2FA-enabled reader (round 364, DEC-401): the
+			<!-- Second step for a 2FA-enabled reader (round 364, DEC-401): the
            password was accepted; enter the authenticator's 6-digit code. -->
-      <form v-else @submit.prevent="handle2faSubmit" class="space-y-5">
-        <div>
-          <label
-            for="reader-totp-code"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >{{ t("reader.login.twoFactorCodeLabel") }}
-          </label>
-          <input
-            id="reader-totp-code"
-            v-model="totpCode"
-            type="text"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            maxlength="8"
-            :placeholder="t('reader.login.twoFactorCodePlaceholder')"
-            required
-            class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center tracking-[0.5em] font-mono text-lg"
-          >
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {{ t("reader.login.twoFactorHint") }}
-          </p>
-        </div>
+			<form v-else @submit.prevent="handle2faSubmit" class="space-y-5">
+				<div>
+					<label
+						for="reader-totp-code"
+						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+						>{{ t("reader.login.twoFactorCodeLabel") }}
+					</label>
+					<input
+						id="reader-totp-code"
+						v-model="totpCode"
+						type="text"
+						inputmode="numeric"
+						autocomplete="one-time-code"
+						maxlength="8"
+						:placeholder="t('reader.login.twoFactorCodePlaceholder')"
+						required
+						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-center tracking-[0.5em] font-mono text-lg"
+					/>
+					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+						{{ t("reader.login.twoFactorHint") }}
+					</p>
+				</div>
 
-        <div
-          v-if="error"
-          role="alert"
-          class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-        >
-          <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-        </div>
+				<div
+					v-if="error"
+					role="alert"
+					class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+				</div>
 
-        <button
-          type="submit"
-          :disabled="isPending || !totpCode"
-          class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
-        >
-          <span v-if="isPending" class="flex items-center justify-center gap-2">
-            <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-            {{ t("reader.login.verifying") }}
-          </span>
-          <span v-else>{{ t("reader.login.verify") }}</span>
-        </button>
+				<button
+					type="submit"
+					:disabled="isPending || !totpCode"
+					class="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/20"
+				>
+					<span v-if="isPending" class="flex items-center justify-center gap-2">
+						<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+						{{ t("reader.login.verifying") }}
+					</span>
+					<span v-else>{{ t("reader.login.verify") }}</span>
+				</button>
 
-        <button
-          type="button"
-          :disabled="isPending"
-          class="w-full text-center text-sm text-gray-500 hover:text-blue-600 transition-colors"
-          @click="cancel2fa"
-        >
-          {{ t("reader.login.twoFactorBack") }}
-        </button>
-      </form>
+				<button
+					type="button"
+					:disabled="isPending"
+					class="w-full text-center text-sm text-gray-500 hover:text-blue-600 transition-colors"
+					@click="cancel2fa"
+				>
+					{{ t("reader.login.twoFactorBack") }}
+				</button>
+			</form>
 
-      <div class="mt-6 pt-6 border-t text-center">
-        <NuxtLink
-          to="/bookmarks"
-          class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
-        >
-          ← {{ t("reader.login.backToBookmarks") }}
-        </NuxtLink>
-      </div>
-    </div>
-  </div>
+			<div class="mt-6 pt-6 border-t text-center">
+				<NuxtLink
+					to="/bookmarks"
+					class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+				>
+					← {{ t("reader.login.backToBookmarks") }}
+				</NuxtLink>
+			</div>
+		</div>
+	</div>
 </template>

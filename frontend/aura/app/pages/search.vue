@@ -559,481 +559,474 @@ function goToPage(pg: number | string) {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <!-- Empty query state -->
-    <div
-      v-if="!query"
-      class="flex flex-col items-center justify-center py-20"
-    >
-      <div
-        class="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 dark:from-gray-800 to-white dark:to-gray-900 flex items-center justify-center mb-6"
-      >
-        <Icon icon="lucide:search" class="w-10 h-10 text-gray-400" />
-      </div>
-      <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-        {{ t("search.empty.title") }}
-      </h2>
-      <p class="text-gray-500 dark:text-gray-400 mb-6">
-        {{ t("search.empty.hint") }}
-      </p>
-      <div class="w-full max-w-md">
-        <div class="relative">
-          <input
-            v-model="searchInput"
-            type="text"
-            :placeholder="t('search.placeholder')"
-            :aria-label="t('search.placeholder')"
-            class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            @keydown.enter="handleSearchInput"
-          >
-          <Icon
-            icon="lucide:search"
-            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-          />
-        </div>
-      </div>
-    </div>
+	<div class="max-w-5xl mx-auto">
+		<!-- Empty query state -->
+		<div v-if="!query" class="flex flex-col items-center justify-center py-20">
+			<div
+				class="w-20 h-20 rounded-full bg-gradient-to-br from-gray-100 dark:from-gray-800 to-white dark:to-gray-900 flex items-center justify-center mb-6"
+			>
+				<Icon icon="lucide:search" class="w-10 h-10 text-gray-400" />
+			</div>
+			<h2 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
+				{{ t("search.empty.title") }}
+			</h2>
+			<p class="text-gray-500 dark:text-gray-400 mb-6">
+				{{ t("search.empty.hint") }}
+			</p>
+			<div class="w-full max-w-md">
+				<div class="relative">
+					<input
+						v-model="searchInput"
+						type="text"
+						:placeholder="t('search.placeholder')"
+						:aria-label="t('search.placeholder')"
+						class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+						@keydown.enter="handleSearchInput"
+					/>
+					<Icon
+						icon="lucide:search"
+						class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+					/>
+				</div>
+			</div>
+		</div>
 
-    <!-- Search results view. Deliberately NOT a top-level pending/error branch:
+		<!-- Search results view. Deliberately NOT a top-level pending/error branch:
          the editable query box and every filter below must stay mounted during
          refetches (pagination, filter change, new term) — a whole-block skeleton
          unmounted them, silently dropping keyboard focus to <body> and hiding
          the controls the reader needs mid-interaction. Only the results area
          below reflects pending/error. -->
-    <div v-else>
-      <!-- Header with an editable query box so a reader who landed on
+		<div v-else>
+			<!-- Header with an editable query box so a reader who landed on
            /search?q=... (header/home search, or a shared deep link) can refine
            the term in place instead of being stuck with a frozen query. -->
-      <div class="mb-6 w-full max-w-md">
-        <div class="relative">
-          <input
-            v-model="searchInput"
-            type="search"
-            :placeholder="t('search.placeholder')"
-            :aria-label="t('search.placeholder')"
-            class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            @keydown.enter="handleSearchInput"
-            @search="handleTermCleared"
-          >
-          <Icon
-            icon="lucide:search"
-            class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-          />
-        </div>
-      </div>
+			<div class="mb-6 w-full max-w-md">
+				<div class="relative">
+					<input
+						v-model="searchInput"
+						type="search"
+						:placeholder="t('search.placeholder')"
+						:aria-label="t('search.placeholder')"
+						class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+						@keydown.enter="handleSearchInput"
+						@search="handleTermCleared"
+					/>
+					<Icon
+						icon="lucide:search"
+						class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+					/>
+				</div>
+			</div>
 
-      <!-- Search mode (round 366, DEC-405): posts (default) or comments.
+			<!-- Search mode (round 366, DEC-405): posts (default) or comments.
            ?type=comments lives in the URL, so a shared comment-search link
            lands straight on the discussion mode. -->
-      <div
-        role="tablist"
-        :aria-label="t('search.mode.label')"
-        class="mb-6 flex w-fit items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-900"
-        @keydown="onTablistKeydown"
-      >
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="mode === 'posts'"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="mode === 'posts'
-            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="setMode('posts')"
-        >
-          <Icon icon="lucide:file-text" class="w-3.5 h-3.5 inline-block mr-1" />
-          {{ t('search.mode.posts') }}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="mode === 'comments'"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="mode === 'comments'
-            ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="setMode('comments')"
-        >
-          <Icon icon="lucide:message-square" class="w-3.5 h-3.5 inline-block mr-1" />
-          {{ t('search.mode.comments') }}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          :aria-selected="mode === 'all'"
-          class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-          :class="mode === 'all'
-            ? 'bg-white dark:bg-gray-700 text-violet-600 dark:text-violet-400 shadow-sm'
-            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-          @click="setMode('all')"
-        >
-          <Icon icon="lucide:layout-grid" class="w-3.5 h-3.5 inline-block mr-1" />
-          {{ t('search.mode.all') }}
-        </button>
-      </div>
+			<div
+				role="tablist"
+				:aria-label="t('search.mode.label')"
+				class="mb-6 flex w-fit items-center gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-900"
+				@keydown="onTablistKeydown"
+			>
+				<button
+					type="button"
+					role="tab"
+					:aria-selected="mode === 'posts'"
+					class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+					:class="
+						mode === 'posts'
+							? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
+					@click="setMode('posts')"
+				>
+					<Icon icon="lucide:file-text" class="w-3.5 h-3.5 inline-block mr-1" />
+					{{ t("search.mode.posts") }}
+				</button>
+				<button
+					type="button"
+					role="tab"
+					:aria-selected="mode === 'comments'"
+					class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+					:class="
+						mode === 'comments'
+							? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
+					@click="setMode('comments')"
+				>
+					<Icon icon="lucide:message-square" class="w-3.5 h-3.5 inline-block mr-1" />
+					{{ t("search.mode.comments") }}
+				</button>
+				<button
+					type="button"
+					role="tab"
+					:aria-selected="mode === 'all'"
+					class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+					:class="
+						mode === 'all'
+							? 'bg-white dark:bg-gray-700 text-violet-600 dark:text-violet-400 shadow-sm'
+							: 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+					"
+					@click="setMode('all')"
+				>
+					<Icon icon="lucide:layout-grid" class="w-3.5 h-3.5 inline-block mr-1" />
+					{{ t("search.mode.all") }}
+				</button>
+			</div>
 
-      <!-- Header -->
-      <div class="mb-8">
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-        >
-          {{ t(
-            mode === "comments"
-              ? "search.results.commentsTitle"
-              : mode === "all"
-                ? "search.results.allTitle"
-                : "search.results.title",
-          ) }}
-        </h1>
-        <p class="text-gray-500 dark:text-gray-400 mt-2">
-          {{ t(
-            mode === "comments"
-              ? "search.results.commentsSummary"
-              : mode === "all"
-                ? "search.results.allSummary"
-                : "search.results.summary",
-            { query, count: activeResult?.pagination?.total || 0 },
-          ) }}
-        </p>
-      </div>
+			<!-- Header -->
+			<div class="mb-8">
+				<h1
+					class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+				>
+					{{
+						t(
+							mode === "comments"
+								? "search.results.commentsTitle"
+								: mode === "all"
+									? "search.results.allTitle"
+									: "search.results.title",
+						)
+					}}
+				</h1>
+				<p class="text-gray-500 dark:text-gray-400 mt-2">
+					{{
+						t(
+							mode === "comments"
+								? "search.results.commentsSummary"
+								: mode === "all"
+									? "search.results.allSummary"
+									: "search.results.summary",
+							{ query, count: activeResult?.pagination?.total || 0 },
+						)
+					}}
+				</p>
+			</div>
 
-      <!-- Filters (DEC-084): category/tag/date-range narrowing + sort. Values
+			<!-- Filters (DEC-084): category/tag/date-range narrowing + sort. Values
            live in the URL so a filtered search is shareable. Posts-only — a
            comment search has no taxonomy/sort/date dimensions. -->
-      <div v-if="mode === 'posts'" class="flex flex-wrap items-end gap-3 mb-6">
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("search.filters.category") }}
-          <select
-            :value="filterCategory"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="setFilter('category', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">{{ t("search.filters.allCategories") }}</option>
-            <option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("search.filters.tag") }}
-          <select
-            :value="filterTag"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="setFilter('tag', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">{{ t("search.filters.allTags") }}</option>
-            <option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("search.filters.sort") }}
-          <select
-            :value="filterSort"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="setFilter('sort', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="relevance">{{ t("search.filters.sortRelevance") }}</option>
-            <option value="newest">{{ t("search.filters.sortNewest") }}</option>
-            <option value="oldest">{{ t("search.filters.sortOldest") }}</option>
-            <option value="views">{{ t("search.filters.sortViews") }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("search.filters.dateFrom") }}
-          <input
-            :value="filterDateFrom"
-            type="date"
-            :max="filterDateTo || undefined"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="setFilter('date_from', ($event.target as HTMLInputElement).value)"
-          >
-        </label>
-        <label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-          {{ t("search.filters.dateTo") }}
-          <input
-            :value="filterDateTo"
-            type="date"
-            :min="filterDateFrom || undefined"
-            class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @change="setFilter('date_to', ($event.target as HTMLInputElement).value)"
-          >
-        </label>
-        <!-- One-click reset: a filtered search must never be a trap that needs
+			<div v-if="mode === 'posts'" class="flex flex-wrap items-end gap-3 mb-6">
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("search.filters.category") }}
+					<select
+						:value="filterCategory"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						@change="setFilter('category', ($event.target as HTMLSelectElement).value)"
+					>
+						<option value="">{{ t("search.filters.allCategories") }}</option>
+						<option v-for="c in categories" :key="c.id" :value="c.name">{{ c.name }}</option>
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("search.filters.tag") }}
+					<select
+						:value="filterTag"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						@change="setFilter('tag', ($event.target as HTMLSelectElement).value)"
+					>
+						<option value="">{{ t("search.filters.allTags") }}</option>
+						<option v-for="tag in tags" :key="tag.id" :value="tag.name">{{ tag.name }}</option>
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("search.filters.sort") }}
+					<select
+						:value="filterSort"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						@change="setFilter('sort', ($event.target as HTMLSelectElement).value)"
+					>
+						<option value="relevance">{{ t("search.filters.sortRelevance") }}</option>
+						<option value="newest">{{ t("search.filters.sortNewest") }}</option>
+						<option value="oldest">{{ t("search.filters.sortOldest") }}</option>
+						<option value="views">{{ t("search.filters.sortViews") }}</option>
+					</select>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("search.filters.dateFrom") }}
+					<input
+						:value="filterDateFrom"
+						type="date"
+						:max="filterDateTo || undefined"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						@change="setFilter('date_from', ($event.target as HTMLInputElement).value)"
+					/>
+				</label>
+				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+					{{ t("search.filters.dateTo") }}
+					<input
+						:value="filterDateTo"
+						type="date"
+						:min="filterDateFrom || undefined"
+						class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						@change="setFilter('date_to', ($event.target as HTMLInputElement).value)"
+					/>
+				</label>
+				<!-- One-click reset: a filtered search must never be a trap that needs
              every select manually restored (deep-dive finding). -->
-        <button
-          v-if="hasActiveFilters"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-          @click="clearFilters"
-        >
-          <Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
-          {{ t("search.filters.clearAll") }}
-        </button>
-      </div>
+				<button
+					v-if="hasActiveFilters"
+					type="button"
+					class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+					@click="clearFilters"
+				>
+					<Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
+					{{ t("search.filters.clearAll") }}
+				</button>
+			</div>
 
-      <!-- Taxonomy load failure (survey finding): never let a failed category/
+			<!-- Taxonomy load failure (survey finding): never let a failed category/
            tag fetch look like "there are no categories/tags" — say why the
            selects are thin and offer a retry. -->
-      <p
-        v-if="mode === 'posts' && taxonomyFailed"
-        role="alert"
-        class="mb-6 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
-      >
-        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
-        {{ t("search.filters.loadFailed") }}
-        <button
-          type="button"
-          class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
-          @click="loadTaxonomy"
-        >
-          {{ t("common.action.retry") }}
-        </button>
-      </p>
+			<p
+				v-if="mode === 'posts' && taxonomyFailed"
+				role="alert"
+				class="mb-6 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
+			>
+				<Icon
+					icon="lucide:triangle-alert"
+					class="w-4 h-4 shrink-0"
+					aria-hidden="true"
+					role="presentation"
+				/>
+				{{ t("search.filters.loadFailed") }}
+				<button
+					type="button"
+					class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+					@click="loadTaxonomy"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</p>
 
-      <!-- Results area: only here do loading/error swap in, leaving the query
+			<!-- Results area: only here do loading/error swap in, leaving the query
            box and filters mounted (see note at the top of the results view).
            Which result set renders is decided by the active mode. -->
-      <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
-      <div v-if="activePending" class="space-y-4">
-        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-        <div
-          v-for="i in 3"
-          :key="i"
-          class="bg-gray-100 animate-pulse h-24 rounded-lg"
-        />
-      </div>
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
+			<div v-if="activePending" class="space-y-4">
+				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div v-for="i in 3" :key="i" class="bg-gray-100 animate-pulse h-24 rounded-lg" />
+			</div>
 
-      <div
-        v-else-if="activeError"
-        role="alert"
-        class="text-center py-12 text-gray-500"
-      >
-        <p class="mb-4">{{ t("search.error") }}</p>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="mode === 'comments' ? retryComments() : mode === 'all' ? retryAll() : retrySearch()"
-        >
-          {{ t("common.action.retry") }}
-        </button>
-      </div>
+			<div v-else-if="activeError" role="alert" class="text-center py-12 text-gray-500">
+				<p class="mb-4">{{ t("search.error") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="
+						mode === 'comments' ? retryComments() : mode === 'all' ? retryAll() : retrySearch()
+					"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <!-- Empty results. Gates on the lists that actually render, not the
+			<!-- Empty results. Gates on the lists that actually render, not the
            server totals: in comments mode that is the blocked-filtered
            activeComments, so a page whose every hit is by a blocked reader
            shows the empty state instead of a blank area under a misleading
            "N results" header (round 386, DEC-437). -->
-      <div
-        v-else-if="!activePosts.length && !activeComments.length && !activeAll.length"
-        class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
-      >
-        <div
-          class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4"
-        >
-          <Icon icon="lucide:search-x" class="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {{ t("search.noResults.title") }}
-        </h3>
-        <!-- A negative result caused by a category/tag/date filter must not be
+			<div
+				v-else-if="!activePosts.length && !activeComments.length && !activeAll.length"
+				class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
+			>
+				<div
+					class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4"
+				>
+					<Icon icon="lucide:search-x" class="w-8 h-8 text-gray-400" />
+				</div>
+				<h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-1">
+					{{ t("search.noResults.title") }}
+				</h3>
+				<!-- A negative result caused by a category/tag/date filter must not be
              blamed on the keywords — narrow a filter far enough and "try
              different keywords" misleads the reader away from the actual cause
              (round 278). Name the filter and offer the one-click reset. -->
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          {{ hasActiveFilters ? t("search.noResults.tryAdjustFilters") : t("search.noResults.hint") }}
-        </p>
-        <button
-          v-if="hasActiveFilters"
-          type="button"
-          class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-          @click="clearFilters"
-        >
-          <Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
-          {{ t("search.filters.clearAll") }}
-        </button>
+				<p class="text-sm text-gray-500 dark:text-gray-400">
+					{{
+						hasActiveFilters ? t("search.noResults.tryAdjustFilters") : t("search.noResults.hint")
+					}}
+				</p>
+				<button
+					v-if="hasActiveFilters"
+					type="button"
+					class="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+					@click="clearFilters"
+				>
+					<Icon icon="lucide:filter-x" class="w-3.5 h-3.5" />
+					{{ t("search.filters.clearAll") }}
+				</button>
 
-        <!-- "Did you mean" recovery (round 390, DEC-443): the exact-substring
+				<!-- "Did you mean" recovery (round 390, DEC-443): the exact-substring
              post search has no fuzzy layer, so a typo'd or half-remembered
              term dead-ends here. Offer edit-distance neighbors from the
              backend; tapping one re-runs the search with the corrected term. -->
-        <div
-          v-if="suggestions.length"
-          role="region"
-          :aria-label="t('search.suggest.label')"
-          class="mt-6 w-full max-w-md"
-        >
-          <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-            {{ t("search.suggest.label") }}
-          </p>
-          <div class="flex flex-wrap justify-center gap-2">
-            <button
-              v-for="s in suggestions"
-              :key="`${s.kind}:${s.text}`"
-              type="button"
-              class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-              @click="applySuggestion(s.text)"
-            >
-              {{ s.text }}
-              <span
-                v-if="s.hits > 1"
-                class="text-xs text-blue-500 dark:text-blue-400"
-              >
-                {{ t("search.suggest.postsCount", { count: s.hits }) }}
-              </span>
-            </button>
-          </div>
-        </div>
+				<div
+					v-if="suggestions.length"
+					role="region"
+					:aria-label="t('search.suggest.label')"
+					class="mt-6 w-full max-w-md"
+				>
+					<p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+						{{ t("search.suggest.label") }}
+					</p>
+					<div class="flex flex-wrap justify-center gap-2">
+						<button
+							v-for="s in suggestions"
+							:key="`${s.kind}:${s.text}`"
+							type="button"
+							class="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+							@click="applySuggestion(s.text)"
+						>
+							{{ s.text }}
+							<span v-if="s.hits > 1" class="text-xs text-blue-500 dark:text-blue-400">
+								{{ t("search.suggest.postsCount", { count: s.hits }) }}
+							</span>
+						</button>
+					</div>
+				</div>
 
-        <!-- Comments-mode recovery (ISS-612/TASK-533): a zero-hit COMMENT
+				<!-- Comments-mode recovery (ISS-612/TASK-533): a zero-hit COMMENT
              search had no route out — the term still might match article
              titles/bodies, and the sibling Posts mode is one click away. Offer
              that hop even when there are no suggestions to correct to (they
              come from the same corpus, but a valid phrase can still miss the
              comments only). -->
-        <button
-          v-if="mode === 'comments'"
-          type="button"
-          class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-          @click="setMode('posts')"
-        >
-          <Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
-          {{ t("search.noResults.searchPostsInstead") }}
-        </button>
-      </div>
+				<button
+					v-if="mode === 'comments'"
+					type="button"
+					class="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+					@click="setMode('posts')"
+				>
+					<Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
+					{{ t("search.noResults.searchPostsInstead") }}
+				</button>
+			</div>
 
-      <!-- Results list -->
-      <div
-        v-else
-        class="space-y-6"
-      >
-        <!-- POST results (default mode) -->
-        <template v-if="mode === 'posts'">
-          <div
-            v-for="post in activePosts"
-            :key="post.id"
-            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-          >
-            <NuxtLink
-              :to="`/posts/${post.slug}`"
-              class="text-xl font-bold hover:text-blue-600"
-            >
-              {{ post.title }}
-            </NuxtLink>
-            <p
-              v-if="post.snippet"
-              class="text-gray-600 mt-2 line-clamp-3"
-              v-html="sanitizeHtml(post.snippet)"
-            />
-            <p
-              v-else-if="post.excerpt"
-              class="text-gray-600 mt-2 line-clamp-2"
-            >
-              {{ post.excerpt }}
-            </p>
-            <div class="flex gap-4 mt-3 text-sm text-gray-500">
-              <span v-if="post.category">
-                {{ post.category.name }}
-              </span>
-              <span>
-                {{ formatPostDate(effectivePublishTs(post), locale) }}
-              </span>
-              <span>{{ post.views }} {{ t("search.posts.views") }}</span>
-            </div>
-          </div>
-        </template>
+			<!-- Results list -->
+			<div v-else class="space-y-6">
+				<!-- POST results (default mode) -->
+				<template v-if="mode === 'posts'">
+					<div
+						v-for="post in activePosts"
+						:key="post.id"
+						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+					>
+						<NuxtLink :to="`/posts/${post.slug}`" class="text-xl font-bold hover:text-blue-600">
+							{{ post.title }}
+						</NuxtLink>
+						<p
+							v-if="post.snippet"
+							class="text-gray-600 mt-2 line-clamp-3"
+							v-html="sanitizeHtml(post.snippet)"
+						/>
+						<p v-else-if="post.excerpt" class="text-gray-600 mt-2 line-clamp-2">
+							{{ post.excerpt }}
+						</p>
+						<div class="flex gap-4 mt-3 text-sm text-gray-500">
+							<span v-if="post.category">
+								{{ post.category.name }}
+							</span>
+							<span>
+								{{ formatPostDate(effectivePublishTs(post), locale) }}
+							</span>
+							<span>{{ post.views }} {{ t("search.posts.views") }}</span>
+						</div>
+					</div>
+				</template>
 
-        <!-- COMMENT results (round 366, DEC-405): a hit carries the post brief
+				<!-- COMMENT results (round 366, DEC-405): a hit carries the post brief
              and deep-links ONTO the comment (DEC-321), never just the post. -->
-        <template v-else-if="mode === 'comments'">
-          <div
-            v-for="comment in activeComments"
-            :key="comment.id"
-            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-          >
-            <NuxtLink
-              :to="comment.post ? `/posts/${comment.post.slug}#comment-${comment.id}` : '#'"
-              class="inline-flex items-center gap-2 text-lg font-bold hover:text-emerald-600"
-            >
-              <Icon icon="lucide:message-square" class="w-4 h-4 text-emerald-500 shrink-0" />
-              {{ comment.post?.title ?? t("search.comments.orphanPost") }}
-            </NuxtLink>
-            <!-- The backend snippet is mark-safe (escaped before <mark>); go
+				<template v-else-if="mode === 'comments'">
+					<div
+						v-for="comment in activeComments"
+						:key="comment.id"
+						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+					>
+						<NuxtLink
+							:to="comment.post ? `/posts/${comment.post.slug}#comment-${comment.id}` : '#'"
+							class="inline-flex items-center gap-2 text-lg font-bold hover:text-emerald-600"
+						>
+							<Icon icon="lucide:message-square" class="w-4 h-4 text-emerald-500 shrink-0" />
+							{{ comment.post?.title ?? t("search.comments.orphanPost") }}
+						</NuxtLink>
+						<!-- The backend snippet is mark-safe (escaped before <mark>); go
                  through sanitizeHtml like the post snippets. -->
-            <p
-              v-if="comment.snippet"
-              class="text-gray-600 mt-2 line-clamp-3"
-              v-html="sanitizeHtml(comment.snippet)"
-            />
-            <p v-else class="text-gray-600 mt-2 line-clamp-3">{{ comment.content }}</p>
-            <div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
-              <span class="inline-flex items-center gap-1">
-                <Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
-                {{ commentAuthorName(comment, t("components.commentList.readerNoName")) }}
-              </span>
-              <span>
-                {{ formatPostDate(comment.created_at, locale) }}
-              </span>
-              <span class="text-emerald-500 dark:text-emerald-400">
-                {{ t("search.comments.jumpTo") }}
-              </span>
-            </div>
-          </div>
-        </template>
+						<p
+							v-if="comment.snippet"
+							class="text-gray-600 mt-2 line-clamp-3"
+							v-html="sanitizeHtml(comment.snippet)"
+						/>
+						<p v-else class="text-gray-600 mt-2 line-clamp-3">{{ comment.content }}</p>
+						<div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+							<span class="inline-flex items-center gap-1">
+								<Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
+								{{ commentAuthorName(comment, t("components.commentList.readerNoName")) }}
+							</span>
+							<span>
+								{{ formatPostDate(comment.created_at, locale) }}
+							</span>
+							<span class="text-emerald-500 dark:text-emerald-400">
+								{{ t("search.comments.jumpTo") }}
+							</span>
+						</div>
+					</div>
+				</template>
 
-        <!-- COMBINED results (?type=all): posts + series + published static
+				<!-- COMBINED results (?type=all): posts + series + published static
              pages + author archives in one list. Every card carries a type
              tag and deep-links to its real page (/posts, /series, /pages,
              /authors), so a term that lives only in a series title, a page
              body or a pen name still lands the reader somewhere. -->
-        <template v-else>
-          <div
-            v-for="item in activeAll"
-            :key="`${item.type}-${item.id}`"
-            class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <span
-                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="typeBadgeClass(item.type)"
-              >
-                <Icon :icon="typeIcon(item.type)" class="w-3 h-3" aria-hidden="true" />
-                {{ t(`search.allTypes.${item.type}`) }}
-              </span>
-            </div>
-            <NuxtLink :to="item.path" class="text-xl font-bold hover:text-blue-600">
-              {{ item.title }}
-            </NuxtLink>
-            <p
-              v-if="item.snippet"
-              class="text-gray-600 mt-2 line-clamp-3"
-              v-html="sanitizeHtml(item.snippet)"
-            />
-          </div>
-        </template>
+				<template v-else>
+					<div
+						v-for="item in activeAll"
+						:key="`${item.type}-${item.id}`"
+						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+					>
+						<div class="flex items-center gap-2 mb-2">
+							<span
+								class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+								:class="typeBadgeClass(item.type)"
+							>
+								<Icon :icon="typeIcon(item.type)" class="w-3 h-3" aria-hidden="true" />
+								{{ t(`search.allTypes.${item.type}`) }}
+							</span>
+						</div>
+						<NuxtLink :to="item.path" class="text-xl font-bold hover:text-blue-600">
+							{{ item.title }}
+						</NuxtLink>
+						<p
+							v-if="item.snippet"
+							class="text-gray-600 mt-2 line-clamp-3"
+							v-html="sanitizeHtml(item.snippet)"
+						/>
+					</div>
+				</template>
 
-        <!-- Pagination (windowed with ellipsis, RIL TASK-083) — shared by both
+				<!-- Pagination (windowed with ellipsis, RIL TASK-083) — shared by both
              modes; the active result set decides the page count. -->
-        <div
-          v-if="activeResult!.pagination.total_pages > 1"
-          class="flex justify-center gap-2 mt-8"
-        >
-          <button
-            v-for="(pg, i) in paginationTokens"
-            :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…' || pg === activeResult!.pagination.page"
-            :aria-current="pg !== '…' && pg === activeResult!.pagination.page ? 'page' : undefined"
-            :class="[
-              'px-3 py-1 rounded',
-              pg === '…'
-                ? 'cursor-default text-gray-400'
-                : pg === activeResult!.pagination.page
-                  ? 'bg-blue-600 text-white cursor-default'
-                  : 'border hover:bg-gray-50',
-            ]"
-            @click="pg !== '…' && pg !== activeResult!.pagination.page && goToPage(pg)"
-          >
-            {{ pg }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+				<div v-if="activeResult!.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
+					<button
+						v-for="(pg, i) in paginationTokens"
+						:key="pg === '…' ? `ellipsis-${i}` : pg"
+						:disabled="pg === '…' || pg === activeResult!.pagination.page"
+						:aria-current="pg !== '…' && pg === activeResult!.pagination.page ? 'page' : undefined"
+						:class="[
+							'px-3 py-1 rounded',
+							pg === '…'
+								? 'cursor-default text-gray-400'
+								: pg === activeResult!.pagination.page
+									? 'bg-blue-600 text-white cursor-default'
+									: 'border hover:bg-gray-50',
+						]"
+						@click="pg !== '…' && pg !== activeResult!.pagination.page && goToPage(pg)"
+					>
+						{{ pg }}
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </template>

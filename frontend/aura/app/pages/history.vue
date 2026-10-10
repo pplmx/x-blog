@@ -273,343 +273,431 @@ function heatMapSummary(): string {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <Icon icon="lucide:history" class="w-7 h-7 text-violet-500" />
-          {{ t('history.title') }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {{ t('history.seoDesc') }}
-        </p>
-      </div>
-      <button
-        v-if="history.length || loading"
-        type="button"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-        @click="confirmClear = true"
-      >
-        <Icon icon="lucide:trash-2" class="w-4 h-4" />
-        {{ t('history.clear') }}
-      </button>
-    </div>
+	<div class="max-w-4xl mx-auto">
+		<div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+			<div>
+				<h1
+					class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2"
+				>
+					<Icon icon="lucide:history" class="w-7 h-7 text-violet-500" />
+					{{ t("history.title") }}
+				</h1>
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					{{ t("history.seoDesc") }}
+				</p>
+			</div>
+			<button
+				v-if="history.length || loading"
+				type="button"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+				@click="confirmClear = true"
+			>
+				<Icon icon="lucide:trash-2" class="w-4 h-4" />
+				{{ t("history.clear") }}
+			</button>
+		</div>
 
-    <!-- Device-trail import offer (TASK-303/ISS-386): signed-in history is
+		<!-- Device-trail import offer (TASK-303/ISS-386): signed-in history is
          server-backed, so the guest's local reads need a one-time merge. -->
-    <div
-      v-if="serverEnabled && !loading && pendingDeviceCount > 0 && !importDismissed && !importMessage"
-      class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/70 dark:bg-violet-950/40"
-      role="region"
-      :aria-label="t('history.importOfferTitle', { count: pendingDeviceCount })"
-    >
-      <div class="flex items-start gap-3">
-        <Icon icon="lucide:archive-restore" class="w-5 h-5 mt-0.5 text-violet-500 shrink-0" />
-        <div>
-          <p class="text-sm font-medium text-violet-800 dark:text-violet-200">
-            {{ t('history.importOfferTitle', { count: pendingDeviceCount }) }}
-          </p>
-          <p class="text-xs mt-0.5 text-violet-600/80 dark:text-violet-300/70">{{ t('history.importOfferDesc') }}</p>
-        </div>
-      </div>
-      <div class="flex gap-3 items-center">
-        <button
-          type="button"
-          :disabled="importing"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-500 hover:bg-violet-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          @click="importLocal"
-        >
-          <Icon icon="lucide:download" class="w-4 h-4" />
-          {{ importing ? t('history.importDeviceBusy') : t('history.importDevice') }}
-        </button>
-        <button
-          type="button"
-          class="text-sm font-medium text-violet-600/70 dark:text-violet-300/60 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
-          @click="importDismissed = true"
-        >
-          {{ t('history.importDismiss') }}
-        </button>
-      </div>
-    </div>
+		<div
+			v-if="
+				serverEnabled && !loading && pendingDeviceCount > 0 && !importDismissed && !importMessage
+			"
+			class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/70 dark:bg-violet-950/40"
+			role="region"
+			:aria-label="t('history.importOfferTitle', { count: pendingDeviceCount })"
+		>
+			<div class="flex items-start gap-3">
+				<Icon icon="lucide:archive-restore" class="w-5 h-5 mt-0.5 text-violet-500 shrink-0" />
+				<div>
+					<p class="text-sm font-medium text-violet-800 dark:text-violet-200">
+						{{ t("history.importOfferTitle", { count: pendingDeviceCount }) }}
+					</p>
+					<p class="text-xs mt-0.5 text-violet-600/80 dark:text-violet-300/70">
+						{{ t("history.importOfferDesc") }}
+					</p>
+				</div>
+			</div>
+			<div class="flex gap-3 items-center">
+				<button
+					type="button"
+					:disabled="importing"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-violet-500 hover:bg-violet-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+					@click="importLocal"
+				>
+					<Icon icon="lucide:download" class="w-4 h-4" />
+					{{ importing ? t("history.importDeviceBusy") : t("history.importDevice") }}
+				</button>
+				<button
+					type="button"
+					class="text-sm font-medium text-violet-600/70 dark:text-violet-300/60 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
+					@click="importDismissed = true"
+				>
+					{{ t("history.importDismiss") }}
+				</button>
+			</div>
+		</div>
 
-    <!-- Transient import result (success / nothing-to-import / failure) -->
-    <div
-      v-if="importMessage"
-      class="mb-6 p-4 rounded-xl border text-sm"
-      :class="
-        importError
-          ? 'border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-          : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-      "
-      role="status"
-    >
-      {{ importMessage }}
-    </div>
+		<!-- Transient import result (success / nothing-to-import / failure) -->
+		<div
+			v-if="importMessage"
+			class="mb-6 p-4 rounded-xl border text-sm"
+			:class="
+				importError
+					? 'border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+					: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+			"
+			role="status"
+		>
+			{{ importMessage }}
+		</div>
 
-    <!-- Recall search (DEC-148/TASK-186): find a past read -->
-    <div class="mb-8">
-      <div class="relative max-w-md">
-        <Icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        <input
-          v-model="searchQuery"
-          type="search"
-          :placeholder="t('history.searchPlaceholder')"
-          :aria-label="t('history.searchAria')"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
-          @input="onSearch"
-        >
-      </div>
-      <p v-if="searchQuery.trim() && history.length === 0 && !loading" class="mt-2 text-sm text-gray-500">
-        {{ t('history.noSearchResults') }}
-      </p>
-    </div>
+		<!-- Recall search (DEC-148/TASK-186): find a past read -->
+		<div class="mb-8">
+			<div class="relative max-w-md">
+				<Icon
+					icon="lucide:search"
+					class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+				/>
+				<input
+					v-model="searchQuery"
+					type="search"
+					:placeholder="t('history.searchPlaceholder')"
+					:aria-label="t('history.searchAria')"
+					class="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
+					@input="onSearch"
+				/>
+			</div>
+			<p
+				v-if="searchQuery.trim() && history.length === 0 && !loading"
+				class="mt-2 text-sm text-gray-500"
+			>
+				{{ t("history.noSearchResults") }}
+			</p>
+		</div>
 
-    <!-- Reading summary (server-backed, signed-in readers only) -->
-    <div
-      v-if="stats"
-      class="mb-8"
-    >
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.postsRead') }}</p>
-          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
-        </div>
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.readingMinutes') }}</p>
-          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalReadingMinutes }}</p>
-        </div>
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.lastActivity') }}</p>
-          <p class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug">{{ lastActivityLabel() }}</p>
-        </div>
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.currentStreak') }}</p>
-          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {{ stats.currentStreak ?? 0 }}
-            <span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{ t('history.days') }}</span>
-          </p>
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
-            {{ t('history.longestStreak', { count: stats.longestStreak ?? 0 }) }}
-          </p>
-        </div>
-      </div>
+		<!-- Reading summary (server-backed, signed-in readers only) -->
+		<div v-if="stats" class="mb-8">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-violet-50 to-transparent dark:from-violet-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.postsRead") }}
+					</p>
+					<p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ stats.totalPosts }}</p>
+				</div>
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.readingMinutes") }}
+					</p>
+					<p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+						{{ stats.totalReadingMinutes }}
+					</p>
+				</div>
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.lastActivity") }}
+					</p>
+					<p
+						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 leading-snug"
+					>
+						{{ lastActivityLabel() }}
+					</p>
+				</div>
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.currentStreak") }}
+					</p>
+					<p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+						{{ stats.currentStreak ?? 0 }}
+						<span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{
+							t("history.days")
+						}}</span>
+					</p>
+					<p class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+						{{ t("history.longestStreak", { count: stats.longestStreak ?? 0 }) }}
+					</p>
+				</div>
+			</div>
 
-      <!-- 52-week activity heatmap (DEC-169/TASK-201) -->
-      <div
-        v-if="heatmapWeeks.length"
-        class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-900/15"
-      >
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{{ t('history.activityTitle') }}</p>
-        <div class="overflow-x-auto pb-1">
-          <div
-            role="img"
-            :aria-label="heatMapSummary()"
-            class="grid grid-flow-col auto-cols-[11px] gap-[3px] w-fit"
-            style="grid-template-rows: repeat(7, 11px)"
-          >
-            <template v-for="(week, wi) in heatmapWeeks" :key="wi">
-              <div
-                v-for="(cell, ci) in week"
-                :key="ci"
-                class="h-[11px] w-[11px] rounded-[2px]"
-                :class="heatCellClass(cell)"
-                :title="heatCellLabel(cell)"
-                aria-hidden="true"
-              />
-            </template>
-          </div>
-        </div>
-        <div class="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span class="mr-1">{{ t('history.less') }}</span>
-          <span class="h-[11px] w-[11px] rounded-[2px] bg-gray-100 dark:bg-gray-800" />
-          <span class="h-[11px] w-[11px] rounded-[2px] bg-blue-200 dark:bg-blue-900" />
-          <span class="h-[11px] w-[11px] rounded-[2px] bg-blue-400 dark:bg-blue-700" />
-          <span class="h-[11px] w-[11px] rounded-[2px] bg-indigo-500 dark:bg-indigo-600" />
-          <span class="h-[11px] w-[11px] rounded-[2px] bg-violet-600 dark:bg-violet-500" />
-          <span class="ml-1">{{ t('history.more') }}</span>
-        </div>
-      </div>
+			<!-- 52-week activity heatmap (DEC-169/TASK-201) -->
+			<div
+				v-if="heatmapWeeks.length"
+				class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-900/15"
+			>
+				<p
+					class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3"
+				>
+					{{ t("history.activityTitle") }}
+				</p>
+				<div class="overflow-x-auto pb-1">
+					<div
+						role="img"
+						:aria-label="heatMapSummary()"
+						class="grid grid-flow-col auto-cols-[11px] gap-[3px] w-fit"
+						style="grid-template-rows: repeat(7, 11px)"
+					>
+						<template v-for="(week, wi) in heatmapWeeks" :key="wi">
+							<div
+								v-for="(cell, ci) in week"
+								:key="ci"
+								class="h-[11px] w-[11px] rounded-[2px]"
+								:class="heatCellClass(cell)"
+								:title="heatCellLabel(cell)"
+								aria-hidden="true"
+							/>
+						</template>
+					</div>
+				</div>
+				<div class="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+					<span class="mr-1">{{ t("history.less") }}</span>
+					<span class="h-[11px] w-[11px] rounded-[2px] bg-gray-100 dark:bg-gray-800" />
+					<span class="h-[11px] w-[11px] rounded-[2px] bg-blue-200 dark:bg-blue-900" />
+					<span class="h-[11px] w-[11px] rounded-[2px] bg-blue-400 dark:bg-blue-700" />
+					<span class="h-[11px] w-[11px] rounded-[2px] bg-indigo-500 dark:bg-indigo-600" />
+					<span class="h-[11px] w-[11px] rounded-[2px] bg-violet-600 dark:bg-violet-500" />
+					<span class="ml-1">{{ t("history.more") }}</span>
+				</div>
+			</div>
 
-      <!-- Reading insights (DEC-417/TASK-434): the "what/how much" shape
+			<!-- Reading insights (DEC-417/TASK-434): the "what/how much" shape
            beyond the calendar heatmap — recent volume + most-read categories.
            Best-effort; hidden for guests and when the fetch fails. -->
-      <div
-        v-if="insights"
-        class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4"
-      >
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.readLast30d') }}</p>
-          <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {{ insights.last_30_days }}
-            <span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{ t('history.posts') }}</span>
-          </p>
-        </div>
-        <div class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-fuchsia-50 to-transparent dark:from-fuchsia-900/20">
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">{{ t('history.topCategories') }}</p>
-          <div v-if="insights.top_categories.length" class="flex flex-wrap gap-2 mt-1">
-            <span
-              v-for="c in insights.top_categories"
-              :key="c.name"
-              class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300"
-            >
-              {{ c.name }}
-              <span class="text-gray-500 dark:text-gray-400">{{ c.count }}</span>
-            </span>
-          </div>
-          <p v-else class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ t('history.noTopCategories') }}</p>
-        </div>
-      </div>
-    </div>
+			<div v-if="insights" class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.readLast30d") }}
+					</p>
+					<p class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+						{{ insights.last_30_days }}
+						<span class="text-base font-medium text-gray-500 dark:text-gray-400 ml-1">{{
+							t("history.posts")
+						}}</span>
+					</p>
+				</div>
+				<div
+					class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-fuchsia-50 to-transparent dark:from-fuchsia-900/20"
+				>
+					<p
+						class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+					>
+						{{ t("history.topCategories") }}
+					</p>
+					<div v-if="insights.top_categories.length" class="flex flex-wrap gap-2 mt-1">
+						<span
+							v-for="c in insights.top_categories"
+							:key="c.name"
+							class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-300"
+						>
+							{{ c.name }}
+							<span class="text-gray-500 dark:text-gray-400">{{ c.count }}</span>
+						</span>
+					</div>
+					<p v-else class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+						{{ t("history.noTopCategories") }}
+					</p>
+				</div>
+			</div>
+		</div>
 
-    <!-- Inline clear confirmation -->
-    <div
-      v-if="confirmClear"
-      class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20"
-      role="alert"
-    >
-      <p class="text-sm text-red-700 dark:text-red-300">{{ t('history.clearConfirm') }}</p>
-      <div class="flex gap-3">
-        <button
-          type="button"
-          :disabled="clearing"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          @click="clearHistory"
-        >
-          <Icon v-if="clearing" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          <Icon v-else icon="lucide:trash-2" class="w-4 h-4" />
-          {{ clearing ? t('history.clearing') : t('history.clearConfirmAction') }}
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          @click="confirmClear = false"
-        >
-          {{ t('common.action.cancel') }}
-        </button>
-      </div>
-    </div>
+		<!-- Inline clear confirmation -->
+		<div
+			v-if="confirmClear"
+			class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/20"
+			role="alert"
+		>
+			<p class="text-sm text-red-700 dark:text-red-300">{{ t("history.clearConfirm") }}</p>
+			<div class="flex gap-3">
+				<button
+					type="button"
+					:disabled="clearing"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+					@click="clearHistory"
+				>
+					<Icon
+						v-if="clearing"
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					<Icon v-else icon="lucide:trash-2" class="w-4 h-4" />
+					{{ clearing ? t("history.clearing") : t("history.clearConfirmAction") }}
+				</button>
+				<button
+					type="button"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+					@click="confirmClear = false"
+				>
+					{{ t("common.action.cancel") }}
+				</button>
+			</div>
+		</div>
 
-    <!-- Clear-done confirmation (deep-dive finding): give the destructive,
+		<!-- Clear-done confirmation (deep-dive finding): give the destructive,
          non-undoable clear an explicit success signal instead of silently
          swapping to the ambiguous empty state. Only when the cloud copy (if
          any) actually cleared — see the clearOffline warning below (ISS-387). -->
-    <div
-      v-if="cleared"
-      aria-live="polite"
-      class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20"
-    >
-      <p class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-        <Icon icon="lucide:check-circle-2" class="w-4 h-4" />
-        {{ t('history.clearDone') }}
-      </p>
-    </div>
+		<div
+			v-if="cleared"
+			aria-live="polite"
+			class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20"
+		>
+			<p class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+				<Icon icon="lucide:check-circle-2" class="w-4 h-4" />
+				{{ t("history.clearDone") }}
+			</p>
+		</div>
 
-    <!-- Clear-all could not reach the server (ISS-387): the on-device trail is
+		<!-- Clear-all could not reach the server (ISS-387): the on-device trail is
          gone, but the server copy survives and returns on the next signed-in
          load — a green "cleared" here would be a lie, so warn instead. -->
-    <div
-      v-if="clearFailed"
-      role="alert"
-      class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
-    >
-      <p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
-        {{ t('history.clearOffline') }}
-      </p>
-    </div>
+		<div
+			v-if="clearFailed"
+			role="alert"
+			class="mb-6 flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
+		>
+			<p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+				<Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
+				{{ t("history.clearOffline") }}
+			</p>
+		</div>
 
-    <!-- Server-load failure: a transient failure offers a labeled local-trail
+		<!-- Server-load failure: a transient failure offers a labeled local-trail
          fallback + retry instead of a misleading "no reading history yet" empty
          state (a multi-device reader's local trail is often empty, deep-dive). -->
-    <div
-      v-if="loadFailed && !loading"
-      role="alert"
-      class="mb-6 flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
-    >
-      <p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
-        <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
-        {{ t('history.loadFailedFallback') }}
-      </p>
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
-        @click="load(searchQuery)"
-      >
-        {{ t('common.action.retry') }}
-      </button>
-    </div>
+		<div
+			v-if="loadFailed && !loading"
+			role="alert"
+			class="mb-6 flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/20"
+		>
+			<p class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+				<Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" />
+				{{ t("history.loadFailedFallback") }}
+			</p>
+			<button
+				type="button"
+				class="px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+				@click="load(searchQuery)"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <!-- Empty state: only when history is genuinely empty (and the load did not
+		<!-- Empty state: only when history is genuinely empty (and the load did not
          fail — fallback rows may legitimately be empty). A recall-search that
          matches nothing shows the small "no results" hint above instead — never
          both (that claimed the reader has no history AND prompted them to browse). -->
-    <div v-if="!loading && !loadFailed && !history.length && !searchQuery.trim()" class="text-center py-20">
-      <Icon icon="lucide:history" class="w-14 h-14 mx-auto mb-5 text-gray-300 dark:text-gray-600" />
-      <p class="font-medium text-gray-700 dark:text-gray-200 mb-2">{{ t('history.empty') }}</p>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-7">{{ t('history.emptyDesc') }}</p>
-      <NuxtLink
-        to="/"
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
-      >
-        <Icon icon="lucide:book-open" class="w-4 h-4" />
-        {{ t('history.browse') }}
-      </NuxtLink>
-    </div>
+		<div
+			v-if="!loading && !loadFailed && !history.length && !searchQuery.trim()"
+			class="text-center py-20"
+		>
+			<Icon icon="lucide:history" class="w-14 h-14 mx-auto mb-5 text-gray-300 dark:text-gray-600" />
+			<p class="font-medium text-gray-700 dark:text-gray-200 mb-2">{{ t("history.empty") }}</p>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mb-7">{{ t("history.emptyDesc") }}</p>
+			<NuxtLink
+				to="/"
+				class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+			>
+				<Icon icon="lucide:book-open" class="w-4 h-4" />
+				{{ t("history.browse") }}
+			</NuxtLink>
+		</div>
 
-    <!-- History list -->
-    <div v-else class="space-y-3">
-      <!-- Loading feedback: skeletons on first load (no rows yet) so the page
+		<!-- History list -->
+		<div v-else class="space-y-3">
+			<!-- Loading feedback: skeletons on first load (no rows yet) so the page
            doesn't look dead; a spinner above stale rows during a recall search
            so the in-flight swap is not silent (deep-dive finding). -->
-      <template v-if="loading && !history.length">
-        <div v-for="i in 4" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-20 rounded-2xl" />
-      </template>
-      <p v-else-if="loading" class="flex items-center justify-center gap-2 py-4 text-sm text-gray-500" role="status">
-        <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
-        {{ t('history.loading') }}
-      </p>
-      <NuxtLink
-        v-for="item in history"
-        :key="item.slug"
-        :to="`/posts/${item.slug}`"
-        class="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"
-      >
-        <span class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-500">
-          <Icon icon="lucide:book-open" class="w-5 h-5" />
-        </span>
-        <div class="min-w-0 flex-1">
-          <p class="truncate font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-            {{ item.title }}
-          </p>
-          <p class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <Icon icon="lucide:clock" class="w-3.5 h-3.5" />
-            <span class="inline-flex items-center gap-1">
-              {{ viewedLabel(item) }}
-              <span aria-hidden="true">·</span>
-              {{ t('history.continue') }}
-            </span>
-          </p>
-        </div>
-        <Icon icon="lucide:chevron-right" class="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-violet-400 transition-colors shrink-0" />
-      </NuxtLink>
+			<template v-if="loading && !history.length">
+				<div
+					v-for="i in 4"
+					:key="i"
+					class="bg-gray-100 dark:bg-gray-800 animate-pulse h-20 rounded-2xl"
+				/>
+			</template>
+			<p
+				v-else-if="loading"
+				class="flex items-center justify-center gap-2 py-4 text-sm text-gray-500"
+				role="status"
+			>
+				<Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" />
+				{{ t("history.loading") }}
+			</p>
+			<NuxtLink
+				v-for="item in history"
+				:key="item.slug"
+				:to="`/posts/${item.slug}`"
+				class="group flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-md transition-all duration-200"
+			>
+				<span
+					class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 text-violet-500"
+				>
+					<Icon icon="lucide:book-open" class="w-5 h-5" />
+				</span>
+				<div class="min-w-0 flex-1">
+					<p
+						class="truncate font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors"
+					>
+						{{ item.title }}
+					</p>
+					<p class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+						<Icon icon="lucide:clock" class="w-3.5 h-3.5" />
+						<span class="inline-flex items-center gap-1">
+							{{ viewedLabel(item) }}
+							<span aria-hidden="true">·</span>
+							{{ t("history.continue") }}
+						</span>
+					</p>
+				</div>
+				<Icon
+					icon="lucide:chevron-right"
+					class="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-violet-400 transition-colors shrink-0"
+				/>
+			</NuxtLink>
 
-      <!-- Load-more (bounded reachability, ISS-303): the server returns at most
+			<!-- Load-more (bounded reachability, ISS-303): the server returns at most
            100 rows per page, so older history must not be trapped behind the
            first page. A failure keeps the rows and offers retry. -->
-      <div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
-        <button
-          type="button"
-          :disabled="loadingMore"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          @click="loadMore"
-        >
-          <Icon v-if="loadingMore" icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ loadingMore ? t('history.loading') : t('history.loadMore') }}
-        </button>
-        <p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
-          {{ t('common.errors.network') }}
-        </p>
-      </div>
-    </div>
-  </div>
+			<div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">
+				<button
+					type="button"
+					:disabled="loadingMore"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+					@click="loadMore"
+				>
+					<Icon
+						v-if="loadingMore"
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ loadingMore ? t("history.loading") : t("history.loadMore") }}
+				</button>
+				<p v-if="loadMoreError" class="text-sm text-red-600 dark:text-red-400">
+					{{ t("common.errors.network") }}
+				</p>
+			</div>
+		</div>
+	</div>
 </template>

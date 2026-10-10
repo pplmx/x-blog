@@ -102,142 +102,155 @@ watch(
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <!-- Loading skeleton -->
-    <div v-if="pending" class="space-y-4" role="status" aria-busy="true">
-      <div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-      <div v-for="i in 3" :key="i" class="rounded-2xl border border-gray-100 dark:border-gray-800 p-6 space-y-3">
-        <div class="h-5 bg-gray-200 dark:bg-gray-800 rounded w-3/4 animate-pulse" />
-        <div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4 animate-pulse" />
-      </div>
-    </div>
+	<div class="max-w-5xl mx-auto">
+		<!-- Loading skeleton -->
+		<div v-if="pending" class="space-y-4" role="status" aria-busy="true">
+			<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+			<div
+				v-for="i in 3"
+				:key="i"
+				class="rounded-2xl border border-gray-100 dark:border-gray-800 p-6 space-y-3"
+			>
+				<div class="h-5 bg-gray-200 dark:bg-gray-800 rounded w-3/4 animate-pulse" />
+				<div class="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4 animate-pulse" />
+			</div>
+		</div>
 
-    <!-- A real 404 (unknown or never-public author: the byline link outlives a
+		<!-- A real 404 (unknown or never-public author: the byline link outlives a
          pen name that the superuser later cleared, or a hand-typed id): the
          friendly not-found state, not "load failed" + a Retry that can never
          succeed. Mirrors posts/[slug]. -->
-    <div v-else-if="(error && error.statusCode === 404) || !authorId" class="text-center py-20 text-gray-500">
-      <Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="mb-4">{{ t("authors.notFound") }}</p>
-      <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-        {{ t("common.action.backHome") }}
-      </NuxtLink>
-    </div>
+		<div
+			v-else-if="(error && error.statusCode === 404) || !authorId"
+			class="text-center py-20 text-gray-500"
+		>
+			<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("authors.notFound") }}</p>
+			<NuxtLink
+				to="/"
+				class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+			>
+				{{ t("common.action.backHome") }}
+			</NuxtLink>
+		</div>
 
-    <!-- Load error (network/5xx): a way onward instead of a dead end. -->
-    <div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
-      <Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p class="mb-4">{{ t("common.state.loadFailed") }}</p>
-      <div class="flex items-center justify-center gap-3">
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retry"
-        >
-          {{ t("common.action.retry") }}
-        </button>
-        <NuxtLink to="/" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-          {{ t("common.action.backHome") }}
-        </NuxtLink>
-      </div>
-    </div>
+		<!-- Load error (network/5xx): a way onward instead of a dead end. -->
+		<div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
+			<Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("common.state.loadFailed") }}</p>
+			<div class="flex items-center justify-center gap-3">
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retry"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+				<NuxtLink
+					to="/"
+					class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+				>
+					{{ t("common.action.backHome") }}
+				</NuxtLink>
+			</div>
+		</div>
 
-    <div v-else class="space-y-6">
-      <!-- Author header (DEC-359/TASK-405): "Posts by {pen name}". The name
+		<div v-else class="space-y-6">
+			<!-- Author header (DEC-359/TASK-405): "Posts by {pen name}". The name
            comes from the archive envelope, so it renders even when the writer
            has published nothing yet. -->
-      <div class="mb-4">
-        <NuxtLink
-          to="/authors"
-          class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-4"
-        >
-          <Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
-          {{ t("authors.backToIndex") }}
-        </NuxtLink>
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2 flex items-center gap-3"
-        >
-          <img
-            v-if="archive?.author?.avatar_url"
-            :src="archive.author.avatar_url"
-            :alt="authorName"
-            class="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
-          >
-          <Icon v-else icon="lucide:user" class="w-8 h-8 text-gray-400" />
-          {{ t("authors.title", { name: authorName }) }}
-        </h1>
-        <!-- Public "about this writer" (round 357): the bio a superuser sets
+			<div class="mb-4">
+				<NuxtLink
+					to="/authors"
+					class="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition-colors mb-4"
+				>
+					<Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+					{{ t("authors.backToIndex") }}
+				</NuxtLink>
+				<h1
+					class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2 flex items-center gap-3"
+				>
+					<img
+						v-if="archive?.author?.avatar_url"
+						:src="archive.author.avatar_url"
+						:alt="authorName"
+						class="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+					/>
+					<Icon v-else icon="lucide:user" class="w-8 h-8 text-gray-400" />
+					{{ t("authors.title", { name: authorName }) }}
+				</h1>
+				<!-- Public "about this writer" (round 357): the bio a superuser sets
              in admin/users, rendering under the name — the writer now speaks
              for themselves on the page where a reader decides about them. -->
-        <p
-          v-if="archive?.author?.bio"
-          class="mb-3 max-w-3xl text-gray-600 dark:text-gray-300 whitespace-pre-line"
-        >
-          {{ archive.author.bio }}
-        </p>
-        <div class="flex items-center gap-3">
-          <p class="text-gray-500 dark:text-gray-400">
-            {{ t("authors.desc", { name: authorName }) }}
-          </p>
-          <!-- In-app author follow (round 355): the archive is the
+				<p
+					v-if="archive?.author?.bio"
+					class="mb-3 max-w-3xl text-gray-600 dark:text-gray-300 whitespace-pre-line"
+				>
+					{{ archive.author.bio }}
+				</p>
+				<div class="flex items-center gap-3">
+					<p class="text-gray-500 dark:text-gray-400">
+						{{ t("authors.desc", { name: authorName }) }}
+					</p>
+					<!-- In-app author follow (round 355): the archive is the
                person-shaped discovery surface — and for a writer with no
                published posts yet it is the ONLY place that follow exists
                (no byline buttons anywhere). Reuses the byline control's
                guest-hidden / dead-session / error semantics. -->
-          <AuthorFollowButton
-            v-if="authorId"
-            :author-id="authorId"
-            :author-name="authorName"
-            class="shrink-0"
-          />
-          <a
-            v-if="feedUrl"
-            :href="feedUrl"
-            target="_blank"
-            rel="noopener"
-            :title="t('authors.subscribeFeed')"
-            class="inline-flex items-center gap-1 text-orange-500 hover:text-orange-700 dark:hover:text-orange-400 transition-colors shrink-0"
-          >
-            <Icon icon="lucide:rss" class="w-4 h-4" />
-            {{ t("authors.subscribeFeed") }}
-          </a>
-        </div>
-      </div>
+					<AuthorFollowButton
+						v-if="authorId"
+						:author-id="authorId"
+						:author-name="authorName"
+						class="shrink-0"
+					/>
+					<a
+						v-if="feedUrl"
+						:href="feedUrl"
+						target="_blank"
+						rel="noopener"
+						:title="t('authors.subscribeFeed')"
+						class="inline-flex items-center gap-1 text-orange-500 hover:text-orange-700 dark:hover:text-orange-400 transition-colors shrink-0"
+					>
+						<Icon icon="lucide:rss" class="w-4 h-4" />
+						{{ t("authors.subscribeFeed") }}
+					</a>
+				</div>
+			</div>
 
-      <div v-if="archive?.items?.length" class="space-y-5">
-        <PostCard v-for="post in archive.items" :key="post.id" :post="post" />
+			<div v-if="archive?.items?.length" class="space-y-5">
+				<PostCard v-for="post in archive.items" :key="post.id" :post="post" />
 
-        <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
-        <div
-          v-if="archive.pagination.total_pages > 1"
-          class="flex items-center justify-center gap-2 mt-8"
-        >
-          <button
-            v-for="(pg, i) in paginationTokens"
-            :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…' || pg === archive.pagination.page"
-            :aria-current="pg !== '…' && pg === archive.pagination.page ? 'page' : undefined"
-            :class="[
-              'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
-              pg === '…'
-                ? 'cursor-default text-gray-400 dark:text-gray-500'
-                : pg === archive.pagination.page
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 cursor-default'
-                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
-            ]"
-            @click="pg !== '…' && pg !== archive.pagination.page && goToPage(pg)"
-          >
-            {{ pg }}
-          </button>
-        </div>
-      </div>
+				<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+				<div
+					v-if="archive.pagination.total_pages > 1"
+					class="flex items-center justify-center gap-2 mt-8"
+				>
+					<button
+						v-for="(pg, i) in paginationTokens"
+						:key="pg === '…' ? `ellipsis-${i}` : pg"
+						:disabled="pg === '…' || pg === archive.pagination.page"
+						:aria-current="pg !== '…' && pg === archive.pagination.page ? 'page' : undefined"
+						:class="[
+							'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
+							pg === '…'
+								? 'cursor-default text-gray-400 dark:text-gray-500'
+								: pg === archive.pagination.page
+									? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 cursor-default'
+									: 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
+						]"
+						@click="pg !== '…' && pg !== archive.pagination.page && goToPage(pg)"
+					>
+						{{ pg }}
+					</button>
+				</div>
+			</div>
 
-      <!-- An empty-but-public author (has a pen name, nothing published yet):
+			<!-- An empty-but-public author (has a pen name, nothing published yet):
            distinct from the not-found state above. -->
-      <div v-else class="text-center py-16 text-gray-500">
-        <Icon icon="lucide:file-text" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-        <p>{{ t("authors.postsEmpty") }}</p>
-      </div>
-    </div>
-  </div>
+			<div v-else class="text-center py-16 text-gray-500">
+				<Icon icon="lucide:file-text" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
+				<p>{{ t("authors.postsEmpty") }}</p>
+			</div>
+		</div>
+	</div>
 </template>

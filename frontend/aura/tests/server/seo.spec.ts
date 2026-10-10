@@ -237,7 +237,9 @@ describe("conditional feed/sitemap proxy routes", () => {
 
 			it("should forward the client If-None-Match to the backend", async () => {
 				const event = makeEvent({ "if-none-match": '"abc123"' });
-				await (await loadProxyHandler(route))(event);
+				await (
+					await loadProxyHandler(route)
+				)(event);
 				// The default $fetch.raw mock records request options; asserting
 				// the forwarded header proves revalidation reaches the backend.
 				expect(fetchCalls[0].options.headers).toMatchObject({ "if-none-match": '"abc123"' });

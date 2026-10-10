@@ -101,169 +101,177 @@ async function handleDelete(id: number) {
 </script>
 
 <template>
-  <div>
-    <div class="mb-8">
-      <h1
-        class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-      >
-        {{ t("admin.categories.title") }}
-      </h1>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {{ t("admin.categories.summary", { n: categories?.length || 0 }) }}
-      </p>
-    </div>
+	<div>
+		<div class="mb-8">
+			<h1
+				class="text-2xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+			>
+				{{ t("admin.categories.title") }}
+			</h1>
+			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+				{{ t("admin.categories.summary", { n: categories?.length || 0 }) }}
+			</p>
+		</div>
 
-    <!-- Action error feedback -->
-    <div
-      v-if="actionError"
-      role="alert"
-      class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
-    >
-      {{ actionError }}
-    </div>
+		<!-- Action error feedback -->
+		<div
+			v-if="actionError"
+			role="alert"
+			class="mb-6 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400"
+		>
+			{{ actionError }}
+		</div>
 
-    <!-- Create form -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6">
-      <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-        {{ t("admin.categories.createTitle") }}
-      </h2>
-      <form class="flex gap-3" @submit.prevent="handleCreate">
-        <input
-          v-model="newCategoryName"
-          type="text"
-          :placeholder="t('admin.categories.namePlaceholder')"
-          :aria-label="t('admin.categories.namePlaceholder')"
-          class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-        <button
-          type="submit"
-          :disabled="!newCategoryName.trim() || isProcessing"
-          class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
-        >
-          <!-- Spinner: says the click registered instead of reading as a frozen
+		<!-- Create form -->
+		<div
+			class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-6 mb-6"
+		>
+			<h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+				{{ t("admin.categories.createTitle") }}
+			</h2>
+			<form class="flex gap-3" @submit.prevent="handleCreate">
+				<input
+					v-model="newCategoryName"
+					type="text"
+					:placeholder="t('admin.categories.namePlaceholder')"
+					:aria-label="t('admin.categories.namePlaceholder')"
+					class="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+				/>
+				<button
+					type="submit"
+					:disabled="!newCategoryName.trim() || isProcessing"
+					class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
+				>
+					<!-- Spinner: says the click registered instead of reading as a frozen
                page while the POST round-trips (round-445 audit). -->
-          <Icon v-if="isProcessing" icon="lucide:loader-2" class="w-4 h-4 animate-spin inline-block mr-1.5" aria-hidden="true" role="presentation" />
-          {{ t("admin.categories.create") }}
-        </button>
-      </form>
-    </div>
+					<Icon
+						v-if="isProcessing"
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin inline-block mr-1.5"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("admin.categories.create") }}
+				</button>
+			</form>
+		</div>
 
-    <!-- Categories list -->
-    <div v-if="pending" class="text-center py-12">
-      <Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin inline-block mr-2" />
-      {{ t("admin.categories.loading") }}
-    </div>
+		<!-- Categories list -->
+		<div v-if="pending" class="text-center py-12">
+			<Icon icon="lucide:loader-2" class="w-5 h-5 animate-spin inline-block mr-2" />
+			{{ t("admin.categories.loading") }}
+		</div>
 
-    <div v-else-if="error" class="text-center py-12 text-red-500">
-      <!-- Localized, never error.message: an HTTP failure's message is only
+		<div v-else-if="error" class="text-center py-12 text-red-500">
+			<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
            line (round-445 audit). -->
-      <p class="mb-4">{{ t("admin.categories.loadFailed") }}</p>
-      <button
-        type="button"
-        class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="() => refresh()"
-      >
-        {{ t("common.action.retry") }}
-      </button>
-    </div>
+			<p class="mb-4">{{ t("admin.categories.loadFailed") }}</p>
+			<button
+				type="button"
+				class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				@click="() => refresh()"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
 
-    <div
-      v-else-if="!categories || categories.length === 0"
-      class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
-    >
-      <Icon icon="lucide:folder" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
-      <p class="text-gray-500 dark:text-gray-400">
-        {{ t("admin.categories.empty") }}
-      </p>
-    </div>
+		<div
+			v-else-if="!categories || categories.length === 0"
+			class="text-center py-16 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
+		>
+			<Icon icon="lucide:folder" class="w-12 h-12 text-gray-400 mb-4 mx-auto" />
+			<p class="text-gray-500 dark:text-gray-400">
+				{{ t("admin.categories.empty") }}
+			</p>
+		</div>
 
-    <div
-      v-else
-    >
-      <div class="relative mb-4">
-        <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          v-model="search"
-          type="text"
-          data-testid="taxonomy-search"
-          :placeholder="t('admin.categories.searchPlaceholder')"
-          :aria-label="t('admin.categories.searchPlaceholder')"
-          class="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-        />
-      </div>
-      <div
-        v-if="visibleCategories.length === 0"
-        class="text-center py-8 text-gray-500 dark:text-gray-400"
-      >
-        {{ t('admin.categories.searchEmpty') }}
-      </div>
-      <div
-        v-else
-        class="space-y-3"
-      >
-        <div
-          v-for="category in visibleCategories"
-          :key="category.id"
-          class="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
-        >
-        <div class="flex-1">
-          <input
-            v-if="editingId === category.id"
-            v-model="editingName"
-            type="text"
-            class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @keydown.enter="confirmEdit(category.id)"
-            @keydown.esc="cancelEdit"
-          >
-          <span
-            v-else
-            class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2"
-          >
-            {{ category.name }}
-            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-              :aria-label="t('admin.categories.countLabel', { count: category.post_count ?? 0 })"
-            >              {{ category.post_count ?? 0 }}
-            </span>
-          </span>
-        </div>
+		<div v-else>
+			<div class="relative mb-4">
+				<Icon
+					icon="lucide:search"
+					class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+				/>
+				<input
+					v-model="search"
+					type="text"
+					data-testid="taxonomy-search"
+					:placeholder="t('admin.categories.searchPlaceholder')"
+					:aria-label="t('admin.categories.searchPlaceholder')"
+					class="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+				/>
+			</div>
+			<div
+				v-if="visibleCategories.length === 0"
+				class="text-center py-8 text-gray-500 dark:text-gray-400"
+			>
+				{{ t("admin.categories.searchEmpty") }}
+			</div>
+			<div v-else class="space-y-3">
+				<div
+					v-for="category in visibleCategories"
+					:key="category.id"
+					class="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800"
+				>
+					<div class="flex-1">
+						<input
+							v-if="editingId === category.id"
+							v-model="editingName"
+							type="text"
+							class="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+							@keydown.enter="confirmEdit(category.id)"
+							@keydown.esc="cancelEdit"
+						/>
+						<span
+							v-else
+							class="text-gray-900 dark:text-gray-100 font-medium inline-flex items-center gap-2"
+						>
+							{{ category.name }}
+							<span
+								class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+								:aria-label="t('admin.categories.countLabel', { count: category.post_count ?? 0 })"
+							>
+								{{ category.post_count ?? 0 }}
+							</span>
+						</span>
+					</div>
 
-        <div class="flex items-center gap-2">
-          <button
-            v-if="editingId === category.id"
-            type="button"
-            class="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-            @click="confirmEdit(category.id)"
-          >
-            {{ t("admin.categories.confirm") }}
-          </button>
-          <button
-            v-if="editingId === category.id"
-            type="button"
-            class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            @click="cancelEdit"
-          >
-            {{ t("admin.categories.cancel") }}
-          </button>
-          <button
-            v-else
-            type="button"
-            class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            @click="startEdit(category)"
-          >
-            {{ t("admin.categories.edit") }}
-          </button>
-          <button
-            type="button"
-            :disabled="isProcessing"
-            class="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-            @click="handleDelete(category.id)"
-          >
-            {{ t("admin.categories.delete") }}
-          </button>
-        </div>
-        </div>
-      </div>
-    </div>
-  </div>
+					<div class="flex items-center gap-2">
+						<button
+							v-if="editingId === category.id"
+							type="button"
+							class="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+							@click="confirmEdit(category.id)"
+						>
+							{{ t("admin.categories.confirm") }}
+						</button>
+						<button
+							v-if="editingId === category.id"
+							type="button"
+							class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+							@click="cancelEdit"
+						>
+							{{ t("admin.categories.cancel") }}
+						</button>
+						<button
+							v-else
+							type="button"
+							class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+							@click="startEdit(category)"
+						>
+							{{ t("admin.categories.edit") }}
+						</button>
+						<button
+							type="button"
+							:disabled="isProcessing"
+							class="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+							@click="handleDelete(category.id)"
+						>
+							{{ t("admin.categories.delete") }}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </template>

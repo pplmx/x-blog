@@ -143,8 +143,18 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
 - **Backend:** `pytest -n auto` enforces an **80% app-coverage gate** on the
   full suite (`source = ["app"]`). Dialect parity verified by running the suite
   against PostgreSQL. Never delete or weaken tests to make the suite pass.
-- **Frontend unit tests:** `just test-nuxt` (`pnpm test`, vitest); run biome
-  lint and `nuxt typecheck` as part of the gate.
+- **Frontend unit tests:** `just test-nuxt` (`pnpm test` → `vp test`, Vitest 5 bundled
+  with Vite+); run `pnpm lint` (`vp lint`, Oxlint) and `nuxt typecheck` as part of the
+  gate. The frontend toolchain is **Vite+** (`vite-plus`, the unified `vp` CLI) as the
+  outer command: `vp` manages the package manager (`vp install`) and owns
+  `test`/`lint`/`check`/`fmt`. Nuxt-owned commands (`build`, `dev`, `generate`,
+  `preview`, `typecheck`, `prepare`) are exposed as leaf scripts (`nuxt:*`) and reached
+  through `vp run` (`pnpm build` → `vp run nuxt:build` → `nuxt build`); the Nitro/SSR
+  build stays Nuxt's. Config lives in one standalone `vite.config.ts` (Nuxt's build stays
+  in `nuxt.config.ts`). Oxlint lints `.vue` `<script>` only — it does **not** lint Vue
+  templates (accepted tradeoff of the Biome→Oxlint switch). Dev/build/test scripts live
+  in `package.json`; CI runs `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+  `pnpm test --coverage`.
 - **Service-worker behaviour** is tested by loading `public/sw.js` in a **fake
   `self` scope** inside vitest (`frontend/aura/tests/sw.spec.ts`), exercising
   its pure helpers with a stubbed CacheStorage. When you change `sw.js`, extend

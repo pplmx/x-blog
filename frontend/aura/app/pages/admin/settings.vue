@@ -72,64 +72,66 @@ watch(enabled, () => {
 </script>
 
 <template>
-  <div>
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-      {{ t("admin.settings.title") }}
-    </h1>
+	<div>
+		<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+			{{ t("admin.settings.title") }}
+		</h1>
 
-    <div class="max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-gray-800">
-      <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">
-        {{ t("admin.settings.loading") }}
-      </div>
+		<div
+			class="max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700 p-5 bg-white dark:bg-gray-800"
+		>
+			<div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">
+				{{ t("admin.settings.loading") }}
+			</div>
 
-      <!-- Load failed: never render the editable toggle against a value the
+			<!-- Load failed: never render the editable toggle against a value the
            operator never actually saw — show the error with a retry instead. -->
-      <div v-else-if="loadingFailed" class="py-2">
-        <p class="text-sm text-red-500">{{ error }}</p>
-        <button
-          type="button"
-          class="mt-3 px-4 py-2 rounded text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          @click="load"
-        >
-          {{ t("admin.settings.loadRetry") }}
-        </button>
-      </div>
+			<div v-else-if="loadingFailed" class="py-2">
+				<p class="text-sm text-red-500">{{ error }}</p>
+				<button
+					type="button"
+					class="mt-3 px-4 py-2 rounded text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+					@click="load"
+				>
+					{{ t("admin.settings.loadRetry") }}
+				</button>
+			</div>
 
-      <template v-else>
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="font-medium text-gray-900 dark:text-gray-100">
-              {{ t("admin.settings.autoApproveLabel") }}
-            </h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {{ t("admin.settings.autoApproveDescription") }}
-            </p>
-          </div>
-          <label class="inline-flex items-center cursor-pointer">
-            <input
-              v-model="enabled"
-              type="checkbox"
-              class="accent-blue-600 w-5 h-5"
-              :aria-label="t('admin.settings.autoApproveLabel')"
-            />
-          </label>
-        </div>
+			<template v-else>
+				<div class="flex items-start justify-between gap-4">
+					<div>
+						<h2 class="font-medium text-gray-900 dark:text-gray-100">
+							{{ t("admin.settings.autoApproveLabel") }}
+						</h2>
+						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+							{{ t("admin.settings.autoApproveDescription") }}
+						</p>
+					</div>
+					<label class="inline-flex items-center cursor-pointer">
+						<input
+							v-model="enabled"
+							type="checkbox"
+							class="accent-blue-600 w-5 h-5"
+							:aria-label="t('admin.settings.autoApproveLabel')"
+						/>
+					</label>
+				</div>
 
-        <div class="mt-5">
-          <button
-            type="button"
-            class="px-4 py-2 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-            :disabled="saving"
-            @click="save"
-          >
-            {{ saving ? t("admin.settings.saving") : t("admin.settings.save") }}
-          </button>
-          <span v-if="saved" class="ml-3 text-sm text-green-600 dark:text-green-400">
-            {{ t("admin.settings.saved") }}
-          </span>
-          <p v-if="error" class="mt-2 text-sm text-red-500">{{ error }}</p>
-        </div>
-      </template>
-    </div>
-  </div>
+				<div class="mt-5">
+					<button
+						type="button"
+						class="px-4 py-2 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+						:disabled="saving"
+						@click="save"
+					>
+						{{ saving ? t("admin.settings.saving") : t("admin.settings.save") }}
+					</button>
+					<span v-if="saved" class="ml-3 text-sm text-green-600 dark:text-green-400">
+						{{ t("admin.settings.saved") }}
+					</span>
+					<p v-if="error" class="mt-2 text-sm text-red-500">{{ error }}</p>
+				</div>
+			</template>
+		</div>
+	</div>
 </template>

@@ -15,6 +15,10 @@ repos:
             exclude: \.md$
           - id: check-toml
           - id: check-yaml
+            # pnpm 12 writes pnpm-lock.yaml as multi-document YAML
+            # (lockfileVersion '9.0', two `---` docs); check-yaml only accepts
+            # a single document. The lockfile is machine-generated — skip it.
+            exclude: pnpm-lock\.yaml$
           - id: check-merge-conflict
           - id: mixed-line-ending
             args: ["--fix=lf"]

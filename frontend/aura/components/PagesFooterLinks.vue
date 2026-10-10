@@ -14,15 +14,15 @@ const { data: pages } = await usePages();
 </script>
 
 <template>
-  <nav v-if="pages?.length" class="mb-6" :aria-label="t('pages.footerLabel')">
-    <NuxtLink
-      v-for="p in pages"
-      :key="p.slug"
-      :to="`/pages/${p.slug}`"
-      class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mr-4"
-    >
-      <Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
-      {{ p.title }}
-    </NuxtLink>
-  </nav>
+	<nav v-if="pages?.length" class="mb-6" :aria-label="t('pages.footerLabel')">
+		<NuxtLink
+			v-for="p in pages"
+			:key="p.slug"
+			:to="`/pages/${p.slug}`"
+			class="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mr-4"
+		>
+			<Icon icon="lucide:file-text" class="w-3.5 h-3.5" />
+			{{ p.title }}
+		</NuxtLink>
+	</nav>
 </template>

@@ -1087,1115 +1087,1261 @@ function shortEndpoint(endpoint: string): string {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 py-12">
-    <h1
-      class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-8"
-    >
-      {{ t('account.title') }}
-    </h1>
+	<div class="max-w-3xl mx-auto px-4 py-12">
+		<h1
+			class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-8"
+		>
+			{{ t("account.title") }}
+		</h1>
 
-    <!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
+		<!-- Auth unknown (SSR + pre-hydration): a neutral placeholder so the "sign
          in" prompt never flashes at an already-authenticated reader. -->
-    <div
-      v-if="!hydrated"
-      class="flex items-center justify-center py-12 text-gray-300 dark:text-gray-600"
-      aria-hidden="true"
-    >
-      <Icon icon="lucide:user" class="w-8 h-8" />
-    </div>
+		<div
+			v-if="!hydrated"
+			class="flex items-center justify-center py-12 text-gray-300 dark:text-gray-600"
+			aria-hidden="true"
+		>
+			<Icon icon="lucide:user" class="w-8 h-8" />
+		</div>
 
-    <!-- Logged out: reader-scoped page, prompt to sign in -->
-    <div
-      v-else-if="!isAuthenticated"
-      class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
-    >
-      <p class="mb-3">{{ t('account.signInPrompt') }}</p>
-      <NuxtLink
-        :to="{ path: '/login', query: { redirect: '/account' } }"
-        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-      >
-        <Icon icon="lucide:log-in" class="w-4 h-4" />
-        {{ t('account.signInLink') }}
-      </NuxtLink>
-    </div>
+		<!-- Logged out: reader-scoped page, prompt to sign in -->
+		<div
+			v-else-if="!isAuthenticated"
+			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
+		>
+			<p class="mb-3">{{ t("account.signInPrompt") }}</p>
+			<NuxtLink
+				:to="{ path: '/login', query: { redirect: '/account' } }"
+				class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+			>
+				<Icon icon="lucide:log-in" class="w-4 h-4" />
+				{{ t("account.signInLink") }}
+			</NuxtLink>
+		</div>
 
-    <div v-else class="space-y-6">
-      <!-- Profile -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {{ t('account.profile.title') }}
-        </h2>
-        <!-- Profile picture (DEC-299/TASK-378): the reader's public face,
+		<div v-else class="space-y-6">
+			<!-- Profile -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+					{{ t("account.profile.title") }}
+				</h2>
+				<!-- Profile picture (DEC-299/TASK-378): the reader's public face,
              shown on their profile page and beside their comments. A hidden
              file input uploads straight to /api/reader/me/avatar; the preview
              shows the chosen file before the server re-encode round-trip. -->
-        <div class="flex items-center gap-4">
-          <img
-            v-if="(avatarPreview ?? reader?.avatar_url)"
-            :src="(avatarPreview ?? reader?.avatar_url) ?? ''"
-            alt=""
-            class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-          />
-          <div
-            v-else
-            class="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold"
-          >
-            {{ (reader?.display_name || "R").charAt(0).toUpperCase() }}
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                :disabled="avatarState === 'busy'"
-                class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-                @click="pickAvatar"
-              >
-                {{ t('account.profile.avatarUpload') }}
-              </button>
-              <button
-                v-if="reader?.avatar_url || avatarPreview"
-                type="button"
-                :disabled="avatarState === 'busy'"
-                class="px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 dark:text-red-400 border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                @click="removeAvatar"
-              >
-                {{ t('account.profile.avatarRemove') }}
-              </button>
-              <span v-if="avatarState === 'busy'" class="text-sm text-gray-500" role="status">
-                {{ t('account.profile.avatarUploading') }}
-              </span>
-            </div>
-            <span
-              v-if="avatarMessage && avatarState === 'success'"
-              class="text-sm text-emerald-600 dark:text-emerald-400"
-              role="status"
-            >
-              {{ t('account.profile.avatarSaved') }}
-            </span>
-            <span
-              v-if="avatarState === 'error'"
-              class="text-sm text-red-500 dark:text-red-400"
-              role="alert"
-            >
-              {{ t('account.profile.avatarFailed') }}
-            </span>
-            <span class="text-xs text-gray-400">{{ t('account.profile.avatarHint') }}</span>
-            <input
-              ref="avatarInput"
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              class="hidden"
-              @change="previewAvatar"
-            />
-          </div>
-        </div>
+				<div class="flex items-center gap-4">
+					<img
+						v-if="avatarPreview ?? reader?.avatar_url"
+						:src="avatarPreview ?? reader?.avatar_url ?? ''"
+						alt=""
+						class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+					/>
+					<div
+						v-else
+						class="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold"
+					>
+						{{ (reader?.display_name || "R").charAt(0).toUpperCase() }}
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								:disabled="avatarState === 'busy'"
+								class="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+								@click="pickAvatar"
+							>
+								{{ t("account.profile.avatarUpload") }}
+							</button>
+							<button
+								v-if="reader?.avatar_url || avatarPreview"
+								type="button"
+								:disabled="avatarState === 'busy'"
+								class="px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 dark:text-red-400 border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+								@click="removeAvatar"
+							>
+								{{ t("account.profile.avatarRemove") }}
+							</button>
+							<span v-if="avatarState === 'busy'" class="text-sm text-gray-500" role="status">
+								{{ t("account.profile.avatarUploading") }}
+							</span>
+						</div>
+						<span
+							v-if="avatarMessage && avatarState === 'success'"
+							class="text-sm text-emerald-600 dark:text-emerald-400"
+							role="status"
+						>
+							{{ t("account.profile.avatarSaved") }}
+						</span>
+						<span
+							v-if="avatarState === 'error'"
+							class="text-sm text-red-500 dark:text-red-400"
+							role="alert"
+						>
+							{{ t("account.profile.avatarFailed") }}
+						</span>
+						<span class="text-xs text-gray-400">{{ t("account.profile.avatarHint") }}</span>
+						<input
+							ref="avatarInput"
+							type="file"
+							accept="image/jpeg,image/png,image/gif,image/webp"
+							class="hidden"
+							@change="previewAvatar"
+						/>
+					</div>
+				</div>
 
-        <!-- A real <form> so Enter in the display-name field saves (was a bare
+				<!-- A real <form> so Enter in the display-name field saves (was a bare
              div — Enter did nothing and the form relied on mouse-only buttons). -->
-        <form class="flex flex-col gap-4" @submit.prevent="saveProfileName">
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.profile.displayNameLabel') }}</span>
-            <input
-              v-model="displayName"
-              type="text"
-              maxlength="50"
-              class="max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <!-- Save stays enabled on an empty name (ISS-127: never a stuck-
+				<form class="flex flex-col gap-4" @submit.prevent="saveProfileName">
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.profile.displayNameLabel")
+						}}</span>
+						<input
+							v-model="displayName"
+							type="text"
+							maxlength="50"
+							class="max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+						<!-- Save stays enabled on an empty name (ISS-127: never a stuck-
                  disabled control), so submitting nothing must be explained, not
                  silently swallowed. Click or Enter on the empty field shows the
                  reason inline (round 264). -->
-            <span v-if="nameError" role="alert" class="text-sm text-red-500 dark:text-red-400">
-              {{ t('account.profile.nameRequired') }}
-            </span>
-          </label>
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.profile.bioLabel') }}</span>
-            <textarea
-              v-model="bio"
-              rows="3"
-              maxlength="500"
-              :placeholder="t('account.profile.bioPlaceholder')"
-              class="max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-            <span class="text-xs text-gray-400">{{ t('account.profile.bioHint') }}</span>
-          </label>
-          <!-- Public liked-posts opt-in (round 360, DEC-393): the first
+						<span v-if="nameError" role="alert" class="text-sm text-red-500 dark:text-red-400">
+							{{ t("account.profile.nameRequired") }}
+						</span>
+					</label>
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.profile.bioLabel")
+						}}</span>
+						<textarea
+							v-model="bio"
+							rows="3"
+							maxlength="500"
+							:placeholder="t('account.profile.bioPlaceholder')"
+							class="max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+						/>
+						<span class="text-xs text-gray-400">{{ t("account.profile.bioHint") }}</span>
+					</label>
+					<!-- Public liked-posts opt-in (round 360, DEC-393): the first
                reader-to-reader discovery surface — but only when the reader
                chooses it. A checkbox saved with the profile, off by default. -->
-          <label class="flex items-start gap-3 text-sm cursor-pointer">
-            <input
-              v-model="publicLikes"
-              type="checkbox"
-              class="mt-0.5 w-4 h-4 accent-pink-600"
-            />
-            <span class="flex flex-col gap-1">
-              <span class="text-gray-700 dark:text-gray-300 font-medium">
-                {{ t('account.profile.publicLikesLabel') }}
-              </span>
-              <span class="text-xs text-gray-400">{{ t('account.profile.publicLikesHint') }}</span>
-            </span>
-          </label>
-          <label class="flex items-start gap-3 text-sm cursor-pointer">
-            <input
-              v-model="publicBookmarks"
-              type="checkbox"
-              class="mt-0.5 w-4 h-4 accent-fuchsia-600"
-            />
-            <span class="flex flex-col gap-1">
-              <span class="text-gray-700 dark:text-gray-300 font-medium">
-                {{ t('account.profile.publicBmarksLabel') }}
-              </span>
-              <span class="text-xs text-gray-400">{{ t('account.profile.publicBmarksHint') }}</span>
-            </span>
-          </label>
-          <span class="text-xs text-gray-400">{{ t('account.profile.emailNote') }} {{ reader?.email }} — {{ t('account.profile.emailChangeHint') }}</span>
-          <div class="flex items-center gap-3">
-            <button
-              type="submit"
-              :disabled="savingProfile"
-              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {{ t('account.profile.save') }}
-            </button>
-            <span v-if="profileSaved" class="text-sm text-emerald-600 dark:text-emerald-400">
-              {{ t('account.profile.saved') }}
-            </span>
-            <span v-if="profileFailed" class="text-sm text-red-500 dark:text-red-400">
-              {{ profileFailedMessage || t('account.profile.saveFailed') }}
-            </span>
-          </div>
-        </form>
-      </section>
+					<label class="flex items-start gap-3 text-sm cursor-pointer">
+						<input v-model="publicLikes" type="checkbox" class="mt-0.5 w-4 h-4 accent-pink-600" />
+						<span class="flex flex-col gap-1">
+							<span class="text-gray-700 dark:text-gray-300 font-medium">
+								{{ t("account.profile.publicLikesLabel") }}
+							</span>
+							<span class="text-xs text-gray-400">{{ t("account.profile.publicLikesHint") }}</span>
+						</span>
+					</label>
+					<label class="flex items-start gap-3 text-sm cursor-pointer">
+						<input
+							v-model="publicBookmarks"
+							type="checkbox"
+							class="mt-0.5 w-4 h-4 accent-fuchsia-600"
+						/>
+						<span class="flex flex-col gap-1">
+							<span class="text-gray-700 dark:text-gray-300 font-medium">
+								{{ t("account.profile.publicBmarksLabel") }}
+							</span>
+							<span class="text-xs text-gray-400">{{ t("account.profile.publicBmarksHint") }}</span>
+						</span>
+					</label>
+					<span class="text-xs text-gray-400"
+						>{{ t("account.profile.emailNote") }} {{ reader?.email }} —
+						{{ t("account.profile.emailChangeHint") }}</span
+					>
+					<div class="flex items-center gap-3">
+						<button
+							type="submit"
+							:disabled="savingProfile"
+							class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+						>
+							{{ t("account.profile.save") }}
+						</button>
+						<span v-if="profileSaved" class="text-sm text-emerald-600 dark:text-emerald-400">
+							{{ t("account.profile.saved") }}
+						</span>
+						<span v-if="profileFailed" class="text-sm text-red-500 dark:text-red-400">
+							{{ profileFailedMessage || t("account.profile.saveFailed") }}
+						</span>
+					</div>
+				</form>
+			</section>
 
-      <!-- Sign-in email: changing it is proven by a link mailed to the NEW
+			<!-- Sign-in email: changing it is proven by a link mailed to the NEW
            address, mirroring password reset — the old address keeps
            authenticating until the linked confirm page swaps it (DEC-357,
            TASK-404). -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.email.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.email.note') }}</p>
-        <form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitEmailChange">
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.currentEmailLabel') }}</span>
-            <input
-              :value="reader?.email ?? ''"
-              type="email"
-              readonly
-              autocomplete="off"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.newEmailLabel') }}</span>
-            <input
-              v-model="em.newEmail"
-              type="email"
-              autocomplete="email"
-              :placeholder="t('account.email.newEmailPlaceholder')"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.email.currentPasswordLabel') }}</span>
-            <input
-              v-model="em.current"
-              type="password"
-              autocomplete="current-password"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-          <div class="flex items-center gap-3">
-            <button
-              type="submit"
-              :disabled="emailState === 'busy'"
-              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {{ t('account.email.request') }}
-            </button>
-            <span
-              v-if="emailState === 'success'"
-              class="text-sm text-emerald-600 dark:text-emerald-400"
-              role="status"
-            >
-              {{ t('account.email.success') }}
-            </span>
-          </div>
-          <p
-            v-if="emailState === 'wrong'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.email.wrongPassword') }}</p>
-          <p
-            v-if="emailState === 'taken'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.email.taken') }}</p>
-          <p
-            v-if="emailState === 'same'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.email.same') }}</p>
-          <p
-            v-if="emailState === 'failed'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.email.failed') }}</p>
-        </form>
-      </section>
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.email.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.email.note") }}</p>
+				<form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitEmailChange">
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.email.currentEmailLabel")
+						}}</span>
+						<input
+							:value="reader?.email ?? ''"
+							type="email"
+							readonly
+							autocomplete="off"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+						/>
+					</label>
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.email.newEmailLabel")
+						}}</span>
+						<input
+							v-model="em.newEmail"
+							type="email"
+							autocomplete="email"
+							:placeholder="t('account.email.newEmailPlaceholder')"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+					</label>
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.email.currentPasswordLabel")
+						}}</span>
+						<input
+							v-model="em.current"
+							type="password"
+							autocomplete="current-password"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+					</label>
+					<div class="flex items-center gap-3">
+						<button
+							type="submit"
+							:disabled="emailState === 'busy'"
+							class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+						>
+							{{ t("account.email.request") }}
+						</button>
+						<span
+							v-if="emailState === 'success'"
+							class="text-sm text-emerald-600 dark:text-emerald-400"
+							role="status"
+						>
+							{{ t("account.email.success") }}
+						</span>
+					</div>
+					<p v-if="emailState === 'wrong'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.email.wrongPassword") }}
+					</p>
+					<p v-if="emailState === 'taken'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.email.taken") }}
+					</p>
+					<p v-if="emailState === 'same'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.email.same") }}
+					</p>
+					<p v-if="emailState === 'failed'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.email.failed") }}
+					</p>
+				</form>
+			</section>
 
-      <!-- Password -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-          {{ t('account.password.title') }}
-        </h2>
-        <form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitPassword">
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.password.currentLabel') }}</span>
-            <input
-              v-model="pw.current"
-              type="password"
-              autocomplete="current-password"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.password.newLabel') }}</span>
-            <input
-              v-model="pw.next"
-              type="password"
-              autocomplete="new-password"
-              maxlength="72"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-          <label class="flex flex-col gap-1.5 text-sm">
-            <span class="text-gray-600 dark:text-gray-400">{{ t('account.password.confirmLabel') }}</span>
-            <input
-              v-model="pw.confirm"
-              type="password"
-              autocomplete="new-password"
-              class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </label>
-          <div class="flex items-center gap-3">
-            <button
-              type="submit"
-              :disabled="passwordState === 'busy'"
-              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {{ t('account.password.change') }}
-            </button>
-            <span v-if="passwordState === 'success'" class="text-sm text-emerald-600 dark:text-emerald-400">
-              {{ t('account.password.success') }}
-            </span>
-          </div>
-          <p
-            v-if="passwordState === 'wrong'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.password.wrongCurrent') }}</p>
-          <p
-            v-if="passwordState === 'mismatch'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.password.mismatch') }}</p>
-          <p
-            v-if="passwordState === 'short'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ t('account.password.tooShort') }}</p>
-          <p
-            v-if="passwordState === 'failed'"
-            class="text-sm text-red-500 dark:text-red-400"
-          >{{ passwordFailedMessage || t('account.password.failed') }}</p>
-        </form>
-      </section>
+			<!-- Password -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+					{{ t("account.password.title") }}
+				</h2>
+				<form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitPassword">
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.password.currentLabel")
+						}}</span>
+						<input
+							v-model="pw.current"
+							type="password"
+							autocomplete="current-password"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+					</label>
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.password.newLabel")
+						}}</span>
+						<input
+							v-model="pw.next"
+							type="password"
+							autocomplete="new-password"
+							maxlength="72"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+					</label>
+					<label class="flex flex-col gap-1.5 text-sm">
+						<span class="text-gray-600 dark:text-gray-400">{{
+							t("account.password.confirmLabel")
+						}}</span>
+						<input
+							v-model="pw.confirm"
+							type="password"
+							autocomplete="new-password"
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+						/>
+					</label>
+					<div class="flex items-center gap-3">
+						<button
+							type="submit"
+							:disabled="passwordState === 'busy'"
+							class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+						>
+							{{ t("account.password.change") }}
+						</button>
+						<span
+							v-if="passwordState === 'success'"
+							class="text-sm text-emerald-600 dark:text-emerald-400"
+						>
+							{{ t("account.password.success") }}
+						</span>
+					</div>
+					<p v-if="passwordState === 'wrong'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.password.wrongCurrent") }}
+					</p>
+					<p v-if="passwordState === 'mismatch'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.password.mismatch") }}
+					</p>
+					<p v-if="passwordState === 'short'" class="text-sm text-red-500 dark:text-red-400">
+						{{ t("account.password.tooShort") }}
+					</p>
+					<p v-if="passwordState === 'failed'" class="text-sm text-red-500 dark:text-red-400">
+						{{ passwordFailedMessage || t("account.password.failed") }}
+					</p>
+				</form>
+			</section>
 
-      <!-- Two-factor authentication (round 364, DEC-401) -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.twoFactor.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.twoFactor.note') }}</p>
+			<!-- Two-factor authentication (round 364, DEC-401) -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.twoFactor.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.twoFactor.note") }}</p>
 
-        <p
-          v-if="twoFactorError"
-          role="alert"
-          class="mb-4 text-sm text-red-600 dark:text-red-400"
-        >{{ twoFactorError }}</p>
+				<p v-if="twoFactorError" role="alert" class="mb-4 text-sm text-red-600 dark:text-red-400">
+					{{ twoFactorError }}
+				</p>
 
-        <!-- Enabled: status + the disable form (password AND code) -->
-        <div v-if="twoFactorEnabled">
-          <p class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-300">
-            <Icon icon="lucide:shield-check" class="w-4 h-4" aria-hidden="true" role="presentation" />
-            {{ t('account.twoFactor.enabledBadge') }}
-          </p>
-          <form
-            class="flex flex-col gap-4 max-w-sm"
-            @submit.prevent="submitTwoFactorDisable"
-          >
-            <label class="flex flex-col gap-1.5 text-sm">
-              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.disablePasswordLabel') }}</span>
-              <input
-                v-model="twoFactorDisablePw"
-                type="password"
-                autocomplete="current-password"
-                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </label>
-            <label class="flex flex-col gap-1.5 text-sm">
-              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.disableCodeLabel') }}</span>
-              <input
-                v-model="twoFactorDisableCode"
-                type="text"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                maxlength="8"
-                :placeholder="t('account.twoFactor.codePlaceholder')"
-                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
-              />
-            </label>
-            <div>
-              <button
-                type="submit"
-                :disabled="twoFactorBusy || !twoFactorDisablePw || !twoFactorDisableCode"
-                class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {{ t('account.twoFactor.disable') }}
-              </button>
-            </div>
-          </form>
-        </div>
+				<!-- Enabled: status + the disable form (password AND code) -->
+				<div v-if="twoFactorEnabled">
+					<p
+						class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-300"
+					>
+						<Icon
+							icon="lucide:shield-check"
+							class="w-4 h-4"
+							aria-hidden="true"
+							role="presentation"
+						/>
+						{{ t("account.twoFactor.enabledBadge") }}
+					</p>
+					<form class="flex flex-col gap-4 max-w-sm" @submit.prevent="submitTwoFactorDisable">
+						<label class="flex flex-col gap-1.5 text-sm">
+							<span class="text-gray-600 dark:text-gray-400">{{
+								t("account.twoFactor.disablePasswordLabel")
+							}}</span>
+							<input
+								v-model="twoFactorDisablePw"
+								type="password"
+								autocomplete="current-password"
+								class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</label>
+						<label class="flex flex-col gap-1.5 text-sm">
+							<span class="text-gray-600 dark:text-gray-400">{{
+								t("account.twoFactor.disableCodeLabel")
+							}}</span>
+							<input
+								v-model="twoFactorDisableCode"
+								type="text"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								maxlength="8"
+								:placeholder="t('account.twoFactor.codePlaceholder')"
+								class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
+							/>
+						</label>
+						<div>
+							<button
+								type="submit"
+								:disabled="twoFactorBusy || !twoFactorDisablePw || !twoFactorDisableCode"
+								class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
+							>
+								{{ t("account.twoFactor.disable") }}
+							</button>
+						</div>
+					</form>
+				</div>
 
-        <!-- Enrolling: QR + secret + verify code -->
-        <div v-else-if="twoFactorEnrolling">
-          <div class="flex flex-col gap-4 max-w-sm">
-            <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.scanHint') }}</p>
-            <div class="mx-auto">
-              <img
-                v-if="twoFactorQrDataUrl"
-                :src="twoFactorQrDataUrl"
-                alt=""
-                class="rounded-lg border border-gray-200 dark:border-gray-700"
-              />
-            </div>
-            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-              <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ t('account.twoFactor.secretLabel') }}</p>
-              <code class="block break-all font-mono text-sm text-gray-800 dark:text-gray-100">
-                {{ twoFactorSetupSecret }}
-              </code>
-            </div>
-            <label class="flex flex-col gap-1.5 text-sm">
-              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.enablePasswordLabel') }}</span>
-              <input
-                v-model="twoFactorSetupPw"
-                type="password"
-                autocomplete="current-password"
-                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span class="text-xs text-gray-400">{{ t('account.twoFactor.enablePasswordHint') }}</span>
-            </label>
-            <label class="flex flex-col gap-1.5 text-sm">
-              <span class="text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.enableCodeLabel') }}</span>
-              <input
-                v-model="twoFactorSetupCode"
-                type="text"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                maxlength="8"
-                :placeholder="t('account.twoFactor.codePlaceholder')"
-                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
-              />
-            </label>
-            <div class="flex items-center gap-3">
-              <button
-                type="button"
-                :disabled="twoFactorBusy || !twoFactorSetupPw || !twoFactorSetupCode"
-                class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                @click="submitTwoFactorEnable"
-              >
-                {{ t('account.twoFactor.enable') }}
-              </button>
-              <button
-                type="button"
-                :disabled="twoFactorBusy"
-                class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
-                @click="cancelTwoFactorEnroll"
-              >
-                {{ t('account.twoFactor.cancel') }}
-              </button>
-            </div>
-          </div>
-        </div>
+				<!-- Enrolling: QR + secret + verify code -->
+				<div v-else-if="twoFactorEnrolling">
+					<div class="flex flex-col gap-4 max-w-sm">
+						<p class="text-sm text-gray-600 dark:text-gray-400">
+							{{ t("account.twoFactor.scanHint") }}
+						</p>
+						<div class="mx-auto">
+							<img
+								v-if="twoFactorQrDataUrl"
+								:src="twoFactorQrDataUrl"
+								alt=""
+								class="rounded-lg border border-gray-200 dark:border-gray-700"
+							/>
+						</div>
+						<div
+							class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3"
+						>
+							<p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+								{{ t("account.twoFactor.secretLabel") }}
+							</p>
+							<code class="block break-all font-mono text-sm text-gray-800 dark:text-gray-100">
+								{{ twoFactorSetupSecret }}
+							</code>
+						</div>
+						<label class="flex flex-col gap-1.5 text-sm">
+							<span class="text-gray-600 dark:text-gray-400">{{
+								t("account.twoFactor.enablePasswordLabel")
+							}}</span>
+							<input
+								v-model="twoFactorSetupPw"
+								type="password"
+								autocomplete="current-password"
+								class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+							<span class="text-xs text-gray-400">{{
+								t("account.twoFactor.enablePasswordHint")
+							}}</span>
+						</label>
+						<label class="flex flex-col gap-1.5 text-sm">
+							<span class="text-gray-600 dark:text-gray-400">{{
+								t("account.twoFactor.enableCodeLabel")
+							}}</span>
+							<input
+								v-model="twoFactorSetupCode"
+								type="text"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								maxlength="8"
+								:placeholder="t('account.twoFactor.codePlaceholder')"
+								class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-mono"
+							/>
+						</label>
+						<div class="flex items-center gap-3">
+							<button
+								type="button"
+								:disabled="twoFactorBusy || !twoFactorSetupPw || !twoFactorSetupCode"
+								class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50"
+								@click="submitTwoFactorEnable"
+							>
+								{{ t("account.twoFactor.enable") }}
+							</button>
+							<button
+								type="button"
+								:disabled="twoFactorBusy"
+								class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+								@click="cancelTwoFactorEnroll"
+							>
+								{{ t("account.twoFactor.cancel") }}
+							</button>
+						</div>
+					</div>
+				</div>
 
-        <!-- Off: the enable trigger -->
-        <div v-else>
-          <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">{{ t('account.twoFactor.offHint') }}</p>
-          <button
-            type="button"
-            :disabled="twoFactorBusy"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
-            @click="startTwoFactorSetup"
-          >
-            {{ t('account.twoFactor.enableStart') }}
-          </button>
-        </div>
-      </section>
+				<!-- Off: the enable trigger -->
+				<div v-else>
+					<p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+						{{ t("account.twoFactor.offHint") }}
+					</p>
+					<button
+						type="button"
+						:disabled="twoFactorBusy"
+						class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+						@click="startTwoFactorSetup"
+					>
+						{{ t("account.twoFactor.enableStart") }}
+					</button>
+				</div>
+			</section>
 
-      <!-- Push devices -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.devices.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.devices.note') }}</p>
+			<!-- Push devices -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.devices.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.devices.note") }}</p>
 
-        <p
-          v-if="categoriesFailed"
-          role="alert"
-          class="mb-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
-        >
-          <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
-          {{ t('account.devices.categoriesLoadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
-            @click="loadCategories"
-          >
-            {{ t('common.action.retry') }}
-          </button>
-        </p>
+				<p
+					v-if="categoriesFailed"
+					role="alert"
+					class="mb-4 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
+				>
+					<Icon
+						icon="lucide:triangle-alert"
+						class="w-4 h-4 shrink-0"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.devices.categoriesLoadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-1 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+						@click="loadCategories"
+					>
+						{{ t("common.action.retry") }}
+					</button>
+				</p>
 
-        <p
-          v-if="!devicesLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="devicesLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadDevices"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.devices.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="device in devices"
-            :key="device.id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <div class="min-w-0">
-                <p class="truncate text-gray-900 dark:text-gray-100">{{ shortEndpoint(device.endpoint) }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(device.created_at) }}</p>
-              </div>
-              <button
-                type="button"
-                :disabled="revokingIds.has(device.id)"
-                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                @click="revokeDevice(device)"
-              >
-                <Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
-                {{ t('account.devices.revoke') }}
-              </button>
-            </div>
+				<p
+					v-if="!devicesLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="devicesLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadDevices"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="devices.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.devices.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="device in devices"
+						:key="device.id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<div class="min-w-0">
+								<p class="truncate text-gray-900 dark:text-gray-100">
+									{{ shortEndpoint(device.endpoint) }}
+								</p>
+								<p class="text-xs text-gray-500 dark:text-gray-400">
+									{{ formatDate(device.created_at) }}
+								</p>
+							</div>
+							<button
+								type="button"
+								:disabled="revokingIds.has(device.id)"
+								class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+								@click="revokeDevice(device)"
+							>
+								<Icon icon="lucide:trash-2" class="w-3.5 h-3.5" />
+								{{ t("account.devices.revoke") }}
+							</button>
+						</div>
 
-            <!-- New-post notification prefs (DEC-076, TASK-147) -->
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  :checked="device.want_new_posts"
-                  :disabled="savingPrefsId !== null"
-                  @change="onDeviceNewPostsChange(device, $event)"
-                />
-                <span class="text-gray-700 dark:text-gray-300">
-                  {{ t('account.devices.newPosts') }}
-                </span>
-              </label>
-              <label
-                v-if="device.want_new_posts"
-                class="inline-flex items-center gap-2"
-              >
-                <span class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('account.devices.followCategory') }}
-                </span>
-                <select
-                  class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  :value="device.new_post_category_id ?? ''"
-                  :disabled="savingPrefsId !== null"
-                  @change="onDeviceCategoryChange(device, $event)"
-                >
-                  <option value="">{{ t('account.devices.allNewPosts') }}</option>
-                  <option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">
-                    {{ cat.name }}
-                  </option>
-                </select>
-              </label>
-              <span
-                v-if="savingPrefsId === device.id"
-                class="text-xs text-gray-400 animate-pulse"
-                aria-hidden="true"
-              >…</span>
-            </div>
-          </li>
-        </ul>
-        <p v-if="deviceError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.devices.revokeFailed') }}
-        </p>
-        <p v-if="prefsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.devices.prefsFailed') }}
-        </p>
-      </section>
+						<!-- New-post notification prefs (DEC-076, TASK-147) -->
+						<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+							<label class="inline-flex items-center gap-2 cursor-pointer">
+								<input
+									type="checkbox"
+									class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									:checked="device.want_new_posts"
+									:disabled="savingPrefsId !== null"
+									@change="onDeviceNewPostsChange(device, $event)"
+								/>
+								<span class="text-gray-700 dark:text-gray-300">
+									{{ t("account.devices.newPosts") }}
+								</span>
+							</label>
+							<label v-if="device.want_new_posts" class="inline-flex items-center gap-2">
+								<span class="text-xs text-gray-500 dark:text-gray-400">
+									{{ t("account.devices.followCategory") }}
+								</span>
+								<select
+									class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									:value="device.new_post_category_id ?? ''"
+									:disabled="savingPrefsId !== null"
+									@change="onDeviceCategoryChange(device, $event)"
+								>
+									<option value="">{{ t("account.devices.allNewPosts") }}</option>
+									<option v-for="cat in categories" :key="cat.id" :value="String(cat.id)">
+										{{ cat.name }}
+									</option>
+								</select>
+							</label>
+							<span
+								v-if="savingPrefsId === device.id"
+								class="text-xs text-gray-400 animate-pulse"
+								aria-hidden="true"
+								>…</span
+							>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="deviceError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.devices.revokeFailed") }}
+				</p>
+				<p v-if="prefsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
+					{{ t("account.devices.prefsFailed") }}
+				</p>
+			</section>
 
-      <!-- Followed discussions (DEC-078, TASK-150) -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.threads.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.threads.note') }}</p>
+			<!-- Followed discussions (DEC-078, TASK-150) -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.threads.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.threads.note") }}</p>
 
-        <p
-          v-if="!threadsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="threadsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadThreads"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.threads.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="thread in threads"
-            :key="thread.id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <NuxtLink
-                :to="`/posts/${thread.slug}`"
-                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                {{ thread.title }}
-              </NuxtLink>
-              <button
-                type="button"
-                :disabled="unsubscribingIds.has(thread.id)"
-                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                @click="unfollowThread(thread)"
-              >
-                <Icon icon="lucide:bell-off" class="w-3.5 h-3.5" />
-                {{ t('account.threads.unfollow') }}
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-if="threadsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.threads.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!threadsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="threadsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadThreads"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="threads.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.threads.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="thread in threads"
+						:key="thread.id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<NuxtLink
+								:to="`/posts/${thread.slug}`"
+								class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+							>
+								{{ thread.title }}
+							</NuxtLink>
+							<button
+								type="button"
+								:disabled="unsubscribingIds.has(thread.id)"
+								class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+								@click="unfollowThread(thread)"
+							>
+								<Icon icon="lucide:bell-off" class="w-3.5 h-3.5" />
+								{{ t("account.threads.unfollow") }}
+							</button>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="threadsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.threads.failed") }}
+				</p>
+			</section>
 
-      <!-- Followed series for new-part push (DEC-134, TASK-179) -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.series.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.series.note') }}</p>
+			<!-- Followed series for new-part push (DEC-134, TASK-179) -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.series.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.series.note") }}</p>
 
-        <p
-          v-if="!seriesFollowsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="seriesFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadSeriesFollows"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.series.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="sf in seriesFollows"
-            :key="sf.id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <NuxtLink
-                :to="`/series/${sf.slug}`"
-                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                {{ sf.title }}
-              </NuxtLink>
-              <div class="shrink-0 flex items-center gap-3">
-                <button
-                  type="button"
-                  :disabled="seriesNotifyId !== null"
-                  :aria-pressed="sf.notify ? 'true' : 'false'"
-                  :title="t('account.series.notifyTitle')"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
-                  @click="toggleSeriesNotify(sf)"
-                >
-                  <Icon :icon="sf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
-                  {{ t(sf.notify ? 'account.series.notifyOn' : 'account.series.notifyOff') }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="seriesUnfollowIds.has(sf.id)"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  @click="unfollowFollowedSeries(sf)"
-                >
-                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                  {{ t('account.series.unfollow') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <p v-if="seriesFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.series.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!seriesFollowsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="seriesFollowsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadSeriesFollows"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="seriesFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.series.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="sf in seriesFollows"
+						:key="sf.id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<NuxtLink
+								:to="`/series/${sf.slug}`"
+								class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+							>
+								{{ sf.title }}
+							</NuxtLink>
+							<div class="shrink-0 flex items-center gap-3">
+								<button
+									type="button"
+									:disabled="seriesNotifyId !== null"
+									:aria-pressed="sf.notify ? 'true' : 'false'"
+									:title="t('account.series.notifyTitle')"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+									@click="toggleSeriesNotify(sf)"
+								>
+									<Icon :icon="sf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+									{{ t(sf.notify ? "account.series.notifyOn" : "account.series.notifyOff") }}
+								</button>
+								<button
+									type="button"
+									:disabled="seriesUnfollowIds.has(sf.id)"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+									@click="unfollowFollowedSeries(sf)"
+								>
+									<Icon icon="lucide:x" class="w-3.5 h-3.5" />
+									{{ t("account.series.unfollow") }}
+								</button>
+							</div>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="seriesFollowsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.series.failed") }}
+				</p>
+			</section>
 
-      <!-- Followed categories for new-post push (DEC-140, TASK-182) -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.categories.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.categories.note') }}</p>
+			<!-- Followed categories for new-post push (DEC-140, TASK-182) -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.categories.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.categories.note") }}</p>
 
-        <p
-          v-if="!categoryFollowsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="categoryFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadCategoryFollows"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="categoryFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.categories.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="cf in categoryFollows"
-            :key="cf.id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <NuxtLink
-                :to="{ path: '/', query: { category_id: String(cf.id) } }"
-                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                {{ cf.name }}
-              </NuxtLink>
-              <div class="shrink-0 flex items-center gap-3">
-                <button
-                  type="button"
-                  :disabled="categoryNotifyId !== null"
-                  :aria-pressed="cf.notify ? 'true' : 'false'"
-                  :title="t('account.categories.notifyTitle')"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
-                  @click="toggleCategoryNotify(cf)"
-                >
-                  <Icon :icon="cf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
-                  {{ t(cf.notify ? 'account.categories.notifyOn' : 'account.categories.notifyOff') }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="categoryUnfollowIds.has(cf.id)"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  @click="unfollowFollowedCategory(cf)"
-                >
-                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                  {{ t('account.categories.unfollow') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <p v-if="categoryFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.categories.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!categoryFollowsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="categoryFollowsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadCategoryFollows"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p
+					v-else-if="categoryFollows.length === 0"
+					class="text-sm text-gray-500 dark:text-gray-400"
+				>
+					{{ t("account.categories.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="cf in categoryFollows"
+						:key="cf.id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<NuxtLink
+								:to="{ path: '/', query: { category_id: String(cf.id) } }"
+								class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+							>
+								{{ cf.name }}
+							</NuxtLink>
+							<div class="shrink-0 flex items-center gap-3">
+								<button
+									type="button"
+									:disabled="categoryNotifyId !== null"
+									:aria-pressed="cf.notify ? 'true' : 'false'"
+									:title="t('account.categories.notifyTitle')"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+									@click="toggleCategoryNotify(cf)"
+								>
+									<Icon :icon="cf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+									{{
+										t(cf.notify ? "account.categories.notifyOn" : "account.categories.notifyOff")
+									}}
+								</button>
+								<button
+									type="button"
+									:disabled="categoryUnfollowIds.has(cf.id)"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+									@click="unfollowFollowedCategory(cf)"
+								>
+									<Icon icon="lucide:x" class="w-3.5 h-3.5" />
+									{{ t("account.categories.unfollow") }}
+								</button>
+							</div>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="categoryFollowsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.categories.failed") }}
+				</p>
+			</section>
 
-      <!-- Followed writers (round 353): subscribe to a specific author's
+			<!-- Followed writers (round 353): subscribe to a specific author's
            new posts — the person-shaped cousin of the topic-shaped
            category/series/tag follows. -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.authors.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.authors.note') }}</p>
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.authors.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.authors.note") }}</p>
 
-        <p
-          v-if="!authorFollowsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="authorFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadAuthorFollows"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="authorFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.authors.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="af in authorFollows"
-            :key="af.author_id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <NuxtLink
-                :to="`/authors/${af.author_id}`"
-                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                {{ af.display_name }}
-              </NuxtLink>
-              <div class="shrink-0 flex items-center gap-3">
-                <button
-                  type="button"
-                  :disabled="authorNotifyId !== null"
-                  :aria-pressed="af.notify ? 'true' : 'false'"
-                  :title="t('account.authors.notifyTitle')"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
-                  @click="toggleAuthorNotify(af)"
-                >
-                  <Icon :icon="af.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
-                  {{ t(af.notify ? 'account.authors.notifyOn' : 'account.authors.notifyOff') }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="authorUnfollowIds.has(af.author_id)"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  @click="unfollowFollowedAuthor(af)"
-                >
-                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                  {{ t('account.authors.unfollow') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <p v-if="authorFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.authors.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!authorFollowsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="authorFollowsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadAuthorFollows"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="authorFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.authors.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="af in authorFollows"
+						:key="af.author_id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<NuxtLink
+								:to="`/authors/${af.author_id}`"
+								class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+							>
+								{{ af.display_name }}
+							</NuxtLink>
+							<div class="shrink-0 flex items-center gap-3">
+								<button
+									type="button"
+									:disabled="authorNotifyId !== null"
+									:aria-pressed="af.notify ? 'true' : 'false'"
+									:title="t('account.authors.notifyTitle')"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+									@click="toggleAuthorNotify(af)"
+								>
+									<Icon :icon="af.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+									{{ t(af.notify ? "account.authors.notifyOn" : "account.authors.notifyOff") }}
+								</button>
+								<button
+									type="button"
+									:disabled="authorUnfollowIds.has(af.author_id)"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+									@click="unfollowFollowedAuthor(af)"
+								>
+									<Icon icon="lucide:x" class="w-3.5 h-3.5" />
+									{{ t("account.authors.unfollow") }}
+								</button>
+							</div>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="authorFollowsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.authors.failed") }}
+				</p>
+			</section>
 
-      <!-- Followed readers (round 365, DEC-403): subscribe to another
+			<!-- Followed readers (round 365, DEC-403): subscribe to another
            commenter's approved comments — the person-to-person cousin of the
            followed-writers section. -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.readers.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.readers.note') }}</p>
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.readers.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.readers.note") }}</p>
 
-        <p
-          v-if="!readerFollowsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="readerFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadReaderFollows"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="readerFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.readers.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="rf in readerFollows"
-            :key="rf.reader_id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <div class="flex min-w-0 items-center gap-3">
-                <img
-                  v-if="rf.avatar_url"
-                  :src="rf.avatar_url"
-                  alt=""
-                  class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
-                />
-                <span
-                  v-else
-                  class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold"
-                >
-                  {{ (rf.display_name || "R").charAt(0).toUpperCase() }}
-                </span>
-                <NuxtLink
-                  :to="`/readers/${rf.reader_id}`"
-                  class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  {{ rf.display_name || t('readerProfile.anonymousName') }}
-                </NuxtLink>
-              </div>
-              <button
-                type="button"
-                :disabled="readerUnfollowIds.has(rf.reader_id)"
-                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                @click="unfollowFollowedReader(rf)"
-              >
-                <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                {{ t('account.readers.unfollow') }}
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-if="readerFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.readers.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!readerFollowsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="readerFollowsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadReaderFollows"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="readerFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.readers.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="rf in readerFollows"
+						:key="rf.reader_id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<div class="flex min-w-0 items-center gap-3">
+								<img
+									v-if="rf.avatar_url"
+									:src="rf.avatar_url"
+									alt=""
+									class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+								/>
+								<span
+									v-else
+									class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-sm font-bold"
+								>
+									{{ (rf.display_name || "R").charAt(0).toUpperCase() }}
+								</span>
+								<NuxtLink
+									:to="`/readers/${rf.reader_id}`"
+									class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+								>
+									{{ rf.display_name || t("readerProfile.anonymousName") }}
+								</NuxtLink>
+							</div>
+							<button
+								type="button"
+								:disabled="readerUnfollowIds.has(rf.reader_id)"
+								class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+								@click="unfollowFollowedReader(rf)"
+							>
+								<Icon icon="lucide:x" class="w-3.5 h-3.5" />
+								{{ t("account.readers.unfollow") }}
+							</button>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="readerFollowsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.readers.failed") }}
+				</p>
+			</section>
 
-      <!-- Blocked readers (round 379, DEC-425): the harassment-control list —
+			<!-- Blocked readers (round 379, DEC-425): the harassment-control list —
            who this reader blocked, when, and one-click unblock. Blocking never
            tells the other side, so this list is only the blocker's own. -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.blocks.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.blocks.note') }}</p>
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.blocks.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.blocks.note") }}</p>
 
-        <p
-          v-if="!readerBlocksLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="readerBlocksLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadReaderBlocks"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="readerBlocks.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.blocks.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="rb in readerBlocks"
-            :key="rb.reader_id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <div class="flex min-w-0 items-center gap-3">
-                <img
-                  v-if="rb.avatar_url"
-                  :src="rb.avatar_url"
-                  alt=""
-                  class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
-                />
-                <span
-                  v-else
-                  class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-red-600 text-white text-sm font-bold"
-                >
-                  {{ (rb.display_name || "R").charAt(0).toUpperCase() }}
-                </span>
-                <NuxtLink
-                  :to="`/readers/${rb.reader_id}`"
-                  class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  {{ rb.display_name || t('readerProfile.anonymousName') }}
-                </NuxtLink>
-              </div>
-              <button
-                type="button"
-                :disabled="readerUnblockIds.has(rb.reader_id)"
-                class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                @click="unblockBlockedReader(rb)"
-              >
-                <Icon icon="lucide:user-check" class="w-3.5 h-3.5" />
-                {{ t('account.blocks.unblock') }}
-              </button>
-            </div>
-          </li>
-        </ul>
-        <p v-if="readerBlocksError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.blocks.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!readerBlocksLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="readerBlocksLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadReaderBlocks"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="readerBlocks.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.blocks.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="rb in readerBlocks"
+						:key="rb.reader_id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<div class="flex min-w-0 items-center gap-3">
+								<img
+									v-if="rb.avatar_url"
+									:src="rb.avatar_url"
+									alt=""
+									class="shrink-0 w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-gray-800"
+								/>
+								<span
+									v-else
+									class="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-red-600 text-white text-sm font-bold"
+								>
+									{{ (rb.display_name || "R").charAt(0).toUpperCase() }}
+								</span>
+								<NuxtLink
+									:to="`/readers/${rb.reader_id}`"
+									class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+								>
+									{{ rb.display_name || t("readerProfile.anonymousName") }}
+								</NuxtLink>
+							</div>
+							<button
+								type="button"
+								:disabled="readerUnblockIds.has(rb.reader_id)"
+								class="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+								@click="unblockBlockedReader(rb)"
+							>
+								<Icon icon="lucide:user-check" class="w-3.5 h-3.5" />
+								{{ t("account.blocks.unblock") }}
+							</button>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="readerBlocksError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.blocks.failed") }}
+				</p>
+			</section>
 
-      <!-- Followed tags for new-post push (DEC-195, TASK-215) -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.tags.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.tags.note') }}</p>
+			<!-- Followed tags for new-post push (DEC-195, TASK-215) -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.tags.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.tags.note") }}</p>
 
-        <p
-          v-if="!tagFollowsLoaded"
-          class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
-        >
-          <Icon icon="lucide:loader-2" class="w-4 h-4 animate-spin" aria-hidden="true" role="presentation" />
-          {{ t('account.loading') }}
-        </p>
-        <div v-else-if="tagFollowsLoadFailed" class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.loadFailed') }}
-          <button
-            type="button"
-            class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-            @click="loadTagFollows"
-          >
-            {{ t('account.retry') }}
-          </button>
-        </div>
-        <p v-else-if="tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          {{ t('account.tags.empty') }}
-        </p>
-        <ul v-else class="space-y-3">
-          <li
-            v-for="tf in tagFollows"
-            :key="tf.id"
-            class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
-          >
-            <div class="flex items-center justify-between gap-3 text-sm">
-              <NuxtLink
-                :to="{ path: '/tags', query: { tag_id: String(tf.id) } }"
-                class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                #{{ tf.name }}
-              </NuxtLink>
-              <div class="shrink-0 flex items-center gap-3">
-                <button
-                  type="button"
-                  :disabled="tagNotifyId !== null"
-                  :aria-pressed="tf.notify ? 'true' : 'false'"
-                  :title="t('account.tags.notifyTitle')"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
-                  @click="toggleTagNotify(tf)"
-                >
-                  <Icon :icon="tf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
-                  {{ t(tf.notify ? 'account.tags.notifyOn' : 'account.tags.notifyOff') }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="tagUnfollowIds.has(tf.id)"
-                  class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                  @click="unfollowFollowedTag(tf)"
-                >
-                  <Icon icon="lucide:x" class="w-3.5 h-3.5" />
-                  {{ t('account.tags.unfollow') }}
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
-        <p v-if="tagFollowsError" aria-live="polite" class="mt-2 text-sm text-red-500 dark:text-red-400">
-          {{ t('account.tags.failed') }}
-        </p>
-      </section>
+				<p
+					v-if="!tagFollowsLoaded"
+					class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500"
+				>
+					<Icon
+						icon="lucide:loader-2"
+						class="w-4 h-4 animate-spin"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("account.loading") }}
+				</p>
+				<div
+					v-else-if="tagFollowsLoadFailed"
+					class="flex items-center gap-3 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.loadFailed") }}
+					<button
+						type="button"
+						class="px-2 py-0.5 rounded border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+						@click="loadTagFollows"
+					>
+						{{ t("account.retry") }}
+					</button>
+				</div>
+				<p v-else-if="tagFollows.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+					{{ t("account.tags.empty") }}
+				</p>
+				<ul v-else class="space-y-3">
+					<li
+						v-for="tf in tagFollows"
+						:key="tf.id"
+						class="border border-gray-100 dark:border-gray-800 rounded-lg p-3"
+					>
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<NuxtLink
+								:to="{ path: '/tags', query: { tag_id: String(tf.id) } }"
+								class="min-w-0 truncate text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+							>
+								#{{ tf.name }}
+							</NuxtLink>
+							<div class="shrink-0 flex items-center gap-3">
+								<button
+									type="button"
+									:disabled="tagNotifyId !== null"
+									:aria-pressed="tf.notify ? 'true' : 'false'"
+									:title="t('account.tags.notifyTitle')"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+									@click="toggleTagNotify(tf)"
+								>
+									<Icon :icon="tf.notify ? 'lucide:bell' : 'lucide:bell-off'" class="w-3.5 h-3.5" />
+									{{ t(tf.notify ? "account.tags.notifyOn" : "account.tags.notifyOff") }}
+								</button>
+								<button
+									type="button"
+									:disabled="tagUnfollowIds.has(tf.id)"
+									class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+									@click="unfollowFollowedTag(tf)"
+								>
+									<Icon icon="lucide:x" class="w-3.5 h-3.5" />
+									{{ t("account.tags.unfollow") }}
+								</button>
+							</div>
+						</div>
+					</li>
+				</ul>
+				<p
+					v-if="tagFollowsError"
+					aria-live="polite"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ t("account.tags.failed") }}
+				</p>
+			</section>
 
-      <!-- Data export (DEC-126, TASK-175): portable copy of the reader's data -->
-      <section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-          {{ t('account.export.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.export.description') }}</p>
-        <button
-          type="button"
-          :disabled="exportingData"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          @click="downloadMyData"
-        >
-          <Icon :icon="exportingData ? 'lucide:loader-2' : 'lucide:download'" class="w-4 h-4" :class="{ 'animate-spin': exportingData }" />
-          {{ t('account.export.download') }}
-        </button>
-        <p
-          v-if="exportState === 'done'"
-          class="mt-2 text-sm text-emerald-600 dark:text-emerald-400"
-        >{{ t('account.export.done') }}</p>
-        <p
-          v-else-if="exportState === 'failed'"
-          class="mt-2 text-sm text-red-500 dark:text-red-400"
-        >{{ t('account.export.failed') }}</p>
-      </section>
+			<!-- Data export (DEC-126, TASK-175): portable copy of the reader's data -->
+			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+					{{ t("account.export.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.export.description") }}</p>
+				<button
+					type="button"
+					:disabled="exportingData"
+					class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+					@click="downloadMyData"
+				>
+					<Icon
+						:icon="exportingData ? 'lucide:loader-2' : 'lucide:download'"
+						class="w-4 h-4"
+						:class="{ 'animate-spin': exportingData }"
+					/>
+					{{ t("account.export.download") }}
+				</button>
+				<p
+					v-if="exportState === 'done'"
+					class="mt-2 text-sm text-emerald-600 dark:text-emerald-400"
+				>
+					{{ t("account.export.done") }}
+				</p>
+				<p v-else-if="exportState === 'failed'" class="mt-2 text-sm text-red-500 dark:text-red-400">
+					{{ t("account.export.failed") }}
+				</p>
+			</section>
 
-      <!-- Delete account (DEC-106, TASK-165): self-service account deletion -->
-      <section class="border border-red-200 dark:border-red-900/50 rounded-xl p-5">
-        <h2 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
-          {{ t('account.deleteAccount.title') }}
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">{{ t('account.deleteAccount.description') }}</p>
+			<!-- Delete account (DEC-106, TASK-165): self-service account deletion -->
+			<section class="border border-red-200 dark:border-red-900/50 rounded-xl p-5">
+				<h2 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
+					{{ t("account.deleteAccount.title") }}
+				</h2>
+				<p class="text-xs text-gray-400 mb-4">{{ t("account.deleteAccount.description") }}</p>
 
-        <form class="flex flex-col sm:flex-row sm:items-end gap-3" @submit.prevent="deleteAccount">
-          <label class="flex-1 min-w-0">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ t('account.deleteAccount.passwordLabel') }}</span>
-            <input
-              v-model="deletePassword"
-              type="password"
-              autocomplete="current-password"
-              class="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </label>
-          <button
-            type="submit"
-            :disabled="deletingAccount || !deletePassword"
-            class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {{ t('account.deleteAccount.delete') }}
-          </button>
-        </form>
-        <p
-          v-if="deleteError?.code === 'wrong'"
-          class="mt-2 text-sm text-red-500 dark:text-red-400"
-        >{{ t('account.deleteAccount.wrongPassword') }}</p>
-        <p
-          v-else-if="deleteError?.code === 'failed'"
-          class="mt-2 text-sm text-red-500 dark:text-red-400"
-        >{{ deleteError.message || t('account.deleteAccount.failed') }}</p>
-      </section>
-    </div>
-  </div>
+				<form class="flex flex-col sm:flex-row sm:items-end gap-3" @submit.prevent="deleteAccount">
+					<label class="flex-1 min-w-0">
+						<span class="text-sm text-gray-600 dark:text-gray-400">{{
+							t("account.deleteAccount.passwordLabel")
+						}}</span>
+						<input
+							v-model="deletePassword"
+							type="password"
+							autocomplete="current-password"
+							class="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+						/>
+					</label>
+					<button
+						type="submit"
+						:disabled="deletingAccount || !deletePassword"
+						class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+					>
+						{{ t("account.deleteAccount.delete") }}
+					</button>
+				</form>
+				<p v-if="deleteError?.code === 'wrong'" class="mt-2 text-sm text-red-500 dark:text-red-400">
+					{{ t("account.deleteAccount.wrongPassword") }}
+				</p>
+				<p
+					v-else-if="deleteError?.code === 'failed'"
+					class="mt-2 text-sm text-red-500 dark:text-red-400"
+				>
+					{{ deleteError.message || t("account.deleteAccount.failed") }}
+				</p>
+			</section>
+		</div>
+	</div>
 </template>

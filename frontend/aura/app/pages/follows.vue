@@ -218,7 +218,9 @@ function retry() {
 					:to="`/posts/${post.slug}`"
 					class="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-md transition-all duration-200"
 				>
-					<h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+					<h2
+						class="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2"
+					>
 						{{ post.title }}
 					</h2>
 					<div class="mt-2 flex items-center gap-2 text-xs text-gray-400">
@@ -265,7 +267,9 @@ function retry() {
 					type="button"
 					:disabled="pg === '…' || pg === page"
 					:aria-current="pg !== '…' && pg === page ? 'page' : undefined"
-					:aria-label="pg !== '…' ? t('follows.paginationAnnounce', { page: String(pg) }) : undefined"
+					:aria-label="
+						pg !== '…' ? t('follows.paginationAnnounce', { page: String(pg) }) : undefined
+					"
 					:class="[
 						'px-3 py-1 rounded transition-colors',
 						pg === '…'

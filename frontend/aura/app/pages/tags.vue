@@ -292,251 +292,236 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <!-- All tags view (no tag_id selected). Gates on the tag-cloud fetch alone:
+	<div class="max-w-5xl mx-auto">
+		<!-- All tags view (no tag_id selected). Gates on the tag-cloud fetch alone:
          the cloud URL never changes on tag→tag navigation, so this branch stays
          mounted instead of flashing a whole-page skeleton the way the combined
          pending/error did (which also unmounted the cloud mid-refetch). -->
-    <div v-if="!tagId">
-      <div v-if="tagsPending" class="space-y-4" role="status" aria-busy="true">
-        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-        <div class="flex flex-wrap gap-3">
-          <div
-            v-for="i in 5"
-            :key="i"
-            class="bg-gray-100 animate-pulse h-10 rounded-xl w-20"
-          />
-        </div>
-      </div>
+		<div v-if="!tagId">
+			<div v-if="tagsPending" class="space-y-4" role="status" aria-busy="true">
+				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div class="flex flex-wrap gap-3">
+					<div v-for="i in 5" :key="i" class="bg-gray-100 animate-pulse h-10 rounded-xl w-20" />
+				</div>
+			</div>
 
-      <!-- Cloud load failed — distinct from "empty": never tell the reader the
+			<!-- Cloud load failed — distinct from "empty": never tell the reader the
            cloud has no tags when we simply couldn't load it. -->
-      <div v-else-if="tagsError" class="text-center py-12" role="alert">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retryTags"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </div>
+			<div v-else-if="tagsError" class="text-center py-12" role="alert">
+				<p class="text-gray-500 dark:text-gray-400 mb-4">{{ t("common.state.loadFailed") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retryTags"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <div v-else class="space-y-6">
-        <div class="mb-8">
-          <h1
-            class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
-          >
-            {{ t('tags.all') }}
-          </h1>
-          <p class="text-gray-500 dark:text-gray-400">
-            {{ t('tags.countLabel', { count: tags?.length || 0 }) }}
-          </p>
-        </div>
+			<div v-else class="space-y-6">
+				<div class="mb-8">
+					<h1
+						class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent mb-2"
+					>
+						{{ t("tags.all") }}
+					</h1>
+					<p class="text-gray-500 dark:text-gray-400">
+						{{ t("tags.countLabel", { count: tags?.length || 0 }) }}
+					</p>
+				</div>
 
-        <!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
+				<!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
              Client-side substring match so typing narrows the pills in place. -->
-        <div v-if="tags?.length" class="max-w-md">
-          <div class="relative">
-            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              v-model="tagFilter"
-              type="search"
-              :placeholder="t('tags.filterPlaceholder')"
-              :aria-label="t('tags.filterPlaceholder')"
-              class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-            />
-          </div>
-        </div>
+				<div v-if="tags?.length" class="max-w-md">
+					<div class="relative">
+						<Icon
+							icon="lucide:search"
+							class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+						/>
+						<input
+							v-model="tagFilter"
+							type="search"
+							:placeholder="t('tags.filterPlaceholder')"
+							:aria-label="t('tags.filterPlaceholder')"
+							class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						/>
+					</div>
+				</div>
 
-        <div
-          v-if="filteredTags.length"
-          class="flex flex-wrap gap-3"
-        >
-          <NuxtLink
-            v-for="tag in filteredTags"
-            :key="tag.id"
-            :to="{ query: { tag_id: String(tag.id) } }"
-            class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
-          >
-            #{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
-          </NuxtLink>
-        </div>
+				<div v-if="filteredTags.length" class="flex flex-wrap gap-3">
+					<NuxtLink
+						v-for="tag in filteredTags"
+						:key="tag.id"
+						:to="{ query: { tag_id: String(tag.id) } }"
+						class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+					>
+						#{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
+					</NuxtLink>
+				</div>
 
-        <div
-          v-else-if="tagFilter.trim()"
-          class="text-center py-12 text-gray-500"
-        >
-          {{ t('tags.noFilterResults') }}
-        </div>
-        <div
-          v-else
-          class="text-center py-12 text-gray-500"
-        >
-          {{ t('tags.empty') }}
-        </div>
-      </div>
-    </div>
+				<div v-else-if="tagFilter.trim()" class="text-center py-12 text-gray-500">
+					{{ t("tags.noFilterResults") }}
+				</div>
+				<div v-else class="text-center py-12 text-gray-500">
+					{{ t("tags.empty") }}
+				</div>
+			</div>
+		</div>
 
-    <!-- Tag posts view (tag_id selected). Chrome — back link, follow/notify
+		<!-- Tag posts view (tag_id selected). Chrome — back link, follow/notify
          controls, RSS — stays mounted across tag→tag SPA navigation; only the
          posts region below reflects pending/error, so a filter switch refreshes
          the list without the header flickering away (search.vue pattern). -->
-    <div v-else>
-      <div class="mb-8">
-        <NuxtLink
-          to="/tags"
-          class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-4"
-        >
-          <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-          {{ t('tags.backToAll') }}
-        </NuxtLink>
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent">
-            {{ t('tags.tagPosts') }}
-          </h1>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              v-if="tagSignedIn && !sessionExpired"
-              type="button"
-              :aria-pressed="tagFollowing"
-              :disabled="tagFollowBusy"
-              :title="t(tagFollowing ? 'tags.followingTitle' : 'tags.followTitle')"
-              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
-              @click="toggleTagFollow"
-            >
-              <Icon :icon="tagFollowing ? 'lucide:bookmark-check' : 'lucide:bookmark'" class="w-4 h-4" />
-              {{ tagFollowing ? t('tags.following') : t('tags.follow') }}
-            </button>
-            <button
-              v-if="tagFollowing"
-              type="button"
-              :aria-pressed="tagNotify"
-              :disabled="tagFollowBusy"
-              :title="t('tags.notifyTitle')"
-              class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
-              @click="toggleTagNotify"
-            >
-              <Icon :icon="tagNotify ? 'lucide:bell' : 'lucide:bell-off'" class="w-4 h-4" />
-              {{ t(tagNotify ? 'tags.notifyOn' : 'tags.notifyOff') }}
-            </button>
-            <a
-              :href="feedUrl"
-              target="_blank"
-              rel="noopener"
-              :title="t('tags.subscribeTitle')"
-              class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
-            >
-              <Icon icon="lucide:rss" class="w-4 h-4" />
-              {{ t('tags.subscribe') }}
-            </a>
-          </div>
-        </div>
-        <!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
-        <p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
-          {{ t('tags.followFailed') }}
-        </p>
-        <!-- Dead-session prompt (survey finding): the follow control flipped to
+		<div v-else>
+			<div class="mb-8">
+				<NuxtLink
+					to="/tags"
+					class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-4"
+				>
+					<Icon icon="lucide:arrow-left" class="w-4 h-4" />
+					{{ t("tags.backToAll") }}
+				</NuxtLink>
+				<div class="flex flex-wrap items-center justify-between gap-4">
+					<h1
+						class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+					>
+						{{ t("tags.tagPosts") }}
+					</h1>
+					<div class="flex flex-wrap items-center gap-2">
+						<button
+							v-if="tagSignedIn && !sessionExpired"
+							type="button"
+							:aria-pressed="tagFollowing"
+							:disabled="tagFollowBusy"
+							:title="t(tagFollowing ? 'tags.followingTitle' : 'tags.followTitle')"
+							class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+							@click="toggleTagFollow"
+						>
+							<Icon
+								:icon="tagFollowing ? 'lucide:bookmark-check' : 'lucide:bookmark'"
+								class="w-4 h-4"
+							/>
+							{{ tagFollowing ? t("tags.following") : t("tags.follow") }}
+						</button>
+						<button
+							v-if="tagFollowing"
+							type="button"
+							:aria-pressed="tagNotify"
+							:disabled="tagFollowBusy"
+							:title="t('tags.notifyTitle')"
+							class="inline-flex items-center gap-1.5 text-sm text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap disabled:opacity-60"
+							@click="toggleTagNotify"
+						>
+							<Icon :icon="tagNotify ? 'lucide:bell' : 'lucide:bell-off'" class="w-4 h-4" />
+							{{ t(tagNotify ? "tags.notifyOn" : "tags.notifyOff") }}
+						</button>
+						<a
+							:href="feedUrl"
+							target="_blank"
+							rel="noopener"
+							:title="t('tags.subscribeTitle')"
+							class="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-full px-3 py-1.5 transition-colors whitespace-nowrap"
+						>
+							<Icon icon="lucide:rss" class="w-4 h-4" />
+							{{ t("tags.subscribe") }}
+						</a>
+					</div>
+				</div>
+				<!-- Follow/notify failure (deep-dive finding): never a silent no-op. -->
+				<p v-if="followError" role="alert" class="mt-3 text-sm text-red-600 dark:text-red-400">
+					{{ t("tags.followFailed") }}
+				</p>
+				<!-- Dead-session prompt (survey finding): the follow control flipped to
              signed-out when the reader token expired — offer the way back in. -->
-        <p v-if="sessionExpired" role="alert" class="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-          <Icon icon="lucide:triangle-alert" class="w-4 h-4 shrink-0" aria-hidden="true" role="presentation" />
-          {{ t('common.sessionExpired') }}
-          <NuxtLink to="/login" class="font-medium underline underline-offset-2 hover:opacity-80">
-            {{ t('reader.nav.signIn') }}
-          </NuxtLink>
-        </p>
-      </div>
+				<p
+					v-if="sessionExpired"
+					role="alert"
+					class="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"
+				>
+					<Icon
+						icon="lucide:triangle-alert"
+						class="w-4 h-4 shrink-0"
+						aria-hidden="true"
+						role="presentation"
+					/>
+					{{ t("common.sessionExpired") }}
+					<NuxtLink to="/login" class="font-medium underline underline-offset-2 hover:opacity-80">
+						{{ t("reader.nav.signIn") }}
+					</NuxtLink>
+				</p>
+			</div>
 
-      <!-- Posts region: only this swaps on pending/error — the chrome above
+			<!-- Posts region: only this swaps on pending/error — the chrome above
            stays mounted while a tag→tag (or page) navigation refetches. -->
-      <span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
-      <div v-if="postsPending" class="space-y-4">
-        <div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-        <div
-          v-for="i in 3"
-          :key="i"
-          class="bg-gray-100 animate-pulse h-24 rounded-lg"
-        />
-      </div>
+			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
+			<div v-if="postsPending" class="space-y-4">
+				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div v-for="i in 3" :key="i" class="bg-gray-100 animate-pulse h-24 rounded-lg" />
+			</div>
 
-      <!-- Posts load failed — distinct from "empty": never tell the reader this
+			<!-- Posts load failed — distinct from "empty": never tell the reader this
            tag has no posts when we simply couldn't load them. -->
-      <div v-else-if="postsError" class="text-center py-12" role="alert">
-        <p class="text-gray-500 dark:text-gray-400 mb-4">{{ t('common.state.loadFailed') }}</p>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          @click="retryPosts"
-        >
-          {{ t('common.action.retry') }}
-        </button>
-      </div>
+			<div v-else-if="postsError" class="text-center py-12" role="alert">
+				<p class="text-gray-500 dark:text-gray-400 mb-4">{{ t("common.state.loadFailed") }}</p>
+				<button
+					type="button"
+					class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+					@click="retryPosts"
+				>
+					{{ t("common.action.retry") }}
+				</button>
+			</div>
 
-      <!-- Posts list -->
-      <div
-        v-else-if="posts?.items?.length"
-        class="space-y-6"
-      >
-        <div
-          v-for="post in posts.items"
-          :key="post.id"
-          class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
-        >
-          <NuxtLink
-            :to="`/posts/${post.slug}`"
-            class="text-xl font-bold hover:text-blue-600"
-          >
-            {{ post.title }}
-          </NuxtLink>
-          <p
-            v-if="post.excerpt"
-            class="text-gray-600 mt-2 line-clamp-2"
-          >
-            {{ post.excerpt }}
-          </p>
-          <div class="flex gap-4 mt-3 text-sm text-gray-500">
-            <span v-if="post.category">
-              {{ post.category.name }}
-            </span>
-            <span>
-              {{ formatPostDate(effectivePublishTs(post), locale) }}
-            </span>
-            <span>{{ t('tags.views', { count: post.views }) }}</span>
-          </div>
-        </div>
+			<!-- Posts list -->
+			<div v-else-if="posts?.items?.length" class="space-y-6">
+				<div
+					v-for="post in posts.items"
+					:key="post.id"
+					class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+				>
+					<NuxtLink :to="`/posts/${post.slug}`" class="text-xl font-bold hover:text-blue-600">
+						{{ post.title }}
+					</NuxtLink>
+					<p v-if="post.excerpt" class="text-gray-600 mt-2 line-clamp-2">
+						{{ post.excerpt }}
+					</p>
+					<div class="flex gap-4 mt-3 text-sm text-gray-500">
+						<span v-if="post.category">
+							{{ post.category.name }}
+						</span>
+						<span>
+							{{ formatPostDate(effectivePublishTs(post), locale) }}
+						</span>
+						<span>{{ t("tags.views", { count: post.views }) }}</span>
+					</div>
+				</div>
 
-        <!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
-        <div
-          v-if="posts.pagination.total_pages > 1"
-          class="flex justify-center gap-2 mt-8"
-        >
-          <button
-            v-for="(pg, i) in paginationTokens"
-            :key="pg === '…' ? `ellipsis-${i}` : pg"
-            :disabled="pg === '…' || pg === posts.pagination.page"
-            :aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
-            :class="[
-              'px-3 py-1 rounded',
-              pg === '…'
-                ? 'cursor-default text-gray-400'
-                : pg === posts.pagination.page
-                  ? 'bg-blue-600 text-white cursor-default'
-                  : 'border hover:bg-gray-50',
-            ]"
-            @click="pg !== '…' && pg !== posts.pagination.page && goToPage(pg)"
-          >
-            {{ pg }}
-          </button>
-        </div>
-      </div>
+				<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+				<div v-if="posts.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
+					<button
+						v-for="(pg, i) in paginationTokens"
+						:key="pg === '…' ? `ellipsis-${i}` : pg"
+						:disabled="pg === '…' || pg === posts.pagination.page"
+						:aria-current="pg !== '…' && pg === posts.pagination.page ? 'page' : undefined"
+						:class="[
+							'px-3 py-1 rounded',
+							pg === '…'
+								? 'cursor-default text-gray-400'
+								: pg === posts.pagination.page
+									? 'bg-blue-600 text-white cursor-default'
+									: 'border hover:bg-gray-50',
+						]"
+						@click="pg !== '…' && pg !== posts.pagination.page && goToPage(pg)"
+					>
+						{{ pg }}
+					</button>
+				</div>
+			</div>
 
-      <!-- Empty posts -->
-      <div
-        v-else
-        class="text-center py-12 text-gray-500"
-      >
-        {{ t('tags.postsEmpty') }}
-      </div>
-    </div>
-  </div>
+			<!-- Empty posts -->
+			<div v-else class="text-center py-12 text-gray-500">
+				{{ t("tags.postsEmpty") }}
+			</div>
+		</div>
+	</div>
 </template>

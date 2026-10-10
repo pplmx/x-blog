@@ -109,9 +109,8 @@ async function mountAuthorsPage({
 			"</Suspense>",
 	};
 
-	const { default: AuthorFollowButton } = await import(
-		"../../../components/AuthorFollowButton.vue"
-	);
+	const { default: AuthorFollowButton } =
+		await import("../../../components/AuthorFollowButton.vue");
 	const wrapper = mount(SuspenseWrapper, {
 		global: {
 			components: { AuthorFollowButton },
