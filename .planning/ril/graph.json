@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T18:15:37+00:00",
+  "updated_at": "2026-10-11T18:35:47+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34967,6 +34967,18 @@
       "title": "perf: batch Postgres snippet highlight in /search/all (kill N+1)",
       "commit": "f40f1b2adc6d4e852b499509bbcc2f51e6bf66a0",
       "description": "Follow-up on CHG-824/DEC-509: /search/all built each post's snippet with a per-post ts_headline call (one DB round-trip per merged post, up to ~50). Now reuses _build_postgres_snippets one-query batch (same as /search, ISS-061) with identical escaped-excerpt fallback."
+    },
+    "CHG-835": {
+      "id": "CHG-835",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T18:35:46+00:00",
+      "updated_at": "2026-10-11T18:35:46+00:00",
+      "touched_round": 466,
+      "title": "fix: /highlights delete refreshes count + steps back from emptied page",
+      "commit": "14fd677cfc95c85a6ce61f12679868583b400b87",
+      "description": "Paginated /highlights kept stale pagination.total after delete (wrong count label + pager); deleting last item on a late page left empty ?page=N with misleading empty state. Delete now refetches current page and, when optimistic removal empties page>1, navigates back a page. 3 new page tests."
     }
   },
   "edges": [
@@ -52290,6 +52302,12 @@
       "to": "TASK-441",
       "type": "implements",
       "created_at": "2026-10-11T18:15:37+00:00"
+    },
+    {
+      "from": "CHG-835",
+      "to": "TASK-583",
+      "type": "implements",
+      "created_at": "2026-10-11T18:35:47+00:00"
     }
   ]
 }
