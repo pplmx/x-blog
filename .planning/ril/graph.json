@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T18:35:47+00:00",
+  "updated_at": "2026-10-11T18:40:58+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34979,6 +34979,30 @@
       "title": "fix: /highlights delete refreshes count + steps back from emptied page",
       "commit": "14fd677cfc95c85a6ce61f12679868583b400b87",
       "description": "Paginated /highlights kept stale pagination.total after delete (wrong count label + pager); deleting last item on a late page left empty ?page=N with misleading empty state. Delete now refetches current page and, when optimistic removal empties page>1, navigates back a page. 3 new page tests."
+    },
+    "ISS-667": {
+      "id": "ISS-667",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-11T18:40:55+00:00",
+      "updated_at": "2026-10-11T18:40:55+00:00",
+      "touched_round": 466,
+      "title": "N+1: author not eager-loaded in search / liked / recommendations lists",
+      "severity": "medium",
+      "summary": "Like ISS-663's fix for the public post lists, search_posts (both branches), list_reader_post_likes, and recommend_posts candidates serialized PostList.author but only eager-loaded category/tags(/series), so every uncached render fired one lazy SELECT per row. Fixed by joinedload(Post.author) in CHG-836."
+    },
+    "CHG-836": {
+      "id": "CHG-836",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T18:40:55+00:00",
+      "updated_at": "2026-10-11T18:40:55+00:00",
+      "touched_round": 466,
+      "title": "perf: eager-load author in search / liked / recommendations lists (N+1)",
+      "commit": "",
+      "description": "Extends round-465 ISS-663 author eager-load to the three reader-visible list queries that serialize PostList.author but only had category/tags(/series): search_posts (tsvector+CJK), list_reader_post_likes, recommend_posts. Plain entity select + joinedload = single JOIN (compiled-SQL confirmed)."
     }
   },
   "edges": [
@@ -52308,6 +52332,12 @@
       "to": "TASK-583",
       "type": "implements",
       "created_at": "2026-10-11T18:35:47+00:00"
+    },
+    {
+      "from": "CHG-836",
+      "to": "ISS-667",
+      "type": "resolves",
+      "created_at": "2026-10-11T18:40:58+00:00"
     }
   ]
 }
