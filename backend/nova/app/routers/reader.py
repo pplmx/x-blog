@@ -9,39 +9,39 @@ endpoints (enforced in auth.get_current_user / get_current_reader).
 
 from __future__ import annotations
 
-import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from secrets import token_urlsafe
 from typing import Annotated, Literal
-from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import pyotp
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
-from PIL import UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import auth, emailer, models, schemas
-from app.database import get_db
-from app.image_validation import (
-    ALLOWED_TYPES,
-    ALLOWED_TYPES_MAP,
-    MAX_SIZE,
-    has_matching_magic_bytes,
-    optimize_image,
-    verify_image_decodes,
+from app import (
+    auth,
+    emailer,  # noqa: F401 — re-exported so tests can monkeypatch app.routers.reader.emailer
+    models,
+    schemas,
 )
+from app.database import get_db
+from app.exceptions import AppException
+from app.image_validation import MAX_SIZE
 from app.limiter import RATE_LIMIT_AUTH, RATE_LIMIT_EXPORT, RATE_LIMIT_REGISTER, RATE_LIMIT_WRITE, limiter
-from app.middleware import get_logger
 from app.routers.comments import AUTO_APPROVE_READER_COMMENTS, _notify_comment_approved
 from app.schemas import IdInt, NonNulStr, PageInt
 from app.services import reader as reader_service
+from app.services.reader import _delete_avatar_file
 
-logger = get_logger("reader")
+# Reader avatar storage lives in a dedicated static/avatars/ namespace, NOT the
+# admin media library's static/uploads/ (DEC-299/TASK-378): the admin media
+# listing walks static/uploads/ only, so a reader's profile picture must not
+# appear in or collide with the author's uploaded post images. Owned here and
+# passed to the reader service so tests can point it at a temp dir.
+AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
+
 router = APIRouter(prefix="/api/reader", tags=["reader"])
 
 # RFC-5321-ish email shape; deliberately conservative and dependency-free
@@ -946,58 +946,7 @@ async def update_my_profile(
 ):
     """Update the reader's own profile (display_name, bio). Email changes are
     their own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
-    if payload.display_name is not None:
-        current_reader.display_name = payload.display_name
-    # Bio is the one field that can be cleared (None), so it follows the
-    # exclude_unset contract: only an explicitly-present key is applied.
-    if "bio" in payload.model_dump(exclude_unset=True):
-        current_reader.bio = payload.bio
-    # The public-likes opt-in is boolean and unambiguous — apply it whenever
-    # present, keeping the exclude_unset discipline (a PATCH that only touches
-    # display_name must not flip the flag).
-    if "public_likes" in payload.model_dump(exclude_unset=True):
-        current_reader.public_likes = bool(payload.public_likes)
-    # The public-bookmarks opt-in (round 363, DEC-399) mirrors public_likes —
-    # applied only when explicitly present.
-    if "public_bookmarks" in payload.model_dump(exclude_unset=True):
-        current_reader.public_bookmarks = bool(payload.public_bookmarks)
-    await db.commit()
-    await db.refresh(current_reader)
-    return current_reader
-
-
-# Reader avatar storage lives in a dedicated static/avatars/ namespace, NOT the
-# admin media library's static/uploads/ (DEC-299/TASK-378): the admin media
-# listing walks static/uploads/ only, so a reader's profile picture must not
-# appear in or collide with the author's uploaded post images.
-AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
-# Avatars are stored as `{uuid4}.{ext}` (same shape as media uploads); the
-# remove route whitelists the exact shape so a DB value can never become a
-# filesystem path outside the avatar dir (mirrors upload.py's _FILENAME_RE).
-_AVATAR_FILENAME_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|gif|webp)$"
-)
-
-
-def _delete_avatar_file(avatar_url: str | None) -> None:
-    """Best-effort delete of a stored avatar file, given its /static URL.
-
-    Only ever removes a file whose name matches the exact avatar shape (so a
-    corrupted/foreign avatar_url value can't be turned into a filesystem path
-    — path-traversal guard, same discipline as upload.py). A missing file is
-    fine — the URL is the source of truth and a stale row shouldn't fail the
-    write that cleans it up.
-    """
-    if not avatar_url:
-        return
-    name = avatar_url.rsplit("/", 1)[-1]
-    if not _AVATAR_FILENAME_RE.match(name):
-        return
-    path = AVATAR_DIR / name
-    try:
-        path.unlink(missing_ok=True)
-    except OSError:
-        logger.warning("could not remove stale avatar file %s", path)
+    return await reader_service.update_my_profile(db, current_reader, payload.model_dump(exclude_unset=True))
 
 
 @router.post("/me/avatar", response_model=ReaderProfile)
@@ -1017,34 +966,17 @@ async def upload_my_avatar(
     static/avatars/ first, then the DB row is updated and any previous avatar
     file removed, so a failed write never leaves a dangling avatar_url.
     """
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(400, detail="Unsupported file type")
     # Cap memory: read at most MAX_SIZE+1 bytes and reject before an oversized
     # body balloons RAM (reading the whole stream first would buffer it all).
     contents = await file.read(MAX_SIZE + 1)
-    if len(contents) > MAX_SIZE:
-        raise HTTPException(400, detail="File too large (max 5MB)")
-    if not has_matching_magic_bytes(contents, file.content_type):
-        raise HTTPException(400, detail="File content does not match the declared image type")
     try:
-        verify_image_decodes(contents)
-    except UnidentifiedImageError, OSError, ValueError:
-        raise HTTPException(400, detail="File is not a valid image")
-
-    contents = optimize_image(contents, file.content_type)
-
-    ext = ALLOWED_TYPES_MAP.get(file.content_type, "jpg")
-    filename = f"{uuid4()}.{ext}"
-    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
-    filepath = AVATAR_DIR / filename
-    filepath.write_bytes(contents)
-
-    avatar_url = f"/static/avatars/{filename}"
-    previous = current_reader.avatar_url
-    current_reader.avatar_url = avatar_url
-    await db.commit()
-    await db.refresh(current_reader)
-    _delete_avatar_file(previous)
+        current_reader = await reader_service.upload_my_avatar(
+            db, current_reader, file.content_type, contents, AVATAR_DIR
+        )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return current_reader
 
 
@@ -1056,13 +988,7 @@ async def remove_my_avatar(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove the reader's profile picture (stored file + DB row)."""
-    previous = current_reader.avatar_url
-    if previous:
-        current_reader.avatar_url = None
-        await db.commit()
-        await db.refresh(current_reader)
-        _delete_avatar_file(previous)
-    return current_reader
+    return await reader_service.remove_my_avatar(db, current_reader, AVATAR_DIR)
 
 
 @router.post("/me/password", response_model=ReaderPasswordChangeResponse)
@@ -1079,14 +1005,14 @@ async def change_my_password(
     bumps ``token_version`` so every pre-change reader JWT is rejected, and
     returns a fresh token for this session. Rate-limited like login.
     """
-    if not auth.verify_password(payload.current_password, current_reader.password):
-        raise HTTPException(status_code=401, detail="Incorrect current password")
-    current_reader.password = auth.get_password_hash(payload.new_password)
-    current_reader.token_version = (current_reader.token_version or 0) + 1
-    await db.commit()
-    await db.refresh(current_reader)
-
-    access_token = auth.create_reader_token({"sub": current_reader.id}, token_version=current_reader.token_version or 0)
+    try:
+        current_reader, access_token = await reader_service.change_my_password(
+            db, current_reader, payload.current_password, payload.new_password
+        )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -1109,13 +1035,12 @@ async def setup_two_factor(
     generates a fresh secret (the previous enrollment is discarded); once
     enabled the secret is never re-exposed and this endpoint 409s.
     """
-    if current_reader.two_factor_enabled:
-        raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
-    secret = pyotp.random_base32()
-    current_reader.two_factor_secret = secret
-    await db.commit()
-    otpauth_uri = pyotp.TOTP(secret).provisioning_uri(name=current_reader.email, issuer_name="X-Blog")
-    return {"secret": secret, "otpauth_uri": otpauth_uri}
+    try:
+        return await reader_service.setup_two_factor(db, current_reader)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/me/2fa/enable", response_model=ReaderProfile)
@@ -1135,17 +1060,12 @@ async def enable_two_factor(
     returning an mfa_token instead of an access token. Existing sessions stay
     valid — enabling a second factor does not log the reader out.
     """
-    if not auth.verify_password(payload.current_password, current_reader.password):
-        raise HTTPException(status_code=400, detail="Incorrect current password")
-    if current_reader.two_factor_enabled:
-        raise HTTPException(status_code=409, detail="Two-factor authentication is already enabled")
-    if not current_reader.two_factor_secret:
-        raise HTTPException(status_code=400, detail="Run /me/2fa/setup first")
-    if not auth.verify_totp(current_reader.two_factor_secret, payload.code):
-        raise HTTPException(status_code=400, detail="Invalid authentication code")
-    current_reader.two_factor_enabled = True
-    await db.commit()
-    return current_reader
+    try:
+        return await reader_service.enable_two_factor(db, current_reader, payload.current_password, payload.code)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/me/2fa/disable", response_model=ReaderProfile)
@@ -1162,22 +1082,12 @@ async def disable_two_factor(
     alone can silently drop the second factor. On success the seed is cleared,
     so enrollment must restart from /me/2fa/setup.
     """
-    if not auth.verify_password(payload.current_password, current_reader.password):
-        raise HTTPException(status_code=400, detail="Incorrect current password")
-    if not current_reader.two_factor_enabled or not current_reader.two_factor_secret:
-        raise HTTPException(status_code=400, detail="Two-factor authentication is not enabled")
-    if not auth.verify_totp(current_reader.two_factor_secret, payload.code):
-        raise HTTPException(status_code=400, detail="Invalid authentication code")
-    current_reader.two_factor_enabled = False
-    current_reader.two_factor_secret = None
-    await db.commit()
-    return current_reader
-
-
-#: Time-to-live of an email-change verification link (mirrors the password-reset
-#: window: long enough to reach the new inbox, short enough to expire stale
-#: links). The pending change is cleared when it lapses (DEC-357, TASK-404).
-EMAIL_CHANGE_TTL_MINUTES = 60
+    try:
+        return await reader_service.disable_two_factor(db, current_reader, payload.current_password, payload.code)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/me/email/request", status_code=202)
@@ -1200,66 +1110,14 @@ async def request_email_change(
     verification mail cannot complete), and nothing is persisted then. A repeat
     request replaces the previous pending change (single active flow).
     """
-    if not auth.verify_password(payload.current_password, current_reader.password):
-        raise HTTPException(status_code=401, detail="Incorrect current password")
-    new_email = payload.new_email.strip().lower()
-    if new_email == current_reader.email:
-        raise HTTPException(status_code=400, detail="New email must differ from the current email")
-    occupied = (
-        await db.execute(
-            select(auth.ReaderAccount).where(
-                func.lower(auth.ReaderAccount.email) == new_email,
-                auth.ReaderAccount.id != current_reader.id,
-            )
-        )
-    ).scalar_one_or_none()
-    if occupied is not None:
-        raise HTTPException(status_code=409, detail="That email is already in use by another account")
-    if not emailer.is_email_configured():
-        raise HTTPException(status_code=503, detail="Email service is not configured on this server")
-
-    token = token_urlsafe(32)
-    current_reader.email_change_token = token
-    current_reader.email_change_pending = new_email
-    current_reader.email_change_requested_at = reader_service.utc_now_naive()
-    # Persist BEFORE sending (round 393): an email sent in front of an
-    # uncommitted token leaves the reader holding a dead link if the commit
-    # then fails (transient DB error) — the confirm step would find no row by
-    # that token. On a send failure the just-persisted pending row is cleared
-    # again (best-effort), so the "nothing staged on failure" guarantee holds
-    # as before; a stale row that slips through self-expires via the
-    # EMAIL_CHANGE_TTL_MINUTES and is overwritten on the next re-request.
-    await db.commit()
-
-    async def _clear_pending() -> None:
-        current_reader.email_change_token = None
-        current_reader.email_change_pending = None
-        current_reader.email_change_requested_at = None
-        await db.commit()
-
     try:
-        accepted = emailer.send_email_change_email(new_email, token)
-        if not accepted:
-            # RFC-level refusal (e.g. the address provably bounces): nothing
-            # staged, exactly as before the reorder.
-            await _clear_pending()
-            raise HTTPException(
-                status_code=503,
-                detail="Could not send the verification email, please try again later",
-            )
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("email-change verification send raised")
-        try:
-            await _clear_pending()
-        except Exception:  # noqa: BLE001 — never mask the primary 503
-            await db.rollback()
-        raise HTTPException(
-            status_code=503,
-            detail="Could not send the verification email, please try again later",
-        ) from None
-    return {"message": "A verification link is on its way to the new address"}
+        return await reader_service.request_email_change(
+            db, current_reader, payload.current_password, payload.new_email
+        )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/me/email/confirm", response_model=ReaderLoginResponse)
@@ -1288,102 +1146,12 @@ async def confirm_email_change(
     is caught and surfaced as the business 409 (register uses the same
     IntegrityError -> conflict pattern) instead of a 500 (round-342 review).
     """
-    reader = (
-        await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.email_change_token == payload.token))
-    ).scalar_one_or_none()
-    if reader is None or reader.email_change_pending is None:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
-
-    now = reader_service.utc_now_naive()
-    if reader.email_change_requested_at is None or now - reader.email_change_requested_at > timedelta(
-        minutes=EMAIL_CHANGE_TTL_MINUTES
-    ):
-        # Expired — clear the stale pending so a re-request starts clean.
-        reader.email_change_token = None
-        reader.email_change_pending = None
-        reader.email_change_requested_at = None
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
-
-    # Account moderation (DEC-194, TASK-214): a deactivated reader must not
-    # redeem a pending change — the operator disabled the account, so swapping
-    # its email (or minting a fresh auto-login token) would contradict that.
-    # Mirrors password reset, which refuses inactive readers. The stale pending
-    # is cleared so a re-request (impossible for them, but consistent) would
-    # start clean.
-    if reader.is_active is False:
-        reader.email_change_token = None
-        reader.email_change_pending = None
-        reader.email_change_requested_at = None
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
-
-    target = reader.email_change_pending
-    # Case-insensitive occupied check (the login path matches emails the same
-    # defensive way): current writers always store lowercase, but a legacy
-    # mixed-case address must trip a clean 409 rather than a unique-index 500.
-    occupied = (
-        await db.execute(
-            select(auth.ReaderAccount).where(
-                func.lower(auth.ReaderAccount.email) == target,
-                auth.ReaderAccount.id != reader.id,
-            )
-        )
-    ).scalar_one_or_none()
-    if occupied is not None:
-        reader.email_change_token = None
-        reader.email_change_pending = None
-        reader.email_change_requested_at = None
-        await db.commit()
-        raise HTTPException(status_code=409, detail="That email is already in use; please request a new change")
-
-    # Atomic single-statement redeem (see docstring): both the swap and the
-    # clear are conditional on the stored token still being the presented one,
-    # so a concurrent double-click or a replaced pending token returns 400
-    # (rowcount 0) instead of a second 200 / a lost newer pending.
-    redeemed = (
-        await db.execute(
-            update(auth.ReaderAccount)
-            .where(
-                auth.ReaderAccount.id == reader.id,
-                auth.ReaderAccount.email_change_token == payload.token,
-            )
-            .values(
-                {
-                    "email": target,
-                    "email_change_token": None,
-                    "email_change_pending": None,
-                    "email_change_requested_at": None,
-                    "token_version": (reader.token_version or 0) + 1,
-                    "last_login_at": now,
-                }
-            )
-            .execution_options(synchronize_session=False)
-        )
-    ).rowcount  # type: ignore[reportAttributeAccessIssue]
-    if redeemed == 0:
-        await db.rollback()
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
     try:
-        await db.commit()
-    except IntegrityError:
-        # The target address got taken (concurrent register/change) after the
-        # occupied check — surface the business 409 and clear the stale pending
-        # so the reader's next request starts clean, never a 500.
-        await db.rollback()
-        reader = (
-            await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.id == reader.id))
-        ).scalar_one_or_none()
-        if reader is not None:
-            reader.email_change_token = None
-            reader.email_change_pending = None
-            reader.email_change_requested_at = None
-            await db.commit()
-        raise HTTPException(
-            status_code=409, detail="That email is already in use; please request a new change"
-        ) from None
-    await db.refresh(reader)
-    access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
+        reader, access_token = await reader_service.confirm_email_change(db, payload.token)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -1408,40 +1176,12 @@ async def request_password_reset(
     a deactivated reader gets the same generic 202 with no mail, so a reset link
     can never be used to probe moderation state. Rate-limited like login.
     """
-    normalized_email = payload.email.lower().strip()
-    if not emailer.is_email_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email service is not configured on this server",
-        )
-    reader = (
-        await db.execute(
-            select(auth.ReaderAccount).where(
-                auth.ReaderAccount.email == normalized_email,
-                auth.ReaderAccount.is_active.is_(True),
-            )
-        )
-    ).scalar_one_or_none()
-    # Unknown email is not an error: the same generic 202 is what matters. Only
-    # compose/send mail when an active account exists.
-    if reader is not None:
-        token = auth.create_password_reset_token(reader.id, token_version=reader.token_version or 0)
-        try:
-            accepted = emailer.send_password_reset_email(reader.email, token)
-        except Exception:
-            # Connection-level SMTP failure → infrastructure 503 (no account info).
-            logger.exception("password-reset email send raised")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Could not send the reset email, please try again later",
-            )
-        if not accepted:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Could not send the reset email, please try again later",
-            )
-    # Generic success — the same body for known and unknown addresses.
-    return {"message": "If that email is registered, a reset link is on its way"}
+    try:
+        return await reader_service.request_password_reset(db, payload.email)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/password-reset/confirm", response_model=ReaderPasswordChangeResponse)
@@ -1461,20 +1201,12 @@ async def confirm_password_reset(
     matches). The reader is auto-logged-in with a fresh token, mirroring
     register/password-change UX (DEC-286, TASK-371).
     """
-    reader = await auth.get_reader_for_password_reset(payload.token, db)
-    if reader is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset link",
-        )
-    reader.password = auth.get_password_hash(payload.new_password)
-    reader.token_version = (reader.token_version or 0) + 1
-    await db.commit()
-    await db.refresh(reader)
-    reader.last_login_at = reader_service.utc_now_naive()
-    await db.commit()
-
-    access_token = auth.create_reader_token({"sub": reader.id}, token_version=reader.token_version or 0)
+    try:
+        reader, access_token = await reader_service.confirm_password_reset(db, payload.token, payload.new_password)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -1518,7 +1250,7 @@ async def delete_my_account(
     # The account row is gone; its avatar file (a reader-private upload) goes
     # too — crud only reaps DB rows (DEC-299/TASK-378 was added after the last
     # deletion deep-dive, so the file would otherwise linger after delete).
-    _delete_avatar_file(avatar_url)
+    _delete_avatar_file(AVATAR_DIR, avatar_url)
     return None
 
 
