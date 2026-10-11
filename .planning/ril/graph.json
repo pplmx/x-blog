@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 464,
+  "round": 465,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-08T01:11:20+00:00",
+  "updated_at": "2026-10-11T15:59:23+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -21938,7 +21938,7 @@
       "version": 2,
       "created_at": "2026-09-11T01:40:24+00:00",
       "updated_at": "2026-09-11T01:41:22+00:00",
-      "touched_round": 295,
+      "touched_round": 464,
       "title": "N+1: PostList serialization lazy-loads Post.series on every list query",
       "severity": "high",
       "detail": "PostList.series is serialized for every row but get_posts/search/popular/related/adjacent/series-detail eager-load only category+tags; the default lazy='select' fires up to cputime         unlimited\nfilesize        unlimited\ndatasize        unlimited\nstacksize       8MB\ncoredumpsize    unlimited\nresident        unlimited\nmaxproc         unlimited\ndescriptors     1048576\nmemorylocked    64kB\naddressspace    unlimited\nmaxfilelocks    unlimited\nsigpending      8206412\nmsgqueue        819200\nnice            0\nrt_priority     0\nrt_time         unlimited extra SELECT FROM series per render. posts_list_cache clears on every pageview/like so this runs on almost every uncached list render; search is not cached at all."
@@ -34747,6 +34747,114 @@
       "title": "Search slice verified: 1941 backend + 2529 frontend + 3 e2e deep-link journeys",
       "content": "backend pytest 1941 passed / 93.56% cov, ruff/format clean, pyright 0 errors; frontend vitest 2529 passed, biome clean, nuxt typecheck clean, build ok; e2e search-all.spec.ts 3 passed (series/page/author deep-link) + existing search specs pass, no regressions. Per-surface gates verified in code: search_pages filters published.is_(True) (no draft leak), search_authors uses display_name IS NOT NULL matching the /api/authors convention (authors.py:33/admin.py:404/rss.py:690/857), search_posts reuses published+passed-publish_at predicate, series all-public (no draft state).",
       "confidence": 1.0
+    },
+    "CHG-825": {
+      "id": "CHG-825",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:17+00:00",
+      "updated_at": "2026-10-11T15:58:17+00:00",
+      "touched_round": 465,
+      "commit": "ca60bed8",
+      "title": "fix(frontend): bundle lucide icons offline, drop iconify CDN round-trips",
+      "description": "Icon.vue switched from online @iconify/vue to !!offline with addCollection of a reduced lucide set (assets/icons/lucide.ts). Icons now inline <svg> on first frame; api.iconify.design/unisvg/simplesvg removed from the strict CSP; two dead icon names (mail-reply/mail-at) fixed; Icon.spec.ts + CSP spec updated."
+    },
+    "CHG-826": {
+      "id": "CHG-826",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:17+00:00",
+      "updated_at": "2026-10-11T15:58:17+00:00",
+      "touched_round": 464,
+      "commit": "71b18f28",
+      "title": "perf(backend): eager-load post author in public list queries (N+1)",
+      "description": "joinedload(Post.author) alongside category/tags/series in get_posts, get_post, get_post_by_slug and popular/trending/related/adjacent — PostList serializes author.display_name so a lazy SELECT fired once per row on every uncached render. Complements the TASK-358 series join; author was the remaining PostList relation gap."
+    },
+    "CHG-827": {
+      "id": "CHG-827",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:17+00:00",
+      "updated_at": "2026-10-11T15:58:17+00:00",
+      "touched_round": 465,
+      "commit": "b601cf7e",
+      "title": "perf(frontend): persist vitest transformed modules across runs",
+      "description": "fsModuleCache:true in vite.config.ts so vp test reuses the transformed module graph (transform phase ~65% to ~26%)."
+    },
+    "CHG-828": {
+      "id": "CHG-828",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:18+00:00",
+      "updated_at": "2026-10-11T15:58:18+00:00",
+      "touched_round": 465,
+      "commit": "cfcff9e3",
+      "title": "fix(ci): cap test-backend xdist workers to stop fork crash on many-core hosts",
+      "description": "test-backend used -n auto (one worker/core); on a 128-core box the git pre-push hook forking ~128 workers aborts SIGABRT in metadata.create_all. WORKERS arg defaults to min(cpu,8), matching test-backend-postgres."
+    },
+    "ISS-663": {
+      "id": "ISS-663",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:23+00:00",
+      "updated_at": "2026-10-11T15:58:23+00:00",
+      "touched_round": 464,
+      "severity": "medium",
+      "title": "N+1: PostList serializes author but list queries don-t eager-load it",
+      "summary": "get_posts/popular/trending/related/adjacent joined category/tags/series (TASK-358) but not author; PostList.author.display_name triggered one lazy SELECT per row on every uncached render. Fixed by joinedload(Post.author) in CHG-826."
+    },
+    "DEC-510": {
+      "id": "DEC-510",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T15:58:39+00:00",
+      "updated_at": "2026-10-11T15:58:39+00:00",
+      "touched_round": 464,
+      "title": "Round-465 performance wave: offline icons + post-author N+1 + test/CI perf",
+      "rationale": "Operator perf directive delivered and verified end-to-end (frontend build+2533 unit tests, backend 1943 passed @93.97% cov, browser smoke 90 inline icons / 0 iconify requests, GitHub CI all 4 jobs green). (1) Icon.vue -> @iconify/vue/offline + reduced lucide bundle; this retires the iconify connect-src allowance introduced in CHG-117 (strict CSP is now self-only). (2) joinedload(Post.author) on all PostList-producing queries closes the remaining relation N+1 (ISS-663), completing the TASK-358 family. (3) fsModuleCache for transform-bound frontend tests. (4) justfile test-backend WORKERS cap to min(cpu,8), fixing the pre-push SIGABRT on many-core hosts.",
+      "alternatives_rejected": "(a) Online iconify fetch kept + per-icon precache - rejected: still N cross-origin round-trips, CSP stays open. (b) Import the full 568KB lucide set - rejected: rolldown does not tree-shake JSON props; only ~130 used icons bundled. (c) Backend author fix as a per-request fix - rejected: join is cheaper and matches the series precedent. (d) Leaving test-backend at -n auto - rejected: abort in the git pre-push hook on 128-core hosts."
+    },
+    "ISS-664": {
+      "id": "ISS-664",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-11T15:59:23+00:00",
+      "updated_at": "2026-10-11T15:59:23+00:00",
+      "touched_round": 465,
+      "severity": "high",
+      "title": "First-paint icons load slowly: per-icon fetch to api.iconify.design",
+      "summary": "Icon.vue used the online @iconify/vue build; every <Icon icon=lucide:...> fetched its SVG from api.iconify.design (+unisvg/simplesvg) at render time, so icons trickled in over dozens of cross-origin round-trips on first paint. Fixed by bundling a reduced offline lucide set (CHG-825) and dropping the CDNs from the strict CSP."
+    },
+    "ISS-665": {
+      "id": "ISS-665",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-11T15:59:23+00:00",
+      "updated_at": "2026-10-11T15:59:23+00:00",
+      "touched_round": 465,
+      "severity": "low",
+      "title": "Frontend unit suite is transform-bound (~65% of run re-transforms the module graph)",
+      "summary": "Every vp test run re-transformed the whole module graph. Fixed by fsModuleCache in vite.config.ts (CHG-827), dropping transform to ~26%."
+    },
+    "ISS-666": {
+      "id": "ISS-666",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-11T15:59:23+00:00",
+      "updated_at": "2026-10-11T15:59:23+00:00",
+      "touched_round": 465,
+      "severity": "high",
+      "title": "git pre-push hook aborts SIGABRT on many-core hosts (test-backend -n auto)",
+      "summary": "just test-backend used -n auto (one worker/core); on a 128-core box the prek pre-push hook forking ~128 pytest workers aborts in metadata.create_all before any app code runs. Fixed by capping WORKERS to min(cpu,8) in the justfile (CHG-828), matching test-backend-postgres."
     }
   },
   "edges": [
@@ -52004,6 +52112,36 @@
       "to": "TASK-582",
       "type": "implements",
       "created_at": "2026-10-08T01:11:20+00:00"
+    },
+    {
+      "from": "CHG-826",
+      "to": "ISS-478",
+      "type": "resolves",
+      "created_at": "2026-10-11T15:58:24+00:00"
+    },
+    {
+      "from": "CHG-826",
+      "to": "ISS-663",
+      "type": "resolves",
+      "created_at": "2026-10-11T15:58:39+00:00"
+    },
+    {
+      "from": "CHG-825",
+      "to": "ISS-664",
+      "type": "resolves",
+      "created_at": "2026-10-11T15:59:23+00:00"
+    },
+    {
+      "from": "CHG-827",
+      "to": "ISS-665",
+      "type": "resolves",
+      "created_at": "2026-10-11T15:59:23+00:00"
+    },
+    {
+      "from": "CHG-828",
+      "to": "ISS-666",
+      "type": "resolves",
+      "created_at": "2026-10-11T15:59:23+00:00"
     }
   ]
 }
