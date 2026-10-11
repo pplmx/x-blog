@@ -116,7 +116,18 @@ async function remove(hl: ReaderHighlight) {
 	error.value = "";
 	try {
 		await deleteReaderHighlight(hl.id);
+		// Optimistic removal for instant feedback...
 		items.value = items.value.filter((x) => x.id !== hl.id);
+		// ...but the count label and pager come from pagination.total, which is
+		// now stale. If we emptied the current page and it's not the first,
+		// step back a page rather than stranding the reader on a now-empty
+		// late page with a misleading "no highlights" empty state; otherwise
+		// just refresh the current page so total/pager settle.
+		if (items.value.length === 0 && page.value > 1) {
+			void navigateTo({ query: { page: String(page.value - 1) } });
+			return;
+		}
+		void load();
 	} catch {
 		error.value = "deleteFailed";
 	}

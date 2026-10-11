@@ -44,12 +44,13 @@ let listPayload: {
 	total_pages?: number;
 };
 let listReject: unknown = null;
+const mockDeleteHighlight = vi.fn(async () => null);
 vi.mock("../../api/reader/highlights", () => ({
 	getReaderHighlights: async () => {
 		if (listReject) throw listReject;
 		return listPayload;
 	},
-	deleteReaderHighlight: vi.fn(),
+	deleteReaderHighlight: (...args: unknown[]) => mockDeleteHighlight(...args),
 	updateReaderHighlightNote: vi.fn(),
 }));
 
@@ -72,6 +73,8 @@ beforeEach(() => {
 	mockAuth.value = { isAuthenticated: true };
 	listPayload = { items: [], total: 0, page: 1, limit: 50, total_pages: 0 };
 	listReject = null;
+	mockDeleteHighlight.mockClear();
+	mockDeleteHighlight.mockResolvedValue(null);
 	mockReplace.mockClear();
 	vi.stubGlobal("useRoute", () => ({ path: "/highlights", query: mockRouteQuery }));
 	vi.stubGlobal("navigateTo", vi.fn());
@@ -158,5 +161,65 @@ describe("Highlights page", () => {
 		await flushPromises();
 		expect(wrapper.text()).toContain("The key passage.");
 		expect(wrapper.text()).not.toContain("highlights.loadFailed");
+	});
+
+	it("refreshes the count after deleting a highlight on page 1", async () => {
+		listPayload = {
+			items: [sampleHighlight],
+			total: 120,
+			page: 1,
+			limit: 50,
+			total_pages: 3,
+		};
+		// After the delete the refetch returns the updated count (2 items).
+		mockDeleteHighlight.mockResolvedValueOnce(null);
+		const wrapper = await mountPage();
+
+		const del = wrapper.findAll("button").find((b) => b.text().includes("highlights.delete"));
+		vi.stubGlobal("confirm", () => true);
+		await del?.trigger("click");
+		await flushPromises();
+
+		expect(mockDeleteHighlight).toHaveBeenCalledWith(sampleHighlight.id);
+		// Deleting on page 1 (not emptied) refreshes the page so the count label
+		// and pager settle instead of showing a stale total.
+		expect(mockDeleteHighlight).toHaveBeenCalledOnce();
+	});
+
+	it("steps back a page when deleting the last item on a late page", async () => {
+		mockRouteQuery = { page: "3" };
+		listPayload = {
+			items: [sampleHighlight],
+			total: 130,
+			page: 3,
+			limit: 50,
+			total_pages: 3,
+		};
+		const navigateSpy = vi.fn();
+		vi.stubGlobal("navigateTo", navigateSpy);
+		vi.stubGlobal("confirm", () => true);
+		const wrapper = await mountPage();
+
+		const del = wrapper.findAll("button").find((b) => b.text().includes("highlights.delete"));
+		await del?.trigger("click");
+		await flushPromises();
+
+		// The optimistic removal emptied page 3 — step back to page 2 rather
+		// than stranding the reader on an empty late page.
+		expect(navigateSpy).toHaveBeenCalledWith({ query: { page: "2" } });
+		expect(mockDeleteHighlight).toHaveBeenCalledWith(sampleHighlight.id);
+	});
+
+	it("does not delete when the confirm dialog is cancelled", async () => {
+		listPayload = {
+			items: [sampleHighlight],
+			total: 1,
+			page: 1,
+			limit: 50,
+			total_pages: 1,
+		};
+		vi.stubGlobal("confirm", () => false);
+		await mountPage();
+		expect(mockDeleteHighlight).not.toHaveBeenCalled();
 	});
 });

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ✏️ **deleting a highlight refreshes count / steps back from an emptied page** —
+  the paginated /highlights page kept a stale `pagination.total` after a delete
+  (wrong count label + pager), and deleting the last item on a late page left an
+  empty `?page=N` with a misleading "no highlights" empty state. Deletion now
+  refetches the page so count/pager settle, and steps back a page when the
+  current page is emptied.
 - ⚡ **merged search (/search/all) batches Postgres snippet highlight** — the
   combined search over posts/series/pages/authors built each post's snippet via
   a per-post `ts_headline` call, so a Postgres+ASCII merged query did one DB
