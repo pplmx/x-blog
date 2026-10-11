@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧹 **drop dead `or 0` in three count queries** — `list_reader_history`,
+  `list_reader_in_progress`, and the admin comment-activity stats each had a
+  double `scalar() or 0 or 0` where the second default was unreachable dead
+  code; the redundant `or 0` is removed (no behavior change).
 - ⚡ **author eager-loaded in search / liked / recommendations lists (N+1)** —
   three reader-visible list queries serialized `PostList.author` but only
   eager-loaded category/tags(/series), so every uncached page fired one extra

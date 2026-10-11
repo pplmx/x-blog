@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+- 🧹 **三处计数查询去掉冗余 `or 0`**——`list_reader_history`、`list_reader_in_progress` 与
+  后台评论活跃统计均有 `scalar() or 0 or 0`，其中第二个默认值是永远走不到的冗余代码，
+  现移除（行为不变）。
 - ⚡ **搜索 / 点赞 / 推荐列表补充 author 预加载（N+1）**——三个读者可见的列表查询在序列化
   `PostList.author` 时只预加载了 category/tags（/series），每个未缓存页面都会每行多一次懒加载
   `SELECT`。`/search`（tsvector 与 CJK 两条路径）、`/liked` 读者列表与读者推荐现在与其余字段一起

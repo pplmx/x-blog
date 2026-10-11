@@ -262,7 +262,6 @@ async def list_reader_history(
             )
         ).scalar()
         or 0
-        or 0
     )
     query = (
         select(models.Post, models.ReadingHistory.viewed_at)
@@ -320,7 +319,6 @@ async def list_reader_in_progress(
                 .where(*filters)
             )
         ).scalar()
-        or 0
         or 0
     )
     rows = (

@@ -153,17 +153,13 @@ async def get_comment_activity_stats(db: AsyncSession, days: int = 30) -> dict:
     # /api/stats previously exposed the same count to anonymous visitors (a
     # moderation-state oracle) so the public field was dropped (ISS-396/404).
     pending_count = (
-        (
-            await db.execute(
-                select(func.count(models.Comment.id)).where(
-                    models.Comment.is_approved == False,  # noqa: E712
-                    models.Comment.reviewed_at.is_(None),
-                )
+        await db.execute(
+            select(func.count(models.Comment.id)).where(
+                models.Comment.is_approved == False,  # noqa: E712
+                models.Comment.reviewed_at.is_(None),
             )
-        ).scalar()
-        or 0
-        or 0
-    )
+        )
+    ).scalar() or 0
 
     return {
         "days": days,
