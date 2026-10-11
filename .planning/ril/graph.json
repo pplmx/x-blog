@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 466,
+  "round": 467,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T19:21:16+00:00",
+  "updated_at": "2026-10-11T19:37:49+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34144,11 +34144,11 @@
     "HYP-024": {
       "id": "HYP-024",
       "type": "hypothesis",
-      "status": "active",
-      "version": 1,
+      "status": "resolved",
+      "version": 2,
       "created_at": "2026-09-28T09:11:22+00:00",
-      "updated_at": "2026-09-28T09:11:22+00:00",
-      "touched_round": 456,
+      "updated_at": "2026-10-11T19:37:38+00:00",
+      "touched_round": 466,
       "confidence": 1,
       "title": "exact:true cannot match category names because the post_count badge shares the name span",
       "description": "category.vue renders <span>{{ name }} <span class=badge>{{ post_count }}</span></span>; getByText(name,{exact:true}) normalizes the outer span text to 'name 0' — never equal. Verified by a11y snapshot: '待删除分类-1790585385310 0' present in DOM while exact getByText failed."
