@@ -11,7 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from PIL import UnidentifiedImageError
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -1046,3 +1046,146 @@ async def list_readers(
             "total_pages": (total + limit - 1) // limit if total > 0 else 0,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Editorial calendar grid (DEC-162, TASK-194)
+# ---------------------------------------------------------------------------
+
+
+async def calendar_posts(db: AsyncSession, month: str) -> dict:
+    """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
+
+    Each post carries a ``type`` the calendar colors (published / scheduled /
+    draft) and a ``date`` the grid places it on:
+      - scheduled: published=True with publish_at in the future -> publish_at
+      - published: published=True, already live -> publish_at or created_at
+      - draft: not published -> its intended publish_at, if any
+    Undated drafts are returned separately under ``unscheduled`` — a plan view
+    shouldn't hide them, but they have no grid day. The query is bounded to
+    posts whose publish_at / created_at fall in or near the month (a post from
+    long ago has no day in this grid); the classification matches the posts
+    list status semantics. Dates are naive UTC (utc_now_naive contract, same
+    as schedule comparisons); the frontend renders them in the operator's
+    local tz by appending 'Z'.
+    """
+    from datetime import datetime, timedelta
+
+    try:
+        month_start = datetime.strptime(f"{month}-01", "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Invalid month; use YYYY-MM")
+    # Naive UTC window: the next month's first day is the grid upper bound, and
+    # a small lead-in tolerance keeps tz-heavy publish_at values from dropping
+    # off the edge of the grid they visually belong to.
+    month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    window_start = month_start - timedelta(days=3)
+
+    def classify(p: models.Post) -> tuple[str, datetime | None]:
+        if p.published and p.publish_at is not None and p.publish_at > utc_now_naive():
+            return "scheduled", p.publish_at
+        if p.published:
+            return "published", p.publish_at or p.created_at
+        return "draft", p.publish_at
+
+    posts = (
+        (
+            await db.execute(
+                select(models.Post)
+                .options(joinedload(models.Post.category))
+                .where(
+                    or_(
+                        and_(
+                            models.Post.publish_at.isnot(None),
+                            models.Post.publish_at >= window_start,
+                        ),
+                        and_(
+                            models.Post.created_at.isnot(None),
+                            models.Post.created_at >= window_start,
+                        ),
+                    )
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    grid: list[dict] = []
+    unscheduled: list[dict] = []
+    for p in posts:
+        ptype, when = classify(p)
+        entry = {
+            "id": p.id,
+            "title": p.title,
+            "slug": p.slug,
+            "type": ptype,
+            "date": when.isoformat() if when else None,
+            "published": p.published,
+            "publish_at": p.publish_at.isoformat() if p.publish_at else None,
+            "category": p.category.name if p.category else None,
+        }
+        if when is None:
+            # Draft with no intended date yet — keep it visible but off-grid.
+            if ptype == "draft":
+                unscheduled.append(entry)
+            continue
+        if month_start <= when < month_end:
+            grid.append(entry)
+        elif ptype == "draft":
+            # A draft planned for outside the viewed month (the primary editorial
+            # use case: "I'm writing this for next month") has a non-None
+            # publish_at that fails the grid range — it would land on neither the
+            # grid nor `unscheduled`, exactly the plan item `unscheduled` exists
+            # to surface. A draft is a plan, not a fact: keep it off-grid but
+            # visible in the unscheduled (plan) list (round-292 deep-dive).
+            unscheduled.append(entry)
+
+    grid.sort(key=lambda e: (e["date"] or "", e["id"]))
+    unscheduled.sort(key=lambda e: e["id"])
+    return {"month": month, "items": grid, "unscheduled": unscheduled}
+
+
+# ---------------------------------------------------------------------------
+# Reader account moderation (DEC-194, TASK-214, ISS-116)
+# ---------------------------------------------------------------------------
+
+
+async def get_reader_or_404(db: AsyncSession, reader_id: int) -> auth.ReaderAccount:
+    """Fetch a reader account or 404. Used by the moderation routes."""
+    reader = await db.get(auth.ReaderAccount, reader_id)
+    if reader is None:
+        raise AppException(ErrorCode.NOT_FOUND, "Reader not found", status_code=404)
+    return reader
+
+
+async def deactivate_reader(db: AsyncSession, reader_id: int) -> models.ReaderAccount:
+    """Deactivate a reader account (admin only).
+
+    Sets is_active=False and bumps token_version so every previously issued
+    JWT dies immediately; the account can no longer sign in. Old tokens are
+    rejected by get_current_reader and resolve to anonymous in optional-reader
+    endpoints, so the trust-tier auto-approve path (DEC-098) cannot be gamed
+    through a deactivated account. Idempotent: an already-inactive reader is
+    not re-bumped.
+    """
+    reader = await get_reader_or_404(db, reader_id)
+    if reader.is_active:
+        reader.is_active = False
+        reader.token_version = (reader.token_version or 0) + 1
+        await db.commit()
+    return reader
+
+
+async def activate_reader(db: AsyncSession, reader_id: int) -> models.ReaderAccount:
+    """Reactivate a deactivated reader account (admin only).
+
+    The account can sign in again; token_version stays bumped from the
+    deactivation, so the reader must obtain a fresh token (old ones remain
+    revoked).
+    """
+    reader = await get_reader_or_404(db, reader_id)
+    if not reader.is_active:
+        reader.is_active = True
+        await db.commit()
+    return reader

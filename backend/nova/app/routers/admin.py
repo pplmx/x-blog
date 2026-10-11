@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -32,7 +32,6 @@ from app.schemas import (
     PostUpdate,
 )
 from app.services import admin as admin_service
-from app.services.admin import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -342,92 +341,13 @@ async def admin_calendar(
 ):
     """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
 
-    Each post carries a ``type`` the calendar colors (published / scheduled /
-    draft) and a ``date`` the grid places it on:
-      - scheduled: published=True with publish_at in the future -> publish_at
-      - published: published=True, already live -> publish_at or created_at
-      - draft: not published -> its intended publish_at, if any
-    Undated drafts are returned separately under ``unscheduled`` — a plan view
-    shouldn't hide them, but they have no grid day. The query is bounded to
-    posts whose publish_at / created_at fall in or near the month (a post from
-    long ago has no day in this grid); the classification matches the posts
-    list status semantics. Dates are naive UTC (utc_now_naive contract, same
-    as schedule comparisons); the frontend renders them in the operator's
-    local tz by appending 'Z'.
+    All calendar logic lives in admin_service.calendar_posts (classify + grid
+    slicing + draft boundary handling); this route is the thin HTTP shell.
     """
     try:
-        month_start = datetime.strptime(f"{month}-01", "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid month; use YYYY-MM")
-    # Naive UTC window: the next month's first day is the grid upper bound, and
-    # a small lead-in tolerance keeps tz-heavy publish_at values from dropping
-    # off the edge of the grid they visually belong to.
-    month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
-    window_start = month_start - timedelta(days=3)
-
-    def classify(p: models.Post) -> tuple[str, datetime | None]:
-        if p.published and p.publish_at is not None and p.publish_at > utc_now_naive():
-            return "scheduled", p.publish_at
-        if p.published:
-            return "published", p.publish_at or p.created_at
-        return "draft", p.publish_at
-
-    posts = (
-        (
-            await db.execute(
-                select(models.Post)
-                .options(joinedload(models.Post.category))
-                .where(
-                    or_(
-                        and_(
-                            models.Post.publish_at.isnot(None),
-                            models.Post.publish_at >= window_start,
-                        ),
-                        and_(
-                            models.Post.created_at.isnot(None),
-                            models.Post.created_at >= window_start,
-                        ),
-                    )
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    grid: list[dict] = []
-    unscheduled: list[dict] = []
-    for p in posts:
-        ptype, when = classify(p)
-        entry = {
-            "id": p.id,
-            "title": p.title,
-            "slug": p.slug,
-            "type": ptype,
-            "date": when.isoformat() if when else None,
-            "published": p.published,
-            "publish_at": p.publish_at.isoformat() if p.publish_at else None,
-            "category": p.category.name if p.category else None,
-        }
-        if when is None:
-            # Draft with no intended date yet — keep it visible but off-grid.
-            if ptype == "draft":
-                unscheduled.append(entry)
-            continue
-        if month_start <= when < month_end:
-            grid.append(entry)
-        elif ptype == "draft":
-            # A draft planned for outside the viewed month (the primary editorial
-            # use case: "I'm writing this for next month") has a non-None
-            # publish_at that fails the grid range — it would land on neither the
-            # grid nor `unscheduled`, exactly the plan item `unscheduled` exists
-            # to surface. A draft is a plan, not a fact: keep it off-grid but
-            # visible in the unscheduled (plan) list (round-292 deep-dive).
-            unscheduled.append(entry)
-
-    grid.sort(key=lambda e: (e["date"] or "", e["id"]))
-    unscheduled.sort(key=lambda e: e["id"])
-    return {"month": month, "items": grid, "unscheduled": unscheduled}
+        return await admin_service.calendar_posts(db, month)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/posts/{post_id}", response_model=dict)
@@ -994,13 +914,6 @@ async def admin_list_readers(
     return data
 
 
-async def _get_reader_or_404(db: AsyncSession, reader_id: int) -> auth.ReaderAccount:
-    reader = await db.get(auth.ReaderAccount, reader_id)
-    if reader is None:
-        raise HTTPException(status_code=404, detail="Reader not found")
-    return reader
-
-
 @limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
 @router.post("/readers/{reader_id}/deactivate", response_model=AdminReaderStatusResponse)
 async def admin_deactivate_reader(
@@ -1018,11 +931,10 @@ async def admin_deactivate_reader(
     through a deactivated account. Idempotent: an already-inactive reader is
     not re-bumped.
     """
-    reader = await _get_reader_or_404(db, reader_id)
-    if reader.is_active:
-        reader.is_active = False
-        reader.token_version = (reader.token_version or 0) + 1
-        await db.commit()
+    try:
+        reader = await admin_service.deactivate_reader(db, reader_id)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     return AdminReaderStatusResponse(
         id=reader.id,
         email=reader.email,
@@ -1045,10 +957,10 @@ async def admin_activate_reader(
     deactivation, so the reader must obtain a fresh token (old ones remain
     revoked).
     """
-    reader = await _get_reader_or_404(db, reader_id)
-    if not reader.is_active:
-        reader.is_active = True
-        await db.commit()
+    try:
+        reader = await admin_service.activate_reader(db, reader_id)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     return AdminReaderStatusResponse(
         id=reader.id,
         email=reader.email,
