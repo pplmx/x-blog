@@ -26,7 +26,7 @@ script-src 'self' 'nonce-<n>'      # 无 'unsafe-inline'：内联脚本必须持
 style-src 'self' 'unsafe-inline'   # KaTeX/Mermaid 在浏览器运行时注入 <style>/style=""
 img-src 'self' data: blob: https:
 font-src 'self' data:
-connect-src 'self' https://api.iconify.design https://api.unisvg.com https://api.simplesvg.com [apiUrl]
+connect-src 'self' [apiUrl]                    # 图标已离线打包，无第三方 CDN
 object-src 'none'
 base-uri 'self'
 frame-ancestors 'none'
@@ -40,10 +40,11 @@ form-action 'self'
 - **`style-src 'unsafe-inline'` 是刻意保留的**：KaTeX 与 Mermaid 在浏览器端运行时
   注入 `<style>` 标签与 `style=""` 属性。内联样式是比内联脚本更低的风险类别（不执行
   代码），且方案经过浏览器验证（`e2e/csp.spec.ts`）。
-- **`connect-src` 允许 iconify 图标 API**：`components/Icon.vue` 包装的
-  `@iconify/vue` 在运行时按需从 `api.iconify.design`（及其备用 `api.unisvg.com` /
-  `api.simplesvg.com`）拉取 lucide 图标 JSON（只读数据，非脚本）。离线打包
-  （`addCollection` + `@iconify-json/lucide`）是未来优化，届时可移除这些域名。
+- **`connect-src` 不需要 iconify 图标 API**：`components/Icon.vue` 使用
+  `@iconify/vue/offline`，图标已在构建期打包进客户端 bundle（
+  `scripts/generate-lucide-icons.mjs` 从 `@iconify-json/lucide` 生成仅含所用图标的
+  精简子集）。渲染在内联 `<svg>` 完成，没有对 `api.iconify.design` 等第三方 CDN
+  的运行时连接，因此 `connect-src` 可保持严格为 `'self'`。
 - **SRI 不在范围内**：所有脚本/样式均为同源 Vite 打包产物，没有第三方 CDN 引用，
   SRI 针对的 CDN 篡改威胁模型不成立（DEC-057 记录为范围取舍而非缺口）。
 - **开发模式放宽**：`import.meta.dev` 下额外允许 `'unsafe-inline'`/`'unsafe-eval'`
@@ -137,7 +138,7 @@ RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: n
 ## 验证
 
 - **单元测试**：`frontend/aura/tests/server/csp.spec.ts`（nonce 注入、策略构建、
-  开发放宽、iconify/apiUrl 放行；16 例）；`backend/nova/tests/test_errors.py`
+  开发放宽、离线图标不依赖 iconify CDN、apiUrl 放行；16 例）；`backend/nova/tests/test_errors.py`
   （后端安全头与 `/docs` CSP 放行回归）。
 - **浏览器验证（关键）**：`frontend/aura/e2e/csp.spec.ts` 提供 live-browser
   验证（DEC-051 曾因无法在真实浏览器验证而推迟本项）：断言 CSP 头带 nonce、所有内联

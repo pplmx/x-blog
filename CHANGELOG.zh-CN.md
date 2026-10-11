@@ -9,6 +9,22 @@
 
 ## [Unreleased]
 
+- ⚡ **图标首帧即现——lucide 改为离线打包（不再访问 iconify CDN）**——`Icon.vue`
+  从在线的 `@iconify/vue` 切换到离线构建，只预注册应用实际用到的 lucide 图标
+  （由 `scripts/generate-lucide-icons.mjs` 生成精简子集）。此前每个
+  `<Icon icon="lucide:…">` 都在渲染时从 `api.iconify.design`（以及 unisvg/
+  simplesvg 兜底 CDN）拉取 SVG，首次打开时图标要经过数十次跨域往返才逐个出现。
+  现在它们是首帧即渲染的内联 `<svg>`；同时严格 CSP 去掉了 iconify CDN 白名单，
+  并把两个静默空白渲染的失效图标名（`lucide:mail-reply`、`lucide:mail-at`）
+  修正为真实图标。
+- ⚡ **公开文章列表查询改为 eager-load `author`（修复 N+1）**——`PostList` 需要
+  序列化 `post.author.display_name`，但 `get_posts`/popular/trending/related/
+  adjacent 之前只 join 了 `category`/`tags`/`series`，因此每次未命中的列表渲染都
+  会为每一行多发一条惰性 `SELECT`。现在 `author` 与其余关系一并 join
+  （首页列表之上本就有 TTL + ETag 缓存）。
+- 🧪 **前端单测持久化变换结果**——启用 `fsModuleCache: true` 让 `vp test` 复用已
+  变换的模块图（变换阶段从约占 65% 降到 26%）；新增 `Icon.spec.ts` 覆盖离线渲染，
+  并更新 CSP 测试断言不再白名单 iconify CDN。
 - 🧪 **e2e 读写竞态 flake 修复：/liked 取消喜欢 + 阅读历史轨迹（round 465）**——
   GH #54 flaky 三人组的最后两名成员在串行套件负载下首次尝试即失败。
   （1）`reader-likes` 在文章页取消喜欢后立即导航到 /liked：取消按钮是**乐观翻转**，
