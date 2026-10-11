@@ -21,6 +21,13 @@ export default defineConfig({
 		// deterministic zh baseline matches the hand-written Chinese assertions.
 		locale: "zh-CN",
 		trace: "on-first-retry",
+		// GitHub Actions runners expose a tiny /dev/shm; without this Chromium
+		// (with the memory-heavy admin editor specs) OOMs and the browser process
+		// dies mid-test, surfacing as "Target page, context or browser has been
+		// closed" in apiRequestContext calls. --no-sandbox is standard on GH runners.
+		launchOptions: {
+			args: ["--disable-dev-shm-usage", "--no-sandbox"],
+		},
 	},
 	webServer: {
 		// E2E runs against a production build: dev-mode on-demand compilation
