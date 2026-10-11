@@ -88,8 +88,13 @@ if not is_sqlite:
 
     @event.listens_for(engine.sync_engine, "connect")
     def _set_utc_session(dbapi_connection, _connection_record):  # pragma: no cover - db-driver dependent
-        with dbapi_connection.cursor() as cur:
-            cur.execute("SET TIME ZONE 'UTC'")
+        # NB: do NOT use `with ...cursor()`. On the real PostgreSQL/asyncpg driver
+        # this returns an AsyncAdapt_asyncpg_cursor, which does not implement the
+        # context-manager protocol (no __enter__/__exit__) and would raise at
+        # every pool checkout ("...does not support the context manager protocol").
+        # aiosqlite would mask it; explicit execute avoids the cursor entirely.
+        cur = dbapi_connection.cursor()
+        cur.execute("SET TIME ZONE 'UTC'")
 
 
 # SQLite async driver (aiosqlite) exposes a sync cursor on the DBAPI
