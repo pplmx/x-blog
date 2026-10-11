@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from app.routers import admin as admin_module
+from app.services import admin as admin_module
 
 AVATAR_API = "/api/admin/users/{user_id}/avatar"
 PASSWORD = "adminpass123"

@@ -178,7 +178,7 @@ async def test_admin_user_patch_invalidates_public_caches(client, admin_token, a
     """The pen-name/bio PATCH changes AuthorBrief fields rendered from cached
     objects (post lists, series detail, RSS/Atom posts feed) — the write must
     invalidate those caches, not wait out the TTL (ISS-607/TASK-529)."""
-    from app.routers import admin as admin_module
+    from app.services import admin as admin_module
 
     calls = []
     monkeypatch.setattr(admin_module, "clear_posts_list_cache", lambda: calls.append(1))

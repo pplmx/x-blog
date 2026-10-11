@@ -5,13 +5,19 @@ Admin service: admin post lifecycle (create/clone/update/revisions) with the new
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Sequence
+from pathlib import Path
+from uuid import uuid4
 
-from sqlalchemy import func, or_, select
+from PIL import UnidentifiedImageError
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app import auth, models
+from app.auth import ROLE_EDITOR
 from app.cache import (
     clear_categories_cache,
     clear_posts_list_cache,
@@ -27,6 +33,13 @@ from app.emailer import (
 from app.exceptions import (
     AppException,
     ErrorCode,
+)
+from app.image_validation import (
+    ALLOWED_TYPES,
+    ALLOWED_TYPES_MAP,
+    has_matching_magic_bytes,
+    optimize_image,
+    verify_image_decodes,
 )
 from app.repositories._base import (
     escape_like_pattern,
@@ -66,24 +79,41 @@ from app.services.comments import (
 )
 from app.webpush import dispatch_new_post
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "batch_approve_comments",
     "boolean_setting",
     "bulk_delete_comments",
+    "change_password",
     "clone_post",
+    "create_category",
     "create_post",
+    "create_tag",
+    "create_user",
+    "delete_category",
     "delete_comment",
     "delete_post",
+    "delete_tag",
+    "delete_user",
     "dismiss_comment_flags",
     "escape_like_pattern",
     "get_category",
     "get_post_revision",
     "get_post_revisions",
     "list_comments",
+    "list_posts",
+    "list_readers",
+    "list_users",
     "notify_post_published",
+    "remove_user_avatar",
     "reply_comment",
     "restore_post_revision",
+    "update_category",
     "update_post",
+    "update_tag",
+    "update_user",
+    "upload_user_avatar",
     "upsert_site_setting",
     "utc_now_naive",
 ]
@@ -483,3 +513,533 @@ async def reply_comment(
     # exactly as an approved comment would (no double paths to maintain).
     await _notify_comment_approved(db, reply)
     return reply
+
+
+# ---------------------------------------------------------------------------
+# Admin user-accounts (superuser surface) + author identity (DEC-359, TASK-405)
+# ---------------------------------------------------------------------------
+
+
+async def create_user(
+    db: AsyncSession,
+    username: str,
+    password: str,
+    display_name: str | None,
+    bio: str | None,
+) -> models.User:
+    """Create an admin user account (superuser surface).
+
+    Created accounts are always editors (non-superuser), never admins — a
+    provisioned editor can moderate content but cannot manage users/export.
+    This is the safe-contract fix for ISS-087 (DEC-053/DEC-054).
+    """
+    existing = (await db.execute(select(auth.User).where(auth.User.username == username))).scalar_one_or_none()
+    if existing:
+        raise ValueError("Username already exists")
+
+    hashed_password = auth.get_password_hash(password)
+    user = auth.User(
+        username=username,
+        password=hashed_password,
+        role=ROLE_EDITOR,
+        is_superuser=False,
+        display_name=display_name,
+        bio=bio,
+    )
+    db.add(user)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Username already exists")
+    await db.refresh(user)
+    return user
+
+
+async def update_user(db: AsyncSession, user_id: int, updates: dict) -> models.User:
+    """Edit an admin user's public pen name and bio (superuser only).
+
+    ``updates`` is the ``UserUpdate`` payload's ``model_dump(exclude_unset=True)``
+    so ``display_name``/``bio`` distinguish "omitted" (don't change) from an
+    explicit null (clear the byline/bio). The pen name/bio render on post
+    bylines, series details and the RSS/Atom posts feed (AuthorBrief from cached
+    objects) — a rename must not linger as the old name in lists/feeds for the
+    cache TTL (ISS-607/TASK-529).
+    """
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise AppException(ErrorCode.NOT_FOUND, "User not found", status_code=404)
+    if "display_name" in updates:
+        user.display_name = updates["display_name"]
+    if "bio" in updates:
+        user.bio = updates["bio"]
+    await db.commit()
+    await db.refresh(user)
+    clear_posts_list_cache()
+    return user
+
+
+async def delete_user(db: AsyncSession, current_user_id: int, user_id: int) -> None:
+    """Delete an admin user account (superuser only), purging dependent rows."""
+    if user_id == current_user_id:
+        raise ValueError("Cannot delete yourself")
+
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise AppException(ErrorCode.NOT_FOUND, "User not found", status_code=404)
+
+    # AuthorFollow is an additive DEC-009 table with no ORM cascade from User:
+    # purge the writer-follow rows too, or a deleted author leaves stale
+    # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
+    # later user (same orphan class as category/tag/series follows — deep-dive
+    # finding).
+    await db.execute(delete(models.AuthorFollow).where(models.AuthorFollow.author_id == user_id))
+    await db.delete(user)
+    await db.commit()
+
+
+async def list_users(db: AsyncSession) -> Sequence[models.User]:
+    """All admin user accounts (superuser surface)."""
+    return (await db.execute(select(auth.User))).scalars().all()
+
+
+async def change_password(
+    db: AsyncSession,
+    current_user: auth.User,
+    current_password: str,
+    new_password: str,
+) -> dict:
+    """Change the current admin's password.
+
+    Invalidates every previously-issued JWT for this admin: bumps the token
+    version checked in get_current_user. (RIL round 16 security audit)
+    """
+    if not auth.verify_password(current_password, current_user.password):
+        raise ValueError("Current password is incorrect")
+    current_user.password = auth.get_password_hash(new_password)
+    current_user.token_version = (current_user.token_version or 0) + 1
+    await db.commit()
+    return {"message": "Password updated"}
+
+
+# Author avatar storage lives in a dedicated static/avatars/ namespace (same
+# choice as the reader avatar, DEC-299): the admin media listing walks
+# static/uploads/ only, so a writer's profile picture must not appear in or
+# collide with the author's uploaded post images.
+AUTHOR_AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
+# Avatars are stored as `{uuid4}.{ext}` (same shape as media uploads); the
+# remove route whitelists the exact shape so a DB value can never become a
+# filesystem path outside the avatar dir (mirrors upload.py's _FILENAME_RE
+# and reader.py's reader-avatar guard).
+_AUTHOR_AVATAR_FILENAME_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|jpeg|png|gif|webp)$"
+)
+
+
+def _delete_author_avatar_file(avatar_url: str | None) -> None:
+    """Best-effort delete of a stored author-avatar file, given its /static URL.
+
+    Only ever removes a file whose name matches the exact avatar shape (so a
+    corrupted/foreign avatar_url value can't be turned into a filesystem path —
+    path-traversal guard, same discipline as reader.py). A missing file is
+    fine — the URL is the source of truth and a stale row shouldn't fail the
+    write that cleans it up.
+    """
+    if not avatar_url:
+        return
+    name = avatar_url.rsplit("/", 1)[-1]
+    if not _AUTHOR_AVATAR_FILENAME_RE.match(name):
+        return
+    path = AUTHOR_AVATAR_DIR / name
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("could not remove stale author-avatar file %s", path)
+
+
+async def upload_user_avatar(
+    db: AsyncSession,
+    user_id: int,
+    content: bytes,
+    content_type: str | None,
+) -> models.User:
+    """Set an admin user's public profile picture (superuser, round 358).
+
+    Same defense-in-depth validation as the reader avatar (content-type
+    whitelist, size cap, magic bytes, full Pillow decode, never-larger
+    re-encode that strips EXIF) via the shared app.image_validation. The new
+    avatar is written to static/avatars first, then the DB row is updated and
+    any previous avatar file removed, so a failed write never leaves a dangling
+    URL. The login username is never exposed by any of this — avatar_url is a
+    public /static URL only.
+    """
+    if content_type not in ALLOWED_TYPES:
+        raise ValueError("Unsupported file type")
+    if not has_matching_magic_bytes(content, content_type):
+        raise ValueError("File content does not match the declared image type")
+    try:
+        verify_image_decodes(content)
+    except UnidentifiedImageError, OSError, ValueError:
+        raise ValueError("File is not a valid image")
+
+    contents = optimize_image(content, content_type)
+
+    # Resolve the target user BEFORE writing anything to disk so an unknown id
+    # 404s without orphaning a file in static/avatars.
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise AppException(ErrorCode.NOT_FOUND, "User not found", status_code=404)
+
+    ext = ALLOWED_TYPES_MAP.get(content_type, "jpg")
+    filename = f"{uuid4()}.{ext}"
+    AUTHOR_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = AUTHOR_AVATAR_DIR / filename
+    filepath.write_bytes(contents)
+
+    previous = user.avatar_url
+    user.avatar_url = f"/static/avatars/{filename}"
+    await db.commit()
+    await db.refresh(user)
+    _delete_author_avatar_file(previous)
+    # Avatar swaps are visible on cached post bylines / series details / feeds
+    # (AuthorBrief.avatar_url) — clear so the new face appears immediately
+    # (same cache contract as the other author-identity writes, ISS-607).
+    clear_posts_list_cache()
+    return user
+
+
+async def remove_user_avatar(db: AsyncSession, user_id: int) -> models.User:
+    """Remove an admin user's public profile picture (stored file + DB row)."""
+    user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise AppException(ErrorCode.NOT_FOUND, "User not found", status_code=404)
+    previous = user.avatar_url
+    if previous:
+        user.avatar_url = None
+        await db.commit()
+        await db.refresh(user)
+        _delete_author_avatar_file(previous)
+        # Removing the face changes every byline that showed it; clear so the
+        # cached post lists / series / feeds drop the deleted avatar (ISS-607).
+        clear_posts_list_cache()
+    return user
+
+
+# ---------------------------------------------------------------------------
+# Category / tag taxonomy CRUD (admin surface)
+# ---------------------------------------------------------------------------
+
+
+async def create_category(db: AsyncSession, name: str) -> dict:
+    """Create a category, 400 when the name already exists."""
+    existing = (await db.execute(select(models.Category).where(models.Category.name == name))).scalar_one_or_none()
+    if existing:
+        raise ValueError("Category already exists")
+
+    category = models.Category(name=name)
+    db.add(category)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Category already exists")
+    await db.refresh(category)
+    clear_categories_cache()
+    return {"id": category.id, "name": category.name}
+
+
+async def update_category(db: AsyncSession, category_id: int, name: str) -> dict:
+    """Rename a category, 404 when missing, 400 on a duplicate name."""
+    category = (await db.execute(select(models.Category).where(models.Category.id == category_id))).scalar_one_or_none()
+    if not category:
+        raise AppException(ErrorCode.CATEGORY_NOT_FOUND, "Category not found", status_code=404)
+
+    category.name = name
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Category already exists")
+    clear_categories_cache()
+    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    clear_posts_list_cache()
+    return {"id": category.id, "name": category.name}
+
+
+async def delete_category(db: AsyncSession, category_id: int) -> None:
+    """Delete a category, 404 when missing, 400 while posts reference it."""
+    category = (await db.execute(select(models.Category).where(models.Category.id == category_id))).scalar_one_or_none()
+    if not category:
+        raise AppException(ErrorCode.CATEGORY_NOT_FOUND, "Category not found", status_code=404)
+
+    # Check for posts referencing this category
+    post_count = (
+        await db.execute(select(func.count()).select_from(models.Post).where(models.Post.category_id == category_id))
+    ).scalar() or 0
+    if post_count > 0:
+        raise ValueError(f"Cannot delete category: {post_count} post(s) reference it")
+
+    await db.delete(category)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Cannot delete category: it is referenced by posts")
+    clear_categories_cache()
+
+
+async def create_tag(db: AsyncSession, name: str) -> dict:
+    """Create a tag, 400 when the name already exists."""
+    existing = (await db.execute(select(models.Tag).where(models.Tag.name == name))).scalar_one_or_none()
+    if existing:
+        raise ValueError("Tag already exists")
+
+    tag = models.Tag(name=name)
+    db.add(tag)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Tag already exists")
+    await db.refresh(tag)
+    clear_tags_cache()
+    return {"id": tag.id, "name": tag.name}
+
+
+async def update_tag(db: AsyncSession, tag_id: int, name: str) -> dict:
+    """Rename a tag, 404 when missing, 400 on a duplicate name."""
+    tag = (await db.execute(select(models.Tag).where(models.Tag.id == tag_id))).scalar_one_or_none()
+    if not tag:
+        raise AppException(ErrorCode.TAG_NOT_FOUND, "Tag not found", status_code=404)
+
+    tag.name = name
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Tag already exists")
+    clear_tags_cache()
+    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    clear_posts_list_cache()
+    return {"id": tag.id, "name": tag.name}
+
+
+async def delete_tag(db: AsyncSession, tag_id: int) -> None:
+    """Delete a tag, 404 when missing, 400 while posts reference it."""
+    tag = (await db.execute(select(models.Tag).where(models.Tag.id == tag_id))).scalar_one_or_none()
+    if not tag:
+        raise AppException(ErrorCode.TAG_NOT_FOUND, "Tag not found", status_code=404)
+
+    # Check for posts referencing this tag
+    post_count = (
+        await db.execute(select(func.count()).select_from(models.Post).where(models.Post.tags.any(id=tag_id)))
+    ).scalar() or 0
+    if post_count > 0:
+        raise ValueError(f"Cannot delete tag: {post_count} post(s) reference it")
+
+    await db.delete(tag)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Cannot delete tag: it is referenced by posts")
+    clear_tags_cache()
+
+
+# ---------------------------------------------------------------------------
+# Admin post / reader listings
+# ---------------------------------------------------------------------------
+
+
+async def list_posts(
+    db: AsyncSession,
+    skip: int,
+    limit: int,
+    q: str | None,
+    status: str | None,
+) -> dict:
+    """Paginated admin post list across all statuses, with per-post page
+    comment counts — mirrors the public get_posts list for the dashboard."""
+    stmt = select(models.Post)
+
+    if q:
+        stmt = stmt.where(models.Post.title.ilike(f"%{escape_like_pattern(q)}%", escape="\\"))
+
+    if status == "published":
+        now = utc_now_naive()
+        stmt = stmt.where(
+            models.Post.published.is_(True),
+            or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
+        )
+    elif status == "draft":
+        stmt = stmt.where(models.Post.published == False)  # noqa: E712
+    elif status == "scheduled":
+        # A "scheduled" post is one that is published=True but not yet live
+        # (its publish_at is in the future) — matching the stats endpoint. A
+        # draft with a future publish_at is still a draft, not scheduled.
+        now = utc_now_naive()
+        stmt = stmt.where(
+            models.Post.published.is_(True),
+            models.Post.publish_at > now,
+        )
+
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
+
+    posts = (
+        (
+            await db.execute(
+                stmt.options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                # id tiebreak: imported/bulk-restored rows share created_at; without a
+                # unique final sort key, offset pages can skip/duplicate across page
+                # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
+                # COALESCE pinned like admin_service.get_posts (TASK-535 parity): a raw-import
+                # NULL-pinned row must sort with the unpinned group, not first.
+                .order_by(
+                    func.coalesce(models.Post.pinned, False).desc(),
+                    models.Post.created_at.desc(),
+                    models.Post.id.desc(),
+                )
+                .offset(skip)
+                .limit(limit)
+            )
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+    # Approved comment_count per post for this page (single grouped query, no
+    # N+1) — mirrors admin_service.get_posts so the admin dashboard can render counts
+    # for all statuses, not just the public published list.
+    comment_counts: dict[int, int] = {}
+    if posts:
+        post_ids = [p.id for p in posts]
+        rows = (
+            await db.execute(
+                select(models.Comment.post_id, func.count(models.Comment.id))
+                .where(
+                    models.Comment.post_id.in_(post_ids),
+                    models.Comment.is_approved.is_(True),
+                )
+                .group_by(models.Comment.post_id)
+            )
+        ).all()
+        comment_counts = {post_id: int(count) for post_id, count in rows}
+    return {
+        "items": [
+            {
+                "id": p.id,
+                "title": p.title,
+                "slug": p.slug,
+                "published": p.published,
+                # Coalesce raw-import NULLs (TASK-535/ISS-627 parity): the
+                # public API reads these as false/0, so the admin list must not
+                # show null for the same rows.
+                "pinned": bool(p.pinned or False),
+                "publish_at": p.publish_at.isoformat() if p.publish_at else None,
+                "views": p.views or 0,
+                "cover_image": p.cover_image,
+                "category": p.category.name if p.category else None,
+                "category_id": p.category_id,
+                "comment_count": comment_counts.get(p.id, 0),
+                "tags": [t.name for t in p.tags],
+                "series_id": p.series_id,
+                "series_order": p.series_order,
+                "series_title": p.series.title if p.series else None,
+                "series_slug": p.series.slug if p.series else None,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+                "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+            }
+            for p in posts
+        ],
+        "pagination": {
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        },
+    }
+
+
+async def list_readers(
+    db: AsyncSession,
+    page: int,
+    limit: int,
+    q: str | None,
+) -> dict:
+    """List registered reader accounts with moderation aggregates.
+
+    Any admin role (superuser or editor) may view readers — this is a
+    moderation responsibility like the comment queue, not the superuser-only
+    admin-users provisioning surface. Returns raw item dicts matching the
+    AdminReaderSummary response model.
+    """
+    stmt = select(auth.ReaderAccount)
+    if q:
+        like = f"%{escape_like_pattern(q)}%"
+        stmt = stmt.where(
+            or_(
+                auth.ReaderAccount.email.ilike(like, escape="\\"),
+                auth.ReaderAccount.display_name.ilike(like, escape="\\"),
+            )
+        )
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar() or 0
+    rows = (
+        (
+            await db.execute(
+                stmt.order_by(auth.ReaderAccount.created_at.desc(), auth.ReaderAccount.id.desc())
+                .offset((page - 1) * limit)
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # Aggregate counts for the page rows in two grouped queries (no N+1).
+    reader_ids = [r.id for r in rows]
+    comment_counts: dict[int, int] = {}
+    bookmark_counts: dict[int, int] = {}
+    if reader_ids:
+        # Explicit typed comprehensions keep pyright happy (the plain
+        # dict(row_list) idiom resolves rows to bytes, ISS-123). Comment
+        # reader_id is nullable (anonymous comments) -> drop None keys.
+        comment_rows = (
+            await db.execute(
+                select(models.Comment.reader_id, func.count(models.Comment.id))
+                .where(models.Comment.reader_id.in_(reader_ids))
+                .group_by(models.Comment.reader_id)
+            )
+        ).all()
+        comment_counts = {rid: int(n) for rid, n in comment_rows if rid is not None}
+        bookmark_rows = (
+            await db.execute(
+                select(models.ReaderBookmark.reader_id, func.count(models.ReaderBookmark.id))
+                .where(models.ReaderBookmark.reader_id.in_(reader_ids))
+                .group_by(models.ReaderBookmark.reader_id)
+            )
+        ).all()
+        bookmark_counts = {rid: int(n) for rid, n in bookmark_rows}
+    items = [
+        {
+            "id": r.id,
+            "email": r.email,
+            "display_name": r.display_name,
+            "is_active": bool(r.is_active),
+            "created_at": r.created_at,
+            "last_login_at": r.last_login_at,
+            "comment_count": comment_counts.get(r.id, 0),
+            "bookmark_count": bookmark_counts.get(r.id, 0),
+        }
+        for r in rows
+    ]
+    return {
+        "items": items,
+        "pagination": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit if total > 0 else 0,
+        },
+    }
