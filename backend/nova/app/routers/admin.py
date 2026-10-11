@@ -432,7 +432,24 @@ async def admin_clone_post(
     metadata field cleared (unpublished, unscheduled, unpinned, zeroed
     views/likes) — so an editor can seed a sibling post from a template
     without the copy-paste dance and without leaking a live post."""
-    source = (await db.execute(select(models.Post).where(models.Post.id == post_id))).scalar_one_or_none()
+    # Eager-load the source's relationships: clone_post copies source.tags
+    # (and reads category/series), and a bare select leaves them as lazy
+    # attrs that fire an async lazy-load -> MissingGreenlet 500 (round 349).
+    source = (
+        (
+            await db.execute(
+                select(models.Post)
+                .options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.series),
+                )
+                .where(models.Post.id == post_id)
+            )
+        )
+        .unique()
+        .scalar_one_or_none()
+    )
     if not source:
         raise HTTPException(status_code=404, detail="Post not found")
     try:

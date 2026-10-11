@@ -603,6 +603,47 @@ class TestAdminPosts:
         resp = await client.post("/api/admin/posts/999999/clone", headers=auth_headers)
         assert resp.status_code == 404
 
+    async def test_clone_via_api_copied_fresh_draft(self, client, auth_headers, db_session):
+        # Round-349 regression: the source is created through the API, so the
+        # clone route fetches it with an UNLOADED `tags` collection. A bare
+        # `select(models.Post)` then left `source.tags` as a lazy attribute,
+        # and `clone_post`'s `list(source.tags)` fired an async lazy-load ->
+        # MissingGreenlet 500 (matching the e2e failure where the seeded post
+        # came from a prior HTTP request). Creating the source via the API
+        # (rather than seeding in-session) reproduces that fresh-fetch path.
+        created = await client.post(
+            "/api/admin/posts",
+            headers={**auth_headers, "Content-Type": "application/json"},
+            json={
+                "title": "Clone API Source",
+                "slug": "clone-api-source",
+                "content": "# Body",
+                "published": True,
+                "tags": ["clone-api-tag"],
+            },
+        )
+        assert created.status_code == 201, created.text
+        source_id = created.json()["id"]
+
+        resp = await client.post(f"/api/admin/posts/{source_id}/clone", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        clone_id = resp.json()["id"]
+        clone = (
+            (
+                await db_session.execute(
+                    select(models.Post).options(joinedload(models.Post.tags)).where(models.Post.id == clone_id)
+                )
+            )
+            .unique()
+            .scalars()
+            .first()
+        )
+        assert clone is not None
+        assert clone.title == "Clone API Source"
+        assert clone.published is False
+        assert clone.slug == "clone-api-source-copy"
+        assert [t.name for t in clone.tags] == ["clone-api-tag"]
+
     async def test_clone_requires_admin(self, client):
         assert (await client.post("/api/admin/posts/1/clone")).status_code == 401
 
