@@ -52,7 +52,7 @@
 		"dompurify": "^3.4.14",
 		"globals": "^17.11.0",
 		"happy-dom": "^20.11.8",
-		"katex": "^0.18.4",
+		"katex": "^0.18.5",
 		"marked": "^16.4.2",
 		"mermaid": "^11.17.2",
 		"typescript": "6.0.3",
