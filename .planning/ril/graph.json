@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T18:40:58+00:00",
+  "updated_at": "2026-10-11T18:52:50+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -35003,6 +35003,18 @@
       "title": "perf: eager-load author in search / liked / recommendations lists (N+1)",
       "commit": "",
       "description": "Extends round-465 ISS-663 author eager-load to the three reader-visible list queries that serialize PostList.author but only had category/tags(/series): search_posts (tsvector+CJK), list_reader_post_likes, recommend_posts. Plain entity select + joinedload = single JOIN (compiled-SQL confirmed)."
+    },
+    "CHG-838": {
+      "id": "CHG-838",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T18:52:50+00:00",
+      "updated_at": "2026-10-11T18:52:50+00:00",
+      "touched_round": 466,
+      "title": "perf: also eager-load series in liked/recommendations lists (N+1)",
+      "commit": "8ab484f17dce5da6b03dd378af2f6a8c34d5c29d",
+      "description": "1144c864 added author eager-load but PostList also serializes series; liked list + recommendations still lazy-loaded series per row. Added joinedload(Post.series) to both (search already had it). Complements CHG-836/ISS-667."
     }
   },
   "edges": [
@@ -52338,6 +52350,12 @@
       "to": "ISS-667",
       "type": "resolves",
       "created_at": "2026-10-11T18:40:58+00:00"
+    },
+    {
+      "from": "CHG-838",
+      "to": "ISS-667",
+      "type": "resolves",
+      "created_at": "2026-10-11T18:52:50+00:00"
     }
   ]
 }
