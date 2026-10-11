@@ -22,8 +22,9 @@ from sqlalchemy.orm import Session, joinedload
 
 sys.path.insert(0, ".")
 
-from app import models  # noqa: E402
 from app.crud import _effective_publish_col, get_archive, get_post_by_slug, get_posts, search_posts  # noqa: E402
+
+from app import models  # noqa: E402
 
 # DATABASE_URL (the docstring's documented invocation) overrides the target —
 # before this the URL was hardcoded, silently ignoring the documented env var.

@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 """Initialize database with sample data and demo posts."""
 
+import asyncio
 import os
 import sys
 import warnings
 from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, select
 
 sys.path.insert(0, ".")
 from alembic import command
@@ -12,7 +15,7 @@ from alembic.config import Config
 
 from app import auth, models
 from app.config import is_development
-from app.database import SessionLocal
+from app.database import AsyncSessionLocal
 
 DEV_ADMIN_PASSWORD = "admin123"
 
@@ -3561,215 +3564,246 @@ def upgrade_schema() -> None:
     print("✓ Schema up-to-date (alembic upgrade head)")
 
 
-def main():
+async def main():
     upgrade_schema()
-    db = SessionLocal()
-
-    try:
-        # Check if admin already exists
-        existing_admin = db.query(auth.User).filter(auth.User.username == "admin").first()
-        if existing_admin:
-            print("✓ Admin user already exists")
-        else:
-            admin_password = os.getenv("ADMIN_PASSWORD")
-            if not admin_password:
-                if not is_development():
-                    raise RuntimeError(
-                        "ADMIN_PASSWORD is not set. Refusing to create an admin account "
-                        "with a publicly known default password outside development. "
-                        "Set ADMIN_PASSWORD, or set APP_ENV=development to use the dev default."
+    async with AsyncSessionLocal() as db:
+        try:
+            # Check if admin already exists
+            existing_admin = (
+                await db.execute(select(auth.User).where(auth.User.username == "admin"))
+            ).scalar_one_or_none()
+            if existing_admin:
+                print("✓ Admin user already exists")
+            else:
+                admin_password = os.getenv("ADMIN_PASSWORD")
+                if not admin_password:
+                    if not is_development():
+                        raise RuntimeError(
+                            "ADMIN_PASSWORD is not set. Refusing to create an admin account "
+                            "with a publicly known default password outside development. "
+                            "Set ADMIN_PASSWORD, or set APP_ENV=development to use the dev default."
+                        )
+                    admin_password = DEV_ADMIN_PASSWORD
+                    warnings.warn(
+                        f"ADMIN_PASSWORD not set. Using the DEVELOPMENT-only default '{DEV_ADMIN_PASSWORD}'.",
+                        stacklevel=2,
                     )
-                admin_password = DEV_ADMIN_PASSWORD
-                warnings.warn(
-                    f"ADMIN_PASSWORD not set. Using the DEVELOPMENT-only default '{DEV_ADMIN_PASSWORD}'.",
-                    stacklevel=2,
+                admin = auth.User(
+                    username="admin",
+                    password=auth.get_password_hash(admin_password),
+                    # role is the authoritative admin discriminator (DEC-054); the
+                    # role column's server_default would otherwise stamp "editor",
+                    # leaving is_superuser=True but every superuser-only endpoint
+                    # (users/export/batch/notify) 403ing for the seeded admin.
+                    role=auth.ROLE_SUPERUSER,
+                    is_superuser=True,
                 )
-            admin = auth.User(
-                username="admin",
-                password=auth.get_password_hash(admin_password),
-                # role is the authoritative admin discriminator (DEC-054); the
-                # role column's server_default would otherwise stamp "editor",
-                # leaving is_superuser=True but every superuser-only endpoint
-                # (users/export/batch/notify) 403ing for the seeded admin.
-                role=auth.ROLE_SUPERUSER,
-                is_superuser=True,
-            )
-            db.add(admin)
-            if is_development():
-                print(f"✓ Admin user created (admin/{admin_password})")
-            else:
-                print("✓ Admin user created")
-
-        categories = ["前端开发", "后端开发", "技术分享", "学习笔记"]
-        for name in categories:
-            existing = db.query(models.Category).filter(models.Category.name == name).first()
-            if not existing:
-                db.add(models.Category(name=name))
-        db.flush()
-        print("✓ Categories created")
-
-        all_tags = ["React", "Next.js", "Python", "FastAPI", "TypeScript", "JavaScript", "CSS", "数据库", "Vue", "Nuxt"]
-        for name in all_tags:
-            existing = db.query(models.Tag).filter(models.Tag.name == name).first()
-            if not existing:
-                db.add(models.Tag(name=name))
-        db.flush()
-        print("✓ Tags created")
-
-        category_map = {c.name: c.id for c in db.query(models.Category).all()}
-        tag_map = {t.name: t.id for t in db.query(models.Tag).all()}
-
-        existing_posts = db.query(models.Post).count()
-        if existing_posts > len(DEMO_POSTS):
-            print(f"✓ {existing_posts} posts already exist, skipping seed")
-        else:
-            now = datetime.now(UTC)
-            for post_data in DEMO_POSTS:
-                slug = post_data["slug"]
-                existing = db.query(models.Post).filter(models.Post.slug == slug).first()
-                if existing:
-                    continue
-
-                created_at = now - timedelta(days=post_data.get("created_days_ago", 0))
-
-                publish_at = None
-                if "publish_at_days_from_now" in post_data:
-                    publish_at = now + timedelta(days=post_data["publish_at_days_from_now"])
-
-                post = models.Post(
-                    title=post_data["title"],
-                    slug=slug,
-                    content=post_data["content"],
-                    excerpt=post_data["excerpt"],
-                    published=post_data["published"],
-                    pinned=post_data.get("pinned", False),
-                    publish_at=publish_at,
-                    category_id=category_map.get(post_data["category"]),
-                    cover_image=post_data.get("cover_image"),
-                    views=post_data.get("views", 0),
-                    likes=post_data.get("likes", 0),
-                    created_at=created_at,
-                    updated_at=created_at,
-                )
-                db.add(post)
-                db.flush()
-
-                for tag_name in post_data.get("tags", []):
-                    if tag_name in tag_map:
-                        tag = db.query(models.Tag).filter(models.Tag.id == tag_map[tag_name]).first()
-                        if tag:
-                            post.tags.append(tag)
-
-                print(f"  ✓ Post created: {post_data['title'][:40]}")
-
-            db.commit()
-            print(f"✓ {len(DEMO_POSTS)} demo posts created")
-
-        existing_comments = db.query(models.Comment).count()
-        if existing_comments == 0:
-            sample_comments = [
-                {
-                    "nickname": "张三",
-                    "email": "zhangsan@example.com",
-                    "content": "写得很棒！特别是关于 FastAPI 依赖注入的部分，让我受益匪浅。",
-                    "is_approved": True,
-                },
-                {
-                    "nickname": "李四",
-                    "email": "lisi@example.com",
-                    "content": "请问有没有关于性能测试的对比数据？想了解更多实际场景下的表现。",
-                    "is_approved": True,
-                },
-                {
-                    "nickname": "王五",
-                    "email": "wangwu@example.com",
-                    "content": "建议可以补充一些实际项目中的应用案例。",
-                    "is_approved": False,
-                },
-                {
-                    "nickname": "赵六",
-                    "email": "zhaoliu@example.com",
-                    "content": "这篇文章写得太好了，已收藏！期待更多类似内容。",
-                    "is_approved": True,
-                },
-                {
-                    "nickname": "spam_bot",
-                    "email": "spam@spam.com",
-                    "content": "点击这里领取免费比特币！！！http://spam-link.example.com",
-                    "is_approved": False,
-                },
-            ]
-            welcome_post = db.query(models.Post).filter(models.Post.slug == "welcome-to-x-blog").first()
-            python_post = db.query(models.Post).filter(models.Post.slug == "python-3-14-new-features").first()
-            ts_post = db.query(models.Post).filter(models.Post.slug == "typescript-5-practical-tips").first()
-
-            for comment_data in sample_comments:
-                if comment_data["nickname"] == "张三":
-                    post_id = welcome_post.id if welcome_post else 1
-                elif comment_data["nickname"] == "李四":
-                    post_id = python_post.id if python_post else 1
-                elif comment_data["nickname"] in ("王五", "spam_bot"):
-                    post_id = welcome_post.id if welcome_post else 1
+                db.add(admin)
+                if is_development():
+                    print(f"✓ Admin user created (admin/{admin_password})")
                 else:
-                    post_id = ts_post.id if ts_post else 1
+                    print("✓ Admin user created")
 
-                comment = models.Comment(
-                    post_id=post_id,
-                    nickname=comment_data["nickname"],
-                    email=comment_data["email"],
-                    content=comment_data["content"],
-                    is_approved=comment_data["is_approved"],
-                    ip_address="127.0.0.1",
-                )
-                db.add(comment)
+            categories = ["前端开发", "后端开发", "技术分享", "学习笔记"]
+            for name in categories:
+                existing = (
+                    await db.execute(select(models.Category).where(models.Category.name == name))
+                ).scalar_one_or_none()
+                if not existing:
+                    db.add(models.Category(name=name))
+            await db.flush()
+            print("✓ Categories created")
 
-            db.commit()
-            print("✓ 5 sample comments created")
+            all_tags = [
+                "React",
+                "Next.js",
+                "Python",
+                "FastAPI",
+                "TypeScript",
+                "JavaScript",
+                "CSS",
+                "数据库",
+                "Vue",
+                "Nuxt",
+            ]
+            for name in all_tags:
+                existing = (await db.execute(select(models.Tag).where(models.Tag.name == name))).scalar_one_or_none()
+                if not existing:
+                    db.add(models.Tag(name=name))
+            await db.flush()
+            print("✓ Tags created")
 
-        # Post series (DEC-056/TASK-123): seed one series and group two of the
-        # demo posts into it so the public /series pages and the admin series
-        # management flow have real data to exercise in dev + e2e. Idempotent:
-        # skips if the series already exists.
-        if is_development():
-            existing_series = db.query(models.Series).filter(models.Series.slug == "fastapi-tour").first()
-            if existing_series:
-                print("✓ Demo series already exists, skipping")
+            category_map = {c.name: c.id for c in (await db.execute(select(models.Category))).scalars()}
+            tag_map = {t.name: t.id for t in (await db.execute(select(models.Tag))).scalars()}
+
+            existing_posts = (await db.execute(select(func.count()).select_from(models.Post))).scalar()
+            if existing_posts > len(DEMO_POSTS):
+                print(f"✓ {existing_posts} posts already exist, skipping seed")
             else:
-                demo_series = models.Series(
-                    title="FastAPI 深入浅出",
-                    slug="fastapi-tour",
-                    description="从零开始系统地学习 FastAPI：框架基础、依赖注入、数据库实践与部署技巧。",
-                )
-                db.add(demo_series)
-                db.flush()
-                di_post = (
-                    db.query(models.Post).filter(models.Post.slug == "fastapi-dependency-injection-deep-dive").first()
-                )
-                sql_post = db.query(models.Post).filter(models.Post.slug == "postgresql-performance-tuning").first()
-                if di_post:
-                    di_post.series_id = demo_series.id
-                    di_post.series_order = 0
-                if sql_post:
-                    sql_post.series_id = demo_series.id
-                    sql_post.series_order = 1
-                db.commit()
-                print("✓ Demo series created: FastAPI 深入浅出")
+                now = datetime.now(UTC)
+                for post_data in DEMO_POSTS:
+                    slug = post_data["slug"]
+                    existing = (
+                        await db.execute(select(models.Post).where(models.Post.slug == slug))
+                    ).scalar_one_or_none()
+                    if existing:
+                        continue
 
-        total_posts = db.query(models.Post).count()
-        total_comments = db.query(models.Comment).count()
-        print("\n✨ Database initialized successfully!")
-        print(f"   Posts: {total_posts}")
-        print(f"   Comments: {total_comments}")
-        print(f"   Categories: {len(categories)}")
-        print(f"   Tags: {len(all_tags)}")
+                    created_at = now - timedelta(days=post_data.get("created_days_ago", 0))
 
-    except Exception as e:
-        db.rollback()
-        print(f"Error: {e}")
-        sys.exit(1)
-    finally:
-        db.close()
+                    publish_at = None
+                    if "publish_at_days_from_now" in post_data:
+                        publish_at = now + timedelta(days=post_data["publish_at_days_from_now"])
+
+                    post = models.Post(
+                        title=post_data["title"],
+                        slug=slug,
+                        content=post_data["content"],
+                        excerpt=post_data["excerpt"],
+                        published=post_data["published"],
+                        pinned=post_data.get("pinned", False),
+                        publish_at=publish_at,
+                        category_id=category_map.get(post_data["category"]),
+                        cover_image=post_data.get("cover_image"),
+                        views=post_data.get("views", 0),
+                        likes=post_data.get("likes", 0),
+                        created_at=created_at,
+                        updated_at=created_at,
+                    )
+                    db.add(post)
+                    await db.flush()
+
+                    for tag_name in post_data.get("tags", []):
+                        if tag_name in tag_map:
+                            tag = (
+                                await db.execute(select(models.Tag).where(models.Tag.id == tag_map[tag_name]))
+                            ).scalar_one_or_none()
+                            if tag:
+                                # Direct junction insert: async sessions can't lazy-load the
+                                # many-to-many `post.tags` collection (MissingGreenlet), so
+                                # seed post_tags explicitly instead of `post.tags.append()`.
+                                await db.execute(models.post_tags.insert().values(post_id=post.id, tag_id=tag.id))
+
+                    print(f"  ✓ Post created: {post_data['title'][:40]}")
+
+                await db.commit()
+                print(f"✓ {len(DEMO_POSTS)} demo posts created")
+
+            existing_comments = (await db.execute(select(func.count()).select_from(models.Comment))).scalar()
+            if existing_comments == 0:
+                sample_comments = [
+                    {
+                        "nickname": "张三",
+                        "email": "zhangsan@example.com",
+                        "content": "写得很棒！特别是关于 FastAPI 依赖注入的部分，让我受益匪浅。",
+                        "is_approved": True,
+                    },
+                    {
+                        "nickname": "李四",
+                        "email": "lisi@example.com",
+                        "content": "请问有没有关于性能测试的对比数据？想了解更多实际场景下的表现。",
+                        "is_approved": True,
+                    },
+                    {
+                        "nickname": "王五",
+                        "email": "wangwu@example.com",
+                        "content": "建议可以补充一些实际项目中的应用案例。",
+                        "is_approved": False,
+                    },
+                    {
+                        "nickname": "赵六",
+                        "email": "zhaoliu@example.com",
+                        "content": "这篇文章写得太好了，已收藏！期待更多类似内容。",
+                        "is_approved": True,
+                    },
+                    {
+                        "nickname": "spam_bot",
+                        "email": "spam@spam.com",
+                        "content": "点击这里领取免费比特币！！！http://spam-link.example.com",
+                        "is_approved": False,
+                    },
+                ]
+                welcome_post = (
+                    await db.execute(select(models.Post).where(models.Post.slug == "welcome-to-x-blog"))
+                ).scalar_one_or_none()
+                python_post = (
+                    await db.execute(select(models.Post).where(models.Post.slug == "python-3-14-new-features"))
+                ).scalar_one_or_none()
+                ts_post = (
+                    await db.execute(select(models.Post).where(models.Post.slug == "typescript-5-practical-tips"))
+                ).scalar_one_or_none()
+
+                for comment_data in sample_comments:
+                    if comment_data["nickname"] == "张三":
+                        post_id = welcome_post.id if welcome_post else 1
+                    elif comment_data["nickname"] == "李四":
+                        post_id = python_post.id if python_post else 1
+                    elif comment_data["nickname"] in ("王五", "spam_bot"):
+                        post_id = welcome_post.id if welcome_post else 1
+                    else:
+                        post_id = ts_post.id if ts_post else 1
+
+                    comment = models.Comment(
+                        post_id=post_id,
+                        nickname=comment_data["nickname"],
+                        email=comment_data["email"],
+                        content=comment_data["content"],
+                        is_approved=comment_data["is_approved"],
+                        ip_address="127.0.0.1",
+                    )
+                    db.add(comment)
+
+                await db.commit()
+                print("✓ 5 sample comments created")
+
+            # Post series (DEC-056/TASK-123): seed one series and group two of the
+            # demo posts into it so the public /series pages and the admin series
+            # management flow have real data to exercise in dev + e2e. Idempotent:
+            # skips if the series already exists.
+            if is_development():
+                existing_series = (
+                    await db.execute(select(models.Series).where(models.Series.slug == "fastapi-tour"))
+                ).scalar_one_or_none()
+                if existing_series:
+                    print("✓ Demo series already exists, skipping")
+                else:
+                    demo_series = models.Series(
+                        title="FastAPI 深入浅出",
+                        slug="fastapi-tour",
+                        description="从零开始系统地学习 FastAPI：框架基础、依赖注入、数据库实践与部署技巧。",
+                    )
+                    db.add(demo_series)
+                    await db.flush()
+                    di_post = (
+                        await db.execute(
+                            select(models.Post).where(models.Post.slug == "fastapi-dependency-injection-deep-dive")
+                        )
+                    ).scalar_one_or_none()
+                    sql_post = (
+                        await db.execute(select(models.Post).where(models.Post.slug == "postgresql-performance-tuning"))
+                    ).scalar_one_or_none()
+                    if di_post:
+                        di_post.series_id = demo_series.id
+                        di_post.series_order = 0
+                    if sql_post:
+                        sql_post.series_id = demo_series.id
+                        sql_post.series_order = 1
+                    await db.commit()
+                    print("✓ Demo series created: FastAPI 深入浅出")
+
+            total_posts = (await db.execute(select(func.count()).select_from(models.Post))).scalar()
+            total_comments = (await db.execute(select(func.count()).select_from(models.Comment))).scalar()
+            print("\n✨ Database initialized successfully!")
+            print(f"   Posts: {total_posts}")
+            print(f"   Comments: {total_comments}")
+            print(f"   Categories: {len(categories)}")
+            print(f"   Tags: {len(all_tags)}")
+
+        except Exception as e:
+            await db.rollback()
+            print(f"Error: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
