@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T17:46:47+00:00",
+  "updated_at": "2026-10-11T17:53:26+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34919,6 +34919,18 @@
       "title": "detail: highlights list narrows by post_id + drop duplicate joinedload join",
       "commit": "7abf221009147f27a43e3ad9d8febad34eeff9e5",
       "description": "Article page fetched reader's first 100 highlights across all posts then filtered client-side (wasteful + silently dropped this post's passages when the reader had >100 elseposts, since they sat on later pages). Add ?post_id= server-side filter to /api/reader/me/highlights (repo list_reader_highlights, list_my_highlights, frontend api + useArticleHighlights). Also removed redundant joinedload in list_reader_highlights (explicit select(ReaderHighlight, Post) join already fetched Post; the joinedload emitted a duplicate LEFT OUTER JOIN per row)."
+    },
+    "CHG-831": {
+      "id": "CHG-831",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T17:53:26+00:00",
+      "updated_at": "2026-10-11T17:53:26+00:00",
+      "touched_round": 466,
+      "title": "detail: paginate /highlights list (deep-linkable ?page=, windowed buttons, clamp)",
+      "commit": "83d3de9157473a6ae8d294711f8fff111858fe69",
+      "description": "/highlights page hard-coded limit=100 with no paging, stranding readers with >100 passages. Add ?page= deep-linkable pagination (malformed->page 1), windowed+ellipsis buttons (paginationPages), route-following current-page marker, out-of-range clamping, monotonic loadSeq stale-response guard, explicit load-failure + Retry, count label + screen-reader announce, i18n keys. New page spec (6 tests). Completion of the TASK-583 /highlights manager page."
     }
   },
   "edges": [
@@ -52218,6 +52230,12 @@
       "to": "TASK-583",
       "type": "implements",
       "created_at": "2026-10-11T17:46:47+00:00"
+    },
+    {
+      "from": "CHG-831",
+      "to": "TASK-583",
+      "type": "implements",
+      "created_at": "2026-10-11T17:53:26+00:00"
     }
   ]
 }
