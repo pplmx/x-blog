@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T17:53:26+00:00",
+  "updated_at": "2026-10-11T17:59:36+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34931,6 +34931,18 @@
       "title": "detail: paginate /highlights list (deep-linkable ?page=, windowed buttons, clamp)",
       "commit": "83d3de9157473a6ae8d294711f8fff111858fe69",
       "description": "/highlights page hard-coded limit=100 with no paging, stranding readers with >100 passages. Add ?page= deep-linkable pagination (malformed->page 1), windowed+ellipsis buttons (paginationPages), route-following current-page marker, out-of-range clamping, monotonic loadSeq stale-response guard, explicit load-failure + Retry, count label + screen-reader announce, i18n keys. New page spec (6 tests). Completion of the TASK-583 /highlights manager page."
+    },
+    "CHG-832": {
+      "id": "CHG-832",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T17:59:36+00:00",
+      "updated_at": "2026-10-11T17:59:36+00:00",
+      "touched_round": 466,
+      "title": "fix: guard undefined highlights list payload (slug-page regression)",
+      "commit": "76ce25945e0104d082719dcae3c793eb983566bb",
+      "description": "7abf2210 set highlights.value = data.items directly; when getReaderHighlights resolves to a non-{items} payload the prose watcher reads highlights.value.length and threw (38 slug-page failures in full suite). Guard with (data?.items ?? []). Corrective on CHG-830."
     }
   },
   "edges": [
@@ -52236,6 +52248,12 @@
       "to": "TASK-583",
       "type": "implements",
       "created_at": "2026-10-11T17:53:26+00:00"
+    },
+    {
+      "from": "CHG-832",
+      "to": "TASK-583",
+      "type": "implements",
+      "created_at": "2026-10-11T17:59:36+00:00"
     }
   ]
 }
