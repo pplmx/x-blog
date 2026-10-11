@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 from urllib.parse import urlparse
+
+if TYPE_CHECKING:
+    from app.models import Post, ReaderHighlight
 
 from pydantic import (
     AfterValidator,
@@ -905,3 +908,59 @@ class CommentPublic(CommentBase):
         return self
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Reader passage highlights (round 466, DEC-511 / TASK-583): a signed-in reader
+# saves an exact passage from a post, optionally with a short private note.
+# ---------------------------------------------------------------------------
+
+
+class ReaderHighlightCreate(BaseModel):
+    post_id: IdInt
+    text: Annotated[NonNulStr, Field(min_length=1, max_length=300)]
+    note: Annotated[NonNulStr | None, Field(default=None, max_length=1000)]
+
+
+class ReaderHighlightUpdate(BaseModel):
+    note: Annotated[NonNulStr | None, Field(default=None, max_length=1000)]
+
+
+class ReaderHighlightPost(BaseModel):
+    id: int
+    slug: str
+    title: str
+
+
+class ReaderHighlightItem(BaseModel):
+    id: int
+    post_id: int
+    text: str
+    note: str | None = None
+    created_at: datetime | None = None
+    post: ReaderHighlightPost | None = None
+
+    @classmethod
+    def from_highlight(cls, hl: ReaderHighlight, post: Post | None) -> ReaderHighlightItem:
+        """Build the response item from a ReaderHighlight ORM row and its Post.
+
+        The repo returns ``(ReaderHighlight, Post | None)`` tuples so the list
+        endpoint can emit the post's current title/slug for deep-linking without
+        an N+1 (the join is done in the one query).
+        """
+        return cls(
+            id=hl.id,
+            post_id=hl.post_id,
+            text=hl.text,
+            note=hl.note,
+            created_at=hl.created_at,
+            post=ReaderHighlightPost(id=post.id, slug=post.slug, title=post.title) if post else None,
+        )
+
+
+class ReaderHighlightListResponse(BaseModel):
+    items: list[ReaderHighlightItem]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

@@ -2933,3 +2933,83 @@ async def set_my_reader_locale(
     """
     await reader_service.set_reader_locale(db, current_reader.id, payload.locale)
     return payload
+
+
+# ---------------------------------------------------------------------------
+# Reader passage highlights (round 466, DEC-511 / TASK-583): a signed-in reader
+# saves an exact passage from a post, optionally with a private note.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/me/highlights", response_model=schemas.ReaderHighlightListResponse)
+async def list_my_highlights(
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    page: PageInt = 1,
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """The reader's saved passages (newest first), each with its post link.
+
+    Private to the reader (unlike the public_likes axis, DEC-393). Bounded
+    paging like the bookmark list so setup/merge calls never load every row.
+    """
+    rows, total = await reader_service.list_reader_highlights(db, current_reader.id, page=page, limit=limit)
+    total_pages = (total + limit - 1) // limit if limit > 0 else 0
+    return schemas.ReaderHighlightListResponse(
+        items=[schemas.ReaderHighlightItem.from_highlight(hl, post) for hl, post in rows],
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages,
+    )
+
+
+@router.post("/me/highlights", response_model=schemas.ReaderHighlightItem, status_code=201)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+async def add_highlight(
+    request: Request,  # noqa: ARG001
+    payload: schemas.ReaderHighlightCreate,
+    response: Response,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save a passage from a public post. Idempotent: 201 on first save, 200
+    when the reader already highlighted that exact text on the post.
+    """
+    post = await db.get(models.Post, payload.post_id)
+    if not post or not reader_service.is_publicly_visible(post):
+        raise HTTPException(status_code=404, detail="Post not found")
+    hl, created = await reader_service.add_reader_highlight(
+        db, current_reader.id, post.id, payload.text.strip(), payload.note
+    )
+    response.status_code = 201 if created else 200
+    return schemas.ReaderHighlightItem.from_highlight(hl, post)
+
+
+@router.patch("/me/highlights/{highlight_id}", response_model=schemas.ReaderHighlightItem)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+async def update_highlight_note(
+    request: Request,  # noqa: ARG001
+    highlight_id: int,
+    payload: schemas.ReaderHighlightUpdate,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a highlight's private note (owner-only; 404 if absent/not owned)."""
+    hl = await reader_service.update_reader_highlight_note(db, current_reader.id, highlight_id, payload.note)
+    if hl is None:
+        raise HTTPException(status_code=404, detail="Highlight not found")
+    post = await db.get(models.Post, hl.post_id)
+    return schemas.ReaderHighlightItem.from_highlight(hl, post)
+
+
+@router.delete("/me/highlights/{highlight_id}", status_code=204)
+@limiter.limit(f"{RATE_LIMIT_WRITE}/minute")
+async def delete_highlight(
+    request: Request,  # noqa: ARG001
+    highlight_id: int,
+    current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a highlight (owner-only; 204 no-op if absent/not owned)."""
+    await reader_service.delete_reader_highlight(db, current_reader.id, highlight_id)

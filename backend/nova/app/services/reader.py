@@ -86,6 +86,12 @@ from app.repositories.follows import (
     set_series_follow_notify,
     set_tag_follow_notify,
 )
+from app.repositories.highlights import (
+    add_reader_highlight,
+    delete_reader_highlight,
+    list_reader_highlights,
+    update_reader_highlight_note,
+)
 from app.repositories.notifications import (
     delete_reader_notification,
     get_reader_notification_prefs,
@@ -659,6 +665,7 @@ __all__ = [
     "add_reader_block",
     "add_reader_bookmark",
     "add_reader_follow",
+    "add_reader_highlight",
     "add_reader_post_like",
     "add_series_follow",
     "add_tag_follow",
@@ -674,6 +681,7 @@ __all__ = [
     "delete_bookmark_folder",
     "delete_reader_account",
     "delete_reader_comment",
+    "delete_reader_highlight",
     "delete_reader_notification",
     "disable_two_factor",
     "enable_two_factor",
@@ -697,6 +705,7 @@ __all__ = [
     "list_reader_category_follows",
     "list_reader_comment_subscriptions",
     "list_reader_follows",
+    "list_reader_highlights",
     "list_reader_history",
     "list_reader_in_progress",
     "list_reader_notifications",
@@ -738,6 +747,7 @@ __all__ = [
     "unread_notification_count",
     "update_my_profile",
     "update_reader_comment",
+    "update_reader_highlight_note",
     "upload_my_avatar",
     "utc_now_naive",
 ]

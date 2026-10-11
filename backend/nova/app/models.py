@@ -570,6 +570,41 @@ class ReadingHistory(Base):
     )
 
 
+class ReaderHighlight(Base):
+    """A signed-in reader's saved passage from a post (round 466, TASK-583).
+
+    Passage-level capture over a whole-post bookmark or a like: the exact
+    paragraph that matters, optionally with a short private note. Private by
+    design (unlike the public_likes axis, DEC-393). Additive table with no
+    DB-level FK on the columns (DEC-009: SQLite alembic can't add FK-carrying
+    columns), so integrity is enforced at the API layer like ReaderBookmark.
+    The reader/post/text triple is unique, so re-highlighting an identical
+    passage is idempotent (returns the existing row).
+    """
+
+    __tablename__ = "reader_highlights"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # The selected passage, capped: v1 re-renders a saved highlight by a
+    # best-effort exact text match inside the article, so a bounded stored text
+    # keeps matching sane and avoids index-width surprises on Postgres.
+    text: Mapped[str] = mapped_column(String(300), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+
+    __table_args__ = (UniqueConstraint("reader_id", "post_id", "text", name="uq_reader_highlights_reader_post_text"),)
+
+    post: Mapped[Post] = relationship(
+        "Post",
+        primaryjoin="ReaderHighlight.post_id == Post.id",
+        foreign_keys="ReaderHighlight.post_id",
+    )
+
+
 class CommentSubscription(Base):
     """A reader following a post's comment thread (DEC-078/TASK-150).
 
