@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T18:06:25+00:00",
+  "updated_at": "2026-10-11T18:15:37+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -28324,7 +28324,7 @@
       "version": 1,
       "created_at": "2026-09-18T11:13:38+00:00",
       "updated_at": "2026-09-18T11:13:38+00:00",
-      "touched_round": 383,
+      "touched_round": 466,
       "category": "performance",
       "title": "Bound /me/history/stats to SQL (denormalized reading_minutes, ISS-451)",
       "description": "reader_history_stats materialized every visible history row's content in Python (multi-MB/pageview). Denormalize reading_minutes onto reading_history at write time, backfill existing rows, aggregate in SQL; semantics = minutes as last READ (post edits after a read no longer mutate totals)."
@@ -34955,6 +34955,18 @@
       "title": "fix: reject whitespace-only highlight text (strip before length check)",
       "commit": "5fdd5758907219c955e966f566c4a6d5f298de86",
       "description": "ReaderHighlightCreate.text used NonNulStr+min_length=1 which counts raw chars; a whitespace-only passage passed validation then stripped to blank. Add _strip_blank before-validator to reject whitespace-only (422) and trim stored text. 2 new backend tests."
+    },
+    "CHG-834": {
+      "id": "CHG-834",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T18:15:37+00:00",
+      "updated_at": "2026-10-11T18:15:37+00:00",
+      "touched_round": 466,
+      "title": "perf: batch Postgres snippet highlight in /search/all (kill N+1)",
+      "commit": "f40f1b2adc6d4e852b499509bbcc2f51e6bf66a0",
+      "description": "Follow-up on CHG-824/DEC-509: /search/all built each post's snippet with a per-post ts_headline call (one DB round-trip per merged post, up to ~50). Now reuses _build_postgres_snippets one-query batch (same as /search, ISS-061) with identical escaped-excerpt fallback."
     }
   },
   "edges": [
@@ -52272,6 +52284,12 @@
       "to": "TASK-583",
       "type": "implements",
       "created_at": "2026-10-11T18:06:25+00:00"
+    },
+    {
+      "from": "CHG-834",
+      "to": "TASK-441",
+      "type": "implements",
+      "created_at": "2026-10-11T18:15:37+00:00"
     }
   ]
 }
