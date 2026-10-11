@@ -41,6 +41,10 @@ export default defineConfig({
 		globals: true,
 		setupFiles: ["./tests/setup.ts"],
 		exclude: ["e2e/**", "node_modules/**", "playwright.config.ts"],
+		// Persist transformed modules across runs (node_modules/.vitest-cache): the
+		// suite is transform-dominated, and without this every `vp test` re-transforms
+		// the whole module graph from scratch (Vitest's own diagnostic flags it).
+		fsModuleCache: true,
 		coverage: {
 			reporter: ["text", "json", "html"],
 			exclude: ["e2e/**", "tests/**", "**/*.d.ts"],
