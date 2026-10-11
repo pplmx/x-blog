@@ -114,8 +114,12 @@ export function useArticleHighlights(
 	async function loadExisting() {
 		if (!postId.value || !isAuthenticated.value) return;
 		try {
-			const data = await getReaderHighlights(1, 100);
-			highlights.value = data.items.filter((h) => h.post_id === postId.value);
+			// Server-side post_id filter: fetch only this post's passages rather
+			// than the reader's whole (possibly >100) highlight list and filtering
+			// client-side — the old client filter silently dropped this post's
+			// passages that sat on a later page.
+			const data = await getReaderHighlights(1, 100, postId.value);
+			highlights.value = data.items;
 			renderIntoArticle(proseEl.value, highlights.value);
 		} catch {
 			// Non-fatal: reading must never depend on highlight availability.

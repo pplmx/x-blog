@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from app import models
 
@@ -80,23 +79,30 @@ async def add_reader_highlight(
 
 
 async def list_reader_highlights(
-    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 50
+    db: AsyncSession, reader_id: int, page: int = 1, limit: int = 50, post_id: int | None = None
 ) -> tuple[list[tuple[models.ReaderHighlight, models.Post | None]], int]:
     """The reader's highlights (newest first), joined with their posts.
 
     Returns ``(rows, total)`` where each ``rows`` element is ``(highlight,
-    post)``. Post visibility is intentionally NOT filtered: these are the
-    reader's own private passages, so a post that later became a draft still
-    shows its title for the owner (they saw it when it was public). The join is
-    a LEFT OUTER so a dangling post_id still yields the highlight row.
+    post)``. When ``post_id`` is given, the result is narrowed to that post's
+    highlights (the article page uses this to render in-context passages
+    without fetching and re-filtering the reader's whole list). Post visibility
+    is intentionally NOT filtered: these are the reader's own private passages,
+    so a post that later became a draft still shows its title for the owner
+    (they saw it when it was public). The join is a LEFT OUTER so a dangling
+    post_id still yields the highlight row.
     """
-    base = select(models.ReaderHighlight).where(models.ReaderHighlight.reader_id == reader_id)
+    filters = [models.ReaderHighlight.reader_id == reader_id]
+    if post_id is not None:
+        filters.append(models.ReaderHighlight.post_id == post_id)
+    base = select(models.ReaderHighlight).where(*filters)
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
     query = (
         select(models.ReaderHighlight, models.Post)
         .join(models.Post, models.Post.id == models.ReaderHighlight.post_id, isouter=True)
-        .where(models.ReaderHighlight.reader_id == reader_id)
-        .options(joinedload(models.ReaderHighlight.post))
+        .where(*filters)
+        # Post is already fetched via the explicit select + join above — no
+        # joinedload, which would emit a duplicate LEFT OUTER JOIN to Post.
         .order_by(models.ReaderHighlight.created_at.desc(), models.ReaderHighlight.id.desc())
         .offset((page - 1) * limit)
         .limit(limit)

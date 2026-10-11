@@ -59,6 +59,9 @@ describe("useArticleHighlights", () => {
 			expect(mark?.textContent).toBe("passage to mark");
 			expect(mark?.getAttribute("data-highlight")).toBe("9");
 		});
+		// The article fetch is narrowed server-side to the current post (post_id),
+		// so a reader with >100 highlights on other posts never drowns this one.
+		expect(vi.mocked(getReaderHighlights)).toHaveBeenCalledWith(1, 100, 1);
 
 		wrapper.unmount();
 	});

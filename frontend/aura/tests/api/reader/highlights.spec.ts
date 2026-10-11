@@ -53,6 +53,12 @@ describe("reader highlights queries", () => {
 		expect(commandCalls[0].options.query).toEqual({ page: 2, limit: 20 });
 		expect(commandCalls[0].options.headers).toEqual({ Authorization: "Bearer reader-jwt" });
 	});
+
+	it("narrows the fetch to a single post when postId is given", async () => {
+		await getReaderHighlights(1, 50, 7);
+
+		expect(commandCalls[0].options.query).toEqual({ page: 1, limit: 50, post_id: 7 });
+	});
 });
 
 describe("reader highlights commands", () => {

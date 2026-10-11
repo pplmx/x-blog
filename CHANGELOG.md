@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **highlight list narrows to the open post — no whole-list fetch, and no
+  duplicate JOIN** — the article page used to load the reader's first 100
+  highlights across every post and filter client-side, which both wasted the
+  request and silently dropped this post's passages once it had more than 100
+  highlights elsewhere. `/api/reader/me/highlights?post_id=` now filters
+  server-side (repo + router + frontend API/composable), and the list query
+  dropped its redundant `joinedload` (the explicit `select(…, Post)` join
+  already fetched the post), removing a duplicate `LEFT OUTER JOIN` per row.
 - ✨ **Reader passage highlights with notes (round 466)** — a signed-in reader
   can select text inside any article and save it (optionally with a short
   private note) as a highlight; saved passages are re-rendered in the article

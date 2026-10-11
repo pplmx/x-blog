@@ -114,6 +114,29 @@ class TestListHighlights:
         assert (await client.get(HIGHLIGHTS, headers=_auth(t1))).json()["total"] == 1
         assert (await client.get(HIGHLIGHTS, headers=_auth(t2))).json()["total"] == 0
 
+    async def test_post_id_filter_narrows_to_one_post(self, client, db_session):
+        post_a = await _create_post(db_session)
+        post_b = await _create_post(db_session)
+        token = await _token(client)
+        for p, text in ((post_a, "passage in a"), (post_b, "passage in b")):
+            await client.post(HIGHLIGHTS, json={"post_id": p.id, "text": text}, headers=_auth(token))
+
+        # Unfiltered: both posts' passages.
+        all_data = (await client.get(HIGHLIGHTS, headers=_auth(token))).json()
+        assert all_data["total"] == 2
+
+        # Filtered: only post_a's passage, still server-side paged/joined.
+        a_data = (await client.get(HIGHLIGHTS, params={"post_id": post_a.id}, headers=_auth(token))).json()
+        assert a_data["total"] == 1
+        assert [i["text"] for i in a_data["items"]] == ["passage in a"]
+        assert a_data["items"][0]["post"]["id"] == post_a.id
+
+        # A post with no highlights narrows to empty.
+        other = await _create_post(db_session)
+        other_data = (await client.get(HIGHLIGHTS, params={"post_id": other.id}, headers=_auth(token))).json()
+        assert other_data["items"] == []
+        assert other_data["total"] == 0
+
 
 class TestUpdateNote:
     async def test_owner_can_update_note(self, client, db_session):

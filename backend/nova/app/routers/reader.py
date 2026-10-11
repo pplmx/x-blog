@@ -2946,14 +2946,19 @@ async def list_my_highlights(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     page: PageInt = 1,
     limit: int = Query(50, ge=1, le=100),
+    post_id: int | None = Query(None, ge=1, description="Narrow to one post's highlights"),
     db: AsyncSession = Depends(get_db),
 ):
     """The reader's saved passages (newest first), each with its post link.
 
     Private to the reader (unlike the public_likes axis, DEC-393). Bounded
     paging like the bookmark list so setup/merge calls never load every row.
+    Pass ``post_id`` to fetch only one post's passages (the article page does
+    this to render in-context highlights without pulling the whole list).
     """
-    rows, total = await reader_service.list_reader_highlights(db, current_reader.id, page=page, limit=limit)
+    rows, total = await reader_service.list_reader_highlights(
+        db, current_reader.id, page=page, limit=limit, post_id=post_id
+    )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     return schemas.ReaderHighlightListResponse(
         items=[schemas.ReaderHighlightItem.from_highlight(hl, post) for hl, post in rows],
