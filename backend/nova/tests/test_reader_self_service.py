@@ -85,6 +85,15 @@ class TestReaderProfileUpdate:
         assert resp.status_code == 200, resp.text
         assert resp.json()["email"] == "ss@example.com"
 
+    async def test_display_name_explicit_null_is_no_update(self, client):
+        """display_name `None` = no update (declared on the schema): an explicit
+        null must preserve the existing name, not clear it (DEC-318). Only bio
+        and the public flags clear on explicit null."""
+        token = (await _register(client, display_name="Keep")).json()["access_token"]
+        resp = await client.patch("/api/reader/me", json={"display_name": None}, headers=_auth(token))
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["display_name"] == "Keep"
+
     async def test_display_name_validation(self, client):
         token = (await _register(client)).json()["access_token"]
         bad = await client.patch("/api/reader/me", json={"display_name": ""}, headers=_auth(token))

@@ -179,7 +179,9 @@ async def update_my_profile(
     keys are applied. Email changes are their own verified flow
     (/me/email/request + /me/email/confirm, DEC-357).
     """
-    if "display_name" in updates:
+    # `None` = no update (explicit null must NOT clear the name — DEC-318);
+    # only a non-null explicit value is applied. bio / public flags may clear.
+    if updates.get("display_name") is not None:
         current_reader.display_name = updates["display_name"]
     if "bio" in updates:
         current_reader.bio = updates["bio"]

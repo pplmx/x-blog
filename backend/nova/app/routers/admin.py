@@ -242,11 +242,11 @@ async def upload_user_avatar(
     username is never exposed by any of this — avatar_url is a public /static
     URL only.
     """
-    # Cap memory: read at most MAX_SIZE+1 bytes and reject before an oversized
-    # body balloons RAM (reading the whole stream first would buffer it all).
+    # Cap memory: read at most MAX_SIZE+1 bytes (an oversized body balloons
+    # RAM if fully buffered). The size-limit rejection itself lives in
+    # admin_service.upload_user_avatar (shared defense-in-depth), so the two
+    # avatar surfaces stay aligned.
     contents = await file.read(MAX_SIZE + 1)
-    if len(contents) > MAX_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
     try:
         return await admin_service.upload_user_avatar(db, user_id, contents, file.content_type)
     except AppException as e:

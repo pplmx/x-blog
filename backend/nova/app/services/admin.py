@@ -37,6 +37,7 @@ from app.exceptions import (
 from app.image_validation import (
     ALLOWED_TYPES,
     ALLOWED_TYPES_MAP,
+    MAX_SIZE,
     has_matching_magic_bytes,
     optimize_image,
     verify_image_decodes,
@@ -675,6 +676,8 @@ async def upload_user_avatar(
     """
     if content_type not in ALLOWED_TYPES:
         raise ValueError("Unsupported file type")
+    if len(content) > MAX_SIZE:
+        raise ValueError("File too large (max 5MB)")
     if not has_matching_magic_bytes(content, content_type):
         raise ValueError("File content does not match the declared image type")
     try:
