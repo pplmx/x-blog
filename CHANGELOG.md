@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **merged search (/search/all) batches Postgres snippet highlight** — the
+  combined search over posts/series/pages/authors built each post's snippet via
+  a per-post `ts_headline` call, so a Postgres+ASCII merged query did one DB
+  round-trip per result (up to ~50). It now reuses the same one-query batch as
+  `/search` (ISS-061), with an identical inline escaped-excerpt fallback for
+  posts ts_headline doesn't match.
 - 🛡️ **highlight text can't be whitespace-only** — `min_length=1` counts raw
   characters, so a `"   "` passage passed validation and then stripped to an
   empty saved highlight. `ReaderHighlightCreate.text` now strips before length

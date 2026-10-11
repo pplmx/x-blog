@@ -250,14 +250,21 @@ def _sort_epoch(dt) -> float:
 # <mark> — the same snippet-XSS guarantee the post/comment search holds).
 
 
-async def _all_post_item(post, query: str, is_postgres: bool, db: AsyncSession) -> dict:
+async def _all_post_item(post, query: str, is_postgres: bool, db: AsyncSession, snippet: str | None = None) -> dict:
+    """One merged-search post hit; ``snippet`` is precomputed by the caller.
+
+    ``search_all`` batches every post's Postgres ts_headline in ONE query
+    (mirroring /search, ISS-061) and passes the result in, so no per-post DB
+    round-trip happens inside the merged loop. Falling back to ``_build_snippet``
+    here is the non-Postgres/CJK path, which is pure Python (no round-trip).
+    """
     return {
         "type": "post",
         "id": post.id,
         "title": post.title,
         "slug": post.slug,
         "path": f"/posts/{post.slug}",
-        "snippet": await _build_snippet(post, query, is_postgres, db),
+        "snippet": snippet or await _build_snippet(post, query, is_postgres, db),
     }
 
 
@@ -344,6 +351,12 @@ async def search_all(
     authors, authors_total = await search_service.search_authors(db, q, limit=window)
     posts, posts_total = await search_service.search_posts(db, q, page=1, limit=window, sort="newest")
 
+    # Post snippets: batch the Postgres ts_headline in ONE query (mirrors
+    # /search, ISS-061) rather than one round-trip per merged post. CJK/pure-
+    # ASCII routing must match _build_snippet so highlighting is identical.
+    use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
+    post_snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
+
     ranked: list[tuple[float, dict]] = []
     for s in series:
         ranked.append((_sort_epoch(s.created_at), _all_series_item(s, q)))
@@ -352,7 +365,15 @@ async def search_all(
     for a in authors:
         ranked.append((_sort_epoch(a.created_at), _all_author_item(a, q)))
     for p in posts:
-        ranked.append((_sort_epoch(p.publish_at or p.created_at), await _all_post_item(p, q, is_postgres, db)))
+        if use_headline:
+            # Same fallback as /search: no ts_headline match for this post ->
+            # escaped raw excerpt/content (keeps the snippet XSS-safe contract).
+            snippet = post_snippets.get(p.id)
+            if snippet is None and q.strip():
+                snippet = html.escape(p.excerpt or p.content[:200])
+        else:
+            snippet = await _build_snippet(p, q, is_postgres, db)
+        ranked.append((_sort_epoch(p.publish_at or p.created_at), await _all_post_item(p, q, is_postgres, db, snippet)))
 
     ranked.sort(key=lambda pair: (pair[0], _TYPE_RANK[pair[1]["type"]], pair[1]["id"]), reverse=True)
     items = [item for _, item in ranked[offset : offset + limit]]

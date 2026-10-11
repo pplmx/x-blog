@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- ⚡ **合并搜索（/search/all）批量生成 Postgres 摘要高亮**——跨文章/系列/页面/作者的合并搜索
+  此前对每个结果逐条调用 `ts_headline`，一次 Postgres+ASCII 查询就会每个结果多一次数据库往返
+  （最多约 50 次）。现复用 `/search`（ISS-061）的“一次查询批量生成”，并对 ts_headline 未命中的
+  文章使用相同的转义摘要回退逻辑。
 - 🛡️ **摘录文本不允许纯空白**——`min_length=1` 只数原始字符，`"   "` 这类纯空白会通过校验、
   随后在被 `.strip()` 后存成空摘录。`ReaderHighlightCreate.text` 现在在长度校验前先去除首尾
   空白（与标题/正文的 `_strip_blank` 守卫一致），纯空白返回 422，保存的文本也会被裁剪。
