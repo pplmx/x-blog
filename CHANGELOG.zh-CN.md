@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- ⚡ **搜索 / 点赞 / 推荐列表补充 author 预加载（N+1）**——三个读者可见的列表查询在序列化
+  `PostList.author` 时只预加载了 category/tags（/series），每个未缓存页面都会每行多一次懒加载
+  `SELECT`。`/search`（tsvector 与 CJK 两条路径）、`/liked` 读者列表与读者推荐现在与其余字段一起
+  `joinedload` author（补全了 round-465 覆盖公开文章列表的 author 预加载）。
 - ✏️ **删除摘录后刷新计数 / 从清空页回退一页**——分页的 /highlights 页在删除后仍保留过期的
   `pagination.total`（计数标签与翻页器不一致）；删除晚页的最后一条后还会停在空的
   `?page=N` 上并误显“还没有摘录”。删除后现在会重新拉取本页让计数/翻页器落定，当前页被

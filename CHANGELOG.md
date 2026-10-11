@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **author eager-loaded in search / liked / recommendations lists (N+1)** —
+  three reader-visible list queries serialized `PostList.author` but only
+  eager-loaded category/tags(/series), so every uncached page fired one extra
+  lazy `SELECT` per row. `/search` (both tsvector and CJK paths), the `/liked`
+  reader list, and reader recommendations now `joinedload` author with the rest
+  (finishing the round-465 author wave that covered the public post lists).
 - ✏️ **deleting a highlight refreshes count / steps back from an emptied page** —
   the paginated /highlights page kept a stale `pagination.total` after a delete
   (wrong count label + pager), and deleting the last item on a late page left an

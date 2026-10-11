@@ -126,6 +126,7 @@ async def search_posts(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
                 joinedload(models.Post.series),
+                joinedload(models.Post.author),
             )
             .offset(offset)
             .limit(limit)
@@ -166,6 +167,7 @@ async def search_posts(
                 joinedload(models.Post.category),
                 joinedload(models.Post.tags),
                 joinedload(models.Post.series),
+                joinedload(models.Post.author),
             )
             .offset(offset)
             .limit(limit)

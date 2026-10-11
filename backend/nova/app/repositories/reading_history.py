@@ -924,7 +924,11 @@ async def recommend_posts(db: AsyncSession, reader_id: int, limit: int = 6) -> l
     candidates = list(
         (
             await db.execute(
-                candidate_query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
+                candidate_query.options(
+                    joinedload(models.Post.category),
+                    joinedload(models.Post.tags),
+                    joinedload(models.Post.author),
+                )
                 .order_by(_effective_publish_col().desc(), models.Post.id.desc())
                 .limit(CANDIDATE_SCAN_LIMIT)
             )
