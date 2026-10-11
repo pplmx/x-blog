@@ -9,7 +9,7 @@ from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import IdInt
-from app.services import content as content_service
+from app.services import tags as content_service
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
 
