@@ -119,7 +119,10 @@ export function useArticleHighlights(
 			// client-side — the old client filter silently dropped this post's
 			// passages that sat on a later page.
 			const data = await getReaderHighlights(1, 100, postId.value);
-			highlights.value = data.items;
+			// ?? [] : a non-{items} payload must not set highlights to undefined —
+			// the prose watcher reads highlights.value.length (slug.spec's $fetch
+			// stub returns a bare object, exercising exactly this path).
+			highlights.value = (data?.items ?? []).slice();
 			renderIntoArticle(proseEl.value, highlights.value);
 		} catch {
 			// Non-fatal: reading must never depend on highlight availability.
