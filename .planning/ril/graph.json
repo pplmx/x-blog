@@ -1,8 +1,8 @@
 {
   "ril_version": 1,
-  "round": 465,
+  "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T15:59:23+00:00",
+  "updated_at": "2026-10-11T17:00:52+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -34855,6 +34855,58 @@
       "severity": "high",
       "title": "git pre-push hook aborts SIGABRT on many-core hosts (test-backend -n auto)",
       "summary": "just test-backend used -n auto (one worker/core); on a 128-core box the prek pre-push hook forking ~128 pytest workers aborts in metadata.create_all before any app code runs. Fixed by capping WORKERS to min(cpu,8) in the justfile (CHG-828), matching test-backend-postgres."
+    },
+    "DEC-511": {
+      "id": "DEC-511",
+      "type": "decision",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T16:25:16+00:00",
+      "updated_at": "2026-10-11T16:25:16+00:00",
+      "touched_round": 465,
+      "title": "Round 466: reader passage highlights with notes (feature evolution)",
+      "rationale": "Re-activated feature evolution (operator directive). Fresh gap-analysis after the search-broadening arc (TASK-582 resolved): the reader surface booksmarks whole posts, likes signal taste, and reading history tracks visits — but there is no passage-level way to capture \"the exact paragraph that matters\" in a dense technical post, which is what a recurring reader actually wants to return to (the Medium/Dev.to highlight pattern). Acceptance (1 sentence): a signed-in reader can select text in a post, save the passage (optionally with a note) as a highlight, and review/delete all highlights on-site, each deep-linking back to its post.",
+      "alternatives_rejected": "(a) Public per-reader highlights - rejected: private notes are the privacy-correct default (likes already expose the taste axis publicly, DEC-393). (b) Highlight anchor by byte offset - rejected: brittle to post edits; v1 deep-links to the post and re-renders by best-effort exact text match instead. (c) On-post highlight of others - rejected: no cross-reader surface signal."
+    },
+    "TASK-583": {
+      "id": "TASK-583",
+      "type": "task",
+      "status": "resolved",
+      "version": 2,
+      "created_at": "2026-10-11T16:25:16+00:00",
+      "updated_at": "2026-10-11T17:00:52+00:00",
+      "touched_round": 465,
+      "category": "core-feature",
+      "severity": 0.6,
+      "confidence": 1.0,
+      "effort": 3.0,
+      "unlock_factor": 1.0,
+      "title": "Reader passage highlights with optional note",
+      "description": "Vertical slice: (1) backend ReaderHighlight model + migration + reader-scoped /api/reader/me/highlights CRUD (create/list/update-note/delete), auth + ownership + idempotent create; (2) frontend in-post select-to-highlight UI for signed-in readers + best-effort re-render of saved highlights; (3) a /highlights manage page listing passages with post links, inline note edit, delete; (4) backend + frontend unit + e2e tests."
+    },
+    "CHG-829": {
+      "id": "CHG-829",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T17:00:52+00:00",
+      "updated_at": "2026-10-11T17:00:52+00:00",
+      "touched_round": 465,
+      "commit": "1f9638da",
+      "title": "feat: reader passage highlights with optional note (TASK-583)",
+      "description": "Vertical slice backend+frontend+tests+docs. Backend: ReaderHighlight model + migration 9b8c7d6e5f4a + /api/reader/me/highlights CRUD (idempotent create, list w/ post link, update note, delete); commits via _commit_reader_upsert. Frontend: useArticleHighlights composable (select-to-save + best-effort <mark> re-render), in-post toolbar, /highlights manage page, nav entry, i18n en/zh. Tests: test_reader_highlights.py (16), api/reader/highlights.spec.ts (6), useArticleHighlights.spec.ts (2)."
+    },
+    "EV-332": {
+      "id": "EV-332",
+      "type": "evidence",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T17:00:52+00:00",
+      "updated_at": "2026-10-11T17:00:52+00:00",
+      "touched_round": 465,
+      "source": "pytest -n auto (1957 passed @cov gate); pnpm test (2541); migration applies to a fresh DB; live curl+browser smoke (create durable, /highlights renders, composable spec renders <mark>)",
+      "summary": "Reader highlights end-to-end verified",
+      "confidence": 1.0
     }
   },
   "edges": [
@@ -52142,6 +52194,12 @@
       "to": "ISS-666",
       "type": "resolves",
       "created_at": "2026-10-11T15:59:23+00:00"
+    },
+    {
+      "from": "CHG-829",
+      "to": "TASK-583",
+      "type": "implements",
+      "created_at": "2026-10-11T17:00:52+00:00"
     }
   ]
 }
