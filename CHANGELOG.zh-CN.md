@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+- 🧹 **/highlights 改用共享的平滑滚动助手**——分页页翻页时调用的是原生 `window.scrollTo({ top: 0 })`，
+  而其它分页页（archive/follows/search/category）都用共享的 `scrollToPageTop()` 助手——效果相同，
+  但与既有约定一致且 SSR 下安全无操作。
 - 🧹 **三处计数查询去掉冗余 `or 0`**——`list_reader_history`、`list_reader_in_progress` 与
   后台评论活跃统计均有 `scalar() or 0 or 0`，其中第二个默认值是永远走不到的冗余代码，
   现移除（行为不变）。

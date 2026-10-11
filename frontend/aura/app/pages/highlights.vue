@@ -16,6 +16,7 @@ import {
 import type { PaginationInfo } from "~~/api/contracts/shared";
 import { parseApiDate } from "~~/composables/apiDate";
 import { paginationPages } from "~~/composables/usePagination";
+import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { useSeo } from "~~/composables/useSeo";
 
@@ -88,7 +89,7 @@ async function load() {
 
 function goToPage(pg: number | string) {
 	void navigateTo({ query: { page: pg === 1 ? undefined : String(pg) } });
-	window.scrollTo({ top: 0 });
+	scrollToPageTop();
 }
 
 function retry() {

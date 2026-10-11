@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧹 **/highlights uses the shared smooth-scroll helper** — the paginated page
+  called a raw `window.scrollTo({ top: 0 })` on page turn while every sibling
+  paginated page (archive/follows/search/category) uses the shared
+  `scrollToPageTop()` helper — same jump, but consistent and SSR-no-op safe.
 - 🧹 **drop dead `or 0` in three count queries** — `list_reader_history`,
   `list_reader_in_progress`, and the admin comment-activity stats each had a
   double `scalar() or 0 or 0` where the second default was unreachable dead
