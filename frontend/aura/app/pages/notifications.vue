@@ -244,7 +244,7 @@ const prefRows = computed(() => {
 		},
 		{
 			key: "email_reply",
-			icon: "lucide:mail-reply",
+			icon: "lucide:reply",
 			label: t("notifications.prefs.kind.email_reply.label"),
 			desc: t("notifications.prefs.kind.email_reply.desc"),
 			on: prefs.value.email_reply,
@@ -258,7 +258,7 @@ const prefRows = computed(() => {
 		},
 		{
 			key: "email_mention",
-			icon: "lucide:mail-at",
+			icon: "lucide:at-sign",
 			label: t("notifications.prefs.kind.email_mention.label"),
 			desc: t("notifications.prefs.kind.email_mention.desc"),
 			on: prefs.value.email_mention,

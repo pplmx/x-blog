@@ -79,11 +79,14 @@ describe("buildCspPolicy", () => {
 		expect(buildCspPolicy("n1", {})).toContain("style-src 'self' 'unsafe-inline'");
 	});
 
-	it("includes the iconify icon-CDN hosts by default (Icon.vue fetches lucide JSON)", () => {
+	it("does not need the iconify icon-CDN hosts — icons are bundled offline", () => {
 		const csp = buildCspPolicy("n1", {});
-		expect(csp).toContain("connect-src 'self' https://api.iconify.design");
-		expect(csp).toContain("https://api.unisvg.com");
-		expect(csp).toContain("https://api.simplesvg.com");
+		// Icon.vue renders the bundled lucide subset, so connect-src stays 'self'
+		// with no third-party iconify CDN (api.iconify.design / unisvg / simplesvg).
+		expect(csp).toContain("connect-src 'self'");
+		expect(csp).not.toContain("api.iconify.design");
+		expect(csp).not.toContain("api.unisvg.com");
+		expect(csp).not.toContain("api.simplesvg.com");
 	});
 
 	it("adds the API origin to connect-src when an absolute apiUrl is set", () => {
