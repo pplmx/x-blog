@@ -177,11 +177,14 @@ migrate:
 
 # Verify the alembic baseline builds a fresh SQLite DB with no model drift
 # (mirrors CI: fresh DB + `alembic check`). Leaves no DB behind.
+#
+# Concurrency-safe: uses a unique per-invocation temp DB (mktemp) instead of a
+# fixed `_mig_check.db`, so concurrent runs (e.g. the pre-push `ci-gate` hook
+# and a parallel `just ci`) cannot corrupt each other's SQLite file. The
+# exactly-once `trap ... EXIT` guarantee (EXIT fires even on command failure,
+# unlike a trailing `rm`) means no scratch DB is ever left behind.
 migrate-check:
-    cd backend/nova && rm -f _mig_check.db
-    cd backend/nova && DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic upgrade head
-    cd backend/nova && DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic check
-    cd backend/nova && rm -f _mig_check.db
+    cd backend/nova && db="$$(mktemp ._xblog_mig_check.XXXXXX.db)" && trap 'rm -f "$$db"' EXIT && DATABASE_URL="sqlite:///$$db" JWT_SECRET_KEY=ci uv run alembic upgrade head && DATABASE_URL="sqlite:///$$db" JWT_SECRET_KEY=ci uv run alembic check
 
 # Show migration history
 migration-history:
