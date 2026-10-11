@@ -55,6 +55,7 @@
 		"katex": "^0.18.4",
 		"marked": "^16.4.2",
 		"mermaid": "^11.17.2",
+		"postcss-import": "^17.0.0",
 		"typescript": "6.0.3",
 		"unplugin-auto-import": "^21.1.0",
 		"vite-plus": "1.1.0",
