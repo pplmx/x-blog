@@ -1,22 +1,25 @@
 {
-	"highlights": {
-		"seoTitle": "My Highlights — X-Blog",
-		"seoDesc": "Your saved passages across the site, each linking back to its article.",
-		"title": "My Highlights",
-		"subtitle": "Passages you saved while reading, with optional notes.",
-		"loading": "Loading your highlights…",
-		"empty": "No highlights yet",
-		"emptyHint": "Select text in any article and hit “Save highlight” to keep the passage here.",
-		"unknownPost": "Unlinked post",
-		"delete": "Delete",
-		"deleteConfirm": "Delete this highlight?",
-		"deleteFailed": "Couldn’t delete this highlight.",
-		"saveFailed": "Couldn’t save your changes.",
-		"loadFailed": "Couldn’t load your highlights.",
-		"notePlaceholder": "Add a note…",
-		"save": "Save",
-		"cancel": "Cancel",
-		"editNote": "Edit note",
-		"addNote": "Add note"
-	}
+  "highlights": {
+    "seoTitle": "My Highlights — X-Blog",
+    "seoDesc": "Your saved passages across the site, each linking back to its article.",
+    "title": "My Highlights",
+    "subtitle": "Passages you saved while reading, with optional notes.",
+    "loading": "Loading your highlights…",
+    "empty": "No highlights yet",
+    "emptyHint": "Select text in any article and hit “Save highlight” to keep the passage here.",
+    "unknownPost": "Unlinked post",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this highlight?",
+    "deleteFailed": "Couldn’t delete this highlight.",
+    "saveFailed": "Couldn’t save your changes.",
+    "loadFailed": "Couldn’t load your highlights.",
+    "notePlaceholder": "Add a note…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editNote": "Edit note",
+    "addNote": "Add note",
+    "retry": "Retry",
+    "countLabel": "{count} highlights",
+    "paginationAnnounce": "Page {page}"
+  }
 }

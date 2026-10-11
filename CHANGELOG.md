@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔢 **/highlights is now paginated** — the saved-passages page previously
+  fetched a hard-coded `limit=100` with no way to reach older highlights. It
+  now pages by `?page=` (deep-linkable, windowed+ellipsis buttons, out-of-range
+  clamp, load-error retry), matching the follows/liked feed convention. The
+  list still narrows to the open post via `post_id` for in-article rendering.
 - ⚡ **highlight list narrows to the open post — no whole-list fetch, and no
   duplicate JOIN** — the article page used to load the reader's first 100
   highlights across every post and filter client-side, which both wasted the
