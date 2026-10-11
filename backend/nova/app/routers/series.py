@@ -11,7 +11,7 @@ from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_WRITE, limiter
 from app.schemas import IdInt
-from app.services import series as content_service
+from app.services import series as series_service
 
 router = APIRouter(prefix="/api/series", tags=["series"])
 
@@ -22,7 +22,7 @@ async def list_series(request: Request, db: AsyncSession = Depends(get_db)):
     # per-series count (RIL ISS-292). The list is small and computed per
     # request instead of cached — only the detail payload (which builds
     # reading_time per post) is cached (TASK-121).
-    counts = await content_service.visible_series_post_counts(db)
+    counts = await series_service.visible_series_post_counts(db)
     summaries = [
         schemas.SeriesPublic(
             id=s.id,
@@ -31,7 +31,7 @@ async def list_series(request: Request, db: AsyncSession = Depends(get_db)):
             description=s.description,
             post_count=counts.get(s.id, 0),
         )
-        for s in await content_service.list_series(db)
+        for s in await series_service.list_series(db)
     ]
     return conditional_json([s.model_dump(mode="json") for s in summaries], request)
 
@@ -42,11 +42,11 @@ async def get_series(request: Request, slug: str, db: AsyncSession = Depends(get
     if cached is not None:
         return conditional_json(cached, request)
 
-    series = await content_service.get_series_by_slug(db, slug)
+    series = await series_service.get_series_by_slug(db, slug)
     if not series:
         # Slug-change redirect (round 350): a re-slugged series' old URL points
         # at the canonical target so the web layer can emit a 301 (see posts).
-        redirect_target = await content_service.resolve_slug_redirect(db, "series", slug)
+        redirect_target = await series_service.resolve_slug_redirect(db, "series", slug)
         if redirect_target:
             raise HTTPException(
                 status_code=404,
@@ -55,7 +55,7 @@ async def get_series(request: Request, slug: str, db: AsyncSession = Depends(get
             )
         raise HTTPException(status_code=404, detail="Series not found")
 
-    posts = await content_service.get_series_visible_posts(db, series)
+    posts = await series_service.get_series_visible_posts(db, series)
     # model_validate (not __init__) applies from_attributes, so the ORM Post
     # objects become PostList models; dump to a plain dict for the cache so no
     # live ORM objects survive across the per-request Session (post cache).
@@ -82,11 +82,11 @@ async def create_series(
     _current_user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await content_service.get_series_by_slug(db, series.slug)
+    existing = await series_service.get_series_by_slug(db, series.slug)
     if existing:
         raise HTTPException(status_code=400, detail="Series already exists")
     try:
-        return await content_service.create_series(db, series)
+        return await series_service.create_series(db, series)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -101,7 +101,7 @@ async def update_series(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        db_series = await content_service.update_series(db, series_id, series)
+        db_series = await series_service.update_series(db, series_id, series)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not db_series:
@@ -118,7 +118,7 @@ async def delete_series(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        success = await content_service.delete_series(db, series_id)
+        success = await series_service.delete_series(db, series_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     if not success:
@@ -151,7 +151,7 @@ async def list_series_episodes(
     series = await db.get(models.Series, series_id)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    episodes = await content_service.list_series_episodes(db, series)
+    episodes = await series_service.list_series_episodes(db, series)
     return [
         SeriesEpisodeItem(
             id=p.id,
@@ -178,7 +178,7 @@ async def reorder_series_episodes(
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
     try:
-        episodes = await content_service.reorder_series_episodes(db, series, body.post_ids)
+        episodes = await series_service.reorder_series_episodes(db, series, body.post_ids)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     series_cache.pop(series.slug, None)

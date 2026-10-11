@@ -26,7 +26,7 @@ from app.conditional import conditional_json
 from app.database import get_db
 from app.limiter import RATE_LIMIT_READ, RATE_LIMIT_WRITE, limiter
 from app.schemas import IdInt
-from app.services import series as content_service
+from app.services import series as series_service
 
 router = APIRouter(prefix="/api/pages", tags=["pages"])
 admin_router = APIRouter(prefix="/api/admin/pages", tags=["pages"])
@@ -54,7 +54,7 @@ async def get_page(request: Request, slug: str, db: AsyncSession = Depends(get_d
     if not page:
         # Slug-change redirect (round 350): a re-slugged page's old URL points
         # at the canonical target (round 347 lets an operator swap a page slug).
-        redirect_target = await content_service.resolve_slug_redirect(db, "page", slug)
+        redirect_target = await series_service.resolve_slug_redirect(db, "page", slug)
         if redirect_target:
             raise HTTPException(
                 status_code=404,
@@ -126,7 +126,7 @@ async def admin_update_page(
             raise HTTPException(status_code=409, detail="Slug already in use")
         # Slug-change redirect (round 350): the old page URL that was shared/
         # linked keeps pointing at this page after the rename.
-        await content_service.record_slug_redirect(db, "page", page.slug, data["slug"])
+        await series_service.record_slug_redirect(db, "page", page.slug, data["slug"])
     for field, value in data.items():
         setattr(page, field, value)
     await db.commit()

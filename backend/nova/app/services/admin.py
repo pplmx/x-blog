@@ -160,7 +160,7 @@ async def update_post(
         raise AppException(ErrorCode.POST_NOT_FOUND, "Post not found", status_code=404)
 
     # Notify on the draft/scheduled -> published transition made from the admin
-    # editor, matching the admin_service.update_post fan-out (ate fan-out would silently
+    # editor, matching the update_post fan-out (ate fan-out would silently
     # skip every reader's durable inbox row + Web Push for editor-published
     # posts — surfacing as "published but no one got notified").
     was_visible = is_publicly_visible(post)
@@ -170,7 +170,7 @@ async def update_post(
     slug = data.get("slug")
     if slug is not None and slug != post.slug:
         # Slug-change redirect (round 350): an old URL that was shared/indexed
-        # must keep pointing at this post after the rename (see admin_service.record_*).
+        # must keep pointing at this post after the rename (see record_*).
         await record_slug_redirect(db, "post", post.slug, slug)
         post.slug = slug
     if data.get("content") is not None:
@@ -224,7 +224,7 @@ async def update_post(
             post.category_id = None
 
     # Series membership (DEC-056/TASK-123): the editor must be able to assign a
-    # post to a series (null = clear membership), mirroring admin_service.update_post — a
+    # post to a series (null = clear membership), mirroring update_post — a
     # bare title/slug update must never silently drop the post out of its series.
     if "series_id" in data:
         series_id = data["series_id"]
@@ -269,7 +269,7 @@ async def update_post(
         raise AppException(ErrorCode.DUPLICATE_SLUG, "Slug already exists", status_code=400)
     await db.refresh(post)
     # Snapshot the updated state into version history (DEC-158, TASK-191).
-    # This route updates fields directly (it doesn't use admin_service.update_post), so
+    # This route updates fields directly (it doesn't use update_post), so
     # the capture is invoked here explicitly.
     await capture_post_revision(db, post)
     clear_tags_cache()
@@ -277,12 +277,12 @@ async def update_post(
     clear_posts_list_cache()
 
     # Transition into visibility (draft/scheduled -> published) must fan out
-    # the same inbox + push notifications the admin_service.create/update paths do. The
+    # the same inbox + push notifications the create/update paths do. The
     # frontmost publish path is the admin editor's PUT /posts/{id}, which used
     # to skip both — a follower/subscriber count that never moved.
     if not was_visible and is_publicly_visible(post):
         # Exactly-once stamp (DEC-336/TASK-394): this editor path fans out
-        # directly (it does not route through admin_service.update_post), so it must set
+        # directly (it does not route through update_post), so it must set
         # the same durable stamp the fire-on-read sweep (maybe_notify_due_...)
         # checks — otherwise the first public read of a crossed scheduled post
         # edited here would re-announce it.
@@ -421,7 +421,7 @@ async def batch_approve_comments(db: AsyncSession, ids: list[int], approved: boo
         # Stamp reviewed_at on both outcomes so rejected comments leave the
         # moderation pending queue (get_pending_comments filters is_approved
         # AND reviewed_at is NULL) instead of lingering "pending" forever.
-        # Mirrors admin_service.approve_comment's naive-UTC stamp (DEC-066, TASK-139;
+        # Mirrors approve_comment's naive-UTC stamp (DEC-066, TASK-139;
         # ISS-452 keeps these writes consistent with the naive column).
         c.reviewed_at = utc_now_naive()
     if changed:
@@ -447,7 +447,7 @@ async def delete_comment(db: AsyncSession, comment_id: int) -> None:
     try:
         # Reparent surviving replies to the nearest surviving ancestor (or
         # top-level) so deleting a spam thread never orphans its replies or
-        # refuses on Postgres — mirrors admin_service.bulk_delete_comments (DEC-110).
+        # refuses on Postgres — mirrors bulk_delete_comments (DEC-110).
         # The old db.delete()+commit here orphaned replies on SQLite and 400'd
         # on Postgres whenever the comment had replies (backend deep-dive).
         deleted = await delete_comment_reparent(db, comment_id)
@@ -899,7 +899,7 @@ async def list_posts(
                 # id tiebreak: imported/bulk-restored rows share created_at; without a
                 # unique final sort key, offset pages can skip/duplicate across page
                 # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
-                # COALESCE pinned like admin_service.get_posts (TASK-535 parity): a raw-import
+                # COALESCE pinned like get_posts (TASK-535 parity): a raw-import
                 # NULL-pinned row must sort with the unpinned group, not first.
                 .order_by(
                     func.coalesce(models.Post.pinned, False).desc(),
@@ -915,7 +915,7 @@ async def list_posts(
         .all()
     )
     # Approved comment_count per post for this page (single grouped query, no
-    # N+1) — mirrors admin_service.get_posts so the admin dashboard can render counts
+    # N+1) — mirrors get_posts so the admin dashboard can render counts
     # for all statuses, not just the public published list.
     comment_counts: dict[int, int] = {}
     if posts:
