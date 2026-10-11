@@ -193,6 +193,7 @@ async def list_reader_post_likes(
     query = query.options(
         joinedload(models.Post.category),
         joinedload(models.Post.tags),
+        joinedload(models.Post.series),
         joinedload(models.Post.author),
     ).order_by(models.ReaderPostLike.created_at.desc(), models.Post.id.desc())
     if limit is not None:

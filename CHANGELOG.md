@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `list_reader_in_progress`, and the admin comment-activity stats each had a
   double `scalar() or 0 or 0` where the second default was unreachable dead
   code; the redundant `or 0` is removed (no behavior change).
-- ⚡ **author eager-loaded in search / liked / recommendations lists (N+1)** —
-  three reader-visible list queries serialized `PostList.author` but only
-  eager-loaded category/tags(/series), so every uncached page fired one extra
-  lazy `SELECT` per row. `/search` (both tsvector and CJK paths), the `/liked`
-  reader list, and reader recommendations now `joinedload` author with the rest
-  (finishing the round-465 author wave that covered the public post lists).
+- ⚡ **author + series eager-loaded in search / liked / recommendations lists (N+1)** —
+  three reader-visible list queries serialized `PostList.author` (and `series`)
+  but only eager-loaded category/tags(/series), so every uncached page fired one
+  extra lazy `SELECT` per row. `/search` (both tsvector and CJK paths), the
+  `/liked` reader list, and reader recommendations now `joinedload` author and
+  series with the rest (finishing the round-465 author wave + its series gap that
+  covered the public post lists).
 - ✏️ **deleting a highlight refreshes count / steps back from an emptied page** —
   the paginated /highlights page kept a stale `pagination.total` after a delete
   (wrong count label + pager), and deleting the last item on a late page left an
