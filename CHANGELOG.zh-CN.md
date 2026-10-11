@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- ⚡ **公开书签列表补充 author 与 series 预加载（N+1）**——读者主页的公开“已保存”标签在序列化
+  `PostList.author`（及 `series`）时，`list_reader_public_bookmarks` 只预加载了 category/tags，
+  每行都会多一次懒加载 `SELECT`。现与其余字段一起 `joinedload` author 与 series
+  （补全读者主页发现页的查询）。
 - 🧹 **/highlights 改用共享的平滑滚动助手**——分页页翻页时调用的是原生 `window.scrollTo({ top: 0 })`，
   而其它分页页（archive/follows/search/category）都用共享的 `scrollToPageTop()` 助手——效果相同，
   但与既有约定一致且 SSR 下安全无操作。

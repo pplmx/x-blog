@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ⚡ **author + series eager-loaded in public bookmarks list (N+1)** — the
+  reader profile's public "Saved posts" tab serialized `PostList.author`
+  (+`series`) but `list_reader_public_bookmarks` only eager-loaded
+  category/tags, so each row fired a lazy `SELECT`. Now `joinedload`s author
+  and series with the rest (completing the reader-profile discovery tables).
 - 🧹 **/highlights uses the shared smooth-scroll helper** — the paginated page
   called a raw `window.scrollTo({ top: 0 })` on page turn while every sibling
   paginated page (archive/follows/search/category) uses the shared

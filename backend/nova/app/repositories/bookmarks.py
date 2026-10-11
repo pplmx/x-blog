@@ -255,9 +255,12 @@ async def list_reader_public_bookmarks(
         )
     )
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
-    query = query.options(joinedload(models.Post.category), joinedload(models.Post.tags)).order_by(
-        models.ReaderBookmark.created_at.desc(), models.Post.id.desc()
-    )
+    query = query.options(
+        joinedload(models.Post.category),
+        joinedload(models.Post.tags),
+        joinedload(models.Post.series),
+        joinedload(models.Post.author),
+    ).order_by(models.ReaderBookmark.created_at.desc(), models.Post.id.desc())
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
     rows = list((await db.execute(query)).unique().scalars())
