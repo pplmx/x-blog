@@ -30,6 +30,12 @@
 		"resumeReading": "Resumed at {percent}%",
 		"backToTop": "Back to top",
 		"tableOfContents": "Table of contents",
+		"highlight": {
+			"save": "Save highlight",
+			"notePlaceholder": "Note (optional)",
+			"saved": "Highlight saved",
+			"saveFailed": "Couldn’t save this highlight"
+		},
 		"density": {
 			"label": "Text size",
 			"increase": "Increase text size",

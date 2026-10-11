@@ -36,6 +36,7 @@ const myLinks = [
 	{ to: "/comments", labelKey: "reader.nav.comments", icon: "lucide:message-square" },
 	{ to: "/liked", labelKey: "reader.nav.liked", icon: "lucide:heart" },
 	{ to: "/follows", labelKey: "reader.nav.follows", icon: "lucide:rss" },
+	{ to: "/highlights", labelKey: "reader.nav.highlights", icon: "lucide:pencil" },
 	{
 		to: "/notifications",
 		labelKey: "reader.nav.notifications",

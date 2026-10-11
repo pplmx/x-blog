@@ -1,0 +1,22 @@
+{
+	"highlights": {
+		"seoTitle": "我的摘录 — X-Blog",
+		"seoDesc": "你在全站保存的摘录,每条都能跳回原文。",
+		"title": "我的摘录",
+		"subtitle": "阅读时保存的文字片段,可附备注。",
+		"loading": "正在加载你的摘录…",
+		"empty": "还没有摘录",
+		"emptyHint": "在任意文章里选中文字,点击“保存摘录”即可收藏到这里。",
+		"unknownPost": "未关联的文章",
+		"delete": "删除",
+		"deleteConfirm": "确定删除这条摘录吗?",
+		"deleteFailed": "删除摘录失败。",
+		"saveFailed": "保存更改失败。",
+		"loadFailed": "加载摘录失败。",
+		"notePlaceholder": "添加备注…",
+		"save": "保存",
+		"cancel": "取消",
+		"editNote": "编辑备注",
+		"addNote": "添加备注"
+	}
+}

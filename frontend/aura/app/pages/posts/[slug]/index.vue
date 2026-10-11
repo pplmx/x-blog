@@ -20,6 +20,7 @@ import { useReadingDensity } from "~~/composables/useReadingDensity";
 import { readingMinutes } from "~~/composables/useReadingTime";
 import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 import { useResumeReading } from "~~/composables/useResumeReading";
+import { useArticleHighlights } from "~~/composables/useArticleHighlights";
 import { usePostSeo } from "~~/composables/useSeo";
 import { extractToc } from "~~/composables/useToc";
 
@@ -98,6 +99,12 @@ const coverImageUrl = computed(() => {
 // post's "Related Posts"/prev-next/series cards under the new article.
 const postId = computed(() => post.value?.id);
 const { data: relatedPosts, pending: relatedPending } = await useRelatedPosts(() => postId.value);
+
+// Reader passage highlights (round 466, DEC-511 / TASK-583): select-to-save
+// inside the article for signed-in readers, plus best-effort re-render of the
+// reader's saved passages. Non-fatal — reading never depends on it.
+const proseEl = ref<HTMLElement | null>(null);
+const highlight = useArticleHighlights(proseEl, postId, isAuthenticated);
 const { data: adjacent, pending: adjacentPending } = await useAdjacentPosts(() => postId.value);
 
 // "More from this author" (round 356): the person-shaped discovery strip.
@@ -892,9 +899,56 @@ function handleCommentSubmitted(created: Comment | undefined) {
 				<!-- Markdown content (density: the em-based body font/leading in
              MarkdownContent scale with the inherited --reader-density var set
              on <html> by useReadingDensity, DEC-288/TASK-373) -->
-				<div v-if="post.content" class="prose-config">
+				<div v-if="post.content" ref="proseEl" class="prose-config" @mouseup="highlight.onMouseUp">
 					<MarkdownContent :content="post.content" />
 				</div>
+
+				<!-- Select-to-highlight toolbar (round 466): appears at the
+             selection while a signed-in reader selects text in the article. -->
+				<Teleport to="body">
+					<div
+						v-if="highlight.selection.active"
+						role="toolbar"
+						:aria-label="t('post.highlight.save')"
+						class="fixed z-[90] flex -translate-x-1/2 items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+						:style="{
+							left: highlight.selection.x + 'px',
+							top: highlight.selection.y + 'px',
+						}"
+					>
+						<input
+							v-model="highlight.note"
+							type="text"
+							maxlength="1000"
+							:placeholder="t('post.highlight.notePlaceholder')"
+							class="w-40 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-800"
+						/>
+						<button
+							type="button"
+							class="inline-flex items-center gap-1 rounded-md bg-yellow-400/20 px-2.5 py-1 text-xs font-medium text-yellow-700 hover:bg-yellow-400/30 dark:text-yellow-300"
+							@mousedown.prevent
+							@click="highlight.save()"
+						>
+							<Icon icon="lucide:pencil" class="h-3.5 w-3.5" />
+							{{ t("post.highlight.save") }}
+						</button>
+						<button
+							type="button"
+							class="px-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+							aria-label="cancel"
+							@mousedown.prevent
+							@click="highlight.cancel()"
+						>
+							<Icon icon="lucide:x" class="h-3.5 w-3.5" />
+						</button>
+					</div>
+				</Teleport>
+				<p v-if="highlight.saved" role="status" class="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
+					{{ t("post.highlight.saved") }}
+				</p>
+				<p v-if="highlight.error" role="alert" class="mt-2 text-sm text-red-500">
+					{{ t("post.highlight.saveFailed") }}
+				</p>
 
 				<!-- Tags (each chip is followable in place for signed-in readers, DEC-196/TASK-216) -->
 				<footer

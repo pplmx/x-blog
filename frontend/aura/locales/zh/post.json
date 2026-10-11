@@ -30,6 +30,12 @@
 		"resumeReading": "已续读至 {percent}%",
 		"backToTop": "回到顶部",
 		"tableOfContents": "目录",
+		"highlight": {
+			"save": "保存摘录",
+			"notePlaceholder": "备注（可选）",
+			"saved": "摘录已保存",
+			"saveFailed": "保存摘录失败"
+		},
 		"density": {
 			"label": "字号调节",
 			"increase": "增大字号",
