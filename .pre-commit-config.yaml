@@ -43,10 +43,11 @@ repos:
       rev: ded8634232ffc633dc66d44f1b0dfe2bdf766542
       hooks:
           - id: ty
-            # Monorepo: `uv check` resolves [tool.ty] + the venv from the CWD, so
-            # run it in backend/nova (the stock entry runs at the repo root,
-            # which has neither — it would type-check everything with defaults).
-            entry: bash -c 'cd backend/nova && uv check --quiet --preview-features=check-command --ty-version=0.0.86'
+            # Same invocation as `just typecheck`/CI (`ty check --python .venv`).
+            # Runs in backend/nova so [tool.ty] is found, and --python .venv pins
+            # the project venv (prek's sandbox would otherwise point ty at its own
+            # python env via VIRTUAL_ENV and lose fastapi/sqlalchemy).
+            entry: bash -c 'cd backend/nova && ty check --python .venv'
 
     # Ruff lint — strict, fails on violations (I001/F401 etc.), NO --fix — plus
     # a format *check*. Each runs the bundled ruff on the changed Python files.

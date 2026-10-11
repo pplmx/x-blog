@@ -71,7 +71,7 @@ fix:
 
 # Run Python type checking (ty, global uv tool; config in [tool.ty] in backend/nova/pyproject.toml)
 typecheck:
-    cd backend/nova && ty check
+    cd backend/nova && ty check --python .venv
 
 # Audit Python dependencies for known vulnerabilities (mirrors CI's `uv audit`)
 audit:

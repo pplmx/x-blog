@@ -40,8 +40,9 @@ jobs:
       - name: Backend type check (ty)
         run: |
           cd backend/nova
-          # ty is a global uv tool; invoke ephemerally (uvx ty check).
-          uvx ty check
+          # ty is a global uv tool; invoke ephemerally. Same command as `just
+          # typecheck` (uvx ty check --python .venv).
+          uvx ty check --python .venv
 
       - name: Backend dependency vulnerability audit
         run: |
