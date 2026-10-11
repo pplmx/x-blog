@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🛡️ **highlight text can't be whitespace-only** — `min_length=1` counts raw
+  characters, so a `"   "` passage passed validation and then stripped to an
+  empty saved highlight. `ReaderHighlightCreate.text` now strips before length
+  validation (same `_strip_blank` guard as titles/bodies), so whitespace-only
+  is a 422 and saved text is trimmed.
 - 🔢 **/highlights is now paginated** — the saved-passages page previously
   fetched a hard-coded `limit=100` with no way to reach older highlights. It
   now pages by `?page=` (deep-linkable, windowed+ellipsis buttons, out-of-range

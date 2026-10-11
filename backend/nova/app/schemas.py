@@ -918,8 +918,17 @@ class CommentPublic(CommentBase):
 
 class ReaderHighlightCreate(BaseModel):
     post_id: IdInt
+    # min_length=1 alone does not reject "   " (Pydantic counts raw chars):
+    # strip before length validation (same _strip_blank guard as titles/bodies,
+    # round-276 deep-dive) so whitespace-only text is a 422, not a blank
+    # highlight saved after the router's .strip().
     text: Annotated[NonNulStr, Field(min_length=1, max_length=300)]
     note: Annotated[NonNulStr | None, Field(default=None, max_length=1000)]
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def strip_text(cls, value: object) -> object:
+        return _strip_blank(value) if isinstance(value, str) else value
 
 
 class ReaderHighlightUpdate(BaseModel):

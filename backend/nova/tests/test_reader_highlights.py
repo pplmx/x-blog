@@ -98,6 +98,23 @@ class TestAddHighlight:
         resp = await client.post(HIGHLIGHTS, json={"post_id": 1, "text": ""}, headers=_auth(token))
         assert resp.status_code == 422
 
+    async def test_whitespace_only_text_rejected(self, client):
+        # min_length=1 counts raw chars, so "   " used to pass validation and
+        # then strip to an empty passage; the schema now strips before length
+        # validation (same guard as titles/bodies) -> 422.
+        token = await _token(client)
+        resp = await client.post(HIGHLIGHTS, json={"post_id": 1, "text": "   "}, headers=_auth(token))
+        assert resp.status_code == 422
+
+    async def test_text_is_stripped_before_saving(self, client, db_session):
+        post = await _create_post(db_session)
+        token = await _token(client)
+        resp = await client.post(
+            HIGHLIGHTS, json={"post_id": post.id, "text": "  trimmed passage  "}, headers=_auth(token)
+        )
+        assert resp.status_code == 201
+        assert resp.json()["text"] == "trimmed passage"
+
 
 class TestListHighlights:
     async def test_empty_list(self, client):
