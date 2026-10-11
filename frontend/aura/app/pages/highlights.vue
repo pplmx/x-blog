@@ -162,7 +162,9 @@ watch(isAuthenticated, (authed) => {
 			<p class="mt-2 text-gray-500 dark:text-gray-400">{{ t("highlights.subtitle") }}</p>
 		</header>
 
-		<p v-if="error" role="alert" class="mb-4 text-sm text-red-500">
+		<!-- Transient save/delete errors go here; load failures have their own
+		     retry block below so the message isn't shown twice. -->
+		<p v-if="error && error !== 'loadFailed'" role="alert" class="mb-4 text-sm text-red-500">
 			{{ t(`highlights.${error}`) }}
 		</p>
 
