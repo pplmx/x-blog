@@ -86,6 +86,7 @@ async def get_posts(
         joinedload(models.Post.category),
         joinedload(models.Post.tags),
         joinedload(models.Post.series),
+        joinedload(models.Post.author),
     )
 
     # Sort by pinned first (homepage/list emphasis — pinned is a UI-visibility
@@ -166,6 +167,7 @@ async def get_post(db: AsyncSession, post_id: int) -> models.Post | None:
                     joinedload(models.Post.category),
                     joinedload(models.Post.tags),
                     joinedload(models.Post.series),
+                    joinedload(models.Post.author),
                 )
                 .where(models.Post.id == post_id)
             )
@@ -185,6 +187,7 @@ async def get_post_by_slug(db: AsyncSession, slug: str) -> models.Post | None:
                     joinedload(models.Post.category),
                     joinedload(models.Post.tags),
                     joinedload(models.Post.series),
+                    joinedload(models.Post.author),
                 )
                 .where(models.Post.slug == slug)
             )
@@ -819,6 +822,7 @@ async def get_popular_posts(db: AsyncSession, limit: int = 5) -> list[models.Pos
                     joinedload(models.Post.category),
                     joinedload(models.Post.tags),
                     joinedload(models.Post.series),
+                    joinedload(models.Post.author),
                 )
                 # COALESCE NULL views to 0 in the ORDER BY: Post.views is nullable
                 # (Python-side default only), and Postgres ranks NULLs FIRST on DESC by
@@ -876,6 +880,7 @@ async def get_trending_posts(db: AsyncSession, days: int = 7, limit: int = 5) ->
                     joinedload(models.Post.category),
                     joinedload(models.Post.tags),
                     joinedload(models.Post.series),
+                    joinedload(models.Post.author),
                 )
                 .order_by(daily.c.window_views.desc(), models.Post.id.desc())
                 .limit(limit)
@@ -915,6 +920,7 @@ async def get_related_posts(db: AsyncSession, post_id: int, limit: int = 5) -> l
                         joinedload(models.Post.category),
                         joinedload(models.Post.tags),
                         joinedload(models.Post.series),
+                        joinedload(models.Post.author),
                     )
                     .order_by(_effective_publish_col().desc(), models.Post.id.desc())
                     .limit(limit)
@@ -956,6 +962,7 @@ async def get_related_posts(db: AsyncSession, post_id: int, limit: int = 5) -> l
             joinedload(models.Post.category),
             joinedload(models.Post.tags),
             joinedload(models.Post.series),
+            joinedload(models.Post.author),
         )
     )
 
@@ -1069,6 +1076,7 @@ async def get_adjacent_posts(db: AsyncSession, post_id: int) -> tuple[models.Pos
                     joinedload(models.Post.category),
                     joinedload(models.Post.tags),
                     joinedload(models.Post.series),
+                    joinedload(models.Post.author),
                 )
             )
         )
