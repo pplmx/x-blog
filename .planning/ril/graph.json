@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 466,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-11T19:11:01+00:00",
+  "updated_at": "2026-10-11T19:21:16+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -35027,6 +35027,18 @@
       "title": "chore: /highlights uses shared smooth-scroll helper",
       "commit": "ed0685735e3f49d1b18afb1e26abc745d665435f",
       "description": "Apped at the highlights page used raw window.scrollTo({top:0}); switched to shared scrollToPageTop() helper (smooth + SSR no-op), matching archive/follows/search/category. Consistency-only cleanup."
+    },
+    "CHG-840": {
+      "id": "CHG-840",
+      "type": "change",
+      "status": "active",
+      "version": 1,
+      "created_at": "2026-10-11T19:21:16+00:00",
+      "updated_at": "2026-10-11T19:21:16+00:00",
+      "touched_round": 466,
+      "title": "perf: eager-load author+series in public bookmarks list (N+1)",
+      "commit": "766e2b2976b86561851171cf44c252a5b4dfabbc",
+      "description": "Reader profile public Saved tab serializes PostList(author+series) but list_reader_public_bookmarks only eager-loaded category/tags -> per-row lazy SELECT. Added joinedload author+series. Completes reader-profile discovery tables (round 360/363); private bookmarks uses BookmarkItem (category/tags only) unaffected."
     }
   },
   "edges": [
@@ -52374,6 +52386,12 @@
       "to": "TASK-583",
       "type": "implements",
       "created_at": "2026-10-11T19:11:01+00:00"
+    },
+    {
+      "from": "CHG-840",
+      "to": "ISS-667",
+      "type": "resolves",
+      "created_at": "2026-10-11T19:21:16+00:00"
     }
   ]
 }
