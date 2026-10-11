@@ -87,9 +87,15 @@ ci: fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build
 # Run all tests
 test: test-backend test-nuxt
 
-# Run backend tests (enforces the 80% app-coverage gate on the full suite)
-test-backend:
-    cd backend/nova && uv run pytest -n auto --cov-fail-under=80
+# Run backend tests (enforces the 80% app-coverage gate on the full suite).
+# Cap xdist workers to 8 (same rationale as test-backend-postgres): -n auto
+# spawns one process per core, and on many-core boxes that means forking
+# hundreds of workers at once — a resource spike that can abort in constrained
+# contexts (e.g. the git pre-push hook). Each worker is its own SQLite file, so
+# more than a handful rarely helps. Defaults to min(cpu_count, 8); override:
+# just test-backend 16
+test-backend WORKERS=`python3 -c 'import os; print(min(os.cpu_count() or 1, 8))'`:
+    cd backend/nova && uv run pytest -n "{{WORKERS}}" --cov-fail-under=80
 
 # Run backend tests sequentially (debug)
 test-backend-seq:
