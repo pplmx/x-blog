@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+- ✨ **读者文章摘录（可附备注）**（round 466）——登录读者可在任意文章内选中文字保存为
+  摘录（可附简短私人备注）；已保存的摘录会在文章中高亮回显，并可在一个新的
+  `/highlights` 页面对其编辑备注 / 删除，每条都带回到原文的链接。后端新增
+  `reader_highlights` 表与迁移、读者级 CRUD（`/api/reader/me/highlights`）；前端提供
+  API 模块、`useArticleHighlights` 组合式函数、页内摘录工具条、导航入口、i18n 及
+  后端 + 前端测试。
 - ⚡ **图标首帧即现——lucide 改为离线打包（不再访问 iconify CDN）**——`Icon.vue`
   从在线的 `@iconify/vue` 切换到离线构建，只预注册应用实际用到的 lucide 图标
   （由 `scripts/generate-lucide-icons.mjs` 生成精简子集）。此前每个

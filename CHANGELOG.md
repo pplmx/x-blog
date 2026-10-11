@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ✨ **Reader passage highlights with notes (round 466)** — a signed-in reader
+  can select text inside any article and save it (optionally with a short
+  private note) as a highlight; saved passages are re-rendered in the article
+  and managed (edit note / delete) from a new `/highlights` page, each
+  deep-linking back to its post. Backend `reader_highlights` table + migration
+  and reader-scoped CRUD (`/api/reader/me/highlights`), frontend API module,
+  `useArticleHighlights` composable, in-post toolbar, nav entry, i18n, and
+  backend + frontend tests.
 - ⚡ **Icons render on first frame — lucide is now bundled offline (no iconify
   CDN round-trips)** — `Icon.vue` switched from the online `@iconify/vue` build
   to the offline one, pre-registering only the lucide icons the app actually
