@@ -621,7 +621,7 @@ async def increment_comment_likes(db: AsyncSession, comment_id: int, commit: boo
     return comment
 
 
-async def like_comment(db: AsyncSession, comment_id: int, ip_key: str) -> tuple[bool, models.Comment]:
+async def like_comment(db: AsyncSession, comment_id: int, ip_key: str) -> tuple[bool, models.Comment | None]:
     """Register a like from one source; idempotent per (comment, ip_key).
 
     Returns (is_new, updated_comment). Mirrors flag_comment's dedupe (security

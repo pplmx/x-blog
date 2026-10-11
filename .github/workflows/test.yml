@@ -27,18 +27,21 @@ jobs:
         run: |
           cd backend/nova
           uv sync
-          uv run ruff check .
-          uv run ruff format --check .
+          # ruff/rumdl are global uv tools, not project deps — invoke ephemerally
+          # so nothing depends on a project-installed linter.
+          uvx ruff check .
+          uvx ruff format --check .
           cd ../..
           # rumdl gates the maintained markdown docs (superpowers plans/specs are
           # excluded via .rumdl.toml). Run from the repo root so .rumdl.toml and
-          # the tracked docs are scanned, using the project-pinned rumdl.
-          uv run --project backend/nova rumdl check .
+          # the tracked docs are scanned.
+          uvx rumdl check .
 
-      - name: Backend type check (pyright)
+      - name: Backend type check (ty)
         run: |
           cd backend/nova
-          uv run pyright
+          # ty is a global uv tool; invoke ephemerally (uvx ty check).
+          uvx ty check
 
       - name: Backend dependency vulnerability audit
         run: |

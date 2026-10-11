@@ -35,19 +35,28 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.8.0",
-    "ruff>=0.16.1,<0.17",
-    "rumdl>=0.2.52,<0.3",
-    "pyright>=1.1.399",
     "httpx>=0.28.1",
 ]
 
-[tool.pyright]
-# Python type checking. Runs on app/ only (tests/migrations/scripts excluded).
+[tool.ty]
+# Python type checking (Astral `ty`, a global `uv tool` — not a project dep).
+# Runs on app/ only (tests/migrations/scripts excluded), matching the previous
+# pyright scope. `ty` reads project context from this config.
+[tool.ty.src]
 include = ["app"]
-exclude = ["**/tests/**", "**/migrations/**", "**/scripts/**"]
-pythonVersion = "3.14"
-venvPath = "."
-venv = ".venv"
+
+[tool.ty.environment]
+python-version = "3.14"
+
+# RSS/feed handlers type `request: Request = None` (FastAPI injects it; pyright's
+# `type: ignore[assignment]` doesn't suppress ty's `invalid-parameter-default`
+# for this well-known FastAPI-injection workaround). Suppress that one rule for
+# this file only rather than scattering ty-ignore comments.
+[[tool.ty.overrides]]
+include = ["app/routers/rss.py"]
+
+[tool.ty.overrides.rules]
+invalid-parameter-default = "ignore"
 
 # Ruff lint/format config lives in ruff.toml (single source of truth). The
 # [tool.ruff] block here was dead config — ruff.toml takes precedence, so the

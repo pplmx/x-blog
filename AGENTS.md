@@ -27,9 +27,9 @@ All canonical commands go through `just` (see the root `justfile`):
 | `just test-backend-postgres <N>`  | pytest against a real PostgreSQL (`TEST_DATABASE_URL`); conftest gives each xdist worker its own schema. Workers default to 8, not `-n auto` (auto can exceed the server's `max_connections`)          |
 | `just test-nuxt`                  | `pnpm test` (vitest)                                                                                                                                                                                   |
 | `just test-nuxt-coverage`         | `pnpm test:coverage`                                                                                                                                                                                   |
-| `just lint` / `just fmt-check`    | `ruff check . --fix` / `ruff format --check .`                                                                                                                                                         |
-| `just typecheck`                  | `uv run pyright` (config in `backend/nova/pyproject.toml`, runs on `app/` only)                                                                                                                        |
-| `just ci`                         | **`ci: fmt-check lint typecheck test`** — the full gate                                                                                                                                                |
+| `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) / `ruff format --check .` — use `just fix` for auto-fix.                                                                                                           |
+| `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `[tool.ty]` in `pyproject.toml`, runs on `app/` only)                                                                                           |
+| `just ci`                         | **`ci: fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build`** — the full local CI mirror (strict lint, audit, alembic drift check, rumdl, backend+frontend tests, Nuxt build) |
 | `just e2e`                        | Playwright against a live Nuxt dev server (auto-starts backend + Nuxt via `playwright.config.ts` webServer). Do NOT start a second Nuxt — it poisons the module cache and causes `nuxt.lock` conflicts |
 | `just migration` / `just migrate` | `alembic revision --autogenerate` / `alembic upgrade head`                                                                                                                                             |
 
@@ -38,8 +38,9 @@ Gotchas:
 - **The coverage gate is enforced** — `--cov-fail-under=80` is in the recipe and
   `fail_under` is configured in `[tool.coverage.report]`; both local run and CI
   enforce the same 80% bar. Never weaken or skip it to make the suite pass.
-- pyright, ruff, format, and coverage must **all** pass — they are non-optional
-  gates, not suggestions.
+- ty, ruff, format, and coverage must **all** pass — they are non-optional
+  gates, not suggestions. `ty`, `ruff`, and `rumdl` are **global `uv tool`
+  installs** (set up by `just hooks`), not project dependencies.
 - Ruff lint/format config is the single source of truth in `ruff.toml`; the
   `[tool.ruff]` block in `pyproject.toml` is dead config and `[tool.pytest]`
   `addopts = "--cov"` is what makes every local test run measure coverage.
@@ -53,7 +54,7 @@ Gotchas:
   lists each distinct change clearly and concisely (what and why per bullet).
 - Convention: `type(scope): subject`. Types seen: `fix`, `feat`, `test`,
   `chore`. Examples:
-    - `fix(export): type CSV row param covariantly (Sequence) to satisfy pyright`
+    - `fix(export): type CSV row param covariantly (Sequence) to satisfy ty`
     - `feat(frontend): offline reading for bookmarked posts via service worker`
 - When you do a code change that affects RIL work, **reference the RIL node ids
   in the commit message**, e.g. `fix(core): ... (RIL TASK-001, ISS-006)`.

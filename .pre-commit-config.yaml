@@ -1,6 +1,7 @@
 default_install_hook_types:
     - pre-commit
     - commit-msg
+    - pre-push
 
 default_stages:
     - pre-commit
@@ -36,3 +37,48 @@ repos:
           - id: rumdl
             args: [--fix]
           - id: rumdl-fmt
+
+    # Astral type checker (global `uv tool ty`; runs the whole backend project).
+    - repo: https://github.com/astral-sh/ty-pre-commit
+      rev: ded8634232ffc633dc66d44f1b0dfe2bdf766542
+      hooks:
+          - id: ty
+            # Monorepo: `uv check` resolves [tool.ty] + the venv from the CWD, so
+            # run it in backend/nova (the stock entry runs at the repo root,
+            # which has neither — it would type-check everything with defaults).
+            entry: bash -c 'cd backend/nova && uv check --quiet --preview-features=check-command --ty-version=0.0.86'
+
+    # Ruff lint — strict, fails on violations (I001/F401 etc.), NO --fix — plus
+    # a format *check*. Each runs the bundled ruff on the changed Python files.
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: 44b5042edab9382aba712eed4f9c7bab7a3d6a3e
+      hooks:
+          - id: ruff
+          - id: ruff-format
+            args: [--check]
+
+    # Keep uv.lock in sync with pyproject.toml.
+    - repo: https://github.com/astral-sh/uv-pre-commit
+      rev: 2e145a365871c9fef3715d38b9b7393ce4174c85
+      hooks:
+          - id: uv-lock
+            # Monorepo: the Python project lives in backend/nova — the stock
+            # entry runs `uv lock` at the repo root, which has no pyproject.toml.
+            entry: bash -c 'cd backend/nova && uv lock'
+            files: ^backend/nova/(uv\.lock|pyproject\.toml)$
+
+    # Local shift-left gates: frontend lint at commit; the heavy pre-push gate
+    # runs the entire local CI mirror (`just ci`) so a red push never reaches CI.
+    - repo: local
+      hooks:
+          - id: frontend-lint
+            name: frontend lint (oxlint)
+            entry: bash -c 'cd frontend/aura && pnpm lint'
+            language: system
+            types_or: [javascript, ts, vue]
+          - id: ci-gate
+            name: full CI gate (just ci)
+            entry: bash -c 'cd "$(git rev-parse --show-toplevel)" && just ci'
+            language: system
+            stages: [pre-push]
+            always_run: true

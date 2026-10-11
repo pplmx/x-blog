@@ -1,7 +1,7 @@
 # X-Blog Just Commands
 
 # Install all dependencies and git hooks
-install:
+install: hooks
     cd backend/nova && uv sync
     cd frontend/aura && pnpm install
 
@@ -11,7 +11,8 @@ hooks:
     uv tool install prek
     uv tool install rumdl
     uv tool install ruff
-    prek install --hook-type commit-msg --hook-type pre-push
+    uv tool install ty
+    prek install
     @echo "✓ Git hooks installed"
 
 # Initialize database with sample data (dev: creates admin/admin123)
@@ -45,11 +46,11 @@ frontend:
 nuxt:
     cd frontend/aura && pnpm dev --port 34567
 
-# Lint code
+# Lint code (strict, non-mutating — mirrors CI; use `just fix` to auto-fix)
 lint:
-    cd backend/nova && uv run ruff check . --fix
-    cd frontend/aura && pnpm lint:fix
-    uv run --project backend/nova rumdl fmt
+    cd backend/nova && ruff check .
+    cd frontend/aura && pnpm lint
+    rumdl check .
 
 # Format code
 format:
@@ -57,23 +58,31 @@ format:
 
 # Format check (CI style)
 fmt-check:
-    cd backend/nova && uv run ruff format --check .
+    cd backend/nova && ruff format --check .
     cd frontend/aura && pnpm lint
-    uv run --project backend/nova rumdl fmt
+    rumdl check .
 
 # Auto-fix issues
 fix:
-    cd backend/nova && uv run ruff check . --fix
-    cd backend/nova && uv run ruff format .
+    cd backend/nova && ruff check . --fix
+    cd backend/nova && ruff format .
     cd frontend/aura && pnpm lint:fix
-    uv run --project backend/nova rumdl fmt
+    rumdl fmt
 
-# Run Python type checking (pyright, config in backend/nova/pyproject.toml)
+# Run Python type checking (ty, global uv tool; config in [tool.ty] in backend/nova/pyproject.toml)
 typecheck:
-    cd backend/nova && uv run pyright
+    cd backend/nova && ty check
 
-# CI: run all checks
-ci: fmt-check lint typecheck test
+# Audit Python dependencies for known vulnerabilities (mirrors CI's `uv audit`)
+audit:
+    cd backend/nova && uv audit
+
+# Build the Nuxt app (mirrors CI's `pnpm build`)
+frontend-build:
+    cd frontend/aura && pnpm build
+
+# CI: run all checks (local mirror of CI's runnable gate)
+ci: fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build
 
 # Run all tests
 test: test-backend test-nuxt
@@ -166,13 +175,25 @@ migration:
 migrate:
     cd backend/nova && uv run alembic upgrade head
 
+# Verify the alembic baseline builds a fresh SQLite DB with no model drift
+# (mirrors CI: fresh DB + `alembic check`). Leaves no DB behind.
+migrate-check:
+    cd backend/nova && rm -f _mig_check.db
+    cd backend/nova && DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic upgrade head
+    cd backend/nova && DATABASE_URL=sqlite:///./_mig_check.db JWT_SECRET_KEY=ci uv run alembic check
+    cd backend/nova && rm -f _mig_check.db
+
 # Show migration history
 migration-history:
     cd backend/nova && uv run alembic history
 
 # Lint and format markdown
 rumdl:
-    uv run --project backend/nova rumdl fmt
+    rumdl fmt
+
+# Check (no fix) all markdown per .rumdl.toml — mirrors CI
+rumdl-check:
+    rumdl check .
 
 # Show help
 default:

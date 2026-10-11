@@ -547,7 +547,7 @@ async def confirm_email_change(
             )
             .execution_options(synchronize_session=False)
         )
-    ).rowcount  # type: ignore[reportAttributeAccessIssue]
+    ).rowcount  # ty: ignore[unresolved-attribute] — SQLAlchemy CursorResult.rowcount
     if redeemed == 0:
         await db.rollback()
         raise ValueError("Invalid or expired verification link")
