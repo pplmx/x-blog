@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **select-to-save highlight no longer pollutes the next post on a mid-save SPA navigation** —
+  saving a passage awaited the POST, then wrapped + added the highlight without re-checking the
+  post; switching to another article before the save resolved would drop a `<mark>` into the NEW
+  post's text and add the old post's highlight to its list. Now guarded by the saved post id
+  (ISS-572-class), matching the profile/search/badge seq guards (RIL ISS-672).
 - 🐛 **public liked/bookmarked post lists now carry real comment_count/reading_time (N+1 helper gap)** —
   `list_reader_post_likes` and `list_reader_public_bookmarks` serialized `PostList` without the
   shared `_populate_post_metrics`, so the public profile "Liked"/"Saved" tabs (and `/me/likes`) always

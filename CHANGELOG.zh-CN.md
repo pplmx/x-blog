@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- 🐛 **选中即存的高亮在保存中途切换文章时不再污染下一篇**——保存摘录时会等待 POST 完成，随后
+  再包裹并加入高亮而没有重新核对文章；在保存结束前切到另一篇文章，会往“新”文章正文里塞入
+  一个 `<mark>`，并把旧文章的高亮加进新文章列表。现按保存时的文章 id 加守卫（ISS-572 同类，
+  与 profile/search/badge 的 seq 守卫一致，RIL ISS-672）。
 - 🐛 **公开“点赞 / 已保存”文章列表补全真实的评论数与阅读时长（N+1 助手缺口）**——`list_reader_post_likes`
   与 `list_reader_public_bookmarks` 序列化 `PostList` 时没有调用共享的 `_populate_post_metrics`，
   导致读者主页的公开“点赞 / 已保存”标签页（及 `/me/likes`）无论有多少已批准的评论都恒报 `comment_count=0`。
