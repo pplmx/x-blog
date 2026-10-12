@@ -17,6 +17,7 @@ from ..database import get_db
 from ..dates import inclusive_end_of_day, parse_bound
 from ..limiter import RATE_LIMIT_SEARCH, limiter
 from ..models import Post
+from ..repositories._base import _populate_post_metrics
 from ..schemas import CommentPostBrief, CommentPublic, NonNulStr, PageInt, PostList
 from ..suggest import SUGGEST_LIMIT, suggest_terms
 
@@ -203,6 +204,7 @@ async def search(
     snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
 
     items = []
+    await _populate_post_metrics(db, posts)
     for p in posts:
         if use_headline:
             snippet = snippets.get(p.id)

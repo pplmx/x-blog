@@ -354,3 +354,45 @@ async def test_search_query_over_max_length_rejected(client):
     assert response.status_code == 422
     data = response.json()
     assert data["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.fixture(scope="function")
+async def post(client, auth_headers):
+    response = await client.post(
+        "/api/posts",
+        json={
+            "title": "Search Comment Post",
+            "slug": "search-comment-post",
+            "content": "Searchable body text",
+            "published": True,
+        },
+        headers=auth_headers,
+    )
+    return response.json()
+
+
+async def test_search_result_carries_real_comment_count(client, post, auth_headers):
+    """A /api/search PostList must expose the true approved comment_count.
+
+    Before this fix, search built PostList.model_validate(p) without
+    _populate_post_metrics (an oversight vs. every other PostList-producing
+    path), so every search hit reported comment_count=0 regardless of how many
+    approved comments the post had — misleading for any API consumer. Approve a
+    comment on a searchable post and expect the search item to count it.
+    """
+    # A post, one unapproved comment (not yet counted), then approve it.
+    comment = (
+        await client.post(
+            f"/api/comments/post/{post['id']}",
+            json={"nickname": "X", "email": "x@x.com", "content": "Searched body"},
+        )
+    ).json()
+    assert (await client.get("/api/search", params={"q": post["title"]})).json()["items"][0]["comment_count"] == 0
+
+    await client.patch(
+        f"/api/comments/{comment['id']}/approve",
+        json={"approved": True},
+        headers=auth_headers,
+    )
+    item = (await client.get("/api/search", params={"q": post["title"]})).json()["items"][0]
+    assert item["comment_count"] == 1
