@@ -12,7 +12,7 @@ import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useArticleHighlights } from "../../composables/useArticleHighlights";
-import { createReaderHighlight, getReaderHighlights } from "../../api/reader/highlights";
+import { createReaderHighlight, getReaderHighlights, type ReaderHighlight } from "../../api/reader/highlights";
 
 vi.mock("~~/api/reader/highlights", () => ({
 	createReaderHighlight: vi.fn(),
@@ -79,5 +79,60 @@ describe("useArticleHighlights", () => {
 
 		expect(document.querySelector("mark.reader-highlight")).toBeNull();
 		wrapper.unmount();
+	});
+
+	it("does not wrap into the new post when the reader navigates away mid-save", async () => {
+		// The save await can span an SPA nav to another /posts/[slug] (the [slug]
+		// component is reused, so postId/proseEl point at the NEW post). The created
+		// highlight persists server-side under the original post, but the client
+		// wrap + list prepend must not run against the new post's DOM/list — the
+		// ISS-572-class guard carries the savePostId and bails on a mismatch.
+		let settled: (created: ReaderHighlight) => void;
+		const pending = new Promise<ReaderHighlight>((res) => {
+			settled = res;
+		});
+		const postId = ref<number | null>(1);
+		const authenticated = ref(true);
+		let saveFn: (() => Promise<void>) | null = null;
+		let mouseUpFn: (() => void) | null = null;
+		let highlightsRef: Ref<ReaderHighlight[]> | null = null;
+		const wrapper = mount(
+			defineComponent({
+				setup() {
+					const api = useArticleHighlights(proseEl, postId, authenticated);
+					saveFn = api.save;
+					mouseUpFn = api.onMouseUp;
+					highlightsRef = api.highlights;
+					return () => h("div", { ref: proseEl }, ["Some passage to mark. And more."]);
+				},
+			}),
+			{ attachTo: document.body },
+		);
+
+		vi.mocked(createReaderHighlight).mockReturnValue(pending);
+		// Select the passage (anchor inside proseEl), then let onMouseUp populate
+		// the composable's reactive selection.text — only then is a save real.
+		const sel = document.createRange();
+		sel.selectNodeContents(proseEl.value as HTMLElement);
+		document.getSelection()?.removeAllRanges();
+		document.getSelection()?.addRange(sel);
+		mouseUpFn!();
+		// The new post's prose IS connected to the document, so a guardless
+		// wrapPassage would drop a real <mark> we can observe.
+		const newProse = document.createElement("div");
+		newProse.textContent = "Some passage to mark. And more.";
+		document.body.appendChild(newProse);
+		const savePromise = saveFn!();
+		postId.value = 2;
+		proseEl.value = newProse; // new post's prose node
+		// Resolve the save: it must bail — neither wrap the new post's prose nor
+		// prepend the stale highlight into the new post's list.
+		settled({ id: 99, post_id: 2, text: "Some passage to mark. And more.", note: null, created_at: null, post: null });
+		await savePromise;
+
+		expect(newProse.querySelector("mark.reader-highlight")).toBeNull();
+		expect(highlightsRef!.value.some((h) => h.id === 99)).toBe(false);
+		wrapper.unmount();
+		newProse.remove();
 	});
 });

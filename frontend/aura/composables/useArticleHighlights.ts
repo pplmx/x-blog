@@ -96,12 +96,26 @@ export function useArticleHighlights(
 		if (!postId.value || !selection.text) return;
 		error.value = "";
 		saved.value = false;
+		// Save is keyed to the post being read when it starts. The await can
+		// span an SPA navigation to another /posts/[slug] (the [slug] component
+		// is reused, so proseEl/postId now point at the NEW post). The created
+		// highlight is persisted server-side under the ORIGINAL post whatever
+		// happens, but the client wrap + list prepend below must not run against
+		// the new post's DOM/list — re-render the original's loadExisting path
+		// instead. Generation guard matches the profile/search/badge seq guards.
+		const savePostId = postId.value;
 		try {
 			const created = await createReaderHighlight(
-				postId.value,
+				savePostId,
 				selection.text,
 				note.value.trim() || undefined,
 			);
+			if (postId.value !== savePostId) {
+				// Navigated away mid-save: leave the new post's highlights alone;
+				// its own loadExisting fetches the server truth on return.
+				cancel();
+				return;
+			}
 			wrapPassage(proseEl.value, selection.text, created.id);
 			highlights.value = [created, ...highlights.value.filter((h) => h.id !== created.id)];
 			saved.value = true;
