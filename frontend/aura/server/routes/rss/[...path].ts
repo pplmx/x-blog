@@ -13,12 +13,12 @@
  * dedicated files first.
  */
 
+import { isScopedFeedPath } from "../../utils/scopedFeedPath";
 import { proxyConditionalFeed } from "../../utils/proxyFeed";
 
 export default defineEventHandler((event) => {
 	const path = getRouterParam(event, "path") || "";
-	const kind = path.split("/")[0];
-	if (kind !== "category" && kind !== "series" && kind !== "authors") {
+	if (!isScopedFeedPath(path)) {
 		throw createError({ statusCode: 404, statusMessage: "Not found" });
 	}
 	return proxyConditionalFeed(event, `/rss/${path}`, "application/rss+xml");

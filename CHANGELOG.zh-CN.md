@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+- 🔒 **作用域 RSS 抓取代理严格限定到真正的抓取形态（路径穿越加固)**——前端通配路由
+  `server/routes/rss/[...path].ts` 转发 `/rss/{path}` 到后端前，只校验了**第一个**路径段
+  （`category|series|authors`），但 HTTP 客户端解析构造出的 URL 时会解析 `..`/点段并归一化
+  多余的 `/`/`\`——于是 `category/../../admin/...` 可逃出 `/rss/` 前缀，把 GET 转发到任意的
+  后端路径。现要求路径恰为两个安全段（如 `category/{name}`），且不含 `..`/反斜杠，否则 404
+  （RIL ISS-674）。
 - 🐛 **作者 / 系列 / 读者关注按钮在切换途中不再错误点亮“新”目标**——`AuthorFollowButton`、`SeriesFollowButton`
   与 `ReaderFollowButton` 在等待关注状态变更后，写入 `following`/`followerCount` 时没有重新核对目标 id。
   这些控件未按 `authorId`/`seriesId`/`readerId` 加 key，会在 SPA 导航后复用同一实例，因此在读友切到另一篇文章 /

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **scoped RSS feed proxy bound to the true feed shapes (path-traversal hardening)** —
+  the frontend catch-all `server/routes/rss/[...path].ts` validated only the FIRST path
+  segment (`category|series|authors`) before forwarding `/rss/{path}` to the backend, but
+  the HTTP client resolves `..`/dot-segments and normalises extra `/`/`\` when it parses the
+  constructed URL — so `category/../../admin/...` escaped the `/rss/` prefix and forwarded a
+  GET to arbitrary backend paths. Now the path must be exactly two safe segments
+  (`category/{name}` etc.) with no `..`/backslash, else 404 (RIL ISS-674).
 - 🐛 **author/series/reader follow buttons no longer stamp the wrong target after a mid-toggle SPA navigation** —
   `AuthorFollowButton`, `SeriesFollowButton`, and `ReaderFollowButton` awaited the follow state change, then
   wrote `following`/`followerCount` without re-checking the target id. These controls survive `authorId`/
