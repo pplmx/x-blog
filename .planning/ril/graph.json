@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 467,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-12T00:58:16+00:00",
+  "updated_at": "2026-10-12T01:22:32+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -35083,6 +35083,28 @@
       "touched_round": 467,
       "title": "fix(frontend): home feed uses shared scrollToPageTop helper (ISS-669)",
       "commit": "auto"
+    },
+    "ISS-670": {
+      "id": "ISS-670",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-12T01:22:28+00:00",
+      "updated_at": "2026-10-12T01:22:28+00:00",
+      "touched_round": 467,
+      "title": "/api/search post results report comment_count=0 and reading_time=1 always (PostList serialized without _populate_post_metrics, unlike every other PostList path)",
+      "source": "audit"
+    },
+    "CHG-843": {
+      "id": "CHG-843",
+      "type": "change",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-12T01:22:31+00:00",
+      "updated_at": "2026-10-12T01:22:31+00:00",
+      "touched_round": 467,
+      "title": "fix(search): populate comment_count/reading_time on /api/search PostList (ISS-670)",
+      "commit": "auto"
     }
   },
   "edges": [
@@ -52449,6 +52471,13 @@
       "to": "ISS-669",
       "type": "resolves",
       "created_at": "2026-10-12T00:58:16+00:00",
+      "commit": "auto"
+    },
+    {
+      "from": "CHG-843",
+      "to": "ISS-670",
+      "type": "resolves",
+      "created_at": "2026-10-12T01:22:32+00:00",
       "commit": "auto"
     }
   ]
