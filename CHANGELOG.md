@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
+  wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
+  cache: every cleared post's document stayed cached, so it would still read offline and keep its
+  "available offline" cache entry — violating the invariant that the offline set matches the saved set
+  (which per-row remove already honours). The clear path now snapshots the saved post paths and prunes them
+  from the offline cache after the clear (RIL ISS-678).
 - 🧹 **print view's toolbar back link goes home on a dead/stale print URL** — on a re-slugged or
   deleted post, `/posts/[slug]/print`'s toolbar "back to article" link rendered unconditionally at
   the same dead `/posts/{slug}` that just 404'd, alongside the body's Home fallback. It now falls

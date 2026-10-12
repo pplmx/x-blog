@@ -49,6 +49,26 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 	}),
 }));
 
+// Mock useOfflineBookmarks: the page's off "available offline" badge reads
+// cache state, and per-row remove / clear-all prune the SW cache. Asserting
+// the prune call verifies the offline set stays in sync with the saved set.
+const mockPrune = vi.fn(async () => {});
+const mockRefreshOfflineStatus = vi.fn(async () => {});
+vi.mock("../../composables/useOfflineBookmarks", () => ({
+	useOfflineBookmarks: () => ({
+		isAvailable: () => false,
+		precache: vi.fn(),
+		prune: (...args: unknown[]) => mockPrune(...args),
+		refreshOfflineStatus: () => mockRefreshOfflineStatus(),
+	}),
+}));
+
+// After each test, reset the offline-mock records so counts don't leak.
+afterEach(() => {
+	mockPrune.mockClear();
+	mockRefreshOfflineStatus.mockClear();
+});
+
 // Mock useSeo composable
 vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
@@ -385,6 +405,28 @@ describe("Bookmarks page", () => {
 			await flushPromises();
 
 			expect(mockClearAll).toHaveBeenCalled();
+			vi.unstubAllGlobals();
+		});
+
+		it("prunes the offline cache on clear-all so unsaved posts stop reading offline (offline-set must match saved set)", async () => {
+			// Clear-all wipes local + cloud but previously left the SW offline
+			// cache populated — a cleared bookmark would still read offline and
+			// keep its "available offline" cache entry. The clear must prune
+			// every cleared post's saved path (same invariant as per-row
+			// remove).
+			mockBookmarks.value = [sampleBookmark, { ...sampleBookmark, id: 2, slug: "other-post" }];
+			const expectedPaths = ["/posts/test-bookmarked-post", "/posts/other-post"];
+			mockClearAll.mockClear();
+			mockPrune.mockClear();
+			mockClearAll.mockResolvedValueOnce(true);
+			vi.stubGlobal("confirm", () => true);
+
+			const wrapper = mountBookmarks();
+			await wrapper.find("button[title='清空全部']").trigger("click");
+			await flushPromises();
+
+			expect(mockClearAll).toHaveBeenCalled();
+			expect(mockPrune).toHaveBeenCalledWith(expectedPaths);
 			vi.unstubAllGlobals();
 		});
 

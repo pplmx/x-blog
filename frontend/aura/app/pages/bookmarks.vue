@@ -68,6 +68,10 @@ async function handleClearAll() {
 	// (like history.vue's clearHistory `clearing` flag).
 	if (clearingAll.value) return;
 	if (confirm(t("bookmarks.confirmClear"))) {
+		// Capture the saved paths BEFORE clearing: clearAll wipes the shared
+		// bookmarks ref, so the path list must be snapshotted first for the
+		// offline-cache prune below.
+		const pathsToPrune = bookmarks.value.map(postPath);
 		// clearAll wipes the localStorage mirror AND the cloud copy when signed
 		// in, so the clear actually sticks (TASK-233). The old clearBookmarks
 		// only cleared local storage and the next cloud merge resurrected rows.
@@ -79,6 +83,11 @@ async function handleClearAll() {
 		} finally {
 			clearingAll.value = false;
 		}
+		// Offline cache hygiene (same invariant as per-row remove): every now-
+		// unsaved post's cached copy must drop so the reader's offline set
+		// matches their (emptied) saved set — otherwise a cleared bookmark
+		// would still read offline and stay in the badge-source cache.
+		void prune(pathsToPrune);
 		refreshFolderCountsSoon();
 	}
 }
