@@ -135,4 +135,64 @@ describe("useArticleHighlights", () => {
 		wrapper.unmount();
 		newProse.remove();
 	});
+
+	it("does not paint the old post's highlights into the new post's prose when the reader navigates mid-load", async () => {
+		// loadExisting awaits getReaderHighlights; if the reader SPA-navigates to
+		// another /posts/[slug] while it's in flight, the stale resolve must not
+		// overwrite the NEW post's highlight list or inject <mark>s into its prose.
+		// Mirrors the save() nav guard (ISS-572-class, ISS-672).
+		const stale = Promise.withResolvers<{ items: ReaderHighlight[]; total: number }>();
+		const fresh = Promise.withResolvers<{ items: ReaderHighlight[]; total: number }>();
+		// call 1 = post 1 (deferred), call 2 = post 2 (deferred) — both controlled
+		// so the stale resolve can't be masked by a later concurrent overwrite.
+		vi.mocked(getReaderHighlights)
+			.mockReturnValueOnce(stale.promise)
+			.mockReturnValueOnce(fresh.promise);
+		const postId = ref<number | null>(1);
+		const authenticated = ref(true);
+		let highlightsRef: Ref<ReaderHighlight[]> | null = null;
+		const wrapper = mount(
+			defineComponent({
+				setup() {
+					const api = useArticleHighlights(proseEl, postId, authenticated);
+					highlightsRef = api.highlights;
+					return () => h("div", { ref: proseEl }, ["Some passage to mark. And more."]);
+				},
+			}),
+			{ attachTo: document.body },
+		);
+
+		// Flip to a new post while the post-1 load is pending: postId+proseEl now
+		// point at the new post, whose prose is a DIFFERENT connected node.
+		const newProse = document.createElement("div");
+		newProse.textContent = "Different post content.";
+		document.body.appendChild(newProse);
+		postId.value = 2;
+		proseEl.value = newProse;
+		// Resolve the STALE load for post 1 (post-2's load stays pending, so the
+		// post-1 continuation is the only writer at this moment). A guardless
+		// loadExisting would render the stale <mark> into the new post's prose
+		// and drop it into the new list right now.
+		stale.resolve({
+			items: [{ id: 55, post_id: 1, text: "Some passage to mark.", note: null, created_at: null, post: null }],
+			total: 1,
+		});
+		await vi.waitFor(() => {
+			expect(highlightsRef!.value).toBeDefined();
+			// Let the stale resolve's continuation settle.
+		});
+		await Promise.resolve();
+
+		expect(newProse.querySelector("mark.reader-highlight")).toBeNull();
+		expect(highlightsRef!.value.some((h) => h.id === 55)).toBe(false);
+
+		// Finish the current post's own load (post 2, empty) so the suite ends
+		// clean and confirms the fresh request came through with the new post id.
+		fresh.resolve({ items: [], total: 0 });
+		await vi.waitFor(() => {
+			expect(vi.mocked(getReaderHighlights).mock.calls.some((c) => c[2] === 2)).toBe(true);
+		});
+		wrapper.unmount();
+		newProse.remove();
+	});
 });

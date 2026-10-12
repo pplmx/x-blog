@@ -127,12 +127,20 @@ export function useArticleHighlights(
 
 	async function loadExisting() {
 		if (!postId.value || !isAuthenticated.value) return;
+		// Guard the fetch to the post this call STARTED on: the component
+		// instance survives SPA navigation between posts (the prose element is
+		// reused), so a slow response resolving after postId flipped would
+		// overwrite the NEW post's highlight list with the OLD post's passages
+		// and inject stale `<mark>`s into its prose — the same stale-response
+		// class `save()` guards above (ISS-572-class, mirrors ISS-672).
+		const loadPostId = postId.value;
 		try {
 			// Server-side post_id filter: fetch only this post's passages rather
 			// than the reader's whole (possibly >100) highlight list and filtering
 			// client-side — the old client filter silently dropped this post's
 			// passages that sat on a later page.
-			const data = await getReaderHighlights(1, 100, postId.value);
+			const data = await getReaderHighlights(1, 100, loadPostId);
+			if (postId.value !== loadPostId) return; // reader navigated mid-fetch
 			// ?? [] : a non-{items} payload must not set highlights to undefined —
 			// the prose watcher reads highlights.value.length (slug.spec's $fetch
 			// stub returns a bare object, exercising exactly this path).

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **reading-load highlight fetch no longer paints the old post's passages into the next post** —
+  `useArticleHighlights.loadExisting` awaited the highlight GET, then wrote the list and
+  injected `<mark>`s without re-checking the post id. The reader's post page component is reused
+  across SPA navigation, so a slow response resolving after the reader switched articles would drop
+  the OLD post's passages into the NEW post's prose. Now guarded by the loaded post id
+  (ISS-572-class, same as the existing save() guard, RIL ISS-676).
 - 🔒 **API proxy rejects `..`/backslash path traversal (defense-in-depth)** —
   `server/routes/api/[...path].ts` concatenates the incoming path into
   `${BACKEND_URL}/api/${path}` without validating it; the HTTP client resolves
