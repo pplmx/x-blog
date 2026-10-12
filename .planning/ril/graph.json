@@ -2,7 +2,7 @@
   "ril_version": 1,
   "round": 467,
   "created_at": "2026-08-06T13:21:44+00:00",
-  "updated_at": "2026-10-12T01:28:09+00:00",
+  "updated_at": "2026-10-12T01:55:34+00:00",
   "nodes": {
     "COMP-001": {
       "id": "COMP-001",
@@ -35127,6 +35127,28 @@
       "touched_round": 467,
       "title": "fix(reader): populate comment_count/reading_time on public liked/bookmarked PostLists (ISS-671)",
       "commit": "auto"
+    },
+    "ISS-672": {
+      "id": "ISS-672",
+      "type": "issue",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-12T01:55:30+00:00",
+      "updated_at": "2026-10-12T01:55:30+00:00",
+      "touched_round": 467,
+      "title": "useArticleHighlights.save() runs its post-await wrap + list-prepend against the newly-navigated post when a reader SPA-navigates to another /posts/[slug] mid-save (stale cross-post mark + highlight pollution, ISS-572 class)",
+      "source": "audit"
+    },
+    "CHG-845": {
+      "id": "CHG-845",
+      "type": "change",
+      "status": "resolved",
+      "version": 1,
+      "created_at": "2026-10-12T01:55:34+00:00",
+      "updated_at": "2026-10-12T01:55:34+00:00",
+      "touched_round": 467,
+      "title": "fix(frontend): guard useArticleHighlights.save() against mid-save SPA navigation (ISS-672)",
+      "commit": "auto"
     }
   },
   "edges": [
@@ -52507,6 +52529,13 @@
       "to": "ISS-671",
       "type": "resolves",
       "created_at": "2026-10-12T01:28:09+00:00",
+      "commit": "auto"
+    },
+    {
+      "from": "CHG-845",
+      "to": "ISS-672",
+      "type": "resolves",
+      "created_at": "2026-10-12T01:55:34+00:00",
       "commit": "auto"
     }
   ]
