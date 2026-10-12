@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧹 **print view's toolbar back link goes home on a dead/stale print URL** — on a re-slugged or
+  deleted post, `/posts/[slug]/print`'s toolbar "back to article" link rendered unconditionally at
+  the same dead `/posts/{slug}` that just 404'd, alongside the body's Home fallback. It now falls
+  back to Home when the post is absent (round-299 toolbar gap, RIL ISS-677).
 - 🐛 **reading-load highlight fetch no longer paints the old post's passages into the next post** —
   `useArticleHighlights.loadExisting` awaited the highlight GET, then wrote the list and
   injected `<mark>`s without re-checking the post id. The reader's post page component is reused

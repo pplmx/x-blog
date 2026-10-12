@@ -39,11 +39,11 @@ function printPage() {
 				class="no-print flex items-center justify-between gap-3 mb-8 pb-5 border-b border-gray-100 dark:border-gray-800"
 			>
 				<NuxtLink
-					:to="`/posts/${route.params.slug}`"
+					:to="post ? `/posts/${route.params.slug}` : '/'"
 					class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
 				>
-					<Icon icon="lucide:arrow-left" class="w-4 h-4" />
-					{{ t("post.backToArticle") }}
+					<Icon icon="lucide:arrow-left" class="w-3.5 h-3.5" />
+					{{ t(post ? "post.backToArticle" : "common.action.backHome") }}
 				</NuxtLink>
 				<button
 					type="button"

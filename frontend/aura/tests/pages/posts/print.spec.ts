@@ -182,6 +182,16 @@ describe("Print / PDF view", () => {
 		expect(wrapper.text()).toContain("返回首页");
 	});
 
+	it("a missing print post's toolbar back link goes home, not to the dead slug (round-299 toolbar gap)", async () => {
+		const wrapper = await mountPrintPage({ post: null });
+		// The toolbar's "back to article" link rendered unconditionally at the
+		// dead /posts/{stale-slug}; on a 404 it must fall back to Home instead of
+		// pointing back at the same dead slug that just failed to load.
+		expect(wrapper.find("a[href='/posts/printable-article']").exists()).toBe(false);
+		expect(wrapper.find("a[href='/']").exists()).toBe(true);
+		expect(wrapper.text()).toContain("返回首页");
+	});
+
 	it("uses a reactive useHead title so SPA navigation between print slugs updates the tab (round 299)", async () => {
 		// The title is a getter closing over the post ref (not a one-shot
 		// evaluated value): SPA navigation between print slugs keeps this
