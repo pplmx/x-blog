@@ -33,6 +33,15 @@ function assertBodyWithinLimit(event: H3Event): void {
 
 export default defineEventHandler(async (event) => {
 	const path = getRouterParam(event, "path") || "";
+	// Defense-in-depth (same class as the scoped-feed proxy): the path is
+	// concatenated into `${BACKEND_URL}/api/${path}`, and the HTTP client
+	// resolves `..`/dot-segments when it parses the constructed URL. A crafted
+	// `..`/backslash here would escape the `/api/` prefix. Legitimate proxied
+	// paths (`reader/me/history`, `admin/posts`) only ever contain `/`, never
+	// `..`, `\`, or NUL, so rejecting those changes nothing valid.
+	if (path.includes("..") || path.includes("\\") || path.includes("\0")) {
+		throw createError({ statusCode: 400, message: "Invalid API path" });
+	}
 	const method = getMethod(event).toLowerCase();
 	// Forward the incoming query string — without it, ?page=2&q=... never
 	// reached the backend, silently breaking pagination/search/filters for

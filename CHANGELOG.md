@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **API proxy rejects `..`/backslash path traversal (defense-in-depth)** —
+  `server/routes/api/[...path].ts` concatenates the incoming path into
+  `${BACKEND_URL}/api/${path}` without validating it; the HTTP client resolves
+  dot-segments, so a crafted `..`/`\` could escape the `/api/` prefix and
+  forward a request (with the browser's credentials) to arbitrary backend
+  paths. Now rejected up front — legitimate proxied paths only ever contain
+  `/` (RIL ISS-675). Complement to the scoped-feed proxy fix (ISS-674).
 - 🔒 **scoped RSS feed proxy bound to the true feed shapes (path-traversal hardening)** —
   the frontend catch-all `server/routes/rss/[...path].ts` validated only the FIRST path
   segment (`category|series|authors`) before forwarding `/rss/{path}` to the backend, but

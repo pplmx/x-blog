@@ -83,6 +83,24 @@ const { loadHandler } = vi.hoisted(() => ({
 }));
 
 describe("API proxy", () => {
+	it("rejects .. traversal that would escape the /api/ prefix", async () => {
+		const handler = await loadHandler();
+		vi.stubGlobal("getRouterParam", (_event: unknown, param: string) =>
+			param === "path" ? "../../admin/security" : "",
+		);
+		await expect(handler({})).rejects.toThrow(/Invalid API path/);
+		expect(mockFetchRaw).not.toHaveBeenCalled();
+	});
+
+	it("rejects backslash traversal in the API path", async () => {
+		const handler = await loadHandler();
+		vi.stubGlobal("getRouterParam", (_event: unknown, param: string) =>
+			param === "path" ? "..\\..\\admin" : "",
+		);
+		await expect(handler({})).rejects.toThrow(/Invalid API path/);
+		expect(mockFetchRaw).not.toHaveBeenCalled();
+	});
+
 	it("forwards requests to the backend with correct URL", async () => {
 		const handler = await loadHandler();
 		await handler({});
