@@ -16,7 +16,14 @@ from app.cache import (
     clear_counter_caches,
 )
 
-from ._base import _bump_post_likes, _commit_reader_upsert, escape_like_pattern, is_publicly_visible, utc_now_naive
+from ._base import (
+    _bump_post_likes,
+    _commit_reader_upsert,
+    _populate_post_metrics,
+    escape_like_pattern,
+    is_publicly_visible,
+    utc_now_naive,
+)
 
 
 async def get_reader_bookmark(db: AsyncSession, reader_id: int, post_id: int) -> models.ReaderBookmark | None:
@@ -199,7 +206,9 @@ async def list_reader_post_likes(
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
     rows = list((await db.execute(query)).unique().scalars())
-    return [p for p in rows if is_publicly_visible(p)], total
+    visible = [p for p in rows if is_publicly_visible(p)]
+    await _populate_post_metrics(db, visible)
+    return visible, total
 
 
 async def list_reader_post_likes_for_export(
@@ -264,7 +273,9 @@ async def list_reader_public_bookmarks(
     if limit is not None:
         query = query.offset((page - 1) * limit).limit(limit)
     rows = list((await db.execute(query)).unique().scalars())
-    return [p for p in rows if is_publicly_visible(p)], total
+    visible = [p for p in rows if is_publicly_visible(p)]
+    await _populate_post_metrics(db, visible)
+    return visible, total
 
 
 async def list_reader_bookmarks(

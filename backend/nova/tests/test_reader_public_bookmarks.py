@@ -124,6 +124,33 @@ class TestOptIn:
         await client.patch(ME, json={"public_bookmarks": False}, headers=_auth(token))
         assert (await client.get(PUBLIC_BOOKMARKS.format(reader_id=reader_id))).status_code == 404
 
+    async def test_public_bookmarks_item_carries_real_comment_count(self, client, db_session, auth_headers):
+        """Public bookmarked-post PostList must expose the true approved comment_count.
+
+        list_reader_public_bookmarks serialized PostList without
+        _populate_post_metrics (the same class fixed for /api/search and the
+        public likes tab), so a bookmarked post reported comment_count=0
+        regardless of its approved comments. Approve a comment and expect the
+        public "Saved" tab to count it.
+        """
+        token, reader_id = await _reader(client)
+        post = await _create_post(db_session, title="Saved with comments", slug="saved-with-comments")
+        assert (await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))).status_code == 201
+        await client.patch(ME, json={"public_bookmarks": True}, headers=_auth(token))
+
+        comment = (
+            await client.post(
+                f"/api/comments/post/{post.id}",
+                json={"nickname": "X", "email": "x@x.com", "content": "Searched body"},
+            )
+        ).json()
+        assert (await client.get(PUBLIC_BOOKMARKS.format(reader_id=reader_id))).json()["items"][0]["comment_count"] == 0
+
+        await client.patch(f"/api/comments/{comment['id']}/approve", json={"approved": True}, headers=auth_headers)
+        item = (await client.get(PUBLIC_BOOKMARKS.format(reader_id=reader_id))).json()["items"][0]
+        assert item["comment_count"] == 1
+        assert item["reading_time"] >= 1
+
     async def test_flag_patch_does_not_disturb_other_fields(self, client):
         token, _reader_id = await _reader(client)
         # Set a display name and bio, then flip ONLY the flag: neither must be
