@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **public liked/bookmarked post lists now carry real comment_count/reading_time (N+1 helper gap)** —
+  `list_reader_post_likes` and `list_reader_public_bookmarks` serialized `PostList` without the
+  shared `_populate_post_metrics`, so the public profile "Liked"/"Saved" tabs (and `/me/likes`) always
+  reported `comment_count=0` regardless of approved comments. Now batch-populated like every other
+  PostList path (RIL ISS-671). Same fix for `/api/search` hits, which also always reported 0 (ISS-670).
+- 🧹 **home feed page-turn uses the shared `scrollToPageTop()` helper** — the one page that
+  established the smooth-scroll-to-top convention still called raw `window.scrollTo` on page turn
+  while every sibling paginated page used the shared helper; now consistent + SSR-safe (RIL ISS-669).
 - ⚡ **author + series eager-loaded in public bookmarks list (N+1)** — the
   reader profile's public "Saved posts" tab serialized `PostList.author`
   (+`series`) but `list_reader_public_bookmarks` only eager-loaded

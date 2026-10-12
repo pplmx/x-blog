@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+- 🐛 **公开“点赞 / 已保存”文章列表补全真实的评论数与阅读时长（N+1 助手缺口）**——`list_reader_post_likes`
+  与 `list_reader_public_bookmarks` 序列化 `PostList` 时没有调用共享的 `_populate_post_metrics`，
+  导致读者主页的公开“点赞 / 已保存”标签页（及 `/me/likes`）无论有多少已批准的评论都恒报 `comment_count=0`。
+  现已与其它所有 PostList 路径一样批量补充（RIL ISS-671）；`/api/search` 命中项同样曾恒报 0（ISS-670）。
+- 🧹 **首页翻页改用共享的 `scrollToPageTop()` 助手**——正是这个页面最初建立了翻页平滑回到顶部这一约定，
+  却仍直接在翻页时调用原生 `window.scrollTo`，而其它所有分页页都用共享助手；现保持一致且 SSR 安全（RIL ISS-669）。
 - ⚡ **公开书签列表补充 author 与 series 预加载（N+1）**——读者主页的公开“已保存”标签在序列化
   `PostList.author`（及 `series`）时，`list_reader_public_bookmarks` 只预加载了 category/tags，
   每行都会多一次懒加载 `SELECT`。现与其余字段一起 `joinedload` author 与 series
