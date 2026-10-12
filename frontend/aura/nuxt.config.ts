@@ -6,15 +6,14 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
-// Site-wide constants used in the global head. NOTE: siteName/siteDescription
-// are build-time constants (fine in a head), but the URL-dependent tags
+// Site-wide constant used in the global head. NOTE: siteDescription is a
+// build-time constant (fine in a head), but the URL-dependent tags
 // (og:url / og:image / twitter:image / WebSite JSON-LD url) are applied at
 // RUNTIME in app.vue via useSiteUrl() (TASK-557): this config is evaluated at
 // image BUILD time, where NUXT_SITE_URL is unset (docker-compose sets it at
 // runtime only) — baking the fallback here baked "http://localhost:3000" into
 // every deployed page's share metadata. Keep the default for
 // runtimeConfig.public.siteUrl below; the head reads it per request.
-const siteName = "X-Blog";
 const siteDescription =
 	"X-Blog 是一个基于 FastAPI + Nuxt 的现代化技术博客系统，支持 Markdown、Mermaid 图表、KaTeX 数学公式、代码高亮、文章分类、标签管理、阅读计数、点赞评论等功能。";
 
