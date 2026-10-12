@@ -61,6 +61,13 @@ Gotchas:
   Code history and the engineering graph are meant to cross-reference.
 - `graph.json` changes are committed as `chore(ril)` commits, e.g.
   `chore(ril): record round-465 closure (EV-327, DEC-506)`.
+  **RIL commits are batched, not per-change:** accumulate graph updates in the
+  working tree across ordinary code commits and land a single `chore(ril)`
+  batch roughly every ~15–30 code commits (or at a natural milestone), with all
+  touched node/edge ids listed in the subject/body. Do NOT emit one
+  `chore(ril)` commit per code change — that fills git history with RIL noise
+  and buries the code commits. (Entry point for the cadence decision made by
+  the operator on 2026-10-12.)
 
 ## RIL / graph-engineering
 
