@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🐛 **author/series/reader follow buttons no longer stamp the wrong target after a mid-toggle SPA navigation** —
+  `AuthorFollowButton`, `SeriesFollowButton`, and `ReaderFollowButton` awaited the follow state change, then
+  wrote `following`/`followerCount` without re-checking the target id. These controls survive `authorId`/
+  `seriesId`/`readerId` changes un-keyed, so an in-flight toggle resolving after the reader navigated to
+  another post/series/profile would flip the NEW target's button to "following" and inflate its count.
+  Each now captures the target id at toggle start and bails after the await if it changed (ISS-572-class,
+  matching the profile/search/badge/highlight seq guards) (RIL ISS-673).
 - 🐛 **select-to-save highlight no longer pollutes the next post on a mid-save SPA navigation** —
   saving a passage awaited the POST, then wrapped + added the highlight without re-checking the
   post; switching to another article before the save resolved would drop a `<mark>` into the NEW

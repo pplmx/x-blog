@@ -163,6 +163,40 @@ describe("AuthorFollowButton", () => {
 		expect(btn(w, "post.followAuthor")?.exists()).toBe(true);
 	});
 
+	it("does not stamp the new author's button when the reader navigates away mid-follow", async () => {
+		// A follow POST resolving after the SPA moves to another post's byline
+		// must not overwrite the fresh target's state (ISS-572-class stale
+		// response). The component instance survives authorId change (not
+		// keyed), so toggleFollow must re-check the target id after the await.
+		localStorage.setItem("reader_token", "tok-1");
+		mockGet.mockResolvedValue({ items: [], total: 0 });
+		const { promise: pendingFollow, resolve: resolveFollow } = Promise.withResolvers<unknown>();
+		mockFollow.mockReturnValue(pendingFollow);
+		const w = await mountButton(7, "Pen Author");
+		await btn(w, "post.followAuthor")?.trigger("click");
+		await flushPromises();
+		expect(mockFollow).toHaveBeenCalledWith(7);
+
+		// SPA nav to a different author before the POST resolves.
+		await w.setProps({ authorId: 99, authorName: "Another Pen" });
+		await flushPromises();
+		// The new author's button is in its fresh un-followed state.
+		expect(btn(w, "post.followingAuthor")).toBeUndefined();
+		expect(btn(w, "post.followAuthor")).toBeDefined();
+
+		// NOW the original follow resolves — its stale continuation must not
+		// flip the author 99 button to "following".
+		resolveFollow({
+			author_id: 7,
+			display_name: "Pen Author",
+			following: true,
+			notify: true,
+		});
+		await flushPromises();
+		expect(btn(w, "post.followingAuthor")).toBeUndefined();
+		expect(btn(w, "post.followAuthor")).toBeDefined();
+	});
+
 	it("disables the button while the follow request is in flight", async () => {
 		localStorage.setItem("reader_token", "tok-1");
 		mockGet.mockResolvedValue({ items: [], total: 0 });

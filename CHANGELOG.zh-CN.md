@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+- 🐛 **作者 / 系列 / 读者关注按钮在切换途中不再错误点亮“新”目标**——`AuthorFollowButton`、`SeriesFollowButton`
+  与 `ReaderFollowButton` 在等待关注状态变更后，写入 `following`/`followerCount` 时没有重新核对目标 id。
+  这些控件未按 `authorId`/`seriesId`/`readerId` 加 key，会在 SPA 导航后复用同一实例，因此在读友切到另一篇文章 /
+  系列 / 主页后，尚未返回的关注请求会把“新”目标的按钮点亮为“已关注”并抬高其计数。
+  现各自在切换开始时记录目标 id，每次 await 后若 id 变更则直接返回（ISS-572 同类，与 profile/search/badge/highlight
+  的 seq 守卫一致，RIL ISS-673）。
 - 🐛 **选中即存的高亮在保存中途切换文章时不再污染下一篇**——保存摘录时会等待 POST 完成，随后
   再包裹并加入高亮而没有重新核对文章；在保存结束前切到另一篇文章，会往“新”文章正文里塞入
   一个 `<mark>`，并把旧文章的高亮加进新文章列表。现按保存时的文章 id 加守卫（ISS-572 同类，

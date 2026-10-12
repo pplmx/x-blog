@@ -101,13 +101,16 @@ function noteFollowError() {
 async function toggleFollow() {
 	if (followBusy.value) return;
 	followBusy.value = true;
+	const targetId = props.seriesId;
 	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (followsSeries.value) {
-			await unfollowReaderSeries(props.seriesId);
+			await unfollowReaderSeries(targetId);
+			if (props.seriesId !== targetId) return; // SPA nav mid-toggle — the watch resets the new series' state
 			followsSeries.value = false;
 		} else {
-			const res = await followReaderSeries(props.seriesId);
+			const res = await followReaderSeries(targetId);
+			if (props.seriesId !== targetId) return; // stale resolve must not stamp the new series' button
 			followsSeries.value = true;
 			followNotify.value = res?.notify ?? true;
 		}
@@ -125,10 +128,12 @@ async function toggleFollow() {
 async function toggleNotify() {
 	if (followBusy.value || !followsSeries.value) return;
 	followBusy.value = true;
+	const targetId = props.seriesId;
 	followSeq++;
 	const next = !followNotify.value;
 	try {
-		const res = await setSeriesFollowNotify(props.seriesId, next);
+		const res = await setSeriesFollowNotify(targetId, next);
+		if (props.seriesId !== targetId) return; // SPA nav mid-save — skip the new series' button
 		followNotify.value = res?.notify ?? next;
 	} catch (cause) {
 		if (guardFollowFailure(cause)) return;

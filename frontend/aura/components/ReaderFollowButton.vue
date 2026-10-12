@@ -80,13 +80,16 @@ function noteFollowError() {
 async function toggleFollow() {
 	if (followBusy.value) return;
 	followBusy.value = true;
+	const targetId = props.readerId;
 	try {
 		if (following.value) {
-			await unfollowReader(props.readerId);
+			await unfollowReader(targetId);
+			if (props.readerId !== targetId) return; // SPA nav mid-toggle — the watch resets the new reader's state
 			following.value = false;
 			followerCount.value = Math.max(0, followerCount.value - 1);
 		} else {
-			await followReader(props.readerId);
+			await followReader(targetId);
+			if (props.readerId !== targetId) return; // stale resolve must not stamp the new reader's button
 			following.value = true;
 			followerCount.value += 1;
 		}

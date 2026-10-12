@@ -77,13 +77,16 @@ function noteFollowError() {
 async function toggleFollow() {
 	if (followBusy.value) return;
 	followBusy.value = true;
+	const targetId = props.authorId;
 	followSeq++; // a user action supersedes any in-flight follow-state loader
 	try {
 		if (followsAuthor.value) {
-			await unfollowReaderAuthor(props.authorId);
+			await unfollowReaderAuthor(targetId);
+			if (props.authorId !== targetId) return; // SPA nav mid-toggle — the watch resets the new author's state
 			followsAuthor.value = false;
 		} else {
-			await followReaderAuthor(props.authorId);
+			await followReaderAuthor(targetId);
+			if (props.authorId !== targetId) return; // stale resolve must not stamp the new author's button
 			followsAuthor.value = true;
 		}
 	} catch (cause) {
