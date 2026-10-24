@@ -51,7 +51,7 @@
 		"autoprefixer": "^10.5.4",
 		"dompurify": "^3.4.14",
 		"globals": "^17.11.0",
-		"happy-dom": "^20.11.8",
+		"happy-dom": "^21.0.4",
 		"katex": "^0.18.4",
 		"marked": "^16.4.2",
 		"mermaid": "^11.17.2",
