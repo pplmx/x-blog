@@ -74,7 +74,7 @@ function retry() {
 				<img
 					v-if="a.avatar_url"
 					:src="a.avatar_url"
-					:alt="a.display_name"
+					alt=""
 					class="w-12 h-12 shrink-0 rounded-full object-cover"
 				/>
 				<span

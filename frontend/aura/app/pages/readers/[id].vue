@@ -351,7 +351,6 @@ const pageAnnouncement = computed(() =>
 				<ReaderAvatar
 					:url="data.profile.avatar_url"
 					:name="data.profile.display_name"
-					:alt="data.profile.display_name || 'avatar'"
 					size="w-16 h-16 border border-gray-100 dark:border-gray-800"
 					glyph="text-2xl"
 				/>
