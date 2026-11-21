@@ -17,6 +17,7 @@ const ROUTES = [
 	"/categories",
 	"/series",
 	"/comments",
+	"/nope",
 ];
 
 for (const width of [320, 390]) {

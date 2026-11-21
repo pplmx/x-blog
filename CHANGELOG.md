@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📐 **the 404 numeral fits small phones** — the oversized "404" was 10rem wide
+  even at 320px and pushed the document 7px past the viewport; it now starts at
+  7rem and still scales up on larger screens. The mobile overflow guard covers
+  the catch-all route too.
 - 🧭 **not-found pages lead with a real heading** — the 404 states for missing
   posts, series, pages, authors and unknown routes now use an `<h1>`, so the
   page outline and screen-reader heading navigation reach the message instead

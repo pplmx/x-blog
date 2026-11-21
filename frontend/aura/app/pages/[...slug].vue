@@ -16,7 +16,7 @@ useHead({
 		<div class="text-center max-w-md">
 			<div class="relative mb-10 select-none">
 				<div
-					class="text-[10rem] sm:text-[12rem] font-bold bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 bg-clip-text text-transparent leading-none"
+					class="text-[7rem] sm:text-[12rem] font-bold bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 bg-clip-text text-transparent leading-none"
 				>
 					404
 				</div>
