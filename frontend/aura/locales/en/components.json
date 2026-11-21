@@ -77,6 +77,7 @@
 			"liked": "Liked",
 			"permalink": "Link to this comment",
 			"likesCount": "{count} likes",
+			"likesCount_one": "{count} like",
 			"likeError": "Couldn't like this comment. Please try again.",
 			"editLabel": "Edit your comment",
 			"editSuccess": "Comment edited.",
@@ -114,6 +115,7 @@
 			"clearFilters": "Clear filters",
 			"popularPosts": "Popular posts",
 			"views": "{count} views",
+			"views_one": "{count} view",
 			"categories": "Categories",
 			"bookmarks": "Bookmarked posts",
 			"tags": "Tags"

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔢 **single items read naturally in English** — header search results, comment
+  likes, sidebar views, series views, and the bookmark/like/follow/comment
+  counters now use a singular form at count 1 instead of "1 posts".
 - 🛡 **blank detail slugs and non-positive ids answer 404** — `/series/%20`,
   `/pages/%20` and `/posts/%20` requested their list endpoints, handing detail
   pages the wrong shape (the post page crashed SSR reading `post.tags`);

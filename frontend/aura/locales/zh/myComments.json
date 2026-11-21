@@ -8,6 +8,7 @@
 		},
 		"title": "我的评论",
 		"countLabel": "共 {count} 条评论",
+		"countLabel_one": "共 {count} 条评论",
 		"empty": "还没有发表过评论",
 		"browse": "去发表评论",
 		"searchPlaceholder": "搜索我的评论…",

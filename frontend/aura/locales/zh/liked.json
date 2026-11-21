@@ -5,6 +5,7 @@
 		"title": "喜欢的文章",
 		"subtitle": "你喜欢的文章——登录后跨设备同步",
 		"countLabel": "{count} 篇文章",
+		"countLabel_one": "{count} 篇文章",
 		"likeCount": "个赞",
 		"empty": "你还没有喜欢过任何文章。在喜欢的那篇文章上点一下爱心，它就会出现在这里。",
 		"emptyAction": "去浏览文章",

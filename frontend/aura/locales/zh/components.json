@@ -77,6 +77,7 @@
 			"liked": "已点赞",
 			"permalink": "指向该评论的链接",
 			"likesCount": "{count} 个赞",
+			"likesCount_one": "{count} 个赞",
 			"likeError": "点赞失败，请重试。",
 			"editLabel": "编辑你的评论",
 			"editSuccess": "评论已更新。",
@@ -114,6 +115,7 @@
 			"clearFilters": "清除筛选",
 			"popularPosts": "热门文章",
 			"views": "{count} 次阅读",
+			"views_one": "{count} 次阅读",
 			"categories": "分类",
 			"bookmarks": "收藏的文章",
 			"tags": "标签"

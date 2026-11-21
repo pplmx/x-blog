@@ -7,6 +7,7 @@
 		"searchFailed": "Search didn't complete — check your connection and try again.",
 		"hint": "Type to quickly find posts",
 		"kbdHint": "Press / to search",
-		"resultsCount": "{count} results"
+		"resultsCount": "{count} results",
+		"resultsCount_one": "{count} result"
 	}
 }

@@ -2,6 +2,7 @@
 	"bookmarks": {
 		"title": "Bookmarked Posts",
 		"countLabel": "{count} articles",
+		"countLabel_one": "{count} article",
 		"clearAll": "Clear all",
 		"confirmClear": "Are you sure you want to clear all bookmarks?",
 		"empty": "No bookmarked articles yet",

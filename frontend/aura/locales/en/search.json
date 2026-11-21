@@ -52,7 +52,8 @@
 		},
 		"suggest": {
 			"label": "Did you mean:",
-			"postsCount": "{count} posts"
+			"postsCount": "{count} posts",
+			"postsCount_one": "{count} post"
 		},
 		"filters": {
 			"category": "Category",

@@ -7,6 +7,7 @@
 		"searchFailed": "搜索未完成，请检查网络后重试。",
 		"hint": "输入关键词快速查找文章",
 		"kbdHint": "按 / 开始搜索",
-		"resultsCount": "{count} 条结果"
+		"resultsCount": "{count} 条结果",
+		"resultsCount_one": "{count} 条结果"
 	}
 }

@@ -8,6 +8,7 @@
 		},
 		"title": "My comments",
 		"countLabel": "{count} comments",
+		"countLabel_one": "{count} comment",
 		"empty": "You haven't commented yet",
 		"browse": "Browse posts",
 		"searchPlaceholder": "Search my comments…",

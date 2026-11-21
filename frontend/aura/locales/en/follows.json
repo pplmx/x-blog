@@ -5,6 +5,7 @@
 		"title": "Your follows",
 		"subtitle": "New posts from the categories, series, tags and writers you follow",
 		"countLabel": "{count} posts",
+		"countLabel_one": "{count} post",
 		"empty": "You're not following anything yet. Follow categories, series, tags or writers to see their new posts here.",
 		"emptyAction": "Browse categories",
 		"loadFailed": "Couldn't load your follows — check your connection and try again.",

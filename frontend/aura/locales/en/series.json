@@ -16,6 +16,7 @@
 		"nextPart": "Next part",
 		"postsEmpty": "No published posts yet",
 		"views": "{count} views",
+		"views_one": "{count} view",
 		"progressTitle": "Reading progress",
 		"readCountLabel": "{read} of {total} read",
 		"continueReading": "Continue reading",
