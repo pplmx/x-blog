@@ -1,6 +1,6 @@
 <template>
 	<section ref="listEl">
-		<div class="flex items-center justify-between mb-4">
+		<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
 			<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
 				{{ t("components.commentList.title") }} ({{ total }})
 			</h2>

@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `commentMarkdownToHtml` now wrap each table in `.md-table-scroll` (`overflow-x: auto`, touch
   momentum, hairline border; print expands it), with the table's vertical margin moved to the
   wrapper.
+- 🐛 **the guest comment-follow form no longer pushes post pages sideways on phones** — its
+  fixed-width email input plus the 订阅 button could not shrink inside the comment header, widening
+  the document to 570px at a 390px viewport. The header row now wraps, and the form stretches
+  full-width below the 评论 heading with a flexible input that returns to a fixed width from `sm`
+  up.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its
