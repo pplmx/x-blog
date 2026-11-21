@@ -123,7 +123,7 @@ describe("Series Index Page", () => {
 	it("renders descriptions and post counts", async () => {
 		const wrapper = await mountSeriesPage();
 		expect(wrapper.text()).toContain("A complete guided tour of FastAPI.");
-		expect(wrapper.text()).toContain("共 3 个系列");
+		expect(wrapper.text()).toContain("共 3 篇文章");
 	});
 
 	it("links each series to its detail page", async () => {

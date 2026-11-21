@@ -80,7 +80,7 @@ useSeo(() => ({
 					<div class="flex items-center gap-3 mt-4 text-xs text-gray-400">
 						<span class="inline-flex items-center gap-1">
 							<Icon icon="lucide:layers" class="w-3.5 h-3.5" />
-							{{ t("series.countLabel", { count: s.post_count }) }}
+							{{ t("series.postsCount", { count: s.post_count }) }}
 						</span>
 					</div>
 				</NuxtLink>

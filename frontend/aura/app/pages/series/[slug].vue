@@ -303,7 +303,7 @@ onUnmounted(() => {
 				<div class="flex items-center gap-3 mt-3 text-sm text-gray-500 dark:text-gray-400">
 					<span class="inline-flex items-center gap-1">
 						<Icon icon="lucide:layers" class="w-4 h-4" />
-						{{ t("series.countLabel", { count: series.post_count }) }}
+						{{ t("series.postsCount", { count: series.post_count }) }}
 					</span>
 					<a
 						v-if="feedUrl"

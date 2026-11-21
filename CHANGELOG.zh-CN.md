@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- 🐛 **系列卡片/详情改为显示“N 篇文章”而不是“N 个系列”**——`series/index.vue` 与
+  `series/[slug].vue` 把每个系列的 `post_count` 传给了 `series.countLabel`（“共 {count} 个系列”），
+  于是只有 3 篇文章的单个系列被写成“共 3 个系列”。两处改用新增的 `series.postsCount` 文案
+  （页面顶部的系列总数仍用 `countLabel`）。
 - 🐛 **清空全部后同时清理离线缓存，被清空的收藏不再离线可读**——`handleClearAll` 原先会清掉本地镜像和
   （登录时）云端副本，却从不修剪 service worker 的离线缓存：每个被清空文章的文档都还留在缓存里，因此
   仍可离线阅读、并保留“可离线”缓存条目——违背“离线集合应与收藏集合一致”的不变量（逐行删除已遵守该
