@@ -65,7 +65,7 @@ async function mountSeriesDetailPage({
 }: {
 	series?: typeof mockSeries | null;
 	pending?: boolean;
-	error?: { message: string } | null;
+	error?: { message: string; statusCode?: number } | null;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -183,6 +183,18 @@ describe("Series Detail Page", () => {
 	it("renders loading skeletons while pending", async () => {
 		const wrapper = await mountSeriesDetailPage({ pending: true });
 		expect(wrapper.findAll(".animate-pulse").length).toBeGreaterThan(0);
+	});
+
+	it("treats a 404 as not-found instead of a retryable failure", async () => {
+		// A deleted/renamed series slug answers 404; retrying can never succeed,
+		// so the page must offer the way back instead of a dead Retry button.
+		const wrapper = await mountSeriesDetailPage({
+			series: null,
+			error: { message: "not found", statusCode: 404 },
+		});
+		expect(wrapper.text()).toContain("系列不存在");
+		expect(wrapper.text()).not.toContain("加载失败");
+		expect(wrapper.text()).not.toContain("重试");
 	});
 
 	it("renders a friendly load-failed state on fetch error", async () => {

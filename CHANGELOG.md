@@ -1752,6 +1752,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   searching" while the only way to submit was the keyboard's Enter key, easy to miss on phones. The
   input now sits beside a `Search` button (still fits at 320px), and the recent-list `Clear` control
   grew to a 24px tap target.
+- 🐛 **a deleted or renamed series says "not found" instead of "load failed"** — `/series/<slug>`
+  rendered the generic failure state with a Retry button for a 404, so a dead link could be retried
+  forever. It now mirrors the post page: a 404 (or an empty body) shows the not-found copy with links
+  back to the series index and home, while real network errors keep the retry path.
 
 ## [0.1.0] - 2026-09-09
 

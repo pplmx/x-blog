@@ -30,6 +30,14 @@ function retryLoad() {
 	void refreshSeries();
 }
 
+// A deleted or renamed series 404s: show the not-found state (with links back
+// to the index) instead of a Retry button that can never succeed. Mirrors the
+// post detail page's dedicated 404 branch; `!error && !series` covers the same
+// state when the endpoint answers 200 with an empty body.
+const seriesNotFound = computed(
+	() => !pending.value && (error.value?.statusCode === 404 || (!error.value && !series.value)),
+);
+
 useSeo(() => ({
 	title: series.value?.title ? `${series.value.title} — ${t("series.all")}` : t("series.all"),
 	description: series.value?.description || t("series.allDesc"),
@@ -252,19 +260,7 @@ onUnmounted(() => {
 			</div>
 		</div>
 
-		<div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
-			<Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-			<p class="mb-4">{{ t("common.state.loadFailed") }}</p>
-			<button
-				type="button"
-				class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-				@click="retryLoad"
-			>
-				{{ t("common.action.retry") }}
-			</button>
-		</div>
-
-		<div v-else-if="!series" class="text-center py-20 text-gray-500">
+		<div v-else-if="seriesNotFound" class="text-center py-20 text-gray-500">
 			<Icon icon="lucide:layers" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
 			<p class="mb-4">{{ t("series.notFound") }}</p>
 			<p class="text-sm mb-6">
@@ -286,7 +282,19 @@ onUnmounted(() => {
 			</div>
 		</div>
 
-		<div v-else class="space-y-8 pt-8">
+		<div v-else-if="error" class="text-center py-20 text-gray-500" role="alert">
+			<Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+			<p class="mb-4">{{ t("common.state.loadFailed") }}</p>
+			<button
+				type="button"
+				class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+				@click="retryLoad"
+			>
+				{{ t("common.action.retry") }}
+			</button>
+		</div>
+
+		<div v-else-if="series" class="space-y-8 pt-8">
 			<div class="mb-8">
 				<NuxtLink
 					to="/series"
