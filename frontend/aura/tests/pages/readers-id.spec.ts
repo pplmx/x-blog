@@ -215,6 +215,8 @@ async function mountPage() {
 		query: mockQuery,
 	}));
 	vi.stubGlobal("navigateTo", vi.fn());
+	vi.stubGlobal("useHead", vi.fn());
+	vi.stubGlobal("setResponseStatus", vi.fn());
 	const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
 	const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
 	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
@@ -237,6 +239,8 @@ async function mountPageReactiveQuery(initialQuery: Record<string, string>) {
 	const route = reactive({ params: { id: mockReaderId }, query: { ...initialQuery } });
 	vi.stubGlobal("useRoute", () => route);
 	vi.stubGlobal("navigateTo", vi.fn());
+	vi.stubGlobal("useHead", vi.fn());
+	vi.stubGlobal("setResponseStatus", vi.fn());
 	const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
 	const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
 	const wrapper = mount(SuspenseWrapper(ReaderProfilePage), {
@@ -504,6 +508,8 @@ describe("Reader profile page", () => {
 				) as Record<string, string>;
 			}),
 		);
+		vi.stubGlobal("useHead", vi.fn());
+		vi.stubGlobal("setResponseStatus", vi.fn());
 		const { default: ReaderFollowButton } = await import("../../components/ReaderFollowButton.vue");
 		const { default: ReaderBlockButton } = await import("../../components/ReaderBlockButton.vue");
 		mockPayload = sampleLikerPage;

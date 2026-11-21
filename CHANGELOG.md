@@ -1799,6 +1799,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✨ **the results page gets the same visible search button** — the landing page had one, but
   refining a query on `/search?q=…` was Enter-only; phones could not see a way to resubmit.
 - ⌨️ **⌘K / Ctrl+K opens search** — the docs-site convention, alongside the existing `/` shortcut.
+- 🐛 **deleted posts, series, pages, authors and readers answer a real 404** — these detail pages
+  rendered their friendly "not found" state with HTTP 200, which search engines index as soft 404s.
+  SSR now writes 404 and the response carries `robots: noindex` for the missing view.
 
 ## [0.1.0] - 2026-09-09
 

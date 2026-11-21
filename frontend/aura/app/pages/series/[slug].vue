@@ -45,6 +45,20 @@ useSeo(() => ({
 	locale: locale.value,
 }));
 
+// A deleted series slug must answer 404, not 200 with an in-page notice
+// (soft 404s get indexed). Only SSR can write the status.
+if (import.meta.server && seriesNotFound.value) {
+	setResponseStatus(404);
+}
+useHead(() =>
+	seriesNotFound.value
+		? {
+				title: t("series.notFound"),
+				meta: [{ name: "robots", content: "noindex" }],
+			}
+		: {},
+);
+
 // Series reading progress: a signed-in reader sees how far
 // through the series they are (derived from their reading history) and can
 // continue from the first unread episode. Guests see no progress.

@@ -152,6 +152,27 @@ watchEffect(() => {
 	}
 });
 
+// A deleted/renamed post must answer 404, not 200 with an in-page notice:
+// search engines index soft 404s. On the server the status is writable; SPA
+// navigation reuses the mounted page, so only SSR sets it.
+const postMissing = computed(
+	() => !pending.value && (error.value?.statusCode === 404 || (!error.value && !post.value)),
+);
+if (import.meta.server && postMissing.value) {
+	setResponseStatus(404);
+}
+useHead(() =>
+	postMissing.value
+		? {
+				title: t("post.notFoundTitle"),
+				meta: [
+					{ name: "description", content: t("post.notFoundDesc") },
+					{ name: "robots", content: "noindex" },
+				],
+			}
+		: {},
+);
+
 const likeLoading = ref(false);
 const likeError = ref<string | null>(null);
 // A transient like failure must not leave a persistent red banner under the

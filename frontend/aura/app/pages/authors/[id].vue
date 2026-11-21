@@ -58,6 +58,19 @@ useSeo(() => ({
 // posts — the same autodiscovery pattern series/tags pages use. The
 // backend answers 404 for unknown/never-public authors, mirroring the archive.
 const feedUrl = computed(() => (authorName.value ? `/rss/authors/${authorId.value}.xml` : ""));
+
+// An unknown author id must answer 404, not 200 with an in-page notice —
+// soft 404s get indexed. Only SSR can write the status.
+const authorMissing = computed(
+	() =>
+		!pending.value &&
+		(error.value?.statusCode === 404 ||
+			!authorId.value ||
+			(!error.value && !archive.value)),
+);
+if (import.meta.server && authorMissing.value) {
+	setResponseStatus(404);
+}
 useHead(() => ({
 	link: feedUrl.value
 		? [
@@ -70,6 +83,14 @@ useHead(() => ({
 			]
 		: [],
 }));
+useHead(() =>
+	authorMissing.value
+		? {
+				title: t("authors.notFound"),
+				meta: [{ name: "robots", content: "noindex" }],
+			}
+		: {},
+);
 
 const paginationTokens = computed(() =>
 	paginationPages(

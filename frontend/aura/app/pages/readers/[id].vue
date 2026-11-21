@@ -269,6 +269,23 @@ function retry() {
 
 await load();
 
+// An unknown/removed reader must answer 404, not 200 with an in-page notice —
+// soft 404s get indexed. Only SSR can write the status.
+if (import.meta.server && notFound.value) {
+	setResponseStatus(404);
+}
+useHead(() =>
+	notFound.value
+		? {
+				title: t("readerProfile.notFoundTitle"),
+				meta: [
+					{ name: "description", content: t("readerProfile.notFoundDesc") },
+					{ name: "robots", content: "noindex" },
+				],
+			}
+		: {},
+);
+
 const paginationTokens = computed(() =>
 	paginationPages(activePagination.value?.total_pages ?? 0, page.value),
 );

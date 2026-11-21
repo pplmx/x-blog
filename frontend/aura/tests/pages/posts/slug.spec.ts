@@ -120,6 +120,7 @@ async function mountPostPage({
 	authorArchive = null,
 	$fetchImpl,
 	attachToDoc = false,
+	useHeadImpl = vi.fn(),
 }: {
 	post?: typeof mockPost | null;
 	pending?: boolean;
@@ -135,6 +136,8 @@ async function mountPostPage({
 	/** Attach to document.body so document.getElementById resolves rendered nodes
 	 * (needed to exercise scroll-to-heading, which walks the real DOM). */
 	attachToDoc?: boolean;
+	/** Override the useHead mock so a test can inspect the emitted head tags. */
+	useHeadImpl?: (input: unknown) => void;
 } = {}) {
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
@@ -142,7 +145,7 @@ async function mountPostPage({
 		},
 	}));
 
-	vi.stubGlobal("useHead", vi.fn());
+	vi.stubGlobal("useHead", useHeadImpl);
 
 	vi.stubGlobal("useRoute", () => ({
 		params: { slug },
@@ -549,16 +552,31 @@ describe("Post Detail Page", () => {
 			// fix the `v-else-if="error"` branch won and a reader opening a stale
 			// share/bookmark link saw "load failed" + a Retry that can never
 			// succeed — the post.notFound message was unreachable for real 404s.
+			const useHeadSpy = vi.fn();
 			const wrapper = await mountPostPage({
 				post: null,
 				pending: false,
 				error: { message: "Not found", statusCode: 404 } as { message: string },
+				useHeadImpl: useHeadSpy,
 			});
 			expect(wrapper.text()).toContain("文章不存在");
 			expect(wrapper.text()).not.toContain("加载失败");
 			// No dead-end Retry button; the Home link is the way onward.
 			expect(wrapper.text()).not.toContain("重试");
 			expect(wrapper.find('a[href="/"]').exists()).toBe(true);
+			// A soft 404 (200 + "not found" copy) gets indexed; the page must
+			// also ask crawlers to drop it.
+			const heads = useHeadSpy.mock.calls.map(([arg]) =>
+				typeof arg === "function" ? arg() : arg,
+			);
+			expect(
+				heads.some(
+					(head) =>
+						head?.meta?.some(
+							(meta) => meta.name === "robots" && meta.content === "noindex",
+						) === true,
+				),
+			).toBe(true);
 		});
 
 		it("still shows 'load failed' + Retry for a non-404 error (network/5xx)", async () => {

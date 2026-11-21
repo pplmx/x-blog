@@ -38,6 +38,27 @@ useSeo(() => ({
 	path: `/pages/${slug.value ?? ""}`,
 	locale: locale.value,
 }));
+
+// A deleted/unknown slug must answer 404, not 200 with an in-page notice —
+// soft 404s get indexed. Only SSR can write the status.
+const pageMissing = computed(
+	() =>
+		!pending.value &&
+		(error.value?.statusCode === 404 ||
+			!slug.value ||
+			(!error.value && !page.value)),
+);
+if (import.meta.server && pageMissing.value) {
+	setResponseStatus(404);
+}
+useHead(() =>
+	pageMissing.value
+		? {
+				title: t("pages.notFound"),
+				meta: [{ name: "robots", content: "noindex" }],
+			}
+		: {},
+);
 </script>
 
 <template>
