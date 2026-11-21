@@ -4,6 +4,7 @@
 		"allDesc": "浏览 X-Blog 中的所有文章系列",
 		"countLabel": "共 {count} 个系列",
 		"postsCount": "共 {count} 篇文章",
+		"postsCount_one": "共 {count} 篇文章",
 		"totalReadingTime": "共约 {count} 分钟",
 		"empty": "暂无系列",
 		"notFound": "系列不存在",

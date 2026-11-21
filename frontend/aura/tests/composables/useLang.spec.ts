@@ -46,6 +46,13 @@ describe("translate", () => {
 		expect(translate("zh", "authors.postCountMany", { count: 3 })).toBe("3 篇文章");
 	});
 
+	it("selects a singular _one variant when count is 1", () => {
+		expect(translate("en", "post.views", { count: 1 })).toBe("1 view");
+		expect(translate("en", "post.views", { count: 3 })).toBe("3 views");
+		// Chinese has no grammatical number; the duplicate _one string keeps parity.
+		expect(translate("zh", "post.views", { count: 1 })).toBe("1 次阅读");
+	});
+
 	it("returns the default locale constant", () => {
 		expect(DEFAULT_LOCALE).toBe("zh");
 	});

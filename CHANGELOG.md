@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔢 **English counts agree with their number** — a numeric `count` now selects
+  a `_one` string at 1, so single views, likes, posts, articles, tags and
+  categories read "1 view"/"1 post" instead of "1 views"/"1 posts"; Chinese
+  keeps its number-neutral wording.
 - 🗂 **discussion cards match the other reading lists** — the global comment
   feed sat directly on the page background with only a hairline border; it now
   uses the same raised surface and dark-mode fill as search and archive rows.

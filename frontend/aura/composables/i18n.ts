@@ -59,13 +59,20 @@ const table: Record<Locale, Record<string, string>> = {
 	en: resolveBundle("en"),
 };
 
-/** Pure translation lookup — interpolates `{param}` placeholders. */
+/**
+ * Pure translation lookup — interpolates `{param}` placeholders.
+ *
+ * A numeric `count` selects the `_one` variant when it equals 1 and the locale
+ * defines one (English needs it; Chinese does not). Without a variant the base
+ * key is used, so existing strings keep working.
+ */
 export function translate(
 	locale: Locale,
 	key: string,
 	params?: Record<string, string | number>,
 ): string {
-	const val = table[locale]?.[key];
+	const singular = params?.count === 1 ? table[locale]?.[`${key}_one`] : undefined;
+	const val = singular ?? table[locale]?.[key];
 	if (val == null) return key;
 	if (!params) return val;
 	return val.replace(/\{(\w+)\}/g, (m, p) => (params[p] != null ? String(params[p]) : m));

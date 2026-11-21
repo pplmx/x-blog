@@ -4,6 +4,7 @@
 		"allDesc": "Browse all post series on X-Blog",
 		"countLabel": "{count} series in total",
 		"postsCount": "{count} posts",
+		"postsCount_one": "{count} post",
 		"totalReadingTime": "{count} min read",
 		"empty": "No series yet",
 		"notFound": "Series not found",
