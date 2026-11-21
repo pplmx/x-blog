@@ -559,6 +559,20 @@ describe("Search Page", () => {
 			expect(clearBtn).toBeDefined();
 		});
 
+		it("ignores malformed sort and date share-link values", async () => {
+			// The backend 422s on an unknown sort or an unparsable date, which
+			// would leave the results region in a dead Retry. A shared link with
+			// junk falls back to the API defaults instead.
+			const wrapper = await mountSearchPage({
+				routeQuery: { q: "test query", sort: "bogus", date_from: "not-a-date" },
+			});
+			const sortSelect = wrapper.findAll("select")[2];
+			expect(sortSelect.element.value).toBe("relevance");
+			expect(wrapper.find('input[type="date"]').element.value).toBe("");
+			const clearBtn = wrapper.findAll("button").find((b) => b.text().includes("清除筛选"));
+			expect(clearBtn).toBeUndefined();
+		});
+
 		it("cross-constrains the date range so from never exceeds to", async () => {
 			// With only a date_to set, date_from is clamped above by it; with a
 			// date_from set, date_to is clamped below. Prevents a silently empty

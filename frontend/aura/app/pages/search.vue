@@ -61,14 +61,50 @@ const mode = computed<SearchMode>(() =>
 // Each is bound to the route; changing one resets to page 1.
 const filterCategory = computed(() => (route.query.category as string) || "");
 const filterTag = computed(() => (route.query.tag as string) || "");
-const filterSort = computed(() => (route.query.sort as string) || "relevance");
-const filterDateFrom = computed(() => (route.query.date_from as string) || "");
-const filterDateTo = computed(() => (route.query.date_to as string) || "");
+// Sort and date filters arrive from share links, so an unknown sort or a
+// malformed date must not reach the API: the backend answers 422 for both,
+// which turns the results region into a dead Retry. Fall back to the defaults
+// the API already applies and ignore unusable dates instead.
+const SEARCH_SORTS = ["relevance", "newest", "oldest", "views"] as const;
+type SearchSort = (typeof SEARCH_SORTS)[number];
+function sanitizeSort(raw: unknown): SearchSort {
+	return typeof raw === "string" && (SEARCH_SORTS as readonly string[]).includes(raw)
+		? (raw as SearchSort)
+		: "relevance";
+}
+const DATE_FILTER_RE =
+	/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+/** Accept only the ISO shapes the backend's datetime.fromisoformat handles. */
+function sanitizeDateFilter(raw: unknown): string {
+	if (typeof raw !== "string") return "";
+	const value = raw.trim();
+	const match = DATE_FILTER_RE.exec(value);
+	if (!match) return "";
+	const [, year, month, day, hour = "0", minute = "0", second = "0"] = match;
+	const probe = new Date(
+		Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)),
+	);
+	const sameWallClock =
+		probe.getUTCFullYear() === Number(year) &&
+		probe.getUTCMonth() === Number(month) - 1 &&
+		probe.getUTCDate() === Number(day) &&
+		probe.getUTCHours() === Number(hour) &&
+		probe.getUTCMinutes() === Number(minute) &&
+		probe.getUTCSeconds() === Number(second);
+	return sameWallClock ? value : "";
+}
+const filterSort = computed(() => sanitizeSort(route.query.sort));
+const filterDateFrom = computed(() => sanitizeDateFilter(route.query.date_from));
+const filterDateTo = computed(() => sanitizeDateFilter(route.query.date_to));
 
 function setFilter(key: string, value: string): void {
 	const merged: Record<string, string> = {};
 	for (const [k, v] of Object.entries(route.query)) {
-		if (typeof v === "string" && v) merged[k] = v;
+		if (typeof v === "string" && v) {
+			if (k === "sort" && sanitizeSort(v) !== v) continue;
+			if ((k === "date_from" || k === "date_to") && !sanitizeDateFilter(v)) continue;
+			merged[k] = v;
+		}
 	}
 	if (value) merged[key] = value;
 	else delete merged[key];
@@ -95,6 +131,11 @@ const activeFilters = computed(() => {
 		// affordance — and its navigation target is identical to the current
 		// URL, making the button a dead no-op.
 		if (k === "type") continue;
+		// Malformed share-link values are not filters either: they would 422 on
+		// the next page turn, and the API already ignores what falls back to its
+		// defaults.
+		if (k === "sort" && sanitizeSort(v) !== v) continue;
+		if ((k === "date_from" || k === "date_to") && !sanitizeDateFilter(v)) continue;
 		// A default `relevance` sort is not a narrowing filter: it is what the
 		// API does anyway (searchParams omits it too), so it must not light up
 		// the "clear filters" button or survive a clear. (search-filters e2e)

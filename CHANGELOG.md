@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧹 **malformed search filters no longer dead-end** — a shared link with an
+  unknown `sort` or an unparsable `date_from`/`date_to` fell through to the API
+  and 422'd into a dead Retry; both are now validated against the backend's
+  accepted shapes and fall back to the defaults.
 - 🔍 **a space-only search link lands on the prompt** — `/search?q=%20`
   rendered an empty results view and could fire a 422; the query is trimmed
   before the landing/results split, so it now shows the prompt with no request.
