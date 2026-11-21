@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📡 **feeds describe the blog with the stack it actually runs** — the default site
+  description still said "Next.js", which reached every RSS and Atom channel because no
+  site-settings row overrides it. It now names Nuxt.
 - 🧭 **a visitor's reading trail no longer leaks into other visitors' pages** — the
   recently-viewed store is a module singleton, and article pages recorded into it during
   server rendering, so the home page could show the last post *someone else* had opened

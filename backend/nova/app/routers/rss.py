@@ -420,7 +420,7 @@ async def get_comments_rss_feed(
     comments, _ = await rss_service.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     self_url = f"{site_url}/rss/comments.xml"
     rss = generate_comments_rss_feed(
         comments,
@@ -448,7 +448,7 @@ async def get_comments_atom_feed(
     comments, _ = await rss_service.list_public_comment_feed(db, page=1, limit=20)
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     self_url = f"{site_url}/rss/comments.atom.xml"
     atom = generate_comments_atom_feed(
         comments,
@@ -502,7 +502,7 @@ async def get_rss_feed(
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     title, description = _scoped_feed_meta(site_title, site_description, category, tag)
     self_url = _feed_self_url(site_url, "rss", category_id, tag_id)
 
@@ -544,7 +544,7 @@ async def get_atom_feed(
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     title, description = _scoped_feed_meta(site_title, site_description, category, tag)
     self_url = _feed_self_url(site_url, "atom", category_id, tag_id)
 
@@ -611,7 +611,7 @@ async def get_category_rss_feed(
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     title = f"{category.name} — {site_title}"
     description = f"{site_description} · category: {category.name}"
     self_url = f"{site_url}/rss/category/{quote(name)}.xml"
@@ -656,7 +656,7 @@ async def get_series_rss_feed(
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     title = f"{series.title} — {site_title}"
     description = f"{site_description} · series: {series.title}"
     self_url = f"{site_url}/rss/series/{quote(slug)}.xml"
@@ -711,7 +711,7 @@ async def get_author_rss_feed(
 
     site_url = getattr(settings, "site_url", "http://localhost:3000")
     site_title = getattr(settings, "site_title", "X-Blog")
-    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Next.js")
+    site_description = getattr(settings, "site_description", "A modern blog built with FastAPI and Nuxt")
     title = f"{author.display_name} — {site_title}"
     description = f"{site_description} · author: {author.display_name}"
     self_url = f"{site_url}/rss/authors/{author_id}.xml"

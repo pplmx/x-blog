@@ -1,6 +1,6 @@
-# Nuxt Alternative Frontend
+# Nuxt Frontend
 
-A Nuxt 4 alternative frontend for X-Blog, running in parallel with the Next.js app.
+The Nuxt 4 frontend for X-Blog.
 
 ## Toolchain (Vite+)
 

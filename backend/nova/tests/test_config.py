@@ -39,7 +39,7 @@ class TestSettingsDefaults:
 
         with patch.dict(os.environ, {}, clear=True):
             settings = Settings()
-            assert settings.site_description == "A modern blog built with FastAPI and Next.js"
+            assert settings.site_description == "A modern blog built with FastAPI and Nuxt"
 
     def test_sentry_dsn_default_none(self):
         """Test sentry_dsn defaults to None."""
