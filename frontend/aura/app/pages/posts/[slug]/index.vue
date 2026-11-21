@@ -92,6 +92,19 @@ const coverImageUrl = computed(() => {
 	return coverImageSrc(post.value.title);
 });
 
+// Readers deciding whether an article is still current read the date as a
+// signal. Show the publish date always, and a separate "updated" stamp only
+// when the revision is more than a day old — same-day typo fixes are noise.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const publishedAt = computed(() =>
+	parseApiDate(post.value?.publish_at ?? post.value?.created_at ?? null),
+);
+const updatedAt = computed(() => {
+	const updated = parseApiDate(post.value?.updated_at ?? null);
+	if (!updated || !publishedAt.value) return null;
+	return updated.getTime() - publishedAt.value.getTime() > DAY_MS ? updated : null;
+});
+
 // Derive the id reactively so related/adjacent follow the post when the slug
 // changes via SPA navigation. The per-query `pending` flags
 // gate their template sections: on SPA nav they refetch while retaining the
@@ -905,10 +918,23 @@ function handleCommentSubmitted(created: Comment | undefined) {
 						<span class="flex items-center gap-1.5">
 							<Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
 							{{
-								parseApiDate(post.publish_at ?? post.created_at)?.toLocaleDateString(
-									locale === "zh" ? "zh-CN" : "en-US",
-									{ year: "numeric", month: "long", day: "numeric" },
-								) ?? ""
+								publishedAt?.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", {
+									year: "numeric",
+									month: "long",
+									day: "numeric",
+								}) ?? ""
+							}}
+						</span>
+						<span v-if="updatedAt" class="flex items-center gap-1.5">
+							<Icon icon="lucide:history" class="w-3.5 h-3.5" />
+							{{
+								t("post.updated", {
+									date: updatedAt.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US", {
+										year: "numeric",
+										month: "long",
+										day: "numeric",
+									}),
+								})
 							}}
 						</span>
 					</div>

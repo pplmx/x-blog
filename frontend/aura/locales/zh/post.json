@@ -10,6 +10,7 @@
 		"followAuthorFailed": "操作失败，请稍后再试",
 		"views": "{count} 次阅读",
 		"readingTime": "{count} 分钟",
+		"updated": "更新于 {date}",
 		"readingProgress": "阅读进度",
 		"likes": "喜欢",
 		"likesCount": "{count} 个赞",

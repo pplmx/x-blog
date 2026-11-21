@@ -1124,6 +1124,28 @@ describe("Post Detail Page", () => {
 			expect(wrapper.text()).toContain("6月");
 			expect(wrapper.text()).toContain("1");
 		});
+
+		it("stamps a revision made more than a day after publishing", async () => {
+			const wrapper = await mountPostPage({
+				post: {
+					...mockPost,
+					created_at: "2024-01-15T10:30:00Z",
+					updated_at: "2024-03-02T08:00:00Z",
+				},
+			});
+			expect(wrapper.text()).toContain("更新于 2024年3月2日");
+		});
+
+		it("keeps the stamp quiet for a same-day edit", async () => {
+			const wrapper = await mountPostPage({
+				post: {
+					...mockPost,
+					created_at: "2024-01-15T10:30:00Z",
+					updated_at: "2024-01-15T18:00:00Z",
+				},
+			});
+			expect(wrapper.text()).not.toContain("更新于");
+		});
 	});
 
 	describe("Tags", () => {

@@ -1802,6 +1802,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🐛 **deleted posts, series, pages, authors and readers answer a real 404** — these detail pages
   rendered their friendly "not found" state with HTTP 200, which search engines index as soft 404s.
   SSR now writes 404 and the response carries `robots: noindex` for the missing view.
+- 🕘 **articles show when they were last revised** — a post edited more than a day after publishing
+  now carries an "Updated …" line beside its publish date, so readers can judge freshness; same-day
+  typo fixes stay quiet.
 
 ## [0.1.0] - 2026-09-09
 
