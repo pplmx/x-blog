@@ -625,8 +625,10 @@ describe("Post Detail Page", () => {
 					cover_image: "https://example.com/cover.jpg",
 				} as any,
 			});
-			const img = wrapper.find("img[alt='Test Article Post']");
+			const img = wrapper.find("img[alt='']");
 			expect(img.exists()).toBe(true);
+			// The generated cover repeats the H1 text, so it is decorative.
+			expect(img.attributes("alt")).toBe("");
 			// All posts now render algorithmic SVG for display consistency
 			expect(img.attributes("src")).toContain("data:image/svg+xml");
 		});

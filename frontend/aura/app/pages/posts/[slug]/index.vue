@@ -947,9 +947,11 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					</p>
 				</header>
 
-				<!-- Cover image -->
+				<!-- Cover image: generated from the title, so it repeats the H1
+             text verbatim. Decorative — an empty alt keeps screen readers from
+             announcing the title twice. -->
 				<div class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden mb-10 shadow-lg">
-					<img :src="coverImageUrl" :alt="post.title" class="w-full h-full object-cover" />
+					<img :src="coverImageUrl" alt="" class="w-full h-full object-cover" />
 					<div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
 				</div>
 
