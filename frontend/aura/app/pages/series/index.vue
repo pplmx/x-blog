@@ -66,27 +66,28 @@ useSeo(() => ({
 						<Icon icon="lucide:layers" class="w-5 h-5" />
 					</div>
 					<div class="min-w-0 flex-1">
-					<div class="flex items-start justify-between gap-4">
-						<h2
-							class="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
+						<div class="flex items-start justify-between gap-4">
+							<h2
+								class="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
+							>
+								{{ s.title }}
+							</h2>
+							<Icon
+								icon="lucide:arrow-right"
+								class="w-5 h-5 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300 shrink-0"
+							/>
+						</div>
+						<p
+							v-if="s.description"
+							class="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-2"
 						>
-							{{ s.title }}
-						</h2>
-						<Icon
-							icon="lucide:arrow-right"
-							class="w-5 h-5 text-gray-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all duration-300 shrink-0"
-						/>
-					</div>
-					<p
-						v-if="s.description"
-						class="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-2"
-					>
-						{{ s.description }}
-					</p>
-					<div class="flex items-center gap-3 mt-4 text-xs text-gray-400">
-						<span class="inline-flex items-center gap-1">
-							{{ t("series.postsCount", { count: s.post_count }) }}
-						</span>
+							{{ s.description }}
+						</p>
+						<div class="flex items-center gap-3 mt-4 text-xs text-gray-400">
+							<span class="inline-flex items-center gap-1">
+								{{ t("series.postsCount", { count: s.post_count }) }}
+							</span>
+						</div>
 					</div>
 				</NuxtLink>
 			</div>
