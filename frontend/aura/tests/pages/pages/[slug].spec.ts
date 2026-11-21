@@ -107,6 +107,7 @@ describe("Public static page (/pages/{slug})", () => {
 			error: { statusCode: 404, message: "Page not found" },
 			slug: "never-existed",
 		});
+		expect(wrapper.find("h1").text()).toBe("这个页面不存在");
 		expect(wrapper.text()).toContain("这个页面不存在");
 	});
 

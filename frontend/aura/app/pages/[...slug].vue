@@ -28,9 +28,9 @@ useHead({
 				</div>
 			</div>
 
-			<h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
 				{{ t("post.notFoundHeading") }}
-			</h2>
+			</h1>
 			<p class="text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto leading-relaxed">
 				{{ t("post.notFoundDesc") }}
 			</p>

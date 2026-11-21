@@ -165,7 +165,7 @@ describe("Print / PDF view", () => {
 
 	it("renders not-found message when the post is null", async () => {
 		const wrapper = await mountPrintPage({ post: null });
-		expect(wrapper.text()).toContain("文章不存在");
+		expect(wrapper.find("h1").text()).toBe("文章不存在");
 	});
 
 	it("renders not-found message when the fetch fails", async () => {

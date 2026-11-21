@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **not-found pages lead with a real heading** — the 404 states for missing
+  posts, series, pages, authors and unknown routes now use an `<h1>`, so the
+  page outline and screen-reader heading navigation reach the message instead
+  of skipping to nothing (or to a lone `h2`).
 - 🔢 **English counts agree with their number** — a numeric `count` now selects
   a `_one` string at 1, so single views, likes, posts, articles, tags and
   categories read "1 view"/"1 post" instead of "1 views"/"1 posts"; Chinese

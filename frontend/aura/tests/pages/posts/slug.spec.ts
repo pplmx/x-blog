@@ -544,7 +544,7 @@ describe("Post Detail Page", () => {
 				pending: false,
 				error: null,
 			});
-			expect(wrapper.text()).toContain("文章不存在");
+			expect(wrapper.find("h1").text()).toBe("文章不存在");
 		});
 
 		it("shows the friendly not-found state for a real 404 (deleted post), not 'load failed' + Retry ", async () => {

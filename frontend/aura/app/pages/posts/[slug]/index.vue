@@ -762,7 +762,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
          this branch the not-found message below was unreachable for real 404s. -->
 		<div v-else-if="error && error.statusCode === 404" class="text-center py-20 text-gray-500">
 			<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-			<p class="mb-4">{{ t("post.notFound") }}</p>
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+				{{ t("post.notFound") }}
+			</h1>
 			<NuxtLink
 				to="/"
 				class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
@@ -796,7 +798,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
 		<!-- Not found: a path back home instead of a bare dead end. -->
 		<div v-else-if="!post" class="text-center py-20 text-gray-500">
 			<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-			<p class="mb-4">{{ t("post.notFound") }}</p>
+			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+				{{ t("post.notFound") }}
+			</h1>
 			<NuxtLink
 				to="/"
 				class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"

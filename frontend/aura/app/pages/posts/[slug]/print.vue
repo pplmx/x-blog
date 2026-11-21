@@ -67,7 +67,9 @@ function printPage() {
 
 			<div v-else-if="error || !post" class="text-center py-20 text-gray-500">
 				<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
-				<p class="mb-4">{{ t("post.notFound") }}</p>
+				<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+					{{ t("post.notFound") }}
+				</h1>
 				<!-- A stale share/bookmark print link must not be a dead end (deep-dive):
              give the reader a path back home, like the article page. -->
 				<NuxtLink

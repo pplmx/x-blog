@@ -181,6 +181,7 @@ describe("Series Detail Page", () => {
 
 	it("renders the not-found state when there is no series", async () => {
 		const wrapper = await mountSeriesDetailPage({ series: null });
+		expect(wrapper.find("h1").text()).toBe("系列不存在");
 		expect(wrapper.text()).toContain("系列不存在");
 		// A dead end is never acceptable: the not-found state offers a way back
 		// to the series index and home (mirrors the post page's not-found exits).

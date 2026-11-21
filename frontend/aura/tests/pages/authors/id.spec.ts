@@ -215,7 +215,7 @@ describe("Author archive page (/authors/[id])", () => {
 			archive: null,
 			error: { message: "Author not found", statusCode: 404 },
 		});
-		expect(wrapper.text()).toContain("作者不存在");
+		expect(wrapper.find("h1").text()).toBe("作者不存在");
 	});
 
 	it("renders the not-found state for a non-numeric id without fetching", async () => {
