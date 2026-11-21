@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a wide table now gets `tabindex="0"`, `role="region"` and a localized accessible name once mounted
   (refreshed on a locale switch), so keyboard and screen-reader users can enter the region and
   scroll the columns instead of losing the hidden ones.
+- 🐛 **the share row wraps on small phones instead of overflowing** — six 44px share targets plus the
+  分享到 label could not fit a 320px viewport, so the row ran past the article edge and widened the
+  document to 329px. It now wraps with a tighter gap below `sm`, keeping every target on screen.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its

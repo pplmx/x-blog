@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="flex items-center justify-center gap-4 py-6 my-8 border-y border-gray-200 dark:border-gray-700"
+		class="flex flex-wrap items-center justify-center gap-3 sm:gap-4 py-6 my-8 border-y border-gray-200 dark:border-gray-700"
 	>
 		<span class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
 			<Icon icon="lucide:share-2" class="w-4 h-4" />
