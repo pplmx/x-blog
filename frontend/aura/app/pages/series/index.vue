@@ -58,8 +58,14 @@ useSeo(() => ({
 					v-for="s in series"
 					:key="s.id"
 					:to="`/series/${s.slug}`"
-					class="group p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-lg transition-all duration-200"
+					class="group flex gap-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-700"
 				>
+					<div
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300"
+					>
+						<Icon icon="lucide:layers" class="w-5 h-5" />
+					</div>
+					<div class="min-w-0 flex-1">
 					<div class="flex items-start justify-between gap-4">
 						<h2
 							class="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2"
@@ -79,7 +85,6 @@ useSeo(() => ({
 					</p>
 					<div class="flex items-center gap-3 mt-4 text-xs text-gray-400">
 						<span class="inline-flex items-center gap-1">
-							<Icon icon="lucide:layers" class="w-3.5 h-3.5" />
 							{{ t("series.postsCount", { count: s.post_count }) }}
 						</span>
 					</div>

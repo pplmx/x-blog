@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🎴 **series cards lead with a badge and share the card surface** — the series index still used a
+  flat hairline box; each card now carries a blue layers badge, a white/gray-900 raised surface and
+  the same hover lift as category cards, so the two browse indexes read as one family.
 - 🌗 **pagination buttons keep their border in dark mode** — the archive, tag, category, discussion
   and follows pagers used a bare `border` that disappeared on a dark page and a light-only hover fill;
   they now carry a `gray-700` border and `gray-800` hover, matching the search pager.
