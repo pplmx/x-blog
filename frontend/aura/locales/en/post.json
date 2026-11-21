@@ -10,6 +10,7 @@
 		"followAuthorFailed": "Couldn't do that — please try again",
 		"views": "{count} views",
 		"readingTime": "{count} min read",
+		"readingProgress": "Reading progress",
 		"likes": "Like",
 		"likesCount": "{count} likes",
 		"likeError": "Failed to like the post. Please try again.",

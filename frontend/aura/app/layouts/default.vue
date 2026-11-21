@@ -126,6 +126,16 @@ onMounted(initTheme);
 
 <template>
 	<div class="min-h-screen flex flex-col bg-white dark:bg-gray-950 transition-colors duration-300">
+		<!-- Keyboard users land here first on every page: the header holds a
+         dozen links, so without a bypass they must Tab through all of them
+         before reaching the article. Off-screen until focused. -->
+		<a
+			href="#main-content"
+			class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-blue-600 focus:shadow-lg focus:ring-2 focus:ring-blue-500 dark:focus:bg-gray-800 dark:focus:text-blue-400"
+			data-testid="skip-to-content"
+		>
+			{{ t("common.skipToContent") }}
+		</a>
 		<!-- Header -->
 		<header
 			class="sticky top-0 z-50 border-b border-gray-100/80 dark:border-gray-800/80"
@@ -351,7 +361,11 @@ onMounted(initTheme);
 		</header>
 
 		<!-- Main -->
-		<main class="flex-1 page-shell px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+		<main
+			id="main-content"
+			tabindex="-1"
+			class="flex-1 page-shell px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 focus:outline-none"
+		>
 			<slot />
 		</main>
 

@@ -602,4 +602,29 @@ describe("Default Layout", () => {
 			localStorage.removeItem("reader_token");
 		});
 	});
+
+	describe("Skip to content", () => {
+		it("renders an off-screen skip link as the first focusable element", () => {
+			const wrapper = mountLayout();
+			const skip = wrapper.find('[data-testid="skip-to-content"]');
+			expect(skip.exists()).toBe(true);
+			expect(skip.attributes("href")).toBe("#main-content");
+			expect(skip.text()).toBe("跳到正文");
+			// Visible only once focused, so it never shifts the header layout.
+			expect(skip.classes()).toContain("sr-only");
+			expect(skip.classes()).toContain("focus:not-sr-only");
+			expect(wrapper.element.firstElementChild?.getAttribute("data-testid")).toBe(
+				"skip-to-content",
+			);
+		});
+
+		it("points the link at a focusable main landmark", () => {
+			const wrapper = mountLayout();
+			const main = wrapper.find("main#main-content");
+			expect(main.exists()).toBe(true);
+			// tabindex=-1 makes the target focusable so the skip actually moves focus.
+			expect(main.attributes("tabindex")).toBe("-1");
+			expect(main.find(".page-content").exists()).toBe(true);
+		});
+	});
 });

@@ -574,9 +574,20 @@ function handleCommentSubmitted(created: Comment | undefined) {
 
 <template>
 	<div class="max-w-7xl mx-auto">
-		<!-- Reading progress bar -->
-		<div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-100 dark:bg-gray-800">
+		<!-- Reading progress bar. Exposed as a progressbar so assistive tech can
+         report how far through the article the reader is; the inner fill is
+         purely visual. -->
+		<div
+			class="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-100 dark:bg-gray-800"
+			role="progressbar"
+			aria-valuemin="0"
+			aria-valuemax="100"
+			:aria-valuenow="Math.round(scrollProgress)"
+			:aria-label="t('post.readingProgress')"
+			data-testid="reading-progress"
+		>
 			<div
+				aria-hidden="true"
 				class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-150 ease-out"
 				:style="{ width: scrollProgress + '%' }"
 			/>

@@ -1644,6 +1644,50 @@ describe("Post Detail Page", () => {
 		});
 	});
 
+	describe("Reading progress bar", () => {
+		it("exposes a labelled progressbar whose value tracks scroll", async () => {
+			const wrapper = await mountPostPage({ post: mockPost });
+			const bar = wrapper.find('[data-testid="reading-progress"]');
+			expect(bar.attributes("role")).toBe("progressbar");
+			expect(bar.attributes("aria-valuemin")).toBe("0");
+			expect(bar.attributes("aria-valuemax")).toBe("100");
+			expect(bar.attributes("aria-label")).toBe("阅读进度");
+
+			// jsdom has no layout: give the document a scrollable height so the
+			// scroll handler can compute a ratio, then restore it for later tests.
+			const bodyHeight = Object.getOwnPropertyDescriptor(document.body, "scrollHeight");
+			const innerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
+			const scrollY = Object.getOwnPropertyDescriptor(window, "scrollY");
+			try {
+				Object.defineProperty(document.body, "scrollHeight", {
+					value: 1768,
+					configurable: true,
+				});
+				Object.defineProperty(window, "innerHeight", { value: 768, configurable: true });
+				Object.defineProperty(window, "scrollY", {
+					value: 500,
+					configurable: true,
+					writable: true,
+				});
+				window.dispatchEvent(new Event("scroll"));
+				await flushPromises();
+
+				// 500 of 1000 scrollable pixels → 50%.
+				expect(bar.attributes("aria-valuenow")).toBe("50");
+			} finally {
+				for (const [target, key, descriptor] of [
+					[document.body, "scrollHeight", bodyHeight],
+					[window, "innerHeight", innerHeight],
+					[window, "scrollY", scrollY],
+				] as const) {
+					if (descriptor) Object.defineProperty(target, key, descriptor);
+					else delete (target as unknown as Record<string, unknown>)[key];
+				}
+			}
+			wrapper.unmount();
+		});
+	});
+
 	describe("Mobile/tablet TOC sheet ", () => {
 		const multiHeadingContent =
 			'<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n' +

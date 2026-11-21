@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   collapses transition/animation durations to ~0 when the OS asks for reduced motion. Durations
   collapse rather than disappear, so Vue `<Transition>` leave hooks still fire and popover focus
   hand-off keeps working.
+- ♿ **keyboard bypass and reading-progress semantics** — every page now starts with an off-screen
+  "Skip to content" link that moves focus to `<main id="main-content" tabindex="-1">`, and the
+  article progress bar is exposed as a localized `role="progressbar"` (0–100) instead of a
+  decorative strip.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its
