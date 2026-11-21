@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🏷 **non-positive taxonomy ids fall back to the index** — `/tags?tag_id=-1`
+  and `/categories?category_id=-1` were forwarded to an API that requires ids
+  ≥ 1, so the page showed a dead Retry; both now treat them as no selection.
 - 🧹 **malformed search filters no longer dead-end** — a shared link with an
   unknown `sort` or an unparsable `date_from`/`date_to` fell through to the API
   and 422'd into a dead Retry; both are now validated against the backend's

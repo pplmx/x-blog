@@ -174,6 +174,15 @@ describe("Tags Page", () => {
 			await mountTagsPage({ routeQuery: { tag_id: "1" } });
 			expect(lastPostsEnabled).toBe(true);
 		});
+
+		it("treats a non-positive tag id as no selection", async () => {
+			// /tags?tag_id=-1 would reach the API's ge=1 validation and 422 into
+			// a retry that can never succeed.
+			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "-1" } });
+			expect(lastPostsEnabled).toBe(false);
+			expect(wrapper.text()).toContain("所有标签");
+			expect(wrapper.text()).not.toContain("返回所有标签");
+		});
 	});
 
 	describe("All tags view (no tag_id)", () => {

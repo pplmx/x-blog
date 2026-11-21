@@ -20,9 +20,15 @@ const { t, locale } = useLang();
 const route = useRoute();
 // Reactive sources so SPA navigation that changes only query params
 // (category_id / page) refetches — the computed URL drives useFetch.
-const categoryId = computed(() =>
-	route.query.category_id ? Number.parseInt(String(route.query.category_id), 10) : undefined,
-);
+// A shared link may carry a non-positive id (?category_id=-1): the API
+// validates category_id with ge=1 and answers 422, so clamping to "no
+// selection" here keeps the all-categories view instead of a dead retry.
+const categoryId = computed(() => {
+	const raw = route.query.category_id
+		? Number.parseInt(String(route.query.category_id), 10)
+		: undefined;
+	return raw === undefined || Number.isNaN(raw) || raw < 1 ? undefined : raw;
+});
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
 
 // `withQuery` omits undefined values, so page 1 or an unset category leaves no

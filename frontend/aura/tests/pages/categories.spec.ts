@@ -221,6 +221,15 @@ describe("Categories Page", () => {
 			await mountCategoriesPage({ routeQuery: { category_id: "1" } });
 			expect(lastPostsEnabled).toBe(true);
 		});
+
+		it("treats a non-positive category id as no selection", async () => {
+			// /categories?category_id=-1 would reach the API's ge=1 validation
+			// and 422 into a retry that can never succeed.
+			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "-1" } });
+			expect(lastPostsEnabled).toBe(false);
+			expect(wrapper.text()).toContain("全部分类");
+			expect(wrapper.text()).not.toContain("返回所有分类");
+		});
 	});
 
 	describe("All categories view (no category_id)", () => {
