@@ -20,6 +20,8 @@ useSeo(() => ({
 	title: t("newsletter.unsubscribe.seoTitle"),
 	description: t("newsletter.unsubscribe.seoDesc"),
 	path: "/newsletter/unsubscribe",
+	// Token action page: nothing here is meant to rank.
+	noindex: true,
 }));
 
 const route = useRoute();

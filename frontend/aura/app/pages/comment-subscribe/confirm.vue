@@ -21,6 +21,8 @@ useSeo(() => ({
 	title: t("reader.commentSubscribe.confirmSeoTitle"),
 	description: t("reader.commentSubscribe.confirmSeoDesc"),
 	path: "/comment-subscribe/confirm",
+	// Token action page: nothing here is meant to rank.
+	noindex: true,
 }));
 
 const route = useRoute();

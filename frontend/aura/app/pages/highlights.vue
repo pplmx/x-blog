@@ -25,7 +25,13 @@ const router = useRouter();
 const loginTarget = { path: "/login", query: { redirect: "/highlights" } } as const;
 const { isAuthenticated } = useReaderAuth();
 
-useSeo(() => ({ title: t("highlights.seoTitle"), description: t("highlights.seoDesc"), path: "/highlights" }));
+useSeo(() => ({
+	title: t("highlights.seoTitle"),
+	description: t("highlights.seoDesc"),
+	path: "/highlights",
+	// Private annotations; the server render is the signed-out prompt.
+	noindex: true,
+}));
 
 // Page from the query string (deep-linkable); malformed/too-low values resolve
 // to page 1 instead of a guaranteed 422 loop (follows/liked pattern).

@@ -21,6 +21,8 @@ useSeo(() => ({
 	title: t("reader.commentSubscribe.unsubSeoTitle"),
 	description: t("reader.commentSubscribe.unsubSeoDesc"),
 	path: "/comment-subscribe/unsubscribe",
+	// Token action page: nothing here is meant to rank.
+	noindex: true,
 }));
 
 const route = useRoute();

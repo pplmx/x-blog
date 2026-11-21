@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔒 **private and token pages stay out of search** — notifications, bookmarks,
+  history, likes, highlights, follows, and the newsletter/comment token pages
+  now send `noindex, follow`; crawlers only ever saw their signed-out shells.
 - 🗺 **the community feeds are in the sitemap** — `/discussion` and
   `/comments` are public, canonical and indexable, but neither URL was being
   submitted; both now appear so crawlers can find the threads.

@@ -20,6 +20,8 @@ useSeo(() => ({
 	title: t("newsletter.confirm.seoTitle"),
 	description: t("newsletter.confirm.seoDesc"),
 	path: "/newsletter/confirm",
+	// Token action page: nothing here is meant to rank.
+	noindex: true,
 }));
 
 const route = useRoute();

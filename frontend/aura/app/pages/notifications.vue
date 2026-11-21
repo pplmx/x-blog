@@ -46,6 +46,8 @@ useSeo(() => ({
 	title: t("notifications.seoTitle"),
 	description: t("notifications.seoDesc"),
 	path: "/notifications",
+	// Auth-only inbox: crawlers see the signed-out shell, so keep it out.
+	noindex: true,
 }));
 
 const items = ref<ReaderNotification[]>([]);

@@ -32,6 +32,8 @@ useSeo(() => ({
 	title: t("follows.seoTitle"),
 	description: t("follows.seoDesc"),
 	path: "/follows",
+	// Private subscription feed; crawlers see only the sign-in card.
+	noindex: true,
 }));
 
 // Page comes from the query string so pagination is deep-linkable and

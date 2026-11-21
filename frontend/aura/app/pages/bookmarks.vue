@@ -33,6 +33,8 @@ useSeo(() => ({
 	title: t("bookmarks.seoTitle"),
 	description: t("bookmarks.seoDesc"),
 	path: "/bookmarks",
+	// Device-local list: a crawler's HTML is always the empty signed-out shell.
+	noindex: true,
 }));
 
 // Folders are a signed-in (cloud) feature. Uses the reactive reader-auth

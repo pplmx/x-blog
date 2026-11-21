@@ -65,6 +65,8 @@ useSeo(() => ({
 	title: t("history.seoTitle"),
 	description: t("history.seoDesc"),
 	path: "/history",
+	// Private reading trail: the server render is the signed-out shell.
+	noindex: true,
 }));
 
 // Reading insights: the "what/how much" aggregate —

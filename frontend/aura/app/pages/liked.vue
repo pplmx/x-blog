@@ -34,6 +34,8 @@ useSeo(() => ({
 	title: t("liked.seoTitle"),
 	description: t("liked.seoDesc"),
 	path: "/liked",
+	// Auth-only list; crawlers only ever see the sign-in prompt.
+	noindex: true,
 }));
 
 // Page comes from the query string so pagination is deep-linkable; a malformed
