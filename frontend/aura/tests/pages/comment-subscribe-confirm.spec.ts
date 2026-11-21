@@ -39,6 +39,8 @@ describe("comment-subscribe confirm page", () => {
 		await flushPromises();
 		expect(confirmGuestThreadSubscription).not.toHaveBeenCalled();
 		expect(wrapper.text()).toContain("这个确认链接无效，或已经被使用过。");
+		// The success heading belongs to a confirmed token only.
+		expect(wrapper.find("h1").text()).toBe("确认订阅讨论");
 	});
 
 	it("posts the token once and shows success", async () => {
@@ -49,6 +51,7 @@ describe("comment-subscribe confirm page", () => {
 		expect(confirmGuestThreadSubscription).toHaveBeenCalledTimes(1);
 		expect(confirmGuestThreadSubscription).toHaveBeenCalledWith("tok-123");
 		expect(wrapper.text()).toContain("这篇讨论每当有新评论通过审核时，你都会收到一封邮件。");
+		expect(wrapper.find("h1").text()).toBe("已订阅该讨论");
 	});
 
 	it("seeds the weekly-summary checkbox from the confirm response", async () => {

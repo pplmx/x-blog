@@ -30,6 +30,13 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "error">("pending");
+// Only a real unsubscribe may claim "已取消订阅"; a spent or unknown token
+// keeps the neutral action title above its invalid-link explanation.
+const pageTitle = computed(() =>
+	state.value === "done"
+		? t("reader.commentSubscribe.unsubTitle")
+		: t("reader.commentSubscribe.unsubSeoTitle"),
+);
 
 // Fire once when the page mounts with a token. Guarded by an in-flight flag so
 // a duplicate onMounted/route change can't POST twice.
@@ -65,7 +72,7 @@ onMounted(() => void run());
 			class="rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"
 		>
 			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-				{{ t("reader.commentSubscribe.unsubTitle") }}
+				{{ pageTitle }}
 			</h1>
 
 			<div v-if="state === 'pending'" role="status" class="mt-3">

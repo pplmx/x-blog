@@ -33,6 +33,8 @@ describe("comment-subscribe unsubscribe page", () => {
 		await flushPromises();
 		expect(unsubscribeGuestThreadSubscription).not.toHaveBeenCalled();
 		expect(wrapper.text()).toContain("这个退订链接无效，或已经被使用过。");
+		// A spent token must not be headed by the success claim.
+		expect(wrapper.find("h1").text()).toBe("取消订阅讨论邮件");
 	});
 
 	it("posts the token once and shows success", async () => {
@@ -43,6 +45,7 @@ describe("comment-subscribe unsubscribe page", () => {
 		expect(unsubscribeGuestThreadSubscription).toHaveBeenCalledTimes(1);
 		expect(unsubscribeGuestThreadSubscription).toHaveBeenCalledWith("tok-123");
 		expect(wrapper.text()).toContain("这篇讨论以后有新评论时，你将不再收到邮件。");
+		expect(wrapper.find("h1").text()).toBe("已取消订阅");
 	});
 
 	it("shows the invalid state when the token is unknown/used (404)", async () => {

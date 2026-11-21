@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ✍️ **utility pages stop claiming success before a token works** — the
+  follow-confirm, follow-unsubscribe and reply-unsubscribe pages keep a neutral
+  heading until their token actually succeeds, so an expired or unknown link no
+  longer reads "已订阅该讨论" / "已取消订阅" directly above the line saying the
+  link is invalid or already used.
 - 🔗 **each comment timestamp is a permalink** — the date beside a comment or
   reply now links to its own `#comment-<id>` anchor, using the deep-link scroll
   and highlight the thread already had, so a single reply is shareable.

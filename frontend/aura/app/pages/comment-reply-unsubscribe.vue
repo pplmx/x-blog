@@ -30,6 +30,13 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "error">("pending");
+// Neutral title until the token is spent successfully; an invalid link must
+// not be headed by the success claim "已取消订阅".
+const pageTitle = computed(() =>
+	state.value === "done"
+		? t("reader.replyUnsubscribe.title")
+		: t("reader.replyUnsubscribe.seoTitle"),
+);
 
 // Fire once when the page mounts with a token. Guarded by an in-flight flag so
 // a duplicate onMounted/route change can't POST twice.
@@ -72,7 +79,7 @@ onMounted(() => void run());
 					<Icon icon="lucide:mail-x" class="w-8 h-8 text-white" />
 				</div>
 				<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-					{{ t("reader.replyUnsubscribe.title") }}
+					{{ pageTitle }}
 				</h1>
 			</div>
 

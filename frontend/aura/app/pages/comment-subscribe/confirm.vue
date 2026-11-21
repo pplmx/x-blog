@@ -30,6 +30,14 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "unsubscribed" | "error">("pending");
+// The success heading must not appear before the token actually confirmed:
+// an invalid or spent link would otherwise read "已订阅该讨论" directly above
+// the "link is not valid" message.
+const pageTitle = computed(() =>
+	state.value === "done"
+		? t("reader.commentSubscribe.confirmTitle")
+		: t("reader.commentSubscribe.confirmSeoTitle"),
+);
 // Weekly-digest cadence toggle: once confirmed, the
 // holder can switch to (or back from) a weekly summary instead of a mail per
 // approved comment, using the same token the confirm link carried — terminal
@@ -99,7 +107,7 @@ onMounted(() => void run());
 			class="rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center"
 		>
 			<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-				{{ t("reader.commentSubscribe.confirmTitle") }}
+				{{ pageTitle }}
 			</h1>
 
 			<div v-if="state === 'pending'" role="status" class="mt-3">
