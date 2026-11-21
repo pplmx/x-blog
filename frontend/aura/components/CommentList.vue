@@ -1,7 +1,11 @@
 <template>
 	<section ref="listEl">
 		<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-			<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+			<h2
+				id="comments"
+				tabindex="-1"
+				class="scroll-mt-24 text-xl font-bold text-gray-900 dark:text-gray-100 focus:outline-none"
+			>
 				{{ t("components.commentList.title") }} ({{ total }})
 			</h2>
 			<!-- Comment-thread follow: signed-in readers subscribe

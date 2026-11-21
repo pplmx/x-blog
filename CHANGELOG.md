@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 💬 **long articles jump straight to the thread** — the article meta row now
+  links 评论 / Comments, landing on the discussion heading with focus, so a
+  reader (or screen reader) no longer scrolls past the whole body to reply.
 - 🧭 **the primary menu is a named landmark** — the desktop content nav now
   carries `aria-label="主导航"`, so a screen reader's landmark list says which
   navigation it is instead of an unnamed "navigation".

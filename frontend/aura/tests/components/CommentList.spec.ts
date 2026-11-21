@@ -200,6 +200,15 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("评论");
 			expect(wrapper.text()).toContain("0");
 		});
+
+		it("makes the heading the #comments fragment target", async () => {
+			const { wrapper } = await mountCommentList();
+			const heading = wrapper.find("h2#comments");
+			expect(heading.exists()).toBe(true);
+			// tabindex -1 lets the browser move focus here when the article
+			// header's 评论 link is followed, without adding a tab stop.
+			expect(heading.attributes("tabindex")).toBe("-1");
+		});
 	});
 
 	describe("Loading state", () => {

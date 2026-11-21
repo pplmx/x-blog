@@ -1719,7 +1719,7 @@ describe("Post Detail Page", () => {
 			const wrapper = await mountPostPage({ post: singleHeadingPost });
 
 			// No heading links should be in TOC
-			const headingLinks = wrapper.findAll('a[href^="#"]');
+			const headingLinks = wrapper.findAll('nav[aria-label="目录"] a[href^="#"]');
 			expect(headingLinks.length).toBe(0);
 		});
 
@@ -1731,7 +1731,7 @@ describe("Post Detail Page", () => {
 
 			const wrapper = await mountPostPage({ post: noHeadingsPost });
 
-			const headingLinks = wrapper.findAll('a[href^="#"]');
+			const headingLinks = wrapper.findAll('nav[aria-label="目录"] a[href^="#"]');
 			expect(headingLinks.length).toBe(0);
 		});
 	});

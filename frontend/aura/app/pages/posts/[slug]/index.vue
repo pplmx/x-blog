@@ -906,6 +906,16 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<Icon icon="lucide:printer" class="w-3.5 h-3.5" />
 							{{ t("post.printPdf") }}
 						</NuxtLink>
+						<!-- On a long article the thread is many screens away; this
+                 skips straight to its heading (which takes focus so the
+                 keyboard reader continues inside the discussion). -->
+						<a
+							href="#comments"
+							class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+						>
+							<Icon icon="lucide:message-circle" class="w-3.5 h-3.5" />
+							{{ t("components.commentList.title") }}
+						</a>
 					</div>
 
 					<h1
