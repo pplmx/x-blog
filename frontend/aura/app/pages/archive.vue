@@ -106,6 +106,16 @@ const years = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
 		.map(([year, months]) => ({ year, months: months.sort((a, b) => b.month - a.month) }));
 });
 
+// Bar widths are relative to the busiest month, so a timeline row reads as a
+// volume cue instead of a lone number. Guarded at 1 to avoid dividing by zero
+// on an empty archive.
+const maxMonthCount = computed(() =>
+	Math.max(1, ...years.value.flatMap((y) => y.months.map((m) => m.count))),
+);
+function yearTotal(months: ArchiveEntry[]): number {
+	return months.reduce((sum, m) => sum + m.count, 0);
+}
+
 // Archive index narrowing filter (survey finding): on a multi-year blog the
 // year/month pill stack is long and unscannable with no way to jump — the
 // exact problem tags/categories fixed. Filter the month pills by
@@ -310,23 +320,47 @@ useSeo(() => ({
 					</p>
 
 					<section v-for="y in filteredYears" :key="y.year">
-						<h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-3">
-							{{ y.year }}
-						</h2>
-						<div class="flex flex-wrap gap-3">
+						<div class="mb-3 flex items-baseline justify-between gap-3">
+							<h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">
+								{{ y.year }}
+							</h2>
+							<span class="text-sm tabular-nums text-gray-400 dark:text-gray-500">
+								{{ t("archive.countLabel", { count: yearTotal(y.months) }) }}
+							</span>
+						</div>
+						<div class="space-y-2">
 							<NuxtLink
 								v-for="m in y.months"
 								:key="m.month"
 								:to="{ query: { year: String(m.year), month: String(m.month) } }"
-								class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+								class="group flex items-center gap-4 rounded-xl border border-gray-100 px-4 py-3 transition-colors hover:border-purple-200 hover:bg-purple-50/60 dark:border-gray-800 dark:hover:border-purple-900 dark:hover:bg-purple-950/30"
 							>
-								{{
-									new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
-										locale === "zh" ? "zh-CN" : "en-US",
-										{ month: "long" },
-									)
-								}}
-								<span class="opacity-80 text-xs">({{ m.count }})</span>
+								<span class="w-16 shrink-0 text-sm font-medium text-gray-700 dark:text-gray-200">
+									{{
+										new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
+											locale === "zh" ? "zh-CN" : "en-US",
+											{ month: "long" },
+										)
+									}}
+								</span>
+								<span
+									class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+									aria-hidden="true"
+								>
+									<span
+										class="block h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500"
+										:style="{ width: `${Math.max(4, Math.round((m.count / maxMonthCount) * 100))}%` }"
+									/>
+								</span>
+								<span
+									class="archive-count w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-gray-600 dark:text-gray-300"
+								>
+									{{ m.count }}
+								</span>
+								<Icon
+									icon="lucide:arrow-right"
+									class="h-4 w-4 shrink-0 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-gray-600"
+								/>
 							</NuxtLink>
 						</div>
 					</section>

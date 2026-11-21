@@ -214,8 +214,19 @@ describe("Archive Page", () => {
 
 		it("renders month links with post counts", async () => {
 			const wrapper = await mountArchivePage();
-			expect(wrapper.text()).toContain("(1)");
-			expect(wrapper.text()).toContain("(2)");
+			// One count per month row, newest first: 2025-11, 2024-03, 2024-01.
+			const counts = wrapper.findAll(".archive-count").map((node) => node.text());
+			expect(counts).toEqual(["1", "2", "1"]);
+		});
+
+		it("scales each month bar against the busiest month", async () => {
+			const wrapper = await mountArchivePage();
+			const widths = wrapper
+				.findAll(".archive-count")
+				.map((node) => node.element.parentElement?.querySelector("span span")?.getAttribute("style"));
+			// March 2024 (count 2) is the busiest bucket, so its bar is full width;
+			// the single-post months render at half of that.
+			expect(widths).toEqual(["width: 50%;", "width: 100%;", "width: 50%;"]);
 		});
 
 		it("renders the 2024 months sorted newest-first", async () => {
@@ -232,14 +243,13 @@ describe("Archive Page", () => {
 
 			await input.setValue("2024");
 			await flushPromises();
-			expect(wrapper.text()).toContain("(1)"); // January 2024
-			expect(wrapper.text()).toContain("(2)"); // March 2024
+			// March 2024 then January 2024; the 2025 bucket is filtered out.
+			expect(wrapper.findAll(".archive-count").map((node) => node.text())).toEqual(["2", "1"]);
 			expect(wrapper.text()).not.toContain("2025");
 
 			await input.setValue("三");
 			await flushPromises();
-			expect(wrapper.text()).toContain("(2)"); // just March
-			expect(wrapper.text()).not.toContain("(1)");
+			expect(wrapper.findAll(".archive-count").map((node) => node.text())).toEqual(["2"]);
 
 			await input.setValue("");
 			await flushPromises();

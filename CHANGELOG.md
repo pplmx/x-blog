@@ -1776,6 +1776,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   creation order, with the post count as a grey `(n)`. Each category is now a card showing its
   name and "N posts", the grid sorts by post count (name order on ties), and the loading skeleton
   matches the card shape.
+- ✨ **the archive reads as a timeline** — months were solid gradient pills with the post count in
+  parentheses, so the busiest month looked the same as the quietest. Each month is now a row with a
+  bar scaled to the busiest month, the count right-aligned, and the year's total beside its heading.
 
 ## [0.1.0] - 2026-09-09
 
