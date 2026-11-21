@@ -310,7 +310,7 @@ function cancel2fa() {
 					<NuxtLink
 						v-if="mode === 'login'"
 						to="/forgot-password"
-						class="inline-block mt-2 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+						class="inline-block mt-2 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors"
 					>
 						{{ t("reader.forgotPassword.link") }}
 					</NuxtLink>
@@ -387,7 +387,7 @@ function cancel2fa() {
 				<button
 					type="button"
 					:disabled="isPending"
-					class="w-full text-center text-sm text-gray-500 hover:text-blue-600 transition-colors"
+					class="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors"
 					@click="cancel2fa"
 				>
 					{{ t("reader.login.twoFactorBack") }}
@@ -397,7 +397,7 @@ function cancel2fa() {
 			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
 				<NuxtLink
 					to="/bookmarks"
-					class="text-sm text-gray-500 hover:text-blue-600 transition-colors"
+					class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors"
 				>
 					← {{ t("reader.login.backToBookmarks") }}
 				</NuxtLink>

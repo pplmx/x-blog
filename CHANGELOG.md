@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌙 **login helper links stay readable on dark cards** — the forgot-password,
+  2FA-back and back-to-bookmarks links were `text-gray-500` without a dark
+  variant; they now add `dark:text-gray-400`.
 - 🔎 **the sitemap stops advertising the noindex search page** — `/search` sends
   `noindex, follow`, yet the sitemap listed it; the entry is gone so crawlers do
   not spend budget on a URL they are told to drop.
