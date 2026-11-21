@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `series/[slug].vue` passed each series' `post_count` to `series.countLabel` ("{count} series in
   total"), so one series holding 3 posts advertised "3 series in total". Both now use the new
   `series.postsCount` string (the page-level total still uses `countLabel`).
+- ✨ **headings get hover/focus permalink anchors** — `MarkdownContent.vue` injects a quiet `#` link
+  into every rendered `h1`–`h6` that has an id, after mount and on every content swap. Anchors are
+  injected into the DOM rather than emitted by the markdown pipeline, so `useToc`'s id derivation and
+  the heading text stay untouched; the glyph is CSS-generated, the aria-label is localized (and
+  refreshed on a locale switch), and touch devices show it faintly since they have no hover.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its

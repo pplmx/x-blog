@@ -18,7 +18,7 @@
   component dispatch instead of placeholder post-processing).
 -->
 <script setup lang="ts">
-import { type ComponentPublicInstance, computed, onMounted, ref, watch } from "vue";
+import { type ComponentPublicInstance, computed, nextTick, onMounted, ref, watch } from "vue";
 import { escapeHtml, highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composables/useMarkdown";
 
@@ -50,6 +50,7 @@ const props = withDefaults(defineProps<MarkdownContentProps>(), {
 // first synchronous render (SSR + first client paint), and DOMPurify upgrades
 // it once loaded. purifyReady forces a recompute after the upgrade so the
 // stronger sanitizer applies to what is already on screen.
+const rootEl = ref<HTMLElement | null>(null);
 const purifyReady = ref(false);
 const segments = computed(() => {
 	void purifyReady.value;
@@ -60,6 +61,8 @@ const segments = computed(() => {
 onMounted(async () => {
 	await loadPurify();
 	purifyReady.value = true;
+	await nextTick();
+	injectHeadingAnchors();
 	void applyHighlighting();
 });
 
@@ -122,7 +125,38 @@ onBeforeUnmount(() => {
 // diagram across SPA navigation).
 let contentEpoch = 0;
 
-const { t } = useLang();
+const { t, locale } = useLang();
+
+// --- Heading permalinks ---
+// Headings carry ids from the markdown pipeline but no visible way to copy a
+// section link. The anchors are injected into the rendered DOM (rather than
+// produced by the renderer) so the heading's text content — and therefore
+// useToc's id derivation from that text — stays exactly as before.
+function injectHeadingAnchors(): void {
+	const root = rootEl.value;
+	if (!root) return;
+	const label = t("components.markdown.permalink");
+	const headings = root.querySelectorAll<HTMLElement>("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+	for (const heading of headings) {
+		if (!heading.id) continue;
+		const existing = heading.querySelector<HTMLAnchorElement>(":scope > .heading-anchor");
+		if (existing) {
+			// Locale switches re-run this without replacing the v-html DOM.
+			existing.setAttribute("aria-label", label);
+			continue;
+		}
+		const link = document.createElement("a");
+		link.className = "heading-anchor";
+		link.href = `#${heading.id}`;
+		link.setAttribute("aria-label", label);
+		heading.appendChild(link);
+	}
+}
+
+// Re-inject after any render that replaces the v-html segments (content swap,
+// sanitizer upgrade) and refresh the labels when the locale changes.
+// `flush: "post"` runs after Vue has patched the DOM.
+watch([segments, locale], injectHeadingAnchors, { flush: "post" });
 
 // --- Image lightbox ---
 // All image segments become the lightbox's image set (order = in-post order),
@@ -309,7 +343,7 @@ function lineNumbers(code: string): number[] {
 </script>
 
 <template>
-	<div class="prose dark:prose-invert max-w-none markdown-content">
+	<div ref="rootEl" class="prose dark:prose-invert max-w-none markdown-content">
 		<template v-for="seg in segments" :key="seg.key">
 			<!-- Plain HTML (sanitised) -->
 			<div v-if="seg.type === 'html'" v-html="seg.html" class="contents" />
@@ -483,6 +517,43 @@ function lineNumbers(code: string): number[] {
 .markdown-content :deep(h2[id]),
 .markdown-content :deep(h3[id]) {
 	@apply scroll-mt-24;
+}
+
+/* Permalink anchor appended to each heading: invisible until the heading is
+   hovered or the anchor itself is keyboard-focused, so headings still read
+   cleanly while deep links stay one click away. */
+.markdown-content :deep(.heading-anchor) {
+	@apply ml-2 align-middle text-[0.6em] font-normal text-gray-300 no-underline opacity-0 transition-opacity dark:text-gray-600;
+}
+
+/* The glyph is CSS-generated so the heading's own text (and anything copied
+   from it, including the TOC) stays free of the "#" suffix. */
+.markdown-content :deep(.heading-anchor)::before {
+	content: "#";
+}
+
+.markdown-content :deep(h1:hover .heading-anchor),
+.markdown-content :deep(h2:hover .heading-anchor),
+.markdown-content :deep(h3:hover .heading-anchor),
+.markdown-content :deep(h4:hover .heading-anchor),
+.markdown-content :deep(h5:hover .heading-anchor),
+.markdown-content :deep(h6:hover .heading-anchor),
+.markdown-content :deep(.heading-anchor:focus-visible) {
+	@apply text-blue-500 opacity-100 dark:text-blue-400;
+}
+
+/* Touch devices have no hover, so the anchor would be permanently invisible
+   and unusable there — show it faintly instead. */
+@media (hover: none) {
+	.markdown-content :deep(.heading-anchor) {
+		@apply opacity-40;
+	}
+}
+
+@media print {
+	.markdown-content :deep(.heading-anchor) {
+		display: none;
+	}
 }
 
 .markdown-content :deep(a) {

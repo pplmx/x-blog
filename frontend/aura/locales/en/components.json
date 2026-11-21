@@ -127,7 +127,8 @@
 			"lightboxPrevious": "Previous image",
 			"lightboxNext": "Next image",
 			"lightboxCounter": "Image {current} of {total}",
-			"lightboxDialogAria": "Image viewer"
+			"lightboxDialogAria": "Image viewer",
+			"permalink": "Link to this section"
 		},
 		"postCard": {
 			"pinned": "Pinned",

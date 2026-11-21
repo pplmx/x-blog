@@ -132,6 +132,30 @@ describe("MarkdownContent", () => {
 			expect(wrapper.find("h2").text()).toBe("Subtitle");
 		});
 
+		it("injects a permalink anchor into each heading with an id", async () => {
+			const wrapper = mountMarkdown(
+				'<h2 id="intro">Intro</h2><h3 id="setup">Setup</h3><h4>No anchor</h4>',
+			);
+			await flushPromises();
+			const anchors = wrapper.findAll(".heading-anchor");
+			expect(anchors).toHaveLength(2);
+			expect(anchors[0].attributes("href")).toBe("#intro");
+			expect(anchors[1].attributes("href")).toBe("#setup");
+			// The "#" glyph is CSS-generated, so the heading text stays clean.
+			expect(wrapper.find("h2").text()).toBe("Intro");
+			expect(wrapper.find("h4").find(".heading-anchor").exists()).toBe(false);
+		});
+
+		it("re-injects heading anchors when the content swaps", async () => {
+			const wrapper = mountMarkdown('<h2 id="first">First</h2>');
+			await flushPromises();
+			await wrapper.setProps({ content: '<h2 id="second">Second</h2>' });
+			await flushPromises();
+			const anchors = wrapper.findAll(".heading-anchor");
+			expect(anchors).toHaveLength(1);
+			expect(anchors[0].attributes("href")).toBe("#second");
+		});
+
 		it("renders links", async () => {
 			const wrapper = mountMarkdown('<a href="https://example.com">Link</a>');
 			await flushPromises();
