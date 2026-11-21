@@ -19,7 +19,7 @@ from ._base import _from_iso, _iso, utc_now_naive
 
 
 async def build_backup_snapshot(db: AsyncSession) -> dict:
-    """Serialize the whole blog into a portable JSON snapshot (DEC-082).
+    """Serialize the whole blog into a portable JSON snapshot.
 
     Content only: categories, tags, series, posts (with their category/tags/
     series links, view/like counters) and each post's comment threads, parents
@@ -45,7 +45,7 @@ async def build_backup_snapshot(db: AsyncSession) -> dict:
                 select(models.Post)
                 # category/series are read per row below (name/slug); eager-load them
                 # with the joinedloads so a full-blog snapshot stays a handful of
-                # queries, not 2 per post (RIL ISS-289).
+                # queries, not 2 per post.
                 .options(
                     joinedload(models.Post.category),
                     joinedload(models.Post.series),
@@ -98,10 +98,10 @@ async def build_backup_snapshot(db: AsyncSession) -> dict:
     return {
         "format": "x-blog-backup",
         "version": 1,
-        # Naive UTC, matching every other timestamp in the bundle (DEC-213):
+        # Naive UTC, matching every other timestamp in the bundle:
         # an aware "+00:00" exported_at next to zone-less created_at/viewed_at
         # made a client that parses datetimes uniformly see mixed semantics.
-        # (round 276 deep-dive)
+        #
         "exported_at": utc_now_naive().isoformat(),
         "categories": categories,
         "tags": tags,
@@ -111,7 +111,7 @@ async def build_backup_snapshot(db: AsyncSession) -> dict:
 
 
 async def restore_backup(db: AsyncSession, payload: dict) -> dict:
-    """Import an ``x-blog-backup`` snapshot via natural-key upserts (DEC-082).
+    """Import an ``x-blog-backup`` snapshot via natural-key upserts.
 
     Categories/tags by name, series by slug, posts by slug (existing post:
     content fields are updated, comment threads merged under ``import_key``;
@@ -138,7 +138,7 @@ async def restore_backup(db: AsyncSession, payload: dict) -> dict:
     # The whole import must COMMIT: get_db closes the session without committing
     # (a bare db.close() rolls back the pending transaction), so flush-only work
     # here silently persisted nothing in production even though the endpoint
-    # returned 200 with created/updated counts (ISS-274). Every other write path
+    # returned 200 with created/updated counts. Every other write path
     # in crud.py commits explicitly for exactly this reason. A mid-import
     # exception rolls back so no half-imported state survives.
     restored_post_ids: set[int] = set()
@@ -247,7 +247,7 @@ async def restore_backup(db: AsyncSession, payload: dict) -> dict:
                     is_approved=bool(cmeta.get("is_approved", True)),
                     reviewed_at=_from_iso(cmeta.get("reviewed_at")),
                     created_at=_from_iso(cmeta.get("created_at")),
-                    # Reader accounts don't round-trip (DEC-082): a reader-attributed
+                    # Reader accounts don't round-trip: a reader-attributed
                     # comment restores as anonymous free-text.
                     import_key=key,
                 )
@@ -264,11 +264,11 @@ async def restore_backup(db: AsyncSession, payload: dict) -> dict:
         # snapshot, but a backup carries NO per-day breakdown — so the pre-restore
         # post_views_daily rows from the live instance would keep summing into the
         # admin trend chart, permanently disagreeing with the restored counter
-        # (re-restoring never fixes it; round-292 deep-dive ISS-463). Delete the
+        # (re-restoring never fixes it deep-dive). Delete the
         # daily rows for every restored post in the same transaction: the trend
         # restarts from the restored counter and only tracks views forward, which
         # matches both the fresh-instance case (no rows) and the documented
-        # "tracks forward only, no backfill" trend (DEC-086).
+        # "tracks forward only, no backfill" trend.
         if restored_post_ids:
             await db.execute(delete(models.PostViewsDaily).where(models.PostViewsDaily.post_id.in_(restored_post_ids)))
     except Exception:
@@ -281,7 +281,7 @@ async def restore_backup(db: AsyncSession, payload: dict) -> dict:
     # (clear_posts_list_cache) and the category/tag enumeration (30-min TTL,
     # otherwise a newly-restored category/tag could stay invisible for half an
     # hour). Other write paths do exactly this; restore was the one bulk write
-    # that left the public read surface serving pre-restore data (ISS-365).
+    # that left the public read surface serving pre-restore data.
     clear_posts_list_cache()
     clear_categories_cache()
     clear_tags_cache()

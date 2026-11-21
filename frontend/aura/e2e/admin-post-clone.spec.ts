@@ -1,5 +1,5 @@
 /**
- * Admin "duplicate post" (round 349).
+ * Admin "duplicate post".
  *
  * An editor seeds a sibling draft from a template post: from the posts list,
  * the duplicate button clones the row into a new draft (same content/taxonomy,
@@ -23,7 +23,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Admin post duplicate (round 349)", () => {
+test.describe("Admin post duplicate ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin publish on the live backend",

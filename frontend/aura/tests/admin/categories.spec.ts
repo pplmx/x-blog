@@ -55,7 +55,7 @@ async function loadPage() {
 	return CategoriesPage;
 }
 
-/** Page text inputs EXCLUDING the taxonomy search box (added ISS-311 part 3):
+/** Page text inputs EXCLUDING the taxonomy search box (added part 3):
  * the create form (index 0) and the per-row inline edit input stay in the
  * same relative order the older tests were written against. */
 function textInputs(wrapper: ReturnType<typeof mountWithSuspense>) {
@@ -310,7 +310,7 @@ describe("Admin Categories Page", () => {
 			expect(textInputs(wrapper).length).toBe(1);
 		});
 
-		it("filters the category list with the taxonomy search box (ISS-311 part 3)", async () => {
+		it("filters the category list with the taxonomy search box (part 3)", async () => {
 			const CategoriesPage = await loadPage();
 			const wrapper = await mountWithSuspense(CategoriesPage);
 			expect(wrapper.text()).toContain("Technology");

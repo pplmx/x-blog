@@ -1,5 +1,5 @@
 /**
- * ReaderMenu component tests (round 382, top-nav "My" menu).
+ * ReaderMenu component tests.
  *
  * Verifies the "我的" avatar dropdown that replaced the signed-in reader's flat
  * nav links: the avatar trigger + unread badge, the mini profile header, the

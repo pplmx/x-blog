@@ -1,5 +1,5 @@
 /**
- * Print / PDF view tests (DEC-112, TASK-168).
+ * Print / PDF view tests.
  *
  * Verifies the /posts/[slug]/print route renders the article title, excerpt,
  * reading time, and sanitized markdown content (via MarkdownContent), exposes a
@@ -173,16 +173,16 @@ describe("Print / PDF view", () => {
 		expect(wrapper.text()).toContain("文章不存在");
 	});
 
-	it("a missing/deleted print post offers a way home instead of a dead end (round 299)", async () => {
+	it("a missing/deleted print post offers a way home instead of a dead end ", async () => {
 		const wrapper = await mountPrintPage({ post: null });
-		// Before the round-299 fix this was a bare "not found" line with no path
+		// Before the fix this was a bare "not found" line with no path
 		// onward — a stale share/cached print link to a removed post stranded the
 		// reader (the article page always offered Home).
 		expect(wrapper.find('a[href="/"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain("返回首页");
 	});
 
-	it("a missing print post's toolbar back link goes home, not to the dead slug (round-299 toolbar gap)", async () => {
+	it("a missing print post's toolbar back link goes home, not to the dead slug ", async () => {
 		const wrapper = await mountPrintPage({ post: null });
 		// The toolbar's "back to article" link rendered unconditionally at the
 		// dead /posts/{stale-slug}; on a 404 it must fall back to Home instead of
@@ -192,7 +192,7 @@ describe("Print / PDF view", () => {
 		expect(wrapper.text()).toContain("返回首页");
 	});
 
-	it("uses a reactive useHead title so SPA navigation between print slugs updates the tab (round 299)", async () => {
+	it("uses a reactive useHead title so SPA navigation between print slugs updates the tab ", async () => {
 		// The title is a getter closing over the post ref (not a one-shot
 		// evaluated value): SPA navigation between print slugs keeps this
 		// component mounted, and a static value would leave the previous post's

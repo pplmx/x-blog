@@ -4,7 +4,7 @@ Complete baseline migration: creates the full schema (categories, tags,
 users, posts, comments, post_tags) matching the SQLAlchemy models, including
 ``publish_at`` and every ``index=True`` column.
 
-Idempotent-by-design (RIL TASK-009): tables are created only when absent and
+Idempotent-by-design: tables are created only when absent and
 indexes only when not already present. This lets ``alembic upgrade head``
 adopt databases that pre-date Alembic (schema built by
 ``Base.metadata.create_all``, no ``alembic_version`` row) without a manual

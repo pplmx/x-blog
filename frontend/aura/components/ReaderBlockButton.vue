@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * Inline reader-block control on the public reader profile (round 379,
- * DEC-425).
+ * Inline reader-block control on the public reader profile.
  *
  * The harassment-control cousin of ReaderFollowButton: a SIGNED-IN reader
  * who is not viewing their own profile gets a compact Block/Unblock toggle
@@ -12,7 +11,7 @@
  * action, so the block direction confirms first and unblock is a one-click
  * restore. Guests see neither button; self-profiles never offer a "block
  * yourself" control. Dead-session 401s drop the expired token and offer the
- * sign-in prompt (round-300 guard, mirrors ReaderFollowButton).
+ * sign-in prompt.
  */
 import { computed, ref, watch } from "vue";
 

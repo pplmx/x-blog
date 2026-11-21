@@ -32,7 +32,7 @@
 		color: var(--color-blue-100);
 	}
 
-	/* Reader passage highlights (round 466, DEC-511/TASK-583): the <mark> the
+	/* Reader passage highlights: the <mark> the
      composable wraps around a saved passage inside the article. */
 	mark.reader-highlight {
 		background-color: var(--color-yellow-200);
@@ -95,7 +95,7 @@
 	transform: translateY(0);
 }
 
-/* Mobile TOC bottom sheet (TASK-223): backdrop fades as the panel slides up. */
+/* Mobile TOC bottom sheet: backdrop fades as the panel slides up. */
 .toc-sheet-enter-active,
 .toc-sheet-leave-active {
 	transition: opacity 0.2s ease;
@@ -173,7 +173,7 @@
 		margin-inline: auto;
 	}
 
-	/* Search result highlight (DEC-071): the backend emits <mark> snippets; keep
+	/* Search result highlight: the backend emits <mark> snippets; keep
 	 * the highlight legible in both themes instead of the harsh default yellow. */
 	mark {
 		background-color: rgb(251 219 122 / 0.45);
@@ -187,7 +187,7 @@
 	}
 }
 
-/* Print / PDF view (DEC-112, TASK-168): hide the site chrome (header, footer,
+/* Print / PDF view: hide the site chrome (header, footer,
  * sticky progress bar, admin chrome) and the screen-only toolbar when the
  * reader prints from the print route or the article page. The print page sets
  * its own page margins/shading via its scoped styles; this is the global

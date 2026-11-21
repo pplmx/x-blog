@@ -1,4 +1,4 @@
-/** apiErrorMessage tests (round 394) — the shared backend-error surfacing used
+/** apiErrorMessage tests — the shared backend-error surfacing used
  *  by the reader-auth composables and every admin list page. */
 
 import { describe, expect, it } from "vitest";

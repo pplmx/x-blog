@@ -1,10 +1,10 @@
 /**
- * Home "Trending this week" (round 387, DEC-438).
+ * Home "Trending this week".
  *
  * The home page has an all-time Popular row and, since this round, a
  * time-windowed "Trending this week" row ranked by in-window views from the
  * backend's post_views_daily analytics table (upserted on every pageview,
- * DEC-086). Journey: publish a fresh post, give it a decisive same-day view
+ *). Journey: publish a fresh post, give it a decisive same-day view
  * count via POST /api/posts/{id}/view, land on the home page and confirm the
  * post surfaces inside the Trending section with the weekly-reads caption.
  * Uses the live backend seeded by `just e2e` + the Nuxt preview server.
@@ -25,7 +25,7 @@ function trendingSection(page: Page) {
 	return page.getByRole("heading", { name: "本周热门" }).locator("..");
 }
 
-test.describe("Home trending this week (DEC-438)", () => {
+test.describe("Home trending this week ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("a freshly published and viewed post appears in the trending row", async ({

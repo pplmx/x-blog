@@ -40,7 +40,7 @@ class TestAuth:
 
 
 class TestTokenExpiry:
-    """Session-expiry knobs (RIL ISS-273).
+    """Session-expiry knobs.
 
     Admin JWTs carry an ``exp`` claim defaulting to 1 day (JWT_EXPIRE_DAYS). An
     operator who wants a shorter session, e.g. 30 minutes, must be able to

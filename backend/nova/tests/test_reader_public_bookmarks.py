@@ -1,4 +1,4 @@
-"""Opt-in public saved-posts profile tab contract tests (round 363, DEC-399).
+"""Opt-in public saved-posts profile tab contract tests.
 
 A reader who flips public_bookmarks on /account publishes a profile "Saved
 posts" tab (GET /api/readers/{id}/bookmarks) listing their bookmarked posts,

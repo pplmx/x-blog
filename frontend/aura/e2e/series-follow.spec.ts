@@ -1,5 +1,5 @@
 /**
- * Series 'new part' follow journey (DEC-132, TASK-178).
+ * Series 'new part' follow journey.
  *
  * A signed-in reader can follow a series on its page to be pushed a
  * notification when a new part is published. The toggle is visible only to
@@ -20,7 +20,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Series new-part follow (TASK-178)", () => {
+test.describe("Series new-part follow ", () => {
 	test("guests see no follow toggle on a series page", async ({ page, request }) => {
 		const series = await request.get("/api/series");
 		expect(series.status()).toBe(200);
@@ -73,7 +73,7 @@ test.describe("Series new-part follow (TASK-178)", () => {
 		await page.reload();
 		await expect(page.getByRole("button", { name: /已关注新篇/ })).toBeVisible();
 
-		// Notification control (TASK-181): turn new-part push off, then back on.
+		// Notification control: turn new-part push off, then back on.
 		const notifyOn = page.getByRole("button", { name: "通知已开" });
 		await expect(notifyOn).toBeVisible();
 		await notifyOn.click();

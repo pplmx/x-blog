@@ -1,8 +1,8 @@
 /**
- * Service worker (DEC-055, TASK-118; offline reading, round 384).
+ * Service worker (offline reading).
  *
  * Registered at /sw.js by usePushSubscription (navigator.serviceWorker.register
- * with the default classic scope "/") and, since round 384, app-wide by the
+ * with the default classic scope "/") and, since then, app-wide by the
  * client plugin for offline reading. Jobs:
  *
  *   - "push": the push service delivered a message the backend encrypted for
@@ -32,7 +32,7 @@ const OFFLINE_CACHE_MAX = 60;
 
 /**
  * Dedicated cache for the signed-in reader's bookmarked posts (PWA offline
- * slice, round 465). Unlike the runtime cache — which only stores pages the
+ * slice). Unlike the runtime cache — which only stores pages the
  * reader happened to visit — this cache is proactively populated with the
  * reader's saved posts (post document + its assets) so a bookmarked post is
  * readable even if it was never visited. A post is pruned the moment it is
@@ -322,7 +322,7 @@ if (typeof self !== "undefined") {
 		);
 	});
 
-	// Offline reading (round 384): take over cacheable requests. Requests we
+	// Offline reading: take over cacheable requests. Requests we
 	// do not respondWith here (API/admin/feeds/external) flow to the browser
 	// network untouched.
 	self.addEventListener("fetch", (event) => {

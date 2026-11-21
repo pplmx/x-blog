@@ -5,16 +5,16 @@ export interface ReaderProfile {
 	id: number;
 	email: string;
 	display_name: string | null;
-	/** Short "about me" (round 352); null until the reader writes one. */
+	/** Short "about me"; null until the reader writes one. */
 	bio: string | null;
 	avatar_url: string | null;
-	/** Opt-in public "Liked posts" profile tab (round 360, DEC-393) — false by
+	/** Opt-in public "Liked posts" profile tab — false by
 	 *  default; the reader's likes stay private unless they choose to publish. */
 	public_likes: boolean;
-	/** Opt-in public "Saved posts" profile tab (round 363, DEC-399) — false by
+	/** Opt-in public "Saved posts" profile tab — false by
 	 *  default; the reader's curated bookmarks stay private unless published. */
 	public_bookmarks: boolean;
-	/** TOTP 2FA flag (round 364, DEC-401): true when login demands a second
+	/** TOTP 2FA flag: true when login demands a second
 	 *  step. Present on the authenticated /me envelope only — the secret itself
 	 *  is never exposed by any endpoint. */
 	two_factor_enabled: boolean;
@@ -22,7 +22,7 @@ export interface ReaderProfile {
 }
 
 export interface ReaderLoginResponse {
-	/** Null when the reader has 2FA enabled (round 364, DEC-401) — login then
+	/** Null when the reader has 2FA enabled — login then
 	 *  carries only `two_factor_required` + `mfa_token` for the second step. */
 	access_token: string | null;
 	token_type: string | null;
@@ -57,7 +57,7 @@ export function readerLogin(body: { email: string; password: string }) {
 }
 
 /**
- * Second step of a 2FA login (round 364, DEC-401): exchange the short-lived
+ * Second step of a 2FA login: exchange the short-lived
  * `mfa_token` a 2FA-enabled login returned, plus the authenticator's 6-digit
  * code, for the real reader session. Only ever reached when
  * `readerLogin` reported `two_factor_required`.
@@ -99,7 +99,7 @@ export function confirmPasswordReset(body: { token: string; new_password: string
 }
 
 /**
- * Start a reader email change (DEC-357, TASK-404): the current password proves
+ * Start a reader email change: the current password proves
  * control of the account now, and the backend emails a one-time verification
  * link to the NEW address. 202 on success (a link is on its way); wrong
  * password (401), same as current (400), already used by another account (409)
@@ -115,7 +115,7 @@ export function requestEmailChange(body: { new_email: string; current_password: 
 }
 
 /**
- * Redeem the emailed email-change token (DEC-357, TASK-404). NO auth header —
+ * Redeem the emailed email-change token. NO auth header —
  * the emailed link is the credential. On success the backend swaps the email,
  * bumps token_version (revoking every prior session) and returns a fresh
  * auto-login session. Business-level rejections throw with their status: 400 =

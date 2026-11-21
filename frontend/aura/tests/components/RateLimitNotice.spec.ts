@@ -1,11 +1,11 @@
 /**
- * RateLimitNotice banner tests (round 212).
+ * RateLimitNotice banner tests.
  *
  * The banner renders via the app-wide useRateLimitNotice singleton: hidden by
  * default, appears when a 429 flips the flag, and hides on explicit dismiss.
  * It must NOT claim role="status" — the app has other role=status live regions
  * (e.g. the resume chip) and an app-wide banner occupying that generic role
- * breaks strict-mode locators (e2e finding, round 215); it stays announced via
+ * breaks strict-mode locators (e2e finding); it stays announced via
  * aria-live="polite" only.
  */
 import { mount, type VueWrapper } from "@vue/test-utils";

@@ -1,5 +1,5 @@
 /**
- * Personalized "Recommended for you" journey (DEC-128, TASK-176).
+ * Personalized "Recommended for you" journey.
  *
  * A signed-in reader who has read a post sees a "Recommended for you" home row
  * with posts matched from their category/tag affinity (excluding already-read).
@@ -15,7 +15,7 @@ function freshEmail(): string {
 	return `reader-${Date.now()}-${emailCounter}@example.com`;
 }
 
-test.describe("Recommended for you (TASK-176)", () => {
+test.describe("Recommended for you ", () => {
 	test("signed-in reader sees the personalized row after reading a post", async ({
 		page,
 		request,

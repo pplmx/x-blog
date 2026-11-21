@@ -1,4 +1,4 @@
-/** Reader /comment-reply-unsubscribe page tests (DEC-332, TASK-392). */
+/** Reader /comment-reply-unsubscribe page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";

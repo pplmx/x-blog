@@ -1,4 +1,4 @@
-"""Reader account auth contract tests (DEC-059, TASK-131).
+"""Reader account auth contract tests.
 
 Reader accounts are the identity layer for cloud-synced bookmarks (and future
 reader features). The critical property beyond happy-path register/login is
@@ -72,7 +72,7 @@ class TestRegister:
 
     async def test_register_email_with_nul_rejected_422(self, client):
         """A NUL byte in the registration email used to crash psycopg at bind
-        time -> uncaught 500 on a public endpoint (ISS-454, TASK-351)."""
+        time -> uncaught 500 on a public endpoint."""
         resp = await client.post(REGISTER, json={"email": "reader\x00@example.com", "password": "readerpass123"})
         assert resp.status_code == 422, resp.text
 

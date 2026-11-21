@@ -447,7 +447,7 @@ describe("Admin Layout", () => {
 		wrapper.unmount();
 	});
 
-	it("keeps the Posts item lit on the post editor sub-page (ISS-417)", () => {
+	it("keeps the Posts item lit on the post editor sub-page ", () => {
 		// /admin/posts/[id] and /admin/posts/new are the most-used admin surface;
 		// the old exact-match comparison left the sidebar with NO item lit there.
 		mockRoutePath.value = "/admin/posts/7";
@@ -874,7 +874,7 @@ describe("Admin Layout route-reactive behavior", () => {
 	});
 });
 
-describe("Admin Layout noindex (round 437)", () => {
+describe("Admin Layout noindex ", () => {
 	it("emits robots noindex so the whole /admin/* tree stays out of search indexes", () => {
 		mockIsAuthenticated.value = true;
 		mockRoutePath.value = "/admin";

@@ -1,5 +1,5 @@
 <!--
-  Admin Settings page (DEC-100, TASK-162).
+  Admin Settings page.
   Lets the operator flip runtime site settings without a redeploy. The first
   setting surfaced is the verified-reader auto-approve trust tier toggle.
 -->
@@ -49,7 +49,7 @@ async function save() {
 	// while the request was in flight (persisted X, control now shows !X), the
 	// last flip was never sent and showing "Saved" next to the opposite value
 	// is a lie — the watch already cleared the banner, the completion must not
-	// resurrect it (round 278).
+	// resurrect it.
 	const persistedValue = enabled.value;
 	try {
 		await updateSiteSetting(SETTING_KEY, persistedValue ? "true" : "false");
@@ -65,7 +65,7 @@ await load();
 
 // The "Saved" confirmation describes persisted state — the instant the toggle
 // moves away from what's saved, it's a lie. Clear it on any change so the UI
-// never shows "Saved" while an uncommitted value is pending (RIL ISS-285).
+// never shows "Saved" while an uncommitted value is pending.
 watch(enabled, () => {
 	saved.value = false;
 });

@@ -1,6 +1,6 @@
 """add_comment_notified_and_newsletter_unsubscribed
 
-Additive round-393 columns (DEC-009 keeps every change additive):
+Additive columns (keeps every change additive):
 - comments.notified_at: once-only stamp for the multi-channel approval
   fan-out, so reject→re-approve never re-fires duplicate notifications.
 - newsletter_subscribers.unsubscribed_at: records a cancellation so the old

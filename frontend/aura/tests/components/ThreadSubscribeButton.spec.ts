@@ -1,5 +1,5 @@
 /**
- * ThreadSubscribeButton component tests (DEC-078, TASK-150).
+ * ThreadSubscribeButton component tests.
  *
  * The "follow discussion" toggle on the comments section: only signed-in
  * readers see it; the follow state is loaded from /api/posts/{id}/subscription;
@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick, ref } from "vue";
 
 // A stale in-flight follow-state GET must not overwrite a follow the reader
-// just made (ISS-374 sibling-page guard). The follow PUT commits and flips the
+// just made (sibling-page guard). The follow PUT commits and flips the
 // button, then the slow pre-follow GET resolver would flip it back — unless
 // the sequence counter invalidates it.
 function deferred<T>() {
@@ -55,7 +55,7 @@ vi.mock("~~/api/reader/subscriptions", () => ({
 }));
 
 // The guest branch renders a sign-in link target built from the current route
-// (ISS-382); the components reads route.path/query so its tests stub useRoute.
+//; the components reads route.path/query so its tests stub useRoute.
 vi.stubGlobal("useRoute", () => ({ path: "/posts/demo", query: {} }));
 
 import ThreadSubscribeButton from "../../components/ThreadSubscribeButton.vue";
@@ -104,7 +104,7 @@ describe("ThreadSubscribeButton", () => {
 	it("shows a sign-in prompt (not the toggle) when nobody is signed in", async () => {
 		const w = await mountButton();
 		expect(w.find("button").exists()).toBe(false);
-		// The guest discoverability branch (ISS-382): a reader-scoped feature is
+		// The guest discoverability branch: a reader-scoped feature is
 		// pointed at sign-in instead of being silently absent.
 		expect(w.find(".nuxt-link-stub").exists()).toBe(true);
 		expect(w.text()).toContain("components.threadSubscribe.guestPrompt");
@@ -164,7 +164,7 @@ describe("ThreadSubscribeButton", () => {
 		expect(w.text()).toContain("components.threadSubscribe.follow");
 	});
 
-	it("keeps a just-made follow when the in-flight state load resolves late (ISS-374 race)", async () => {
+	it("keeps a just-made follow when the in-flight state load resolves late race", async () => {
 		// Slow network: the follow-state GET is still in flight when the reader
 		// clicks, and its (stale, pre-follow) snapshot resolves AFTER the follow
 		// PUT commits. Without the sequence guard it flips the button back to
@@ -202,7 +202,7 @@ describe("ThreadSubscribeButton", () => {
 		expect((w.find("button").attributes("disabled") ?? "") !== undefined).toBe(true);
 	});
 
-	it("shows a persistent inline explanation when push is pre-denied (ISS-382)", async () => {
+	it("shows a persistent inline explanation when push is pre-denied ", async () => {
 		// The disabled button's :title tooltip is the only explanation and is
 		// unreliable on disabled controls / absent on touch — a persistently
 		// denied state must render an inline line under the button.
@@ -230,7 +230,7 @@ describe("ThreadSubscribeButton", () => {
 		status.value = "idle";
 		// Permission requested but denied -> composable leaves status "denied".
 		// The inline hint is the 'denied' copy (more precise than the generic
-		// blockedHint), and no thread follow is issued (ISS-382).
+		// blockedHint), and no thread follow is issued.
 		subscribe.mockImplementation(() => {
 			status.value = "denied";
 			return Promise.resolve();

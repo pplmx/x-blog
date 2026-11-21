@@ -1,6 +1,6 @@
 <!--
   Admin Pages Page
-  Static pages CMS (round 347): create, publish/unpublish, edit and delete the
+  Static pages CMS: create, publish/unpublish, edit and delete the
   admin-curated pages served publicly at /pages/{slug} (privacy, terms,
   contact, ...). Mirrors the admin series page (slug auto-generation from the
   title, inline row editing, confirm-before-delete).
@@ -31,7 +31,7 @@ const newForm = ref({ title: "", slug: "", content: "", published: false });
 const editingForm = ref({ title: "", slug: "", content: "", published: false });
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): the backend envelope's human
+	// Shared admin error surfacing: the backend envelope's human
 	// message first, then a local non-HTTP error's own message, else the
 	// localized fallback — never ofetch's technical "[POST] ...: xxx" string.
 	return apiErrorMessage(e, t("admin.pages.operationFailed"));

@@ -1,7 +1,7 @@
-"""add slug_redirects table (round 350)
+"""add slug_redirects table
 
 A brand-new additive table only — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Holds the 301
+SQLite-can't-add-FK constraint of does not apply. Holds the 301
 redirect map that preserves inbound links when an operator re-slugs a post,
 series or static page: one row per (kind, old_slug), unique at the DB level so
 a re-rename can never stack a duplicate redirect for the same old URL.

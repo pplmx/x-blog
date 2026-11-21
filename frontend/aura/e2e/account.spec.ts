@@ -1,5 +1,5 @@
 /**
- * Reader account settings journey (DEC-067, TASK-142).
+ * Reader account settings journey.
  *
  * A signed-in reader edits their display name, rotates their password (the
  * fresh token supersedes the old one — the new password logs in, the old one

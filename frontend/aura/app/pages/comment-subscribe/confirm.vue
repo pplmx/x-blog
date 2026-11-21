@@ -1,5 +1,5 @@
 <!--
-  Guest thread-follow confirmation (DEC-427, TASK-438).
+  Guest thread-follow confirmation.
 
   Landed on via the `?token=` link inside the double opt-in confirmation email
   for a guest thread-follow (the per-subscription token only that email
@@ -30,7 +30,7 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "unsubscribed" | "error">("pending");
-// Weekly-digest cadence toggle (round 381, DEC-429): once confirmed, the
+// Weekly-digest cadence toggle: once confirmed, the
 // holder can switch to (or back from) a weekly summary instead of a mail per
 // approved comment, using the same token the confirm link carried — terminal
 // per-comment reminders stay the default (newsletter confirm parity).
@@ -79,7 +79,7 @@ async function run() {
 		// A 404 = unknown/spent token (the only business-level answer the
 		// endpoint gives; it is also what a random guess gets). A 400 = the
 		// address was deliberately unsubscribed and this is a replayed confirm
-		// link (round-393 consent-restart gate) — it gets its own re-subscribe
+		// link — it gets its own re-subscribe
 		// state, not a "retry the link" message. Anything else (no response:
 		// unreachable backend) is a NETWORK condition — the token may still be
 		// valid, so we must not claim the link is spent.

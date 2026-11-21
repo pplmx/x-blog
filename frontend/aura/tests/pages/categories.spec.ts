@@ -54,14 +54,14 @@ const mockEmptyPosts = {
 	},
 };
 
-// Reader-level category follow state (TASK-182), served to the page's
+// Reader-level category follow state, served to the page's
 // fetchReaderCategoryFollows() via the stubbed global useFetch.
 const catFollowsState = {
 	items: [] as Array<{ id: number; name: string; notify: boolean }>,
 	total: 0,
 };
 
-// New-post push follow on this category (DEC-076/TASK-147): mock the push
+// New-post push follow on this category: mock the push
 // composable so tests can drive status/newPostPrefs like any other state.
 const pushStatus = ref("unsupported");
 const newPostPrefs = ref({ want: false, categoryId: null as number | null });
@@ -79,7 +79,7 @@ vi.mock("~~/composables/usePushSubscription", () => ({
 	}),
 }));
 
-// Captured by the useFetch mock for the /api/posts URL — assert the ISS-368
+// Captured by the useFetch mock for the /api/posts URL — assert the
 // enabled-gate (no posts fetch on the all-categories view; fire once a category
 // is picked).
 let lastPostsEnabled: unknown;
@@ -118,7 +118,7 @@ async function mountCategoriesPage({
 
 	// Mock useFetch (used by useApi/useCategories internally)
 	// The reader's category-follow load runs through the imperative $fetch seam
-	// (getReaderCategoryFollows, ISS-110/111 pattern) — not useFetch.
+	// (getReaderCategoryFollows pattern) — not useFetch.
 	vi.stubGlobal(
 		"$fetch",
 		customFetch ??
@@ -211,7 +211,7 @@ describe("Categories Page", () => {
 		window.localStorage.removeItem("reader_token");
 	});
 
-	describe("Posts fetch gating (ISS-368)", () => {
+	describe("Posts fetch gating ", () => {
 		it("does not enable the /api/posts fetch on the all-categories view", async () => {
 			await mountCategoriesPage({ routeQuery: {} });
 			expect(lastPostsEnabled).toBe(false);
@@ -241,7 +241,7 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).toContain("Life");
 		});
 
-		it("narrows the category cloud via the filter box (ISS-381)", async () => {
+		it("narrows the category cloud via the filter box ", async () => {
 			const wrapper = await mountCategoriesPage();
 			const input = wrapper.find('input[type="search"]');
 			expect(input.exists()).toBe(true);
@@ -253,7 +253,7 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).not.toContain("Life");
 		});
 
-		it("shows all categories again when the filter is cleared (ISS-381)", async () => {
+		it("shows all categories again when the filter is cleared ", async () => {
 			const wrapper = await mountCategoriesPage();
 			const input = wrapper.find('input[type="search"]');
 			await input.setValue("design");
@@ -266,7 +266,7 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).toContain("Life");
 		});
 
-		it("shows a no-results message when the filter matches nothing (round 414)", async () => {
+		it("shows a no-results message when the filter matches nothing ", async () => {
 			// A non-matching filter must say "no categories match your filter",
 			// not the genuinely-empty "暂无分类" (which implies no categories exist).
 			const wrapper = await mountCategoriesPage();
@@ -354,7 +354,7 @@ describe("Categories Page", () => {
 		});
 	});
 
-	describe("Scoped RSS feed (DEC-074, TASK-146)", () => {
+	describe("Scoped RSS feed ", () => {
 		function alternateLinksFromHead(): Array<{ rel: string; href?: string; type?: string }> {
 			const useHeadMock = (
 				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
@@ -516,7 +516,7 @@ describe("Categories Page", () => {
 		});
 	});
 
-	describe("Reader-level category follow (TASK-182)", () => {
+	describe("Reader-level category follow ", () => {
 		it("shows the follow + notify state for a signed-in follower of the active category", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			catFollowsState.items = [{ id: 1, name: "Tech", notify: true }];
@@ -546,7 +546,7 @@ describe("Categories Page", () => {
 			// SPA navigation between categories is a query-only change that reuses
 			// the component instance — onMounted does not re-fire, so the follow
 			// buttons must reload via the categoryId watcher instead of showing the
-			// previous category's state (deep-dive finding, same fix as ISS-118 on
+			// previous category's state (deep-dive finding, same fix as on
 			// tags.vue).
 			window.localStorage.setItem("reader_token", "token");
 			// Category 1 is followed; category 2 is not.
@@ -666,7 +666,7 @@ describe("Categories Page", () => {
 			catFollowsState.total = 0;
 		});
 
-		it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-378)", async () => {
+		it("drops a stale follow-state response so it can't clobber a newer toggle ", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			// The initial follow-state GET stays in flight (slow).
 			let resolveStale!: (v: unknown) => void;
@@ -806,7 +806,7 @@ describe("Categories Page", () => {
 		});
 	});
 
-	describe("out-of-range page clamp (ISS-308)", () => {
+	describe("out-of-range page clamp ", () => {
 		it("clamps a stale page=999 deep link back to the last real page once pagination arrives", async () => {
 			const navMock = vi.fn();
 			vi.stubGlobal("useRuntimeConfig", () => ({
@@ -994,7 +994,7 @@ describe("Categories Page", () => {
 			});
 		}
 
-		it("toggles the notify bell off after following (TASK-182)", async () => {
+		it("toggles the notify bell off after following ", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			const wrapper = await mountCategoriesPage({
 				routeQuery: { category_id: "1" },
@@ -1103,7 +1103,7 @@ describe("Categories Page", () => {
 		});
 	});
 
-	describe("New-post push follow (DEC-076, TASK-147)", () => {
+	describe("New-post push follow ", () => {
 		it("hides the push follow button before push is configured", async () => {
 			pushStatus.value = "unsupported";
 			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });

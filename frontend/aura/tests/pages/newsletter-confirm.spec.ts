@@ -1,4 +1,4 @@
-/** Reader /newsletter/confirm page tests (DEC-351, TASK-401). */
+/** Reader /newsletter/confirm page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,7 +99,7 @@ describe("newsletter confirm page", () => {
 		expect(wrapper.text()).toContain("这个确认链接无效，或已经被使用过。");
 	});
 
-	it("tells an unsubscribed address to re-subscribe instead of retry (400, round 393)", async () => {
+	it("tells an unsubscribed address to re-subscribe instead of retry (400)", async () => {
 		// The backend 400s a replayed confirm link on a deliberately
 		// unsubscribed address; before this fix the page mapped it to the
 		// "network" state and told the holder to click a link that can never

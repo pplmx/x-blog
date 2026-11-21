@@ -1,5 +1,5 @@
 /**
- * Comment likes journey (DEC-092, TASK-158).
+ * Comment likes journey.
  *
  * An approved comment renders a like button with its count; a visitor can like
  * it once (localStorage dedup — a second click is a no-op), and the count
@@ -40,7 +40,7 @@ async function postAndApprove(
 	return commentId;
 }
 
-test.describe("Comment likes (DEC-092)", () => {
+test.describe("Comment likes ", () => {
 	test("a visitor likes an approved comment once; clicks are deduped", async ({
 		page,
 		request,

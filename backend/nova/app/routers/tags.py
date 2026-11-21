@@ -26,7 +26,7 @@ async def get_tag(request: Request, tag_id: IdInt, db: AsyncSession = Depends(ge
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     # post_count is derived (not a column); validating the bare ORM object
-    # would leave the schema default 0 even for tags with many posts (ISS-363).
+    # would leave the schema default 0 even for tags with many posts.
     data = schemas.Tag.model_validate(tag).model_dump(mode="json")
     data["post_count"] = await tags_service.tag_visible_post_count(db, tag_id)
     return conditional_json(data, request)

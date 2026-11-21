@@ -4,7 +4,7 @@
  *
  * Must stay in sync with backend crud.reading_minutes (schemas.py): whitespace
  * tokens plus each CJK char count as one word (~200wpm); a Chinese post with no
- * spaces is not collapsed to a 1-minute read (RIL round 72, ISS-051).
+ * spaces is not collapsed to a 1-minute read.
  */
 const READING_CJK_RE = /[\u2e80-\u2eff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g;
 

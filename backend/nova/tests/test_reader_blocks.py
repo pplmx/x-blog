@@ -1,4 +1,4 @@
-"""Reader-blocking contract + notification-suppression tests (DEC-425, TASK-437).
+"""Reader-blocking contract + notification-suppression tests.
 
 A signed-in reader can block ANOTHER reader so that commenter's personal
 fan-out stops landing: @-mentions, replies, thread-comment broadcast and

@@ -1,7 +1,6 @@
 """Reader account endpoints: self-registration, login, current profile.
 
-Reader accounts are the identity layer for cloud-synced bookmarks (DEC-059,
-TASK-131). They are deliberately separate from admin ``User`` accounts — both
+Reader accounts are the identity layer for cloud-synced bookmarks. They are deliberately separate from admin ``User`` accounts — both
 in table (``reader_accounts``) and in JWT audience (``aud=x-blog-reader``) —
 so a self-registering reader can never hold a credential that reaches admin
 endpoints (enforced in auth.get_current_user / get_current_reader).
@@ -36,7 +35,7 @@ from app.services import reader as reader_service
 from app.services.reader import _delete_avatar_file
 
 # Reader avatar storage lives in a dedicated static/avatars/ namespace, NOT the
-# admin media library's static/uploads/ (DEC-299/TASK-378): the admin media
+# admin media library's static/uploads/: the admin media
 # listing walks static/uploads/ only, so a reader's profile picture must not
 # appear in or collide with the author's uploaded post images. Owned here and
 # passed to the reader service so tests can point it at a temp dir.
@@ -49,7 +48,7 @@ router = APIRouter(prefix="/api/reader", tags=["reader"])
 # 422 VALIDATION_ERROR envelope instead of a hand-rolled HTTPException).
 # Uses \z (Rust-regex end-of-text anchor — Pydantic v2's engine — not Python
 # $) so a trailing newline cannot sneak past the anchor. Shared with the
-# anonymous comment write path via schemas.EMAIL_PATTERN (ISS-145).
+# anonymous comment write path via schemas.EMAIL_PATTERN.
 _EMAIL_PATTERN = schemas.EMAIL_PATTERN
 
 
@@ -61,17 +60,15 @@ class ReaderProfile(BaseModel):
     id: int
     email: str
     display_name: str | None = None
-    # Short "about me" (round 352): reader-written plain text shown on their
+    # Short "about me": reader-written plain text shown on their
     # public profile page; None until they write one.
     bio: str | None = None
     avatar_url: str | None = None
-    # Opt-in publishing of the public "Liked posts" profile tab (round 360,
-    # DEC-393) — false by default; a reader who likes being private stays so.
+    # Opt-in publishing of the public "Liked posts" profile tab — false by default; a reader who likes being private stays so.
     public_likes: bool = False
-    # Opt-in publishing of the public "Saved posts" profile tab (round 363,
-    # DEC-399) — false by default, same privacy stance as public_likes.
+    # Opt-in publishing of the public "Saved posts" profile tab — false by default, same privacy stance as public_likes.
     public_bookmarks: bool = False
-    # Reader-owned 2FA flag (round 364, DEC-401): whether login demands a TOTP
+    # Reader-owned 2FA flag: whether login demands a TOTP
     # second step. Exposed on the authenticated /me envelope only (the public
     # profile never carries it) so /account can render the state; the TOTP
     # secret itself is never serialized anywhere.
@@ -83,7 +80,7 @@ class ReaderLoginResponse(BaseModel):
     """Reader login result.
 
     The happy path carries ``access_token`` + ``reader``. When the reader has
-    TOTP 2FA enabled (round 364, DEC-401) login carries NEITHER — only
+    TOTP 2FA enabled login carries NEITHER — only
     ``two_factor_required`` and the short-lived single-purpose ``mfa_token``
     that unlocks POST /login/2fa, where the code is exchanged for the real
     session. The extra optional fields are additive, so existing clients keep
@@ -125,7 +122,7 @@ class TwoFactorEnable(BaseModel):
     Requiring the password at enrollment (not just a live session) is what
     stops a session thief from registering their OWN authenticator and locking
     the owner out — a stolen session alone cannot enable a factor only the
-    account owner can verify (security review MEDIUM, DEC-401)."""
+    account owner can verify (security review MEDIUM)."""
 
     current_password: str = Field(min_length=1, max_length=72)
     code: Annotated[NonNulStr, Field(min_length=6, max_length=8)]
@@ -135,7 +132,7 @@ class TwoFactorDisable(BaseModel):
     """Turn 2FA back off: the current password AND a valid code.
 
     Both are required so neither a stolen session alone nor a stolen password
-    alone can silently drop the second factor (DEC-401)."""
+    alone can silently drop the second factor."""
 
     current_password: str = Field(min_length=1, max_length=72)
     code: Annotated[NonNulStr, Field(min_length=6, max_length=8)]
@@ -145,7 +142,7 @@ class ReaderRegister(BaseModel):
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
     # bcrypt only hashes the first 72 bytes of a password; capping input at 72
     # keeps the effective credential equal to the stored credential (a longer
-    # password would silently truncate). (security review, TASK-131)
+    # password would silently truncate). (security review)
     password: str = Field(min_length=8, max_length=72)
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
 
@@ -154,7 +151,7 @@ class ReaderRegister(BaseModel):
     def strip_display_name(cls, value: object) -> object:
         # Whitespace-only display_name passed min_length=1 (Pydantic counts raw
         # chars) and then rendered as a blank comment/feed author name
-        # (crud uses display_name as the comment/author nickname, ISS-456).
+        # (crud uses display_name as the comment/author nickname).
         # Strip before length validation so "   " becomes "" and fails the
         # same min_length=1 gate the rest of the name fields enforce.
         return schemas._strip_blank(value) if isinstance(value, str) else value
@@ -170,8 +167,7 @@ class BookmarkItem(BaseModel):
 
     Mirrors the frontend ``Bookmark`` shape (useBookmarks.ts) so the cloud list
     and the localStorage list serialize identically and the client can merge
-    them transparently. Carries the optional folder_id/folder_name (DEC-120/
-    TASK-172) so the client can render grouping. Deliberately omits full
+    them transparently. Carries the optional folder_id/folder_name so the client can render grouping. Deliberately omits full
     content/views/likes — a bookmark list is a navigation list, not a dump.
     """
 
@@ -185,7 +181,7 @@ class BookmarkItem(BaseModel):
     created_at: datetime | None = None
     folder_id: int | None = None
     folder_name: str | None = None
-    # Queue state (round 361, DEC-395): false = To-read, true = Done.
+    # Queue state: false = To-read, true = Done.
     done: bool = False
     category: schemas.Category | None = None
     tags: list[schemas.Tag] = []
@@ -227,7 +223,7 @@ class BookmarkListResponse(BaseModel):
 
 
 class BookmarkFolderItem(BaseModel):
-    """A reader's bookmark folder with its saved-post count (DEC-120)."""
+    """A reader's bookmark folder with its saved-post count."""
 
     id: int
     name: str
@@ -247,7 +243,7 @@ class FolderCreate(BaseModel):
     def strip_name(cls, value: object) -> object:
         # Whitespace-only name passed min_length=1 and was later stored as ""
         # by reader_service.create_bookmark_folder's strip (a blank folder in the list,
-        # ISS-456). Strip at the boundary like every other name field so
+        # Strip at the boundary like every other name field so
         # "   " is rejected as 422 before it can reach storage.
         return schemas._strip_blank(value) if isinstance(value, str) else value
 
@@ -277,7 +273,7 @@ class AssignFolderResponse(BaseModel):
 
 
 class BookmarkDone(BaseModel):
-    """Move a bookmark between To-read and Done (round 361, DEC-395)."""
+    """Move a bookmark between To-read and Done."""
 
     done: bool
 
@@ -289,7 +285,7 @@ class BookmarkDoneResponse(BaseModel):
 
 class SeriesProgressResponse(BaseModel):
     """A reader's progress through a series, derived from their history
-    (DEC-122/TASK-173). ``next_slug`` is the first unread post in series order,
+    . ``next_slug`` is the first unread post in series order,
     or None when the series is fully read/empty.
     """
 
@@ -303,10 +299,10 @@ class SeriesProgressResponse(BaseModel):
 
 
 class DataExportResponse(BaseModel):
-    """A reader's portable data bundle (DEC-126/TASK-175; completed DEC-334).
+    """A reader's portable data bundle (completed).
 
     Now covers every reader-owned dataset: profile, bookmarks, comments,
-    history, likes (round 359/360), follows (category/tag/series),
+    history, likes, follows (category/tag/series),
     notification preferences, the durable inbox rows, and push-subscription
     device summaries (endpoints + created_at only — never the cryptographic
     keys). Nothing cross-reader.
@@ -325,7 +321,7 @@ class DataExportResponse(BaseModel):
 
 
 class FollowedSeriesItem(BaseModel):
-    """A series the reader follows (DEC-132/TASK-178; notify control TASK-181)."""
+    """A series the reader follows (notify control)."""
 
     id: int
     title: str
@@ -347,7 +343,7 @@ class SeriesFollowResponse(BaseModel):
 
 
 class FollowedCategoryItem(BaseModel):
-    """A category the reader follows (DEC-140/TASK-182)."""
+    """A category the reader follows."""
 
     id: int
     name: str
@@ -367,13 +363,13 @@ class CategoryFollowResponse(BaseModel):
 
 
 class CategoryFollowNotifyUpdate(BaseModel):
-    """Body for toggling per-category new-post notifications (TASK-182)."""
+    """Body for toggling per-category new-post notifications."""
 
     notify: bool
 
 
 class FollowedTagItem(BaseModel):
-    """A tag the reader follows (DEC-195/TASK-215)."""
+    """A tag the reader follows."""
 
     id: int
     name: str
@@ -393,13 +389,13 @@ class TagFollowResponse(BaseModel):
 
 
 class TagFollowNotifyUpdate(BaseModel):
-    """Body for toggling per-tag new-post notifications (TASK-215)."""
+    """Body for toggling per-tag new-post notifications."""
 
     notify: bool
 
 
 class FollowedAuthorItem(BaseModel):
-    """A writer the reader follows (round 353).
+    """A writer the reader follows.
 
     Public identity only: the pen name + follow id + notify state. Never the
     login username (admin login is no-oracle).
@@ -423,13 +419,13 @@ class AuthorFollowResponse(BaseModel):
 
 
 class AuthorFollowNotifyUpdate(BaseModel):
-    """Body for toggling per-author new-post notifications (round 353)."""
+    """Body for toggling per-author new-post notifications."""
 
     notify: bool
 
 
 class FollowedReaderItem(BaseModel):
-    """A reader the reader follows (round 365).
+    """A reader the reader follows.
 
     Public identity only, like the author-follow item: display name + avatar,
     never the email. ``display_name`` may be null (a reader who never set one)
@@ -454,7 +450,7 @@ class ReaderFollowResponse(BaseModel):
 
 
 class BlockedReaderItem(BaseModel):
-    """A reader this reader has blocked (round 379, DEC-425).
+    """A reader this reader has blocked.
 
     Public identity only, like the follow item: display name + avatar, never
     the email, plus when the block was placed (for the management list). The
@@ -551,7 +547,7 @@ class ReadingHistoryItem(BaseModel):
 class ReadingHistoryListResponse(BaseModel):
     items: list[ReadingHistoryItem]
     total: int
-    # Pagination metadata (mirrors ReaderCommentListResponse, DEC-102).
+    # Pagination metadata (mirrors ReaderCommentListResponse).
     page: int = 1
     limit: int = 20
     total_pages: int = 1
@@ -565,13 +561,13 @@ class RecordHistoryResponse(BaseModel):
 
 
 class RecordHistoryRequest(BaseModel):
-    """Optional body on the view-record endpoint (DEC-167/TASK-200).
+    """Optional body on the view-record endpoint.
 
     A plain view (no body) preserves the previously saved ``scroll_position``;
     the client sends an explicit value only when updating the reader's resume
     position. ``0`` is a valid offset (scrolled to the very top) and clears the
     saved position. Bounded so a misbehaving client cannot store absurd pixels.
-    ``scroll_fraction`` (DEC-346/TASK-399) is the cross-viewport resume
+    ``scroll_fraction`` is the cross-viewport resume
     position as a 0..1 fraction of the document height, saved alongside the
     pixel; bounded to the unit interval.
     """
@@ -584,7 +580,7 @@ class ReadingPositionResponse(BaseModel):
     """A reader's saved resume offset for a post, for the post page to restore
     on return (null when the post has never been viewed).
 
-    ``scroll_fraction`` is the cross-viewport fraction (DEC-346, TASK-399),
+    ``scroll_fraction`` is the cross-viewport fraction,
     null for pre-feature rows — the client falls back to ``scroll_position``.
     """
 
@@ -594,10 +590,10 @@ class ReadingPositionResponse(BaseModel):
 
 
 class DayActivity(BaseModel):
-    """One day's reads for the 52-week activity heatmap (DEC-169/TASK-201).
+    """One day's reads for the 52-week activity heatmap.
 
     ``date`` is the reader's local calendar date (ISO yyyy-mm-dd; UTC when no
-    timezone was requested, DEC-316); ``count`` is how many publicly visible
+    timezone was requested); ``count`` is how many publicly visible
     posts were read that day (0 days included so the heatmap renders without
     gaps).
     """
@@ -607,14 +603,14 @@ class DayActivity(BaseModel):
 
 
 class ReadingStatsResponse(BaseModel):
-    """A reader's reading summary derived from their history (DEC-118).
+    """A reader's reading summary derived from their history.
 
     Publicly-visible posts only — un-published posts neither leak nor count.
     ``recent`` mirrors the history-list item shape for continue-reading quick
     jumps. ``current_streak`` / ``longest_streak`` / ``activity`` power the
-    gamification surface (DEC-169): the streak in consecutive active days —
+    gamification surface: the streak in consecutive active days —
     anchored to the reader's local calendar when a timezone was sent, UTC
-    otherwise (DEC-316) — and the last 52 weeks of per-day read counts.
+    otherwise — and the last 52 weeks of per-day read counts.
     """
 
     total_posts: int = 0
@@ -628,14 +624,14 @@ class ReadingStatsResponse(BaseModel):
 
 class CategoryReadCount(BaseModel):
     """A category name plus how many distinct posts of it the reader has read
-    (reading insights, DEC-417/TASK-434)."""
+    (reading insights)."""
 
     name: str
     count: int
 
 
 class ReadingInsightsResponse(BaseModel):
-    """Aggregated reading insights for the signed-in reader (DEC-417/TASK-434).
+    """Aggregated reading insights for the signed-in reader.
 
     Complements the streak/heatmap (which show the calendar *shape* of reading)
     with the *content* shape: how much was read all-time and recently, and
@@ -675,9 +671,9 @@ async def _authenticate_reader(db: AsyncSession, email: str, password: str) -> a
 
 
 def _reject_inactive(reader: auth.ReaderAccount) -> None:
-    """Block a deactivated reader from signing in (DEC-194, TASK-214).
+    """Block a deactivated reader from signing in.
 
-    The trust tier auto-approves verified readers' comments (DEC-098), so an
+    The trust tier auto-approves verified readers' comments, so an
     operator-deactivated account must not be able to mint a fresh session at
     all — the 403 mirrors get_current_reader's rejection of their old tokens.
     """
@@ -703,7 +699,7 @@ async def register(
     # Normalize to lowercase so the case-sensitive unique index on `email` is
     # effectively case-insensitive: "Reader@X.com" and "reader@x.com" must not
     # be two accounts, and login (which compares with func.lower) stays
-    # unambiguous. (DEC-059, TASK-131)
+    # unambiguous.
     normalized_email = payload.email.lower().strip()
     reader = auth.ReaderAccount(
         email=normalized_email,
@@ -738,7 +734,7 @@ async def login(
 ):
     """Authenticate a reader by email+password and return a reader-scoped JWT.
 
-    A reader with TOTP 2FA enabled (round 364, DEC-401) is NOT given an access
+    A reader with TOTP 2FA enabled is NOT given an access
     token here: the first step only proves the password, so the response carries
     a short-lived single-purpose ``mfa_token`` (and ``two_factor_required``)
     that the second step (POST /login/2fa) exchanges for the real session.
@@ -754,7 +750,7 @@ async def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # Operator-deactivated accounts cannot sign in again (DEC-194, TASK-214).
+    # Operator-deactivated accounts cannot sign in again.
     _reject_inactive(reader)
     if reader.two_factor_enabled:
         return {
@@ -786,13 +782,13 @@ async def login_2fa(
     Nth 6-digit authenticator code for the stored seed. Any failure (bogus/
     expired/stale challenge, wrong code) is one indistinguishable 401 — no
     oracle for which part failed, so an attacker learns nothing about whether
-    the email or the code was wrong. (DEC-401)
+    the email or the code was wrong.
     """
     reader = await auth.get_reader_for_2fa(payload.mfa_token, db)
     # One INDISTINGUISHABLE 401 for every failure mode — a bogus/expired/stale
     # challenge AND a wrong code both land here with the same body, so an
     # attacker who stole an mfa_token learns nothing about whether it is still
-    # live (security-review MEDIUM, DEC-401; the combined short-circuit also
+    # live (security-review MEDIUM; the combined short-circuit also
     # means the code is only verified once a valid challenge names a reader).
     if reader is None or not auth.verify_totp(reader.two_factor_secret or "", payload.code):
         raise HTTPException(
@@ -818,25 +814,23 @@ def me(_current_reader: auth.ReaderAccount = Depends(auth.get_current_reader)):
 
 class ReaderProfileUpdate(BaseModel):
     """Editable reader profile fields. Email is NOT editable here: it is the
-    login identity, so it lives on its own verified flow (DEC-357,
-    /me/email/request + /me/email/confirm) rather than a silent reassignment."""
+    login identity, so it lives on its own verified flow
+    (/me/email/request + /me/email/confirm) rather than a silent reassignment."""
 
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
-    # Plain-text "about me" (round 352); None = no update, explicit null =
+    # Plain-text "about me"; None = no update, explicit null =
     # clear. Bounded so one request cannot bloat the account row unbounded.
     bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
-    # Opt-in publishing of the public "Liked posts" profile tab (round 360,
-    # DEC-393); explicit true/false only (exclude_unset contract below).
+    # Opt-in publishing of the public "Liked posts" profile tab; explicit true/false only (exclude_unset contract below).
     public_likes: bool | None = None
-    # Opt-in publishing of the public "Saved posts" profile tab (round 363,
-    # DEC-399); explicit true/false only (exclude_unset contract below).
+    # Opt-in publishing of the public "Saved posts" profile tab; explicit true/false only (exclude_unset contract below).
     public_bookmarks: bool | None = None
 
     @field_validator("display_name", mode="before")
     @classmethod
     def strip_display_name(cls, value: object) -> object:
         # Same blank guard as registration: "   " must not become a stored
-        # display_name that renders as a blank author name (ISS-456). None (no
+        # display_name that renders as a blank author name. None (no
         # update) passes through untouched — only non-None strings are stripped.
         return schemas._strip_blank(value) if isinstance(value, str) else value
 
@@ -854,7 +848,7 @@ class ReaderPasswordChange(BaseModel):
 
     new_password bounds mirror registration (bcrypt only hashes the first 72
     bytes — equality between effective and stored credential requires the same
-    cap on both ends, security review TASK-131)."""
+    cap on both ends, security review)."""
 
     current_password: str = Field(min_length=1, max_length=72)
     new_password: str = Field(min_length=8, max_length=72)
@@ -865,7 +859,7 @@ class ReaderEmailChangeRequest(BaseModel):
 
     The password proves control of the account now; ownership of the NEW
     address is proven separately by the emailed verification link
-    (DEC-357/TASK-404). Same email shape/bounds as registration."""
+    . Same email shape/bounds as registration."""
 
     new_email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
     current_password: str = Field(min_length=1, max_length=254)
@@ -894,7 +888,7 @@ class ReaderPasswordResetRequest(BaseModel):
     Only the email. The response is deliberately account-agnostic: the endpoint
     always returns the same success body whether or not the address maps to an
     account, so the endpoint is not an account-existence oracle (the register
-    oracle hardening DEC-060 flagged)."""
+    oracle hardening flagged)."""
 
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=_EMAIL_PATTERN)]
 
@@ -904,7 +898,7 @@ class ReaderPasswordResetConfirm(BaseModel):
 
     ``new_password`` bounds mirror registration/rotation (bcrypt only hashes the
     first 72 bytes — equality between effective and stored credential requires
-    the same cap on both ends, security review TASK-131)."""
+    the same cap on both ends, security review)."""
 
     token: str = Field(min_length=1, max_length=2048)
     new_password: str = Field(min_length=8, max_length=72)
@@ -915,7 +909,7 @@ class ReaderPushSubscriptionItem(BaseModel):
 
     Deliberately excludes the encryption keys (p256dh/auth/endpoint-fragment)
     — the client only needs identity + age + new-post prefs to decide what to
-    revoke or how to steer follows (DEC-076, TASK-147)."""
+    revoke or how to steer follows."""
 
     id: int
     endpoint: str
@@ -945,7 +939,7 @@ async def update_my_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """Update the reader's own profile (display_name, bio). Email changes are
-    their own verified flow (/me/email/request + /me/email/confirm, DEC-357)."""
+    their own verified flow (/me/email/request + /me/email/confirm)."""
     return await reader_service.update_my_profile(db, current_reader, payload.model_dump(exclude_unset=True))
 
 
@@ -962,7 +956,7 @@ async def upload_my_avatar(
     Same defense-in-depth validation as the admin image upload (content-type
     whitelist, size cap, magic bytes, full Pillow decode, never-larger re-encode
     that strips EXIF) — shared via app.image_validation so the two upload
-    surfaces can't drift apart (DEC-299/TASK-378). The new avatar is written to
+    surfaces can't drift apart. The new avatar is written to
     static/avatars/ first, then the DB row is updated and any previous avatar
     file removed, so a failed write never leaves a dangling avatar_url.
     """
@@ -1027,7 +1021,7 @@ async def setup_two_factor(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate fresh TOTP enrollment material (round 364, DEC-401).
+    """Generate fresh TOTP enrollment material.
 
     Returns a new base32 secret + an otpauth:// provisioning URI (for an
     authenticator QR or manual entry). Nothing is ENABLED yet — the reader must
@@ -1054,7 +1048,7 @@ async def enable_two_factor(
     """Prove the account AND the authenticator, then turn 2FA on.
 
     The current password is verified first (a session alone must not be able to
-    enroll a factor the owner can't remove — security review MEDIUM, DEC-401),
+    enroll a factor the owner can't remove — security review MEDIUM),
     then the single code must match the stored seed. Either failure is a flat
     400 with no hint of which half was wrong. Once enabled, POST /login starts
     returning an mfa_token instead of an access token. Existing sessions stay
@@ -1101,7 +1095,7 @@ async def request_email_change(
     """Start an email change: prove the account, then email a link to the NEW
     address.
 
-    This is the authenticated half (DEC-357/TASK-404): the requester must prove
+    This is the authenticated half: the requester must prove
     control of the account via the current password (401 otherwise) and the NEW
     address is proven by the emailed verification link. Not an existence oracle
     — the endpoint is behind ``get_current_reader``, so it is never anonymously
@@ -1144,7 +1138,7 @@ async def confirm_email_change(
     row and answers 400 like any spent link. A target registered in the few
     microseconds after the occupied check trips the unique email index, which
     is caught and surfaced as the business 409 (register uses the same
-    IntegrityError -> conflict pattern) instead of a 500 (round-342 review).
+    IntegrityError -> conflict pattern) instead of a 500.
     """
     try:
         reader, access_token = await reader_service.confirm_email_change(db, payload.token)
@@ -1169,8 +1163,7 @@ async def request_password_reset(
     """Email a password-reset link, without revealing whether the address exists.
 
     Always returns the same 202 whether or not ``email`` maps to an account, so
-    the endpoint is not an account-existence oracle (DEC-286, TASK-371 — the
-    generic-response outcome DEC-060 wanted for register). The only non-202s are
+    the endpoint is not an account-existence oracle (the generic-response outcome wanted for register). The only non-202s are
     infrastructure 503s (SMTP unconfigured / send failed), which carry no
     account information either. A reset email is only sent to active accounts;
     a deactivated reader gets the same generic 202 with no mail, so a reset link
@@ -1199,7 +1192,7 @@ async def confirm_password_reset(
     password epoch the new token is issued under), which invalidates every
     previously issued reader JWT *and* this reset token (its ``ver`` no longer
     matches). The reader is auto-logged-in with a fresh token, mirroring
-    register/password-change UX (DEC-286, TASK-371).
+    register/password-change UX.
     """
     try:
         reader, access_token = await reader_service.confirm_password_reset(db, payload.token, payload.new_password)
@@ -1215,7 +1208,7 @@ async def confirm_password_reset(
 
 
 class ReaderAccountDelete(BaseModel):
-    """Body for reader self-service account deletion (DEC-106, TASK-165)."""
+    """Body for reader self-service account deletion."""
 
     password: str
 
@@ -1234,7 +1227,7 @@ async def delete_my_account(
     On success the account is removed, their cloud bookmarks/subscriptions are
     deleted, and their past comments are anonymized (identity detached, comment
     kept public). A wrong password is a 401; the response is 204 and the caller
-    is now logged out (the account no longer resolves). (DEC-106, TASK-165)
+    is now logged out (the account no longer resolves).
     """
     if not auth.verify_password(payload.password, current_reader.password):
         raise HTTPException(status_code=401, detail="Incorrect current password")
@@ -1248,7 +1241,7 @@ async def delete_my_account(
     if not deleted:
         raise HTTPException(status_code=404, detail="Account not found")
     # The account row is gone; its avatar file (a reader-private upload) goes
-    # too — crud only reaps DB rows (DEC-299/TASK-378 was added after the last
+    # too — crud only reaps DB rows (was added after the last
     # deletion deep-dive, so the file would otherwise linger after delete).
     _delete_avatar_file(AVATAR_DIR, avatar_url)
     return None
@@ -1263,7 +1256,7 @@ async def list_my_push_subscriptions(
 
     Lets a reader see which browsers/devices currently receive their
     notifications and revoke any they no longer control. Only rows bound to
-    this reader (DEC-064 binds subscriptions at /api/push/subscribe)."""
+    this reader (binds subscriptions at /api/push/subscribe)."""
     subs = (
         (
             await db.execute(
@@ -1305,7 +1298,7 @@ async def update_my_push_subscription_prefs(
     settings, per browser/device. Scoped to the caller: another reader's or an
     unknown id is a 404 so subscription ids are not enumerable. An unknown
     category id is a 422 (the fan-out matches on it, so it must exist).
-    (DEC-076, TASK-147)
+
     """
     sub = (
         await db.execute(
@@ -1364,7 +1357,7 @@ async def revoke_my_push_subscription(
 
 
 # ---------------------------------------------------------------------------
-# Cloud-synced bookmarks (DEC-059/TASK-132)
+# Cloud-synced bookmarks
 # ---------------------------------------------------------------------------
 
 
@@ -1382,10 +1375,10 @@ async def list_bookmarks(
     Non-public posts (draft/scheduled/unpublished) are excluded — a bookmark
     list is a read path and must not leak post existence/visibility changes.
     Newest bookmark first (the natural "recently saved" ordering). Optional
-    ``folder_id`` filters to that folder (DEC-120/TASK-172) and ``done`` to
-    the To-read/Done queue state (round 361, DEC-395). Bounded paging
+    ``folder_id`` filters to that folder and ``done`` to
+    the To-read/Done queue state. Bounded paging
     (page/limit, max 100) keeps setup/merge calls from loading every row
-    (ISS-142); clients that need the full set page through ``total_pages``.
+    ; clients that need the full set page through ``total_pages``.
     """
     rows, total = await reader_service.list_reader_bookmarks(
         db, current_reader.id, folder_id=folder_id, done=done, page=page, limit=limit
@@ -1412,7 +1405,7 @@ async def list_my_post_subscriptions(
     Same non-leak invariant as the bookmark list: a followed post that became
     a draft/scheduled no longer appears, while the follow row is kept (the
     reader unsubscribes from the post page). Newest follow first. Bounded
-    paging like the bookmark list (ISS-142).
+    paging like the bookmark list.
     """
     posts, total = await reader_service.list_reader_comment_subscriptions(db, current_reader.id, page=page, limit=limit)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
@@ -1483,7 +1476,7 @@ async def remove_bookmark(
 
 
 # ---------------------------------------------------------------------------
-# Cloud-synced likes (round 359)
+# Cloud-synced likes
 # ---------------------------------------------------------------------------
 
 
@@ -1503,7 +1496,7 @@ async def list_my_likes(
     bookmark list — a liked post that became a draft/scheduled no longer
     appears here (the like row is kept). Newest like first. Bounded paging.
     ``q`` (optional) filters to liked posts matching title/excerpt
-    (escape-aware — DEC-413/TASK-432, recall-search like history DEC-148).
+    (escape-aware, recall-search like history).
     """
     posts, total = await reader_service.list_reader_post_likes(db, current_reader.id, page=page, limit=limit, q=q)
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
@@ -1541,7 +1534,7 @@ async def like_post(
     if not post or not reader_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
     like, created = await reader_service.add_reader_post_like(db, current_reader.id, post.id)
-    # The counter bump is INSIDE add_reader_post_like's transaction (ISS-574):
+    # The counter bump is INSIDE add_reader_post_like's transaction:
     # row + badge commit together, so a crash between them can't leave a liked
     # post with an unbumped count. Do not bump again here — that would double it.
     response.status_code = 201 if created else 200
@@ -1561,13 +1554,13 @@ async def unlike_post(
     (an unlike of a never-liked post doesn't tear the count below its true
     aggregate)."""
     # The counter decrement is INSIDE remove_reader_post_like's transaction
-    # (ISS-574): row delete + badge decrement commit together, so a crash can't
+    #: row delete + badge decrement commit together, so a crash can't
     # leave an unliked post still counting the reader. Do not decrement here.
     await reader_service.remove_reader_post_like(db, current_reader.id, post_id)
     return None
 
 
-# Bookmark folders / collections (DEC-120/TASK-172)
+# Bookmark folders / collections
 # ---------------------------------------------------------------------------
 
 
@@ -1662,7 +1655,7 @@ async def set_bookmark_done(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """Move a saved post between To-read and Done (round 361, DEC-395).
+    """Move a saved post between To-read and Done.
 
     The /bookmarks page marks a saved post Done when it's read (pruning the
     To-read queue) and back To-read otherwise. Idempotent; 404 if the post
@@ -1704,7 +1697,7 @@ async def export_my_data(
     db: AsyncSession = Depends(get_db),
 ):
     """Return the caller's portable data bundle (account, bookmarks, comments,
-    history). Auth-scoped — only the signed-in reader's own data (DEC-126).
+    history). Auth-scoped — only the signed-in reader's own data.
 
     Rate-limited like the other export/backup surfaces (RATE_LIMIT_EXPORT):
     the bundle assembles every comment + history row, so an unthrottled reader
@@ -1719,7 +1712,7 @@ async def my_recommendations(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """Personalized post recommendations for the signed-in reader (DEC-128)."""
+    """Personalized post recommendations for the signed-in reader."""
     recommended = await reader_service.recommend_posts(db, current_reader.id, limit=limit)
     return [schemas.PostList.model_validate(p) for p in recommended]
 
@@ -1733,13 +1726,13 @@ async def my_follows_feed(
 ):
     """Recent public posts from the reader's followed categories + series + tags.
 
-    Paginated (DEC-142/TASK-183, pagination DEC-292/TASK-375): the home section
+    Paginated (pagination): the home section
     uses page 1, the dedicated /follows page pages through all of them.
     """
-    # Fire the scheduled-post publish-time fan-out (DEC-344/TASK-398): this is
+    # Fire the scheduled-post publish-time fan-out: this is
     # the follower's OWN aggregation surface — the most likely place they
     # notice a crossed scheduled post — so it must trigger the same exactly-
-    # once announce as the other public surfaces (round-331 sweep). Cheap
+    # once announce as the other public surfaces. Cheap
     # indexed no-op when nothing crossed; the durable stamp prevents duplicates.
     await reader_service.maybe_notify_due_scheduled_posts(db)
     posts, total = await reader_service.follows_feed_posts(
@@ -1800,7 +1793,7 @@ async def follow_series(
 
 
 class SeriesFollowNotifyUpdate(BaseModel):
-    """Body for toggling per-series new-part push notifications (TASK-181)."""
+    """Body for toggling per-series new-part push notifications."""
 
     notify: bool
 
@@ -1997,7 +1990,7 @@ async def unfollow_tag(
     return None
 
 
-# Author follows (round 353): subscribe to a writer's new posts, the
+# Author follows: subscribe to a writer's new posts, the
 # person-shaped cousin of the topic-shaped category/series/tag follows.
 # ---------------------------------------------------------------------------
 async def _get_followable_author(db: AsyncSession, author_id: int) -> auth.User:
@@ -2088,7 +2081,7 @@ async def unfollow_author(
     return None
 
 
-# Reader → reader follow (round 365, DEC-403): the person-shaped axis of the
+# Reader → reader follow: the person-shaped axis of the
 # follow wheel — a reader can subscribe to another commenter's approved
 # comments. Mirrors the author-follow endpoints (idempotent, self-follow and
 # unknown/inactive targets rejected, never the email).
@@ -2165,7 +2158,7 @@ async def unfollow_reader(
     return None
 
 
-# Reader blocks (DEC-425, TASK-437)
+# Reader blocks
 # ---------------------------------------------------------------------------
 
 
@@ -2253,7 +2246,7 @@ async def unblock_reader(
     return None
 
 
-# Server-backed reading history (DEC-116/TASK-170)
+# Server-backed reading history
 # ---------------------------------------------------------------------------
 
 
@@ -2264,7 +2257,7 @@ async def list_reading_history(
     limit: int = Query(20, ge=1, le=100),
     # q is bound to the same length as the public search term (search.py
     # MAX_QUERY_LENGTH) — an unbounded string would otherwise reach the ILIKE
-    # bind on this unthrottled endpoint (round-296 deep-dive).
+    # bind on this unthrottled endpoint.
     q: Annotated[
         NonNulStr | None, Query(max_length=200, description="filter history to posts matching this term")
     ] = None,
@@ -2273,7 +2266,7 @@ async def list_reading_history(
     """The reader's viewed posts, newest-first, publicly-visible only.
 
     Paginated so the history list stays bounded. ``q`` filters to posts whose
-    title/excerpt match (recall search, DEC-148/TASK-186). Same non-leak
+    title/excerpt match (recall search). Same non-leak
     invariant as bookmarks/subs: a viewed post that went dark stops appearing
     (row kept).
     """
@@ -2294,8 +2287,7 @@ async def list_in_progress(
     limit: int = Query(6, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
 ):
-    """The reader's posts with a saved resume position, newest-first (DEC-348,
-    TASK-400) — the cross-device "Continue reading" trail for the home page.
+    """The reader's posts with a saved resume position, newest-first — the cross-device "Continue reading" trail for the home page.
 
     Declared BEFORE ``/me/history/{post_id}`` so the literal path is not
     captured by the parameterized route (same ordering rule as the ``import``
@@ -2320,7 +2312,7 @@ async def reading_history_stats(
         Query(
             max_length=64,
             description="IANA timezone id (e.g. Asia/Shanghai) so the streak and "
-            "heatmap align to the reader's local calendar day; omitted → UTC (DEC-316)",
+            "heatmap align to the reader's local calendar day; omitted → UTC ",
         ),
     ] = None,
     db: AsyncSession = Depends(get_db),
@@ -2329,7 +2321,7 @@ async def reading_history_stats(
 
     The streak and 52-week activity heatmap are bucketed by the reader's local
     calendar day when ``tz`` (an IANA id, e.g. ``Asia/Shanghai``) is sent —
-    before DEC-316 they aggregated in UTC, so a non-UTC reader's streak and
+    before that, they aggregated in UTC, so a non-UTC reader's streak and
     heatmap disagreed with their own calendar. Omitted → the legacy UTC view.
     An unknown timezone is a 422, never a silent UTC fallback (a typo must not
     quietly re-break the alignment this endpoint exists to provide).
@@ -2357,7 +2349,7 @@ async def reading_history_insights(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """A reader's reading insights: what and how much they've read (DEC-417).
+    """A reader's reading insights: what and how much they've read.
 
     Complements /me/history/stats (the calendar shape — streak/heatmap) with
     the content shape: distinct publicly-visible posts read all-time and in
@@ -2369,7 +2361,7 @@ async def reading_history_insights(
 
 
 class HistoryImportItem(BaseModel):
-    """One device-local read to merge into the server history (TASK-303).
+    """One device-local read to merge into the server history.
 
     ``slug`` identifies the post (the localStorage trail stores slugs, not ids);
     ``viewed_at`` is the guest's original read instant as naive UTC and is
@@ -2384,7 +2376,7 @@ class HistoryImportItem(BaseModel):
     @field_validator("viewed_at", mode="after")
     @classmethod
     def _coerce_naive_utc(cls, value: datetime | None) -> datetime | None:
-        # Same naive-UTC coercion every schema timestamp uses (DEC-213): a
+        # Same naive-UTC coercion every schema timestamp uses: a
         # zone-marked ISO from a device is stored as the same instant the
         # author read, never a local-wall-clock shift, so downstream compares
         # against stored naive-UTC rows cannot raise.
@@ -2392,7 +2384,7 @@ class HistoryImportItem(BaseModel):
 
 
 class HistoryImportRequest(BaseModel):
-    """Device-local trail to merge (TASK-303). Capped so a misbehaving client
+    """Device-local trail to merge. Capped so a misbehaving client
     cannot flood the reader's history in a single request."""
 
     items: list[HistoryImportItem] = Field(min_length=1, max_length=1000)
@@ -2422,9 +2414,9 @@ async def import_reading_history(
 ):
     """Merge the device-local reading trail into this reader's server history.
 
-    Guests record reads to the localStorage trail (DEC-104/TASK-169); after
+    Guests record reads to the localStorage trail; after
     sign-in the /history page reads the server trail and those device records
-    silently disappear (RIL ISS-386, TASK-303). This idempotent, merge-by-slug
+    silently disappear. This idempotent, merge-by-slug
     bulk upsert preserves each record's original read time and only ever
     imports publicly visible posts (drafts/scheduled never leak — the same
     invariant as every other history read path).
@@ -2443,7 +2435,7 @@ async def reading_position(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """A reader's saved resume position for a public post (DEC-167/TASK-200).
+    """A reader's saved resume position for a public post.
 
     Returns the last scroll offset the reader saved for this post (or null when
     they never viewed it) so the post page can drop them back where they left
@@ -2475,8 +2467,8 @@ async def record_reading_view(
 
     ``body`` is optional: omit it (or send ``scroll_position: null``) for a
     plain view that refreshes ``viewed_at`` without touching the saved resume
-    position; send an explicit ``scroll_position`` to update it (DEC-167).
-    ``scroll_fraction`` (DEC-346/TASK-399) updates the cross-viewport resume
+    position; send an explicit ``scroll_position`` to update it.
+    ``scroll_fraction`` updates the cross-viewport resume
     fraction the same way. Drafts/scheduled/unknown posts are uniformly 404 —
     no draft-existence oracle (same guard as the bookmark/comment paths).
     """
@@ -2510,7 +2502,7 @@ async def clear_reading_history(
 class ReaderCommentItem(schemas.CommentPublic):
     """A reader's own comment, its moderation status, plus the post it was left
     on (for navigation). `status` is derived: approved / rejected (reviewed and
-    declined) / pending (awaiting review). (DEC-066, TASK-139)"""
+    declined) / pending (awaiting review)."""
 
     status: Literal["pending", "approved", "rejected"]
     post: schemas.CommentPostBrief | None = None
@@ -2519,7 +2511,7 @@ class ReaderCommentItem(schemas.CommentPublic):
 class ReaderCommentListResponse(BaseModel):
     items: list[ReaderCommentItem]
     total: int
-    # Pagination metadata (DEC-102, TASK-163).
+    # Pagination metadata.
     page: int = 1
     limit: int = 20
     total_pages: int = 1
@@ -2533,7 +2525,7 @@ def _comment_status(c: models.Comment) -> Literal["pending", "approved", "reject
     return "pending"
 
 
-# Statuses accepted by GET /api/reader/me/comments (DEC-102, TASK-163).
+# Statuses accepted by GET /api/reader/me/comments.
 VALID_READER_COMMENT_STATUSES = ("all", "pending", "approved", "rejected")
 
 
@@ -2552,9 +2544,9 @@ async def list_my_comments(
     author; this endpoint shows the caller's own comments with a derived
     status (pending / approved / rejected) plus the post they were left on so
     the frontend can link back. Anonymous readers have no history. ``status``
-    is whitelisted and unknown values are rejected with 422 (DEC-102/TASK-163);
+    is whitelisted and unknown values are rejected with 422;
     ``q`` (optional) filters to comments whose content matches the term
-    (escape-aware — DEC-411/TASK-431, same pattern as history recall-search).
+    (escape-aware, same pattern as history recall-search).
     """
     if status not in VALID_READER_COMMENT_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {list(VALID_READER_COMMENT_STATUSES)}")
@@ -2563,7 +2555,7 @@ async def list_my_comments(
     )
     total_pages = (total + limit - 1) // limit if limit > 0 else 0
     # Batch-load the posts once in a single query instead of db.get per comment
-    # (many comments share a post; ISS-140) — one in_() query, not up to 100.
+    # (many comments share a post) — one in_() query, not up to 100.
     post_ids = {c.post_id for c in comments}
     posts_by_id = {}
     if post_ids:
@@ -2605,7 +2597,7 @@ async def delete_my_comment(
     indistinguishable from a non-existent resource so comment ids are not
     enumerable. Admin delete (DELETE /api/comments/{id}) is unchanged. When the
     comment has replies they are reparented (reader_service.delete_reader_comment) so the
-    thread stays coherent (DEC-096, TASK-160).
+    thread stays coherent.
     """
     try:
         deleted = await reader_service.delete_reader_comment(db, comment_id, current_reader.id)
@@ -2617,12 +2609,11 @@ async def delete_my_comment(
 
 
 class ReaderCommentEdit(BaseModel):
-    """Edit body for a reader's own comment (DEC-096, TASK-160)."""
+    """Edit body for a reader's own comment."""
 
     # Mirror CommentBase's gate (min_length=1 after stripping) so a
     # whitespace-only edit cannot blank a comment body — the create path has
-    # rejected it since round 276; the edit path must agree (round-297
-    # deep-dive).
+    # rejected it; the edit path must agree (deep-dive).
     content: Annotated[NonNulStr, Field(min_length=1, max_length=5000)]
 
     @field_validator("content", mode="before")
@@ -2646,19 +2637,19 @@ async def edit_my_comment(
     missing id) is a 404 so comment ids are not enumerable. Only ``content``
     may change (post_id/parent_id/identity are preserved); the body is stored
     raw and re-rendered through the sanitized markdown pipeline, and
-    ``edited_at`` is stamped. (DEC-096, TASK-160)
+    ``edited_at`` is stamped.
 
     Moderation re-entry (security review): the edit resets approval because it
     replaces public content; the second return value reports whether the
     comment was public before the edit. Re-apply the same verified-reader trust
-    tier as comment create (DEC-098/100) — with auto-approve enabled an edited
+    tier as comment create — with auto-approve enabled an edited
     comment republishes immediately (consistent with how that tier treats new
     comments), otherwise it waits for a moderator exactly like a fresh comment.
     Approval notifications fire only when the edit genuinely brings the comment
     onto the public surface for the first time: a comment that was already
     approved never left it, so its subscribers were notified on the original
     publication and a mere edit must not re-fan out reply + thread
-    notifications (RIL ISS-404).
+    notifications.
     """
     updated, was_public = await reader_service.update_reader_comment(db, comment_id, current_reader.id, edit.content)
     if not updated:
@@ -2674,14 +2665,14 @@ async def edit_my_comment(
     return updated
 
 
-# Reader notification inbox (DEC-160/TASK-192)
+# Reader notification inbox
 # ---------------------------------------------------------------------------
 
 
 class NotificationItem(BaseModel):
     """One durable reader notification (inbox). ``kind`` tags the source so the
     UI can render an icon/filter; ``read`` derives from read_at. ``url`` deep-links
-    to the source post/comment. (DEC-160, TASK-192)"""
+    to the source post/comment."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -2719,7 +2710,7 @@ async def list_my_notifications(
     activity they missed. ``unread`` filters to not-yet-read rows; ``unread``
     in the response is the total unread count for the badge regardless of the
     filter. Auth-scoped; the global middleware defaults these to no-store.
-    (DEC-160, TASK-192)
+
     """
     items, total = await reader_service.list_reader_notifications(
         db, current_reader.id, page=page, limit=limit, unread_only=unread
@@ -2763,7 +2754,7 @@ async def mark_notification_read(
     if row is None:
         # mark_reader_notification_read reported an owned row but it vanished in
         # the same session (concurrent clear); surface 404 instead of an
-        # unhandled assert (round-296 deep-dive).
+        # unhandled assert.
         raise HTTPException(status_code=404, detail="Notification not found")
     return NotificationItem(
         id=row.id,
@@ -2786,11 +2777,11 @@ async def delete_notification(
 ):
     """Delete one of the reader's inbox rows. 404 if not theirs.
 
-    The inbox is durable (DEC-160) but consumers had no way to prune it — mark
+    The inbox is durable but consumers had no way to prune it — mark
     read/read-all clear the badge, rows accumulate forever. This removes exactly
     one of the reader's own notifications (reader_id-scoped like every reader
     table), so an unknown or another reader's id is a 404, never a cross-reader
-    delete. (DEC-312, TASK-384)
+    delete.
     """
     ok = await reader_service.delete_reader_notification(db, current_reader.id, notification_id)
     if not ok:
@@ -2809,7 +2800,7 @@ async def mark_all_notifications_read(
     return {"updated": updated}
 
 
-# Reader notification preferences (DEC-171, TASK-202)
+# Reader notification preferences
 # ---------------------------------------------------------------------------
 
 
@@ -2818,32 +2809,31 @@ class NotificationPrefs(BaseModel):
 
     Mirrors the ReaderNotificationPref row. Missing rows read as all-on for the
     push/inbox kinds, so a reader who never opened the preferences surface is
-    unaffected. The email_* fields are the opt-in email channel (DEC-197,
-    TASK-217): they default false — a missing row reads as no email at all.
+    unaffected. The email_* fields are the opt-in email channel: they default false — a missing row reads as no email at all.
     """
 
     new_post: bool
     reply: bool
     thread_comment: bool
-    # @-mentions (DEC-322, TASK-389): durable inbox rows when an approved
+    # @-mentions: durable inbox rows when an approved
     # comment names this reader's display name as @<name>.
     mention: bool
-    # Reader-to-reader follow (round 365, DEC-403): durable inbox rows when
+    # Reader-to-reader follow: durable inbox rows when
     # an approved comment by a reader the reader FOLLOWS lands.
     reader_comment: bool
     email_new_post: bool
     email_reply: bool
     email_thread_comment: bool
-    # Email copy of @-mentions (DEC-326, TASK-391): offline delivery of the
+    # Email copy of @-mentions: offline delivery of the
     # most personal notification, off by default like the other email_* kinds.
     email_mention: bool
-    # Recurring digest opt-in (DEC-201, TASK-222): one aggregated weekly email,
+    # Recurring digest opt-in: one aggregated weekly email,
     # independent of the per-event toggles above.
     email_weekly_digest: bool
 
 
 class NotificationPrefUpdate(BaseModel):
-    """Body for toggling one notification kind (DEC-171, TASK-202)."""
+    """Body for toggling one notification kind."""
 
     kind: str
     enabled: bool
@@ -2909,7 +2899,7 @@ async def set_my_notification_pref(
 class ReaderLocaleUpdate(BaseModel):
     """Body for PUT /me/locale: the reader's notification-copy language.
 
-    Only the two frontend locale codes are accepted (DEC-338/TASK-395); anything
+    Only the two frontend locale codes are accepted; anything
     else is a 422 rather than a silently-stored unknown value.
     """
 
@@ -2924,7 +2914,7 @@ async def set_my_reader_locale(
     current_reader: auth.ReaderAccount = Depends(auth.get_current_reader),
     db: AsyncSession = Depends(get_db),
 ):
-    """Set the reader's notification-copy language (DEC-338, TASK-395).
+    """Set the reader's notification-copy language.
 
     The fan-out picks the reader's durable inbox titles + email copy from this
     stored value (default zh when never set). The UI language switcher calls
@@ -2936,7 +2926,7 @@ async def set_my_reader_locale(
 
 
 # ---------------------------------------------------------------------------
-# Reader passage highlights (round 466, DEC-511 / TASK-583): a signed-in reader
+# Reader passage highlights: a signed-in reader
 # saves an exact passage from a post, optionally with a private note.
 # ---------------------------------------------------------------------------
 
@@ -2951,7 +2941,7 @@ async def list_my_highlights(
 ):
     """The reader's saved passages (newest first), each with its post link.
 
-    Private to the reader (unlike the public_likes axis, DEC-393). Bounded
+    Private to the reader (unlike the public_likes axis). Bounded
     paging like the bookmark list so setup/merge calls never load every row.
     Pass ``post_id`` to fetch only one post's passages (the article page does
     this to render in-context highlights without pulling the whole list).

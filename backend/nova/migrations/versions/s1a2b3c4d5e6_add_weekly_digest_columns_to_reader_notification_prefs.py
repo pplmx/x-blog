@@ -1,13 +1,13 @@
-"""add weekly-digest columns to reader_notification_prefs (DEC-201, TASK-222).
+"""add weekly-digest columns to reader_notification_prefs.
 
-The email channel (DEC-197/198, r7e3f5a8b0c2) delivers *per-event* copies of
+The email channel (r7e3f5a8b0c2) delivers *per-event* copies of
 the notification fan-out. This adds the second, recurring email surface: an
 opt-in weekly digest — one aggregated HTML email per reader summarizing the
 week's public posts. It is a fresh opt-in (email_weekly_digest, off by default
 so nothing changes unless a reader switches it on) plus a nullable marker
 (digest_sent_at) the job uses for idempotency/window tracking.
 
-Additive columns only (DEC-009) — the reader_notification_prefs table already
+Additive columns only — the reader_notification_prefs table already
 exists, so like its email-channel predecessor this adds columns rather than a
 new table, defensively skipping any that are already present.
 """

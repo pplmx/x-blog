@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Weekly digest CLI — the cron-friendly entrypoint (DEC-201, TASK-222).
+"""Weekly digest CLI — the cron-friendly entrypoint.
 
 The digest job has two triggers: the admin "send now" button
 (``POST /api/admin/digests/send-weekly``) and this standalone command for a

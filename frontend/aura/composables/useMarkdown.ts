@@ -157,7 +157,7 @@ function extractCodeBlocks(
 }
 
 /**
- * Extracts images as segments (enables lazy + lightbox rendering, DEC-302):
+ * Extracts images as segments (enables lazy + lightbox rendering):
  * BOTH markdown syntax (`![alt](src)` — how posts are authored) and raw HTML
  * `<img ...>` tags (posts whose content arrives pre-rendered). Markdown images
  * are pre-empted with placeholder comments before `marked` runs, exactly like
@@ -307,7 +307,7 @@ function attrValue(attrs: string, name: string): string | null {
  *
  * Sanitization strips dangerous content but leaves authored markup as-is, so a
  * post/comment link out to the web opens in the SAME tab and raw `<img>` tags
- * can render with no alt text (ISS-221). This serialized pass — no DOM, so it
+ * can render with no alt text. This serialized pass — no DOM, so it
  * works under SSR and on the regex-fallback path alike — upgrades the output:
  *
  *   - absolute http(s) ``<a>`` links get ``target="_blank"`` and
@@ -344,7 +344,7 @@ export function addSafeLinkAttrs(html: string): string {
 /**
  * Synchronous sanitization: DOMPurify when loaded, otherwise the always-active
  * regex fallback. Never identity — v-html consumers rely on this guarantee.
- * Sanitized output then gets the link/image hardening pass (ISS-221).
+ * Sanitized output then gets the link/image hardening pass.
  */
 export function sanitizeHtml(html: string): string {
 	try {
@@ -366,7 +366,7 @@ headingRenderer.heading = function (token: { tokens: unknown[]; depth: number })
 	return `<h${token.depth} id="${uniqueHeadingId(text)}">${html}</h${token.depth}>`;
 };
 
-// --- GFM inline footnotes (DEC-441, TASK-451) ---
+// --- GFM inline footnotes ---
 //
 // marked v16 has no footnote support, so an author's `[^1]`/`[^1]: ...`
 // citation markers rendered as LITERAL text in the post body, print route,
@@ -495,7 +495,7 @@ function convertMarkdownToHtml(md: string): string {
  * Convert whole Markdown to HTML using the same heading renderer that
  * `useMarkdown` uses, so rendered headings carry the exact `id` values
  * `extractToc` computes. Feed this HTML to `extractToc` (or render it) so TOC
- * anchors resolve to real heading elements. (RIL TASK-104, ISS-084)
+ * anchors resolve to real heading elements.
  */
 export function markdownToHtml(md: string): string {
 	// Standalone whole-document conversion: reset the shared heading counter so
@@ -506,7 +506,7 @@ export function markdownToHtml(md: string): string {
 }
 
 /**
- * Render comment content as sanitized HTML (DEC-088, TASK-156).
+ * Render comment content as sanitized HTML.
  *
  * Comments reuse the post pipeline (marked) with ``breaks: true`` so single
  * newlines become ``<br>`` (comment prose is line-broken like the old

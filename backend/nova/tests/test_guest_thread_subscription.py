@@ -1,9 +1,9 @@
-"""Guest email thread-follow contract + fan-out tests (DEC-427, TASK-438).
+"""Guest email thread-follow contract + fan-out tests.
 
-Comment-thread follow (DEC-078) was reader-gated — ``PUT /posts/{id}/subscription``
+Comment-thread follow was reader-gated — ``PUT /posts/{id}/subscription``
 requires a reader account and the post-page control redirects guests to /login
-— yet the blog already emails anonymous addresses for the newsletter (DEC-351)
-and reply notices (DEC-332). This feature gives an anonymous visitor the same
+— yet the blog already emails anonymous addresses for the newsletter
+and reply notices. This feature gives an anonymous visitor the same
 ability for a discussion: subscribe a post's thread by email (double opt-in,
 mirroring ``NewsletterSubscriber``), get one email per new APPROVED comment
 with a one-click unsubscribe, and never need an account.
@@ -167,7 +167,7 @@ class TestSubscribeContract:
         assert (await _subscribe(client, 999999, "nobody@example.com")).status_code == 404
 
     async def test_subscribe_accepts_digest_weekly_cadence(self, client, db_session):
-        """The subscribe body may pick the weekly cadence up front (DEC-429)."""
+        """The subscribe body may pick the weekly cadence up front."""
         from app import models
 
         post = await _create_post(db_session)
@@ -238,7 +238,7 @@ class TestConfirmAndUnsubscribe:
         assert (await _digest(client, "bogus", True)).status_code == 404
 
     async def test_unsubscribe_stamps_unsubscribed_at(self, client, db_session, monkeypatch):
-        """Unsubscribing marks the row's consent as cancelled (TASK-485)."""
+        """Unsubscribing marks the row's consent as cancelled."""
         from app import models
 
         post = await _create_post(db_session)
@@ -258,8 +258,8 @@ class TestConfirmAndUnsubscribe:
         assert row.unsubscribed_at is not None
 
     async def test_replaying_old_confirm_link_after_unsubscribe_is_400(self, client, db_session, monkeypatch):
-        """The round-393 consent-restart gate must cover the guest thread too
-        (TASK-485/ISS-561): replaying the ORIGINAL confirmation link after an
+        """The consent-restart gate must cover the guest thread too
+        : replaying the ORIGINAL confirmation link after an
         unsubscribe silently re-subscribed before — now it is a 400."""
         from app import models
 
@@ -283,7 +283,7 @@ class TestConfirmAndUnsubscribe:
 
     async def test_resubscribing_unsubscribed_address_restarts_opt_in(self, client, db_session, monkeypatch):
         """Re-subscribing a cancelled address rotates the token and sends a
-        FRESH double-opt-in email (TASK-485) — no more dead-end that claimed
+        FRESH double-opt-in email — no more dead-end that claimed
         success while no mail would ever arrive."""
         from uuid import uuid4
 
@@ -347,7 +347,7 @@ class TestConfirmAndUnsubscribe:
 
     async def test_confirm_reports_digest_weekly_cadence(self, client, db_session, monkeypatch):
         """The confirm response rides the stored cadence back so the confirm page
-        can seed its weekly-summary toggle (DEC-429, newsletter parity)."""
+        can seed its weekly-summary toggle (newsletter parity)."""
         from app import models
 
         post = await _create_post(db_session)
@@ -451,7 +451,7 @@ class TestThreadFanOut:
         self, client, db_session, monkeypatch, auth_headers
     ):
         """A follower on the weekly cadence is served by the digest only — one
-        channel per subscriber (DEC-429), so the approval fan-out stays silent."""
+        channel per subscriber, so the approval fan-out stays silent."""
         from app import models
 
         post = await _create_post(db_session)
@@ -528,7 +528,7 @@ class TestThreadFanOut:
 
 
 class TestThreadWeeklyDigest:
-    """The weekly thread-digest job (DEC-429): a confirmed follower on the
+    """The weekly thread-digest job: a confirmed follower on the
     weekly cadence gets ONE summary email per (address, thread) with that
     window's approved comments instead of a mail per comment; the window starts
     at the last send and the job never raises."""

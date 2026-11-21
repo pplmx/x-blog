@@ -1,5 +1,5 @@
 /**
- * Home "Your series" row journey (DEC-136, TASK-180).
+ * Home "Your series" row journey.
  *
  * A signed-in reader who follows a series sees it in a personalized "Your
  * series" row on the home page with a link back into the series (guests see no
@@ -19,7 +19,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Home 'Your series' row (TASK-180)", () => {
+test.describe("Home 'Your series' row ", () => {
 	test("guests see no Your-series row", async ({ page }) => {
 		await page.goto("/");
 		await expect(page.locator("section", { hasText: "我的系列" })).toHaveCount(0);

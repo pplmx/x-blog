@@ -1,4 +1,4 @@
-"""Reader device-trail history import tests (TASK-303, RIL ISS-386).
+"""Reader device-trail history import tests.
 
 A guest's reads live in the on-device localStorage trail; after sign-in the
 /history page reads the server trail, so the device records silently disappear
@@ -90,7 +90,7 @@ class TestReaderHistoryImport:
         assert not items[0]["viewed_at"].startswith("2020")
 
         # A newer device timestamp wins the merge — but only within the
-        # present. A far-future read is clamped to now (TASK-348/ISS-450), so
+        # present. A far-future read is clamped to now, so
         # the merge still applies (imported=1); it just lands at "now" instead
         # of pinning the post to 2099 forever.
         assert (await _import(client, token, [{"slug": p["slug"], "viewed_at": "2099-12-31T23:59:59"}])).json() == {
@@ -102,7 +102,7 @@ class TestReaderHistoryImport:
 
     async def test_import_clamps_a_far_future_viewed_at_to_now(self, client, auth_headers):
         """A fast-clock device's year-in-the-future read must not pin the post
-        at the top of history forever (TASK-348/ISS-450): the stored instant
+        at the top of history forever: the stored instant
         lands at "now", never at the bogus 2099."""
         from datetime import UTC, datetime, timedelta
 
@@ -160,7 +160,7 @@ class TestReaderHistoryImport:
     async def test_timestamp_less_record_does_not_erase_real_timestamp_in_batch(self, client, auth_headers):
         """A legacy (viewed_at omitted) record must not clobber the real read
         instant folded from a sibling record for the same post — folding to None
-        imported as "now", inflating the reader's streak/activity (round-292)."""
+        imported as "now", inflating the reader's streak/activity."""
         token = await _token(client)
         p = await _create_post(client, auth_headers, "Mixed Batch", "mixedbatch")
 
@@ -180,7 +180,7 @@ class TestReaderHistoryImport:
 
     async def test_viewed_at_coerced_from_zone_marked_iso(self, client, auth_headers):
         # A device may send a zone-marked instant; it must land as naive-UTC
-        # (the stored/read contract, DEC-213) so the list returns the same
+        # (the stored/read contract) so the list returns the same
         # instant without an aware-vs-naive comparison crash.
         token = await _token(client)
         p = await _create_post(client, auth_headers, "Zoned Read", "zoned")
@@ -210,7 +210,7 @@ class TestReaderHistoryImport:
 
     async def test_response_is_no_store(self, client, auth_headers):
         # Write-on-read/private endpoints keep the global no-store default
-        # (middleware cache policy — TASK-129); a shared cache must never hold
+        # (middleware cache policy); a shared cache must never hold
         # a reader's history mutation response.
         token = await _token(client)
         resp = await _import(client, token, [{"slug": "missing", "viewed_at": None}])

@@ -1,5 +1,5 @@
 /**
- * Search filters + sort journey (DEC-084, TASK-154).
+ * Search filters + sort journey.
  *
  * Pins the search-refinement surface: the filter bar renders on the search
  * page and wiring a category/sort into the URL refetches via the backend
@@ -70,7 +70,7 @@ test.describe("Search filters + sort", () => {
 			expect(viewsItems[i - 1].views).toBeGreaterThanOrEqual(viewsItems[i].views);
 		}
 		// newest/oldest sort by EFFECTIVE publish time (publish_at ?? created_at,
-		// DEC-238) — the same key feeds/archive/sitemap order on, and a scheduled
+		//) — the same key feeds/archive/sitemap order on, and a scheduled
 		// post that has gone live must rank by when it appeared, not by its older
 		// draft created_at. A raw created_at assertion silently fails once a
 		// seeded scheduled post passes its publish date.

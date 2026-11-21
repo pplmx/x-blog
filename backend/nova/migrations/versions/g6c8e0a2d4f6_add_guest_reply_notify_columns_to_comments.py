@@ -1,11 +1,11 @@
-"""add guest reply-notify consent columns to comments (DEC-332, TASK-392).
+"""add guest reply-notify consent columns to comments.
 
 The comment form requires an anonymous commenter to leave an email and it is
 stored on the comment row, but no dispatch path ever used it (the reply-notify
 guard was `parent.reader_id is not None`), so replies to anonymous comments
-reached nobody. DEC-332 adds a best-effort email to the guest's own address
+reached nobody. adds a best-effort email to the guest's own address
 when a reply to their comment is approved — gated on explicit consent plus a
-per-comment unsubscribe token. Both are additive (DEC-009); no existing column
+per-comment unsubscribe token. Both are additive; no existing column
 is touched. Defender defaults keep the channel strictly opt-in.
 """
 

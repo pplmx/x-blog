@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Footer "Pages" links (round 347): the published static pages are only
+// Footer "Pages" links: the published static pages are only
 // discoverable by URL unless the site links them somewhere, so the footer
 // surfaces them. Client-side only (server: false) — the list must not add an
 // SSR-blocking round trip to every page render.

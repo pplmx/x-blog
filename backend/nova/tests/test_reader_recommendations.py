@@ -1,4 +1,4 @@
-"""Personalized 'Recommended for you' contract tests (DEC-128, TASK-176).
+"""Personalized 'Recommended for you' contract tests.
 
 GET /api/reader/me/recommendations returns public posts scored by the signed-in
 reader's category/tag affinity (from reading history + bookmarks), excluding
@@ -147,7 +147,7 @@ class TestRecommendations:
         assert [r["slug"] for r in all_recs] == rev
 
     async def test_candidate_scan_is_bounded(self, client, db_session):
-        """The Python-side candidate pool is capped (round 278 perf): an
+        """The Python-side candidate pool is capped: an
         unbounded retrieve would materialize every public post per request.
         Shrinking the cap to 2 must limit recommendations to the two newest
         candidates even when older same-affinity posts exist."""

@@ -12,9 +12,9 @@ three classes of API responses:
   invalidation signal at the HTTP layer.
 
 The policy is explicit-opt-in: a route that wants caching sets a ``Cache-Control``
-header itself (see routers/conditional.py, TASK-128) and the middleware leaves it
+header itself (see routers/conditional.py) and the middleware leaves it
 alone; every other response defaults to ``no-store``. ``setdefault`` preserves
-route-set headers and never fights TASK-128's conditional-response helper.
+route-set headers and never fights's conditional-response helper.
 """
 
 from __future__ import annotations

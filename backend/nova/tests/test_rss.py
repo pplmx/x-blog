@@ -55,7 +55,7 @@ async def test_rss_feed_full_content_flag(client, auth_headers):
 
 async def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
     """Full-content feeds must render markdown to HTML, not literal syntax,
-    and strip dangerous markup (ISS-039)."""
+    and strip dangerous markup."""
     await client.post(
         "/api/posts",
         json={
@@ -82,7 +82,7 @@ async def test_rss_full_feed_renders_markdown_as_html(client, auth_headers):
 
 async def test_rss_full_feed_renders_footnotes(client, auth_headers):
     """Full-content feeds must render GFM footnote markers to a backlinked
-    reference list, not emit the raw [^1] marker text (DEC-441, TASK-451)."""
+    reference list, not emit the raw [^1] marker text."""
     await client.post(
         "/api/posts",
         json={
@@ -116,7 +116,7 @@ async def test_rss_full_feed_keeps_tags_balanced_with_void_elements(client, auth
     Markdown's nl2br emits <br>; HTMLParser reports <br> as a start tag (no
     close), which used to consume the sanitizer's stack slot and dropped the
     enclosing </p>/</div> — corrupting default full-content feeds. Regression
-    for RIL TASK-108, ISS-088.
+    for.
     """
     await client.post(
         "/api/posts",
@@ -176,7 +176,7 @@ async def test_atom_feed_renders_markdown_as_html(client, auth_headers):
 async def test_rss_feed_strips_unsafe_url_schemes(client, auth_headers):
     """Unsafe URL schemes (javascript:/data:/vbscript:) in anchor/image href/src
     must be stripped from rendered feeds, matching the frontend DOMPurify policy
-    (RIL TASK-091, ISS-071). Safe http(s)/relative URLs survive."""
+    . Safe http(s)/relative URLs survive."""
     await client.post(
         "/api/posts",
         json={
@@ -264,7 +264,7 @@ async def test_atom_feed_returns_xml(client):
 async def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_session):
     """Feeds must be pure-recency channels: a pinned old post must not float to
     item 0 and fake a freshly-updated feed for pollers that key off the first
-    entry — only the site's own listings float pinned (RIL ISS-474)."""
+    entry — only the site's own listings float pinned."""
     from datetime import UTC, datetime
 
     from app import models
@@ -305,7 +305,7 @@ async def test_feed_and_sitemap_order_by_recency_not_pinned_first(client, db_ses
 
 async def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_headers):
     """A scheduled post's RSS pubDate must be its publish_at, not the draft's
-    created_at — otherwise feed readers mis-date/mis-order it (RIL ISS-264)."""
+    created_at — otherwise feed readers mis-date/mis-order it."""
     await client.post(
         "/api/posts",
         json={
@@ -328,7 +328,7 @@ async def test_rss_pubdate_uses_publish_at_for_scheduled_post(client, auth_heade
 
 async def test_atom_published_uses_publish_at_for_scheduled_post(client, auth_headers):
     """A scheduled post's Atom <published> must be its publish_at, never the
-    draft's created_at (RIL ISS-264)."""
+    draft's created_at."""
     await client.post(
         "/api/posts",
         json={
@@ -446,7 +446,7 @@ async def test_sitemap_pages_through_all_published_posts(client, auth_headers, m
     search). The page size is shrunk and get_posts capped to it, so the loop
     is exercised with a handful of posts: a single-fetch implementation only
     ever sees the first page and the final posts fail to appear, while the
-    fixed loop keeps fetching until a short page (DEC-318/TASK-387)."""
+    fixed loop keeps fetching until a short page."""
     from app.routers import rss as rss_module
     from app.services import rss as crud_module
 
@@ -475,7 +475,7 @@ async def test_sitemap_pages_through_all_published_posts(client, auth_headers, m
 async def test_sitemap_includes_series(client, auth_headers):
     """Series detail pages are indexable, so each series must appear in the
     sitemap as /series/{slug} — the URL shape crawlers can reach; the old
-    sitemap emitted zero series entries (DEC-318/TASK-387)."""
+    sitemap emitted zero series entries."""
     resp = await client.post(
         "/api/series",
         json={"title": "Sitemap Manga", "slug": "sitemap-manga", "description": "series desc"},
@@ -488,7 +488,7 @@ async def test_sitemap_includes_series(client, auth_headers):
 
 
 async def test_sitemap_includes_published_pages_not_drafts(client, auth_headers):
-    """Published static pages are indexable /pages/{slug} URLs (round 347/348);
+    """Published static pages are indexable /pages/{slug} URLs;
     drafts are unpublished and must stay out of the sitemap entirely."""
     await client.post(
         "/api/admin/pages",
@@ -509,7 +509,7 @@ async def test_sitemap_includes_published_pages_not_drafts(client, auth_headers)
 async def test_sitemap_page_write_busts_cache(client, auth_headers):
     """A newly published page must reach crawlers after the write, not after a
     feed-cache TTL: the sitemap is cached, so creating/publishing a page has to
-    invalidate it (round 348)."""
+    invalidate it."""
     # Sitemap warmed with no pages.
     assert "/pages/privacy" not in (await client.get("/sitemap.xml")).text
     await client.post(
@@ -527,8 +527,8 @@ async def test_sitemap_page_write_busts_cache(client, auth_headers):
 
 
 async def test_sitemap_includes_author_archives(client, db_session):
-    """Each pen-named writer's /authors/{id} archive (round 343) and the
-    /authors index (round 346) are indexable pages; username-only admins have
+    """Each pen-named writer's /authors/{id} archive and the
+    /authors index are indexable pages; username-only admins have
     no public archive and must not appear (no-oracle)."""
     from app import auth
 
@@ -565,7 +565,7 @@ async def test_robots_txt(client):
 
 
 async def test_robots_txt_disallows_private_and_auth_surfaces(client):
-    """round 438: private/auth/admin/API paths must be Disallowed so crawlers
+    """private/auth/admin/API paths must be Disallowed so crawlers
     do not FETCH them (the page-level noindex only stops them being indexed;
     Disallow saves the crawl budget). Actual feed/sitemap endpoints stay
     crawlable."""
@@ -656,7 +656,7 @@ async def test_rss_feed_etag_and_304(client, auth_headers):
 
 
 # ---------------------------------------------------------------------------
-# Scoped category/tag feeds (DEC-074, TASK-146) — a reader can subscribe to a
+# Scoped category/tag feeds — a reader can subscribe to a
 # single topic via its own feed URL and sees only that topic's posts.
 # ---------------------------------------------------------------------------
 

@@ -1,6 +1,5 @@
 /**
- * useArticleHighlights — select-to-highlight inside a post (round 466,
- * DEC-511 / TASK-583).
+ * useArticleHighlights — select-to-highlight inside a post.
  *
  * For a signed-in reader, selecting text within the article shows a "保存摘录"
  * handle; saving persists the passage (plus an optional note) to
@@ -132,7 +131,7 @@ export function useArticleHighlights(
 		// reused), so a slow response resolving after postId flipped would
 		// overwrite the NEW post's highlight list with the OLD post's passages
 		// and inject stale `<mark>`s into its prose — the same stale-response
-		// class `save()` guards above (ISS-572-class, mirrors ISS-672).
+		// class `save()` guards above (mirrors).
 		const loadPostId = postId.value;
 		try {
 			// Server-side post_id filter: fetch only this post's passages rather

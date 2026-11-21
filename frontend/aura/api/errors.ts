@@ -7,7 +7,7 @@
  * transport error's `.data`. The error's own `.message` is only ofetch's
  * technical string ("[POST] \"...\": 429 Too Many Requests") — useless in a
  * form. This helper returns the human text with a caller-provided localized
- * fallback (round 393/394; used by the reader-auth composables and every admin
+ * fallback (394; used by the reader-auth composables and every admin
  * list page, replacing six copy-pasted local `getErrorMessage` helpers).
  *
  * Order: backend envelope message → a non-HTTP local Error's own message

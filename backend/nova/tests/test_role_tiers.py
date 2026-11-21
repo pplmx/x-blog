@@ -1,10 +1,10 @@
-"""Contract tests for role-tier admin access control (DEC-054, TASK-107/114/115/116).
+"""Contract tests for role-tier admin access control.
 
 Covers the role model contract added by the milestone:
 - GET /api/admin/me returns the current account's role (drives role-aware UI).
 - A non-superuser editor CAN moderate content (posts/comments/categories/tags).
 - A non-superuser editor CANNOT manage users, export CSV, or batch-approve.
-- Created accounts are non-superuser editors (ISS-087 safe contract, DEC-053).
+- Created accounts are non-superuser editors (safe contract).
 - GET /api/admin/me requires an authenticated admin (401 otherwise).
 """
 
@@ -120,7 +120,7 @@ class TestEditorCannotPrivileged:
 
 
 class TestCreateUserRole:
-    """Created accounts are non-superuser editors (ISS-087 safe contract)."""
+    """Created accounts are non-superuser editors (safe contract)."""
 
     async def test_created_user_is_non_superuser_editor(self, client, db_session, admin_user, auth_headers):
         # admin_user is a no-op dependency pointer in the transaction; pass it to

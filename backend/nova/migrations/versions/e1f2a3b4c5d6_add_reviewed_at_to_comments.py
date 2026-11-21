@@ -1,4 +1,4 @@
-"""add comments.reviewed_at to distinguish pending from rejected (DEC-066)
+"""add comments.reviewed_at to distinguish pending from rejected
 
 Comments toggle ``is_approved`` on both routes (approved / rejected) but the
 author's history needs a treble status (pending / approved / rejected). A
@@ -6,7 +6,7 @@ nullable ``reviewed_at`` records the last moderator action: null => pending,
 non-null => rejected (if not approved) or approved. Entirely additive.
 
 No DB-level constraints beyond what exists (plain nullable column, no FK),
-matching DEC-009's additive-column convention.
+matching's additive-column convention.
 
 Revision ID: e1f2a3b4c5d6
 Revises: d9e8f7a6b5c4

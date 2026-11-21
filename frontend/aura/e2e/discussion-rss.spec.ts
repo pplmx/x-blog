@@ -1,10 +1,10 @@
 /**
- * Discussion RSS journey (round 368, DEC-409).
+ * Discussion RSS journey.
  *
  * The conversation is findable (comment search), browsable (/discussion) — the
  * feeds make it SUBSCRIBABLE: /rss/comments.xml streams the latest approved
  * comments as RSS 2.0 (Atom at /rss/comments.atom.xml), one item per comment
- * deep-linking ONTO the comment (#comment-{id}, DEC-321). The /discussion page
+ * deep-linking ONTO the comment (#comment-{id}). The /discussion page
  * surfaces a Subscribe link + discovery tags so a feed reader finds it.
  */
 
@@ -38,7 +38,7 @@ async function postAndApprove(
 	return { slug, commentId };
 }
 
-test.describe("Discussion RSS (DEC-409)", () => {
+test.describe("Discussion RSS ", () => {
 	test("RSS feed streams the newest approved comment with a deep link onto it", async ({
 		request,
 	}) => {
@@ -52,7 +52,7 @@ test.describe("Discussion RSS (DEC-409)", () => {
 		// The newest comment appears in the stream…
 		expect(xml).toContain(marker);
 		expect(xml).toContain("订阅侠");
-		// …and its item deep-links ONTO the comment (DEC-321).
+		// …and its item deep-links ONTO the comment.
 		expect(xml).toContain(`#comment-${commentId}`);
 		expect(xml).toContain(`/posts/${slug}#comment-${commentId}`);
 	});

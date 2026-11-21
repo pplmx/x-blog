@@ -1,5 +1,5 @@
 /**
- * Markdown image lightbox journey (DEC-302, TASK-379).
+ * Markdown image lightbox journey.
  *
  * A published post carries markdown images; the reader clicks one and gets a
  * fullscreen viewer (full-res image + "n / total" counter), browses with the
@@ -80,7 +80,7 @@ test.afterAll(async ({ request }) => {
 	}
 });
 
-test.describe("Markdown image lightbox (DEC-302/TASK-379)", () => {
+test.describe("Markdown image lightbox ", () => {
 	test("click opens fullscreen; arrows browse; Escape/backdrop/close exit and focus returns", async ({
 		page,
 		request,

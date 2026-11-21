@@ -26,7 +26,7 @@ const editingId = ref<number | null>(null);
 const editingName = ref("");
 const actionError = ref<string | null>(null);
 // Client-side filter: the taxonomy endpoint returns every tag and a long
-// unbounded list with no way to narrow it is wasted scrolling (ISS-311 part 3).
+// unbounded list with no way to narrow it is wasted scrolling (part 3).
 // Tags are small enough that in-memory filtering beats server paging.
 const search = ref("");
 const visibleTags = computed(() => {
@@ -36,7 +36,7 @@ const visibleTags = computed(() => {
 });
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): backend envelope human message,
+	// Shared admin error surfacing: backend envelope human message,
 	// else a local non-HTTP error's message, else the localized fallback.
 	return apiErrorMessage(e, t("admin.tags.operationFailed"));
 }
@@ -145,7 +145,7 @@ async function handleDelete(id: number) {
 				>
 					<!-- Create is fast but not instant; the spinner says the click
                registered instead of reading as a frozen page while the POST
-               round-trips (round-445 audit). -->
+               round-trips. -->
 					<Icon
 						v-if="isProcessing"
 						icon="lucide:loader-2"
@@ -167,7 +167,7 @@ async function handleDelete(id: number) {
 		<div v-else-if="error" class="text-center py-12 text-red-500">
 			<!-- Localized, never error.message: on an HTTP failure that is only
            ofetch's technical string ("[GET] ...: 500"), leaking the internal
-           API URL in a wrong-language line (round-445 audit). -->
+           API URL in a wrong-language line. -->
 			<p class="mb-4">{{ t("admin.tags.loadFailed") }}</p>
 			<button
 				type="button"

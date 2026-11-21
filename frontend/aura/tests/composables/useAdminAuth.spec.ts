@@ -1,5 +1,5 @@
 /**
- * useAdminAuth composable tests (RIL ISS-273).
+ * useAdminAuth composable tests.
  *
  * Admin auth is a localStorage JWT. The client is responsible for dropping an
  * EXPIRED token so the admin layout's guard sends the operator back to
@@ -79,7 +79,7 @@ describe("useAdminAuth", () => {
 		expect(navigateToMock).toHaveBeenCalledWith("/admin/login", { replace: true });
 	});
 
-	it("an expired token reads as logged out and is dropped on read (ISS-273)", () => {
+	it("an expired token reads as logged out and is dropped on read ", () => {
 		localStorage.setItem("admin_token", jwt({ exp: past() }));
 		const { isAuthenticated } = useAdminAuth();
 		expect(isAuthenticated.value).toBe(false);
@@ -118,7 +118,7 @@ describe("useAdminAuth", () => {
 		expect(window.location.replace).toHaveBeenCalledWith("/admin/login");
 	});
 
-	it("handleAdminUnauthorized preserves an internal return path in the next query (ISS-390)", () => {
+	it("handleAdminUnauthorized preserves an internal return path in the next query ", () => {
 		const { handleAdminUnauthorized } = useAdminAuth();
 		handleAdminUnauthorized("/admin/posts/5/edit");
 		expect(window.location.replace).toHaveBeenCalledWith(

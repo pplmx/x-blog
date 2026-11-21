@@ -1,4 +1,4 @@
-"""Reader passage highlights API contract tests (round 466, DEC-511 / TASK-583).
+"""Reader passage highlights API contract tests.
 
 Covers auth gating, idempotent create, per-reader isolation, note update,
 ownership on update/delete, post visibility guarding, and response shape.

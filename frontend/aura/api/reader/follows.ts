@@ -8,7 +8,7 @@ export interface FollowedSeriesItem {
 	title: string;
 	slug: string;
 	description?: string | null;
-	/** Whether new-part push is enabled for this follow (TASK-181). */
+	/** Whether new-part push is enabled for this follow. */
 	notify: boolean;
 }
 
@@ -28,7 +28,7 @@ export interface SeriesFollowState {
 export interface FollowedCategoryItem {
 	id: number;
 	name: string;
-	/** Whether new-post push is enabled for this follow (TASK-182). */
+	/** Whether new-post push is enabled for this follow. */
 	notify: boolean;
 }
 
@@ -44,11 +44,11 @@ export interface CategoryFollowState {
 	notify: boolean;
 }
 
-/** The tags the signed-in reader follows (durable reader-level intent, DEC-195). */
+/** The tags the signed-in reader follows (durable reader-level intent). */
 export interface FollowedTagItem {
 	id: number;
 	name: string;
-	/** Whether new-post push is enabled for this follow (TASK-215). */
+	/** Whether new-post push is enabled for this follow. */
 	notify: boolean;
 }
 
@@ -66,7 +66,7 @@ export interface TagFollowState {
 
 /**
  * Recent public posts from the reader's followed categories + series + tags.
- * Paginated envelope (DEC-292/TASK-375): the home section uses page 1, the
+ * Paginated envelope: the home section uses page 1, the
  * dedicated /follows page pages through everything.
  */
 export function useReaderFollowsFeed(limit = 12) {
@@ -80,8 +80,7 @@ export function useReaderFollowsFeed(limit = 12) {
 /**
  * Imperative "latest from your follows" page (home onMounted loader / /follows
  * page) — the imperative seam; see getReaderSeriesFollows for why
- * lifecycle-hook loaders must never run a useFetch query (ISS-110/111/117/118/
- * 119, TASK-220).
+ * lifecycle-hook loaders must never run a useFetch query.
  */
 export function getReaderFollowsFeed(limit = 12, page = 1): Promise<PostListResponse> {
 	return command<PostListResponse>("/api/reader/me/follows-feed", {
@@ -105,7 +104,7 @@ export function useReaderSeriesFollows() {
  * through the imperative `command` seam, never `useFetch`: in a sync-setup
  * component `useFetch` requires a setup/suspense context to trigger execution
  * and its request silently never leaves the browser when called from a
- * lifecycle hook (ISS-110/111, TASK-199). Mirrors getMyPostSubscriptions.
+ * lifecycle hook. Mirrors getMyPostSubscriptions.
  */
 export function getReaderSeriesFollows(): Promise<FollowedSeriesListResponse> {
 	return command<FollowedSeriesListResponse>("/api/reader/me/series-follows", {
@@ -224,7 +223,7 @@ export function unfollowReaderTag(tagId: number): Promise<null> {
 	});
 }
 
-/** The writers the signed-in reader follows (round 353) — pen name only. */
+/** The writers the signed-in reader follows — pen name only. */
 export interface FollowedAuthorItem {
 	author_id: number;
 	display_name: string;
@@ -280,7 +279,7 @@ export function unfollowReaderAuthor(authorId: number): Promise<null> {
 	});
 }
 
-// Reader-to-reader follow (round 365, DEC-403): subscribe to another COMMENT
+// Reader-to-reader follow: subscribe to another COMMENT
 // READER's approved comments. The person-to-person cousin of the author-follow
 // wheel — given the profile surfaces a commenter's history, following them
 // means "tell me when this person comments next" (comment fan-out on approve).
@@ -291,7 +290,7 @@ export function unfollowReaderAuthor(authorId: number): Promise<null> {
 export interface FollowedReaderItem {
 	reader_id: number;
 	display_name: string | null;
-	// Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
+	// Profile picture — a public image URL, never PII.
 	avatar_url: string | null;
 	/** Whether comment fan-out is enabled for this follow (always true today). */
 	notify: boolean;

@@ -1,8 +1,8 @@
 /**
  * Proxy a backend feed/sitemap endpoint to the client while preserving the
  * conditional-GET contract the backend already implements (strong ETag, 304 on
- * If-None-Match, Cache-Control — rss.py TASK-089 / routers/conditional.py
- * TASK-128). The earlier `$fetch<string>` proxies dropped those headers, so
+ * If-None-Match, Cache-Control — rss.py routers/conditional.py
+ *). The earlier `$fetch<string>` proxies dropped those headers, so
  * feed readers hitting the Nuxt edge could never revalidate and re-downloaded
  * the body on every poll; this restores 200 -> 304 through the Nuxt origin.
  */
@@ -26,7 +26,7 @@ export async function proxyConditionalFeed(
 	// link), so dropping the query here silently served the GLOBAL feed to a
 	// reader who subscribed to one tag — the sibling category/series feeds are
 	// path-form and proxy correctly, making this the only broken scope on the
-	// Nuxt origin (DEC-314/TASK-385). The backend keeps its strong ETag per
+	// Nuxt origin. The backend keeps its strong ETag per
 	// scoped body, so 304 revalidation stays correct across scopes.
 	const query = getQuery(event);
 	const qs = new URLSearchParams();

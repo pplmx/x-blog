@@ -1,5 +1,5 @@
 /**
- * Header search-as-you-type suggestions (feature TASK-045 / DEC-027).
+ * Header search-as-you-type suggestions (feature).
  *
  * Requires a live backend at the frontend's configured API URL with at least
  * one indexed post (e.g. the seeded "welcome-to-x-blog"). Verifies the
@@ -36,7 +36,7 @@ test.describe("Header search suggestions", () => {
 		await page.waitForURL(/\/search\?q=Python/);
 	});
 
-	test("pressing '/' anywhere focuses the header search (round 262, TASK-279)", async ({
+	test("pressing '/' anywhere focuses the header search ", async ({
 		page,
 	}) => {
 		// The reader is mid-page (focus on the main region, not the header) —

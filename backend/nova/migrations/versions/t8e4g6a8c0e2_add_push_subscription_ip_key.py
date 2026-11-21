@@ -5,7 +5,7 @@ identity, so the table could grow without a per-source bound and the (serial)
 dispatch loop could be amplified. This additive nullable column stamps the
 request's client rate-limit key on anonymous rows only — signed-in rows keep
 reader_id as their identity and leave ip_key NULL. Only the new column is
-touched, no existing DDL (DEC-009); the column is nullable+indexed and safely
+touched, no existing DDL; the column is nullable+indexed and safely
 skipped if already present.
 
 Revision ID: t8e4g6a8c0e2

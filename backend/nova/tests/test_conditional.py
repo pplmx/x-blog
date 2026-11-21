@@ -1,4 +1,4 @@
-"""Conditional-response + cache headers on cacheable public GETs (DEC-058 / TASK-128).
+"""Conditional-response + cache headers on cacheable public GETs.
 
 Cacheable public endpoints build their responses via ``app.conditional``: a
 200 carries a strong ETag + ``Cache-Control: public, max-age=60``, and a
@@ -117,8 +117,8 @@ async def test_series_list_and_detail_are_conditional(client, auth_headers):
 
 
 async def test_feed_304_now_carries_cache_control(client):
-    """Feeds keep their ETag/304 (TASK-089) and now also set Cache-Control so
-    the earlier TASK-129 no-store default cannot neuter feed caching."""
+    """Feeds keep their ETag/304 and now also set Cache-Control so
+    the earlier no-store default cannot neuter feed caching."""
     response = await client.get("/rss/feed.xml")
     assert response.status_code == 200
     etag = _etag_of(response)

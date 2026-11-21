@@ -1,5 +1,5 @@
 /**
- * Admin Web Push composable for comment-moderation alerts (DEC-080, TASK-152).
+ * Admin Web Push composable for comment-moderation alerts.
  *
  * The blog moderates every comment, so an admin opts a browser in here to get
  * a push the moment a new comment awaits approval (deep-links to
@@ -85,7 +85,7 @@ async function fetchAdminSubscriptions(): Promise<string[]> {
 			// Session-expired/revoked admin token: route 401 → /admin/login?next=
 			// like every other admin command (transport.ts flagAdminUnauthorized)
 			// so the toggle doesn't misreport an expired session as "not
-			// subscribed" (deep-dive finding, TASK-462 class).
+			// subscribed" (deep-dive finding class).
 			if (res.status === 401) {
 				useAdminAuth().handleAdminUnauthorized(window.location.pathname);
 			}
@@ -171,7 +171,7 @@ async function subscribe(): Promise<void> {
 		status.value = "subscribed";
 	} catch (err) {
 		// Rethrow so the initiating toggle surfaces the transient failure
-		// (per-call-site feedback, matching the reader composable — ISS-215).
+		// (per-call-site feedback, matching the reader composable).
 		status.value = "idle";
 		throw err;
 	}

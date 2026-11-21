@@ -1,10 +1,10 @@
-"""add reader_notifications table for the reader notification inbox (DEC-160, TASK-192)
+"""add reader_notifications table for the reader notification inbox
 
 Durable per-reader notification rows (new post in a followed series/category, a
 reply to the reader's comment, a new comment on a followed thread) so a signed-in
 reader can review follow/reply/thread activity in-app as a read/unread list,
 independent of fire-and-forget browser push. Additive table; no existing DDL is
-touched (DEC-009). reader_id is a plain indexed integer (no DB-level FK) matching
+touched. reader_id is a plain indexed integer (no DB-level FK) matching
 the project's SQLite-safe additive-table convention.
 
 Revision ID: h8b4c6d8f0a2

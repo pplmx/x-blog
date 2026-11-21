@@ -1,5 +1,5 @@
 /**
- * readingMinutes (CJK-aware) tests (RIL round 72, ISS-051).
+ * readingMinutes (CJK-aware) tests.
  *
  * Whitespace tokens plus each CJK char count as one word (~200wpm); the result
  * is whole minutes with a floor of 1, so a Chinese post with no spaces is not

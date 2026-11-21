@@ -41,7 +41,7 @@ class PushSubscriptionCreate(BaseModel):
     # input is rejected with 422 instead of an uncaught DataError -> 500.
     endpoint: Annotated[NonNulStr, Field(max_length=500)]
     keys: SubscriptionKeys
-    # New-post notification opt-in (DEC-076, TASK-147): want_new_posts enables
+    # New-post notification opt-in: want_new_posts enables
     # new-post pushes for this browser; new_post_category_id narrows them to a
     # single followed category (None = all new posts).
     want_new_posts: bool = False
@@ -134,7 +134,7 @@ async def subscribe(
 
     # A category-scoped new-post follow must reference an existing category:
     # the fan-out matches on the category id, so an unknown id would silently
-    # never notify (DEC-076, TASK-147).
+    # never notify.
     if (
         data.new_post_category_id is not None
         and await admin_service.get_category(db, data.new_post_category_id) is None
@@ -142,7 +142,7 @@ async def subscribe(
         raise HTTPException(status_code=422, detail="Unknown new_post_category_id")
 
     # Bind the subscription to the reader account when the subscribe request
-    # carries a reader JWT (targeted notifications, DEC-064/TASK-137).
+    # carries a reader JWT (targeted notifications).
     reader_id = reader.id if reader else None
     existing = (
         await db.execute(select(models.PushSubscription).where(models.PushSubscription.endpoint == data.endpoint))
@@ -171,7 +171,7 @@ async def subscribe(
     # amplified the (serial) dispatch loop; cap per source. One browser = one
     # endpoint, so a handful of subscriptions per source is generous: bound by
     # the subscribing reader when signed in, else by the client IP (stamped on
-    # the row via ip_key, DEC-009 additive) since anonymous subs have no reader
+    # the row via ip_key additive) since anonymous subs have no reader
     # identity.
     cap = MAX_PUSH_SUBSCRIPTIONS_PER_SOURCE
     ip_key = client_rate_key(request)
@@ -215,7 +215,7 @@ async def subscribe(
         await db.commit()
     except IntegrityError:
         # A concurrent subscribe for the same endpoint won the unique-key race:
-        # roll back and treat this as the idempotent re-subscribe path (ISS-143).
+        # roll back and treat this as the idempotent re-subscribe path.
         await db.rollback()
         existing = (
             await db.execute(select(models.PushSubscription).where(models.PushSubscription.endpoint == data.endpoint))
@@ -234,7 +234,7 @@ async def subscribe(
         # may have re-signed a new p256dh/auth pair during the race, and
         # returning the row un-updated would keep dispatching against the old
         # keys, which stop decrypting (http-ece failures) until a later
-        # subscribe happens to land (ISS-449 / backend deep-dive).
+        # subscribe happens to land (backend deep-dive).
         existing.p256dh = data.keys.p256dh
         existing.auth = data.keys.auth
         existing.reader_id = reader_id or existing.reader_id
@@ -258,7 +258,7 @@ async def unsubscribe(
 
     Deliberately POST, not DELETE: the (httpx2) backend client and several
     browser fetch stacks do not serialize bodies on DELETE, and the request
-    carries the endpoint the way subscribe does. (DEC-055, TASK-117)
+    carries the endpoint the way subscribe does.
 
     Proof-of-possession guard (security review): only the browser that holds
     the subscription's encryption keys may revoke it. Endpoints circulate
@@ -295,7 +295,7 @@ async def notify_subscribers(
     Retires subscriptions the push service reports as gone (410/404) so the
     table does not accumulate dead endpoints, and never fails the request
     because one subscriber's endpoint is down. Uses the shared dispatch helper
-    (same as targeted reader notifications, DEC-064/TASK-137).
+    (same as targeted reader notifications).
     """
     if not vapid_configured():
         raise HTTPException(

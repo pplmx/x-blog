@@ -12,21 +12,21 @@ export interface SeriesBrief {
 	slug: string;
 }
 
-/** A post's public author (DEC-359/TASK-405): only the pen name — the login
+/** A post's public author: only the pen name — the login
  *  username is never exposed (admin login is no-oracle), and an author with no
  *  pen name is absent from the public surface entirely (author: null). Stays
  *  slim — bio is only on the person-shaped archive envelope, not every card. */
 export interface AuthorBrief {
 	id: number;
 	display_name: string;
-	/** Public profile picture (round 358): a /static URL when a superuser set
+	/** Public profile picture: a /static URL when a superuser set
 	 *  one, else absent/null. Rides on the slim per-post author (unlike the
 	 *  bio, which stays off list payloads) because a byline needs the face and
 	 *  a URL is one small string, not repeated text. */
 	avatar_url?: string | null;
 }
 
-/** A public author on their archive header (round 357): the slim AuthorBrief
+/** A public author on their archive header: the slim AuthorBrief
  *  plus the public "about this writer" bio, carried by AuthorPostsResponse.
  *  Per-post lists keep AuthorBrief so a bio doesn't repeat on every card. */
 export interface AuthorArchive extends AuthorBrief {
@@ -42,7 +42,7 @@ export interface PostList {
 	published: boolean;
 	pinned?: boolean;
 	created_at: string;
-	/** Scheduled publication time (backend PostList serializes it, RIL ISS-265);
+	/** Scheduled publication time (backend PostList serializes it);
 	 *  null/absent for immediately-published posts. */
 	publish_at?: string | null;
 	views: number;
@@ -54,7 +54,7 @@ export interface PostList {
 	tags: { id: number; name: string }[];
 	series: SeriesBrief | null;
 	series_order: number;
-	/** Public byline (DEC-359/TASK-405): present only when the writing admin
+	/** Public byline: present only when the writing admin
 	 *  chose a pen name; null/absent keeps the author off the public surface. */
 	author?: AuthorBrief | null;
 }
@@ -83,7 +83,7 @@ export interface Comment {
 	nickname: string;
 	content: string;
 	is_approved: boolean;
-	// Author reply from the moderation queue (DEC-192): renders the "author"
+	// Author reply from the moderation queue: renders the "author"
 	// badge so readers can tell an official reply from a commenter's comment.
 	is_author_reply?: boolean;
 	likes: number;
@@ -92,7 +92,7 @@ export interface Comment {
 	reader: {
 		id: number;
 		display_name: string | null;
-		// Profile picture (DEC-299/TASK-378): a reader-set avatar rendered
+		// Profile picture: a reader-set avatar rendered
 		// beside the verified name when present.
 		avatar_url?: string | null;
 	} | null;

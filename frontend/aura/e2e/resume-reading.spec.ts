@@ -1,5 +1,5 @@
 /**
- * Per-post resume reading journey (DEC-167, TASK-200).
+ * Per-post resume reading journey.
  *
  * A signed-in reader's scroll position inside a post is saved server-side
  * (ReadingHistory.scroll_position) so returning to the post drops them back
@@ -83,7 +83,7 @@ function longMarkdown(): string {
 	return header + parts.join("\n");
 }
 
-test.describe("Per-post resume reading (TASK-200)", () => {
+test.describe("Per-post resume reading ", () => {
 	test("a returning signed-in reader is dropped back where they left off", async ({
 		page,
 		request,
@@ -134,14 +134,14 @@ test.describe("Per-post resume reading (TASK-200)", () => {
 		await expect(chip).toBeVisible({ timeout: 5000 });
 
 		// 7. Back-to-top scrolls up, dismisses the chip, and clears the saved
-		// position so the next visit starts at the top (DEC-167 MEDIUM fix).
+		// position so the next visit starts at the top (MEDIUM fix).
 		await page.locator('[data-testid="resume-back-to-top"]').click();
 		await expect(chip).toBeHidden({ timeout: 4000 });
 		const cleared = await waitForPosition(request, token, postId, (p) => p === 0);
 		expect(cleared).toBe(0);
 	});
 
-	test("the saved position surfaces on the home page's continue-reading row until cleared (DEC-348, TASK-400)", async ({
+	test("the saved position surfaces on the home page's continue-reading row until cleared ", async ({
 		page,
 		request,
 	}) => {

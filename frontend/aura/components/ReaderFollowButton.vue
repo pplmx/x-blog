@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Inline reader-follow control on the public reader profile (round 365).
+ * Inline reader-follow control on the public reader profile.
  *
  * The profile header shows every visitor how many readers follow this one
  * (follower_count, public like an author-follow count); a SIGNED-IN reader who
@@ -12,7 +12,7 @@
  * seeds from props. The count bumps optimistically off the server-confirmed
  * toggle result. Guests see the count only; self-profiles render neither
  * button nor a derp "follow yourself" control. Dead-session 401s drop the
- * expired token and offer the sign-in prompt (round-300 guard, mirrors
+ * expired token and offer the sign-in prompt (guard, mirrors
  * AuthorFollowButton).
  */
 import { computed, ref, watch } from "vue";

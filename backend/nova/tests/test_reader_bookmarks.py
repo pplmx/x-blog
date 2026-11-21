@@ -1,4 +1,4 @@
-"""Cloud-synced bookmarks API contract tests (DEC-059, TASK-132).
+"""Cloud-synced bookmarks API contract tests.
 
 Bookmarks are the first reader-owned resource: a reader can keep a private,
 server-persisted list of posts. The list must only ever contain *publicly
@@ -120,7 +120,7 @@ class TestListBookmarks:
         token = await _token(client)
         resp = await client.get(BOOKMARKS, headers=_auth(token))
         assert resp.status_code == 200
-        # Pagination envelope (ISS-142): page/limit/total_pages ride along.
+        # Pagination envelope: page/limit/total_pages ride along.
         assert resp.json() == {"items": [], "total": 0, "page": 1, "limit": 100, "total_pages": 0}
 
     async def test_serializes_post_summary_shape(self, client, db_session):
@@ -188,7 +188,7 @@ class TestRemoveBookmark:
 
 class TestClearAllBookmarks:
     """DELETE /api/reader/me/bookmarks — "Clear all" must stick to the cloud
-    too, not just a localStorage wipe (TASK-233)."""
+    too, not just a localStorage wipe."""
 
     async def test_clear_all_removes_every_bookmark(self, client, db_session):
         token = await _token(client)
@@ -225,14 +225,14 @@ class TestClearAllBookmarks:
 
 class TestNoStoreCacheHeaders:
     async def test_bookmarks_never_cached(self, client):
-        """Reader-owned data must stay Cache-Control: no-store (TASK-129 default)."""
+        """Reader-owned data must stay Cache-Control: no-store default."""
         token = await _token(client)
         resp = await client.get(BOOKMARKS, headers=_auth(token))
         assert resp.headers.get("cache-control", "").lower() == "no-store"
 
 
 class TestDoneQueueState:
-    """Round 361, DEC-395: To-read vs Done bookmark queue states.
+    """Round 361: To-read vs Done bookmark queue states.
 
     A saved post starts To-read; the reader moves it to Done when it's read
     (pruning the /bookmarks queue). The ``done`` flag is a per-bookmark bool,
@@ -306,7 +306,7 @@ class TestDoneQueueState:
         assert resp.status_code == 401
 
     async def test_done_filter_caps_on_visibility(self, client, db_session):
-        """Done flag never resurrects a post that went non-public (TASK-129 invariant)."""
+        """Done flag never resurrects a post that went non-public invariant."""
         token = await _token(client)
         post = await _create_post(db_session, title="Vanishing")
         await client.put(f"{BOOKMARKS}/{post.id}", headers=_auth(token))

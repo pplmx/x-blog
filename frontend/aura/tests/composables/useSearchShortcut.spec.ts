@@ -1,5 +1,5 @@
 /**
- * Global "/" keyboard shortcut → focus the header search box (round 262).
+ * Global "/" keyboard shortcut → focus the header search box.
  *
  * Verifies the pure handler (handleGlobalSearchShortcut): which events it
  * consumes, that it never steals "/" out of a typing context, that hidden

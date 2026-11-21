@@ -1,4 +1,4 @@
-"""Reader-to-reader follow contract tests (round 365, DEC-403).
+"""Reader-to-reader follow contract tests.
 
 The last un-followable identity gets a follow axis: a signed-in reader can
 follow another READER (the person-shaped counterpart of author/tag/series/
@@ -162,7 +162,7 @@ class TestCommentFanOut:
         reader_rows = [r for r in rows if r["kind"] == "reader_comment"]
         assert reader_rows, "follower got no reader_comment inbox row"
         # The row deep-links to the comment (not just the post headline), the
-        # same landing guarantee as the other comment fan-outs (DEC-321).
+        # same landing guarantee as the other comment fan-outs.
         assert f"#comment-{comment['id']}" in reader_rows[0]["url"]
 
     async def test_nobody_unrelated_gets_the_fan_out(self, client, admin_token, db_session):
@@ -175,8 +175,8 @@ class TestCommentFanOut:
     async def test_reply_does_not_double_notify_a_following_parent(self, client, admin_token, db_session):
         """A reply feeds its replied-to reader's targeted `reply` row — the
         reader_comment fan-out must skip that same parent even when they also
-        follow the commenter, else one comment = two inbox rows (DEC-064
-        non-doubling contract)."""
+        follow the commenter, else one comment = two inbox rows (non-doubling
+        contract)."""
         a_token, _ = await _reader(client, email="rf-reply-a@example.com")
         b_token, b_id = await _reader(client, email="rf-reply-b@example.com")
         # A follows B so the parent (A) is inside B's fan-out target set when
@@ -216,7 +216,7 @@ class TestCommentFanOut:
         assert "reader_comment" not in kinds, "parent got a duplicate reader_comment row for the same reply"
 
     async def test_deactivated_follower_gets_no_fan_out(self, client, admin_token, db_session):
-        """Deactivation silences every channel (DEC-194): an inactive follower
+        """Deactivation silences every channel: an inactive follower
         is dropped from the fan-out target set before any row is written."""
         from app import auth as auth_mod
         from app import models as m
@@ -238,7 +238,7 @@ class TestCommentFanOut:
         assert not [r for r in rows if r.kind == "reader_comment"]
 
     async def test_opted_out_follower_gets_no_fan_out(self, client, admin_token, db_session):
-        """reader_comment is a real per-kind opt-out (DEC-171): a follower who
+        """reader_comment is a real per-kind opt-out: a follower who
         switched it off gets no inbox row, on any approve path."""
         a_token, a_id = await _reader(client, email="rf-optout-a@example.com")
         b_token, _ = await _reader(client, email="rf-optout-b@example.com")

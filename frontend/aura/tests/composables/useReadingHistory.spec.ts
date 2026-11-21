@@ -1,5 +1,5 @@
 /**
- * useReadingHistory composable tests (DEC-116, TASK-170).
+ * useReadingHistory composable tests.
  *
  * The history source follows the reader: a signed-in reader loads/clears the
  * server-backed trail (cross-device), while guests use the local localStorage
@@ -41,7 +41,7 @@ vi.mock("../../composables/useRecentlyViewed", () => ({
 
 import { useReadingHistory } from "../../composables/useReadingHistory";
 
-describe("useReadingHistory (TASK-170)", () => {
+describe("useReadingHistory ", () => {
 	beforeEach(() => {
 		authRef.value = false;
 		localRecent.value = [];
@@ -89,7 +89,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		// The server serializes viewed_at as naive UTC (no zone marker);
 		// Date.parse would have read it as the browser's LOCAL wall-clock and
 		// shifted the instant by the reader's UTC offset. parseApiDate appends
-		// "Z" (DEC-213).
+		// "Z".
 		authRef.value = true;
 		fetchHistory.mockResolvedValue({
 			items: [{ id: 1, title: "Server A", slug: "s-a", viewed_at: "2024-01-15T10:30:00" }],
@@ -116,7 +116,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(loadFailed.value).toBe(true);
 	});
 
-	it("applies the recall-search term to the local fallback when the server call fails (round 298)", async () => {
+	it("applies the recall-search term to the local fallback when the server call fails ", async () => {
 		authRef.value = true;
 		localRecent.value = [
 			{ slug: "a", title: "Alpha", viewedAt: 1 },
@@ -131,7 +131,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(loadFailed.value).toBe(true);
 	});
 
-	it("collapses paging in the local-trail fallback so loadMore cannot mix server rows in (round 298)", async () => {
+	it("collapses paging in the local-trail fallback so loadMore cannot mix server rows in ", async () => {
 		authRef.value = true;
 		// First load succeeds and reports a second page…
 		fetchHistory.mockResolvedValueOnce({
@@ -180,7 +180,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(loadFailed.value).toBe(false);
 	});
 
-	it("a stale response cannot overwrite a newer one (ISS-128 seq guard)", async () => {
+	it("a stale response cannot overwrite a newer one (seq guard)", async () => {
 		authRef.value = true;
 		// First (older) search is slow; the second resolves first.
 		fetchHistory.mockImplementationOnce(
@@ -228,7 +228,7 @@ describe("useReadingHistory (TASK-170)", () => {
 	it("clear invalidates an in-flight load, so its stale response cannot resurrect the cleared list", async () => {
 		// Round 263: the history page's Clear button is reachable while the
 		// initial onMounted load() is still in flight (it renders during the
-		// skeleton). clear() must bump the monotonic guard (ISS-128) that
+		// skeleton). clear() must bump the monotonic guard that
 		// load()/loadMore() use — otherwise the slow, pre-clear response passes
 		// the stale check and repopulates the list the reader just deleted.
 		authRef.value = true;
@@ -268,7 +268,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(b.serverEnabled.value).toBe(true);
 	});
 
-	it("maps streak + activity fields from the server stats (TASK-201)", async () => {
+	it("maps streak + activity fields from the server stats ", async () => {
 		authRef.value = true;
 		fetchHistory.mockResolvedValue({ items: [], total: 0 });
 		fetchStats.mockResolvedValue({
@@ -296,7 +296,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		});
 	});
 
-	it("forwards the browser timezone with the stats fetch so the streak is the reader's own calendar (DEC-316)", async () => {
+	it("forwards the browser timezone with the stats fetch so the streak is the reader's own calendar ", async () => {
 		authRef.value = true;
 		fetchHistory.mockResolvedValue({ items: [], total: 0, page: 1, limit: 100, total_pages: 1 });
 		const { load } = useReadingHistory();
@@ -412,7 +412,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(importHistoryApi).not.toHaveBeenCalled();
 	});
 
-	it("guest history can be filtered in place by title (recall search, DEC-148)", async () => {
+	it("guest history can be filtered in place by title (recall search)", async () => {
 		localRecent.value = [
 			{ slug: "a", title: "Alpha", viewedAt: 1 },
 			{ slug: "b", title: "Beta", viewedAt: 2 },
@@ -579,7 +579,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(fetchHistory).toHaveBeenCalledTimes(1);
 	});
 
-	it("loadMore appends the next page, deduping by slug across the boundary (ISS-303)", async () => {
+	it("loadMore appends the next page, deduping by slug across the boundary ", async () => {
 		authRef.value = true;
 		fetchHistory.mockResolvedValueOnce({
 			items: [
@@ -719,7 +719,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(history.value).toEqual([]);
 	});
 
-	it("a stale history rejection cannot clobber a newer search (ISS-128 catch guard)", async () => {
+	it("a stale history rejection cannot clobber a newer search (catch guard)", async () => {
 		authRef.value = true;
 		localRecent.value = [{ slug: "l", title: "Local", viewedAt: 5 }];
 		let rejectHistory!: (v: unknown) => void;
@@ -808,7 +808,7 @@ describe("useReadingHistory (TASK-170)", () => {
 		expect(stats.value?.totalPosts).toBe(9);
 	});
 
-	it("clear() reports a server-side clear failure and still wipes the local mirror (ISS-387)", async () => {
+	it("clear() reports a server-side clear failure and still wipes the local mirror ", async () => {
 		authRef.value = true;
 		clearHistoryApi.mockRejectedValue(new Error("network"));
 		const { load, clear, history, stats, loadFailed } = useReadingHistory();

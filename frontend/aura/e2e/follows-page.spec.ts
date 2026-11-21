@@ -1,5 +1,5 @@
 /**
- * Dedicated /follows page journey (DEC-292, TASK-375).
+ * Dedicated /follows page journey.
  *
  * The home page caps "Latest from your follows" at 12 posts; /follows is the
  * full paginated feed of every new post from the reader's followed categories
@@ -21,7 +21,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("/follows page (DEC-292)", () => {
+test.describe("/follows page ", () => {
 	test("guests are redirected to /login (auth-scoped feed)", async ({ page }) => {
 		await page.goto("/follows");
 		await expect(page).toHaveURL(/\/login/, { timeout: 10000 });

@@ -1,12 +1,12 @@
 /**
- * useResumeReading composable tests (DEC-167, TASK-200).
+ * useResumeReading composable tests.
  *
  * Per-post resume: a signed-in reader's last scroll offset is fetched on
  * restore() and applied to the window once the layout settles; save() records
  * it with a trailing debounce (throttling network writes) and flush() pushes
  * the pending offset on unmount/pagehide. Guests are inert — the server trail
  * is reader-only. The write path must use `$fetch` (via recordReaderHistory),
- * matching the ISS-111/DEC-165 rule for fire-and-forget lifecycle calls.
+ * matching the rule for fire-and-forget lifecycle calls.
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
@@ -49,7 +49,7 @@ function mountResume(postId: number) {
 	};
 }
 
-describe("useResumeReading (TASK-200)", () => {
+describe("useResumeReading ", () => {
 	beforeEach(() => {
 		authRef.value = false;
 		fetchPosition.mockReset();
@@ -166,9 +166,9 @@ describe("useResumeReading (TASK-200)", () => {
 		expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
 		expect(api.restoredPosition.value).toBeNull();
 		// The `0` below the save threshold would never be persisted by the
-		// debounced save; jumpToTop must send an explicit clear (DEC-167). The
+		// debounced save; jumpToTop must send an explicit clear. The
 		// fraction is cleared too so a later cross-device restore can't prefer
-		// a stale nonzero fraction over the cleared pixel (DEC-346/TASK-399).
+		// a stale nonzero fraction over the cleared pixel.
 		expect(recordHistory).toHaveBeenCalledWith(7, 0, 0);
 
 		wrapper.unmount();
@@ -184,7 +184,7 @@ describe("useResumeReading (TASK-200)", () => {
 
 		// Only the explicit clear was sent — the pending 2000 never landed. The
 		// clear also wipes the fraction (third arg 0) so a cross-device restore
-		// can't prefer a stale nonzero fraction (DEC-346/TASK-399).
+		// can't prefer a stale nonzero fraction.
 		expect(recordHistory).toHaveBeenCalledTimes(1);
 		expect(recordHistory).toHaveBeenCalledWith(7, 0, 0);
 
@@ -386,7 +386,7 @@ describe("useResumeReading (TASK-200)", () => {
 		// when that reset ran must NOT resolve later and scroll the NEW post —
 		// the old post's saved offset would be re-interpreted against the new
 		// article's (different) scroll height and teleport the reader down the
-		// wrong article. (RIL round-422 frontend audit, HIGH)
+		// wrong article.
 		authRef.value = true;
 		// Capture the deferred fetch so restore() stays in flight across "navigation".
 		let resolvePosition!: (v: unknown) => void;
@@ -494,7 +494,7 @@ describe("useResumeReading (TASK-200)", () => {
 	});
 });
 
-describe("useResumeReading cross-viewport fraction (DEC-346/TASK-399)", () => {
+describe("useResumeReading cross-viewport fraction ", () => {
 	/** Pin the document to a known scroll range so fraction math is exact. */
 	let prevScrollHeight: number;
 	let prevInnerHeight: number;

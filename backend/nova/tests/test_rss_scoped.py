@@ -1,4 +1,4 @@
-"""Per-category / per-series RSS feed contract tests (DEC-130, TASK-177).
+"""Per-category / per-series RSS feed contract tests.
 
 Scoped feeds reuse the RSS builder: /rss/category/{name}.xml (category has no
 slug — unique name is the stable segment) and /rss/series/{slug}.xml. Each

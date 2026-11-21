@@ -81,11 +81,11 @@
 						class="px-3 py-2 w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
 					/>
 				</div>
-				<!-- Guest reply-email consent (DEC-332/TASK-392): an anonymous
+				<!-- Guest reply-email consent: an anonymous
              commenter's email is otherwise collected and stored but never used;
              this checkbox opts them into a best-effort email when a reply to
              their comment is approved. Signed-in readers get reply email from
-             their account-level preference (DEC-197), so the control only
+             their account-level preference, so the control only
              renders in the guest form (this grid is the v-else of signedIn). -->
 				<div class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
 					<input
@@ -106,9 +106,9 @@
 					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
 					>{{ t("components.commentForm.content") }}</label
 				>
-				<!-- Write/Preview toggle (DEC-306/TASK-381): the comment form advertises
-             sanitized-Markdown rendering (DEC-088) and comments wait in the
-             moderation queue (DEC-066), so a commenter must see their draft
+				<!-- Write/Preview toggle: the comment form advertises
+             sanitized-Markdown rendering and comments wait in the
+             moderation queue, so a commenter must see their draft
              render BEFORE submitting — a malformed markup draft would otherwise
              burn an approval cycle with no feedback. Both tabs reuse the exact
              pipeline the comment list ships (commentMarkdownToHtml + lazy
@@ -154,7 +154,7 @@
 				</div>
 
 				<!-- Write tab: the live editor ctrl/⌘+Enter submits (keyboard parity).
-             The wrapper is `relative` so the '@'-mention picker (DEC-324) can
+             The wrapper is `relative` so the '@'-mention picker can
              drop below the textarea's full width. -->
 				<div v-if="!previewing" class="relative">
 					<textarea
@@ -235,7 +235,7 @@
 					<div v-else v-html="previewHtml"></div>
 				</div>
 
-				<!-- Markdown hint (DEC-088): comments render as sanitized Markdown. -->
+				<!-- Markdown hint: comments render as sanitized Markdown. -->
 				<p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
 					<Icon icon="lucide:braces" class="w-3 h-3 inline mr-0.5" />
 					{{ t("components.commentForm.markdownHint") }}
@@ -274,7 +274,7 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 // form and (while open) an inline reply form — so the DOM ids must be unique
 // per instance: duplicate `comment-content` etc. made `label for` resolve to
 // the FIRST element in document order (clicking one form's label focused the
-// other's textarea) and broke WCAG 4.1.1 (round 278). useId() is captured ONCE
+// other's textarea) and broke WCAG 4.1.1. useId() is captured ONCE
 // per instance (it returns a fresh id on every call) and is SSR-hydration
 // stable, so label `for` and input `id` always agree.
 const instanceId = useId();
@@ -289,7 +289,7 @@ interface Props {
 	autofocus?: boolean;
 	/** Disabled while the surrounding page is mid-SPA-refetch: submitting during
 	 * the prev/next window would attach the comment to the OLD post the reader
-	 * is still looking at. (ISS-416, article-page deep-dive) */
+	 * is still looking at. (article-page deep-dive) */
 	disabled?: boolean;
 }
 
@@ -305,7 +305,7 @@ const contentRef = ref<HTMLTextAreaElement | null>(null);
 
 // `submitted` carries the freshly-created comment so the parent can navigate
 // to it (a reply on comment page 2+ sorted to page 1 under newest and vanished
-// off-screen — the parent needs the id to jump to the row, ISS-384).
+// off-screen — the parent needs the id to jump to the row).
 const emit = defineEmits<{
 	submitted: [comment: Comment];
 	cancel: [];
@@ -317,14 +317,13 @@ const { isAuthenticated, reader } = useReaderAuth();
 
 // A signed-in reader comments under their account identity — no nickname/email
 // inputs, the createComment call includes the reader JWT and the backend stamps
-// the verified display_name (client-provided name is ignored). (DEC-062,
-// TASK-136)
+// the verified display_name (client-provided name is ignored).
 //
 // The reader identity is only known post-hydration (localStorage is
 // client-only): render the anonymous form during SSR + the first client render
 // (hydrationStats agree), then flip to the identity form after mount. Without
 // this gate Vue's hydration mismatch on the v-if region leaves the form
-// half-patched (RIL reader-comments e2e).
+// half-patched ( ).
 const hydrated = ref(false);
 onMounted(() => {
 	hydrated.value = true;
@@ -374,7 +373,7 @@ const form = ref({
 	email: "",
 	content: "",
 	website: "", // anti-spam honeypot — hidden, humans never fill it
-	// Guest reply-email consent (DEC-332/TASK-392): default off — the backend
+	// Guest reply-email consent: default off — the backend
 	// only emails an anonymous commenter who explicitly opted in.
 	replyNotifyEmail: false,
 });
@@ -383,7 +382,7 @@ const submitting = ref(false);
 const error = ref("");
 const success = ref("");
 
-// --- Markdown live preview (DEC-306/TASK-381) ---
+// --- Markdown live preview ---
 // The Write/Preview toggle owns a `previewing` flag; the preview pane reuses
 // commentMarkdownToHtml — the exact renderer the comment list ships — so the
 // draft renders byte-for-byte as the posted comment will. `previewHtml` is
@@ -426,10 +425,10 @@ function onTablistKeydown(e: KeyboardEvent): void {
 }
 
 // Lazy syntax highlighting for fenced code in the preview (same loadHighlighter
-// + highlightCode path as CommentList DEC-090/TASK-157): once the preview pane
+// + highlightCode path as CommentList): once the preview pane
 // becomes visible (or the draft changes under it), tokenize any .comment-body
 // pre code blocks it holds. highlightCode escapes its source, so installing the
-// highlighted HTML never weakens the v-html XSS guarantees (TASK-156).
+// highlighted HTML never weakens the v-html XSS guarantees.
 watch([previewing, () => form.value.content], async () => {
 	if (!previewing.value || !previewEl.value) return;
 	await nextTick();
@@ -441,11 +440,11 @@ watch([previewing, () => form.value.content], async () => {
 	}
 });
 
-// --- '@'-mention picker (DEC-324, TASK-390) ---
+// --- '@'-mention picker ---
 // Typing "@" in the editor opens a suggestion list of active readers whose
 // display name matches what follows the "@" (word left of the caret); picking
 // one inserts "@<display name> " at the caret so the submitted comment's
-// word-boundary match (DEC-322) resolves. State is derived from the caret
+// word-boundary match resolves. State is derived from the caret
 // position, not a regex over the whole draft, so "@" in prose that isn't being
 // typed at (e.g. mid-word) never opens the picker.
 const mentionOpen = ref(false);
@@ -623,7 +622,7 @@ async function handleSubmit() {
 			website: form.value.website,
 			// Consent is only meaningful for anonymous commenters; the backend
 			// discards it for signed-in readers (their reply email comes from
-			// the account-level DEC-197 preference).
+			// the account-level preference).
 			reply_notify_email: signedIn.value ? false : form.value.replyNotifyEmail,
 		});
 		success.value = t("components.commentForm.submitSuccess");

@@ -1,5 +1,5 @@
 /**
- * Shared unread-notification badge state (ISS-124, TASK-224).
+ * Shared unread-notification badge state.
  *
  * The nav unread badge (default.vue) and the /notifications inbox used to keep
  * their own local unread counts, so marking notifications read on the inbox

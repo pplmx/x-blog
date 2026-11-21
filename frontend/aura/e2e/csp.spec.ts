@@ -1,7 +1,7 @@
 /**
- * Content-Security-Policy browser verification (RIL DEC-057 / TASK-127).
+ * Content-Security-Policy browser verification.
  *
- * DEC-051 deferred CSP because it "needs live-browser verification" — this
+ * deferred CSP because it "needs live-browser verification" — this
  * suite is that verification. The Nuxt app is served with a nonce-based policy
  * (server/plugins/csp.ts); these tests prove the enforced policy:
  *  1. The CSP header is present with a per-request nonce, every inline SSR

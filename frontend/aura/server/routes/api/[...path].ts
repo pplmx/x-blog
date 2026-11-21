@@ -14,7 +14,7 @@ const BACKEND_URL =
 // proxy is the public network edge, so a body this large must be rejected HERE
 // — otherwise an attacker can make the frontend buffer an arbitrarily large
 // request in memory (readRawBody reads the whole stream) before the backend's
-// upload cap ever sees it. (RIL TASK-037)
+// upload cap ever sees it.
 const MAX_PROXY_BODY = 6 * 1024 * 1024; // 6MB
 
 /** Reject requests whose body exceeds MAX_PROXY_BODY with 413 (before buffering). */
@@ -77,8 +77,7 @@ export default defineEventHandler(async (event) => {
 	// forwarding the peer alone (getRequestIP with xForwardedFor:false) would
 	// collapse EVERY client into that one loopback IP, so the backend's per-IP
 	// registrations/rates all shared a single bucket. resolveClientIp applies
-	// the same trust model the frontend's own limiters use (RIL TASK-101,
-	// ISS-081): only when the peer is a trusted proxy (FRONTEND_TRUSTED_PROXIES)
+	// the same trust model the frontend's own limiters use: only when the peer is a trusted proxy (FRONTEND_TRUSTED_PROXIES)
 	// does it take the REAL client from XFF; otherwise it returns the peer
 	// (compose/bare topology, client-supplied XFF discarded — no spoofed
 	// bucket). The backend then re-validates against ITS TRUSTED_PROXIES.
@@ -120,7 +119,7 @@ export default defineEventHandler(async (event) => {
 	 * Copy a backend response's headers onto the origin response. ofetch exposes
 	 * Headers-like (iterable) headers; iterate entries rather than Object.entries
 	 * (which sees nothing) so backend headers — conditional ETag/Cache-Control
-	 * (TASK-128), rate-limit, and error-path headers like X-Redirect-To (round
+	 *, rate-limit, and error-path headers like X-Redirect-To (round
 	 * 350) — actually reach the browser.
 	 */
 	function forwardHeaders(event: H3Event, responseHeaders: Headers | Record<string, string>): void {

@@ -32,7 +32,7 @@ async def get_categories(db: AsyncSession) -> list[dict]:
     # scheduled-future posts too, which (a) leaked their existence to
     # anonymous visitors on this unauthenticated endpoint and (b) reported
     # counts that could never match the posts actually listable under the
-    # category (deep-dive review, ISS-362).
+    # category (deep-dive review).
     now = utc_now_naive()
     rows = (
         await db.execute(
@@ -62,7 +62,7 @@ async def category_visible_post_count(db: AsyncSession, category_id: int) -> int
     publish time passed), for the single-item /api/categories/{id} endpoint.
     get_categories computes the same number in one grouped query for the list
     payload; without it the item endpoint always reported post_count=0 because
-    post_count is derived (not a column) and the schema defaulted (ISS-363)."""
+    post_count is derived (not a column) and the schema defaulted."""
     now = utc_now_naive()
     return (
         await db.execute(
@@ -113,7 +113,7 @@ async def update_category(
     # Clear cache — and the POSTS-list + feed caches too: PostList embeds the
     # category's name and the sitemap/scoped feeds render it, so a rename that
     # only invalidated the enumeration cache left /api/posts cards and
-    # /sitemap.xml serving the old name for up to the 5-min TTL (ISS-364).
+    # /sitemap.xml serving the old name for up to the 5-min TTL.
     clear_categories_cache()
     clear_posts_list_cache()
     return db_category
@@ -133,7 +133,7 @@ async def delete_category(db: AsyncSession, category_id: int) -> bool:
     ).scalar() or 0
     if post_count > 0:
         raise ValueError("Cannot delete category: it is referenced by posts")
-    # CategoryFollow is an additive DEC-009 table with no ORM cascade from
+    # CategoryFollow is an additive table with no ORM cascade from
     # Category: purge the follow rows too, or a deleted category leaves stale
     # follows behind that, on SQLite autoincrement id reuse, re-point at an
     # unrelated later category (same orphan class as guest thread subs —

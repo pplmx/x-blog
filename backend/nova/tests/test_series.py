@@ -1,4 +1,4 @@
-"""Post series contract tests (DEC-056, TASK-121).
+"""Post series contract tests.
 
 Cover the series surface end to end: admin CRUD, slug uniqueness, public
 list/detail with ordered visible posts, draft/scheduled exclusion, series
@@ -58,8 +58,8 @@ async def test_create_series_requires_auth(client):
 
 async def test_create_series_whitespace_title_rejected_422(client, auth_headers):
     """SeriesCreate.title passed min_length=1 without stripping, so '   '
-    stored a blank series that rendered as an empty card — same round-276
-    gap as PostBase.title/tag/category names (ISS-456 class)."""
+    stored a blank series that rendered as an empty card — same
+    gap as PostBase.title/tag/category names class."""
     resp = await client.post(
         "/api/series",
         json={"title": "   ", "slug": "blank-series-title", "description": None},
@@ -256,7 +256,7 @@ async def test_series_cache_invalidated_on_counter_bump(client, auth_headers):
     list: the detail embeds the same PostList views/likes (rendered per-episode
     on series/[slug].vue), so without clearing series_cache a hot series served
     pre-bump counters for the full 300s TTL while the feed updated instantly
-    (deep-dive review, ISS-373)."""
+    (deep-dive review)."""
     series = (await _create_series(client, auth_headers)).json()
     post = (await _create_post(client, auth_headers, "Part 1", "part-1", series["id"], 0)).json()
 

@@ -1,10 +1,10 @@
 /**
- * SeriesFollowButton component tests (DEC-290, TASK-374).
+ * SeriesFollowButton component tests.
  *
  * The inline series-follow control attached to the post page's in-series nav
  * box: only signed-in readers see it; follow state is loaded through the
  * imperative getReaderSeriesFollows seam ($fetch — useFetch never sends from a
- * lifecycle callback, ISS-119/TASK-220); clicking follows/unfollows the series
+ * lifecycle callback); clicking follows/unfollows the series
  * and toggles new-part notifications, mirroring the /series page follow block.
  * Dead-session 401s drop the dead token and show the sign-in prompt instead of
  * a generic failure bubble.

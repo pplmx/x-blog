@@ -1,4 +1,4 @@
-"""add comments.import_key for idempotent backup restore (DEC-082)
+"""add comments.import_key for idempotent backup restore
 
 Full-blog restore (POST /api/admin/backup/restore) upserts posts by slug but
 comments have no natural key, so a second import of the same snapshot would
@@ -6,7 +6,7 @@ duplicate them. ``import_key`` (nullable, "{post_slug}#{export-ordinal}") is
 the idempotency anchor: restore looks up (post_id, import_key) and skips rows
 already present.
 
-Entirely additive (new nullable column, no existing DDL touched, DEC-009
+Entirely additive (new nullable column, no existing DDL touched
 preserved). Defensive like earlier column-adds: if the column already exists
 (a dev DB whose create_all-era safety net already added it), it is left as-is
 and only the version is stamped.

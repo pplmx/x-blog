@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Single env-config point (round 433, ISS-636): load .env INTO the process
+# Single env-config point: load.env INTO the process
 # environment so the direct os.getenv readers agree with pydantic-settings.
 # Settings reads .env itself, but pydantic-settings does NOT export those
 # values to os.environ — so is_development() (APP_ENV) and emailer._is_en_site()
@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # var, so process-env deployments and monkeypatch.setenv tests are unchanged.
 # The explicit path mirrors pydantic's env_file=".env" (CWD-relative); the
 # bare no-arg form would call find_dotenv(), which walks the call stack and
-# asserts when spawned from stdin/without a file frame (round 433 probe).
+# asserts when spawned from stdin/without a file frame.
 load_dotenv(Path.cwd() / ".env")
 
 
@@ -37,8 +37,8 @@ def is_dev_default_site_url(url: str) -> bool:
     settings.site_url (routers/rss.py, emailer.py) — a production deployment
     that forgets SITE_URL silently publishes ``http://localhost:3000`` as every
     absolute link, the same root-cause class as the frontend og:url build-time
-    bake (TASK-557). main.py warns loudly at startup when a non-development run
-    has a loopback origin (round 436).
+    bake. main.py warns loudly at startup when a non-development run
+    has a loopback origin.
     """
     host = url.split("://", 1)[-1] if "://" in url else url
     host = host.partition(":")[0]
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # long-standing default; an English-configured site can set SITE_LANGUAGE.
     site_language: str = "zh-CN"
     sentry_dsn: str | None = None
-    # extra="ignore" (round 433, ISS-636): BaseSettings otherwise defaults to
+    # extra="ignore": BaseSettings otherwise defaults to
     # extra="forbid", so ANY undeclared key in .env (SMTP_HOST, APP_ENV,
     # JWT_SECRET_KEY, SITE_URL, ...) made Settings() itself raise at import —
     # a developer copying .env.example would find the backend refusing to

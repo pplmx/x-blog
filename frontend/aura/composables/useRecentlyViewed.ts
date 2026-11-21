@@ -1,13 +1,12 @@
 /**
- * Recently viewed posts (DEC-104, TASK-164; extended for the reading-history
- * page, DEC-114, TASK-169).
+ * Recently viewed posts (extended for the reading-history page).
  *
  * A purely client-side "continue reading" trail: every post the visitor opens
  * is remembered (most-recent-first, deduped by slug, capped, stale entries
  * pruned) in localStorage so a returning reader gets a lightweight cue of where
  * they left off without re-searching. No auth or schema dependency.
  *
- * TASK-169 raises the cap from 8 to HISTORY_CAP so the dedicated /history page
+ * raises the cap from 8 to HISTORY_CAP so the dedicated /history page
  * can show a browseable trail while the home continue-reading row still slices
  * to a small subset. Every entry records a `viewedAt` epoch-ms timestamp so the
  * history page can render when each post was read; legacy entries that predate

@@ -1,11 +1,11 @@
 /**
- * Public discussion feed journey (round 367, DEC-407).
+ * Public discussion feed journey.
  *
- * Comment search (DEC-405) made the discussion findable; this page makes it
+ * Comment search made the discussion findable; this page makes it
  * browsable. A visitor who wants to see what people are saying right now opens
  * /discussion and sees the newest approved comments across the site, each card
  * carrying the commenter, the content, and the post brief, and deep-linking
- * ONTO the exact comment (#comment-{id}, DEC-321). This spec seeds a comment
+ * ONTO the exact comment (#comment-{id}). This spec seeds a comment
  * with a unique marker, opens the feed, finds it, and lands on the comment.
  */
 
@@ -39,7 +39,7 @@ async function postAndApprove(
 	return { slug, commentId };
 }
 
-test.describe("Discussion feed (DEC-407)", () => {
+test.describe("Discussion feed ", () => {
 	test("visitor browses the newest discussion and lands on a comment", async ({
 		page,
 		request,

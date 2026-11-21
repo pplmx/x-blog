@@ -14,51 +14,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cache: every cleared post's document stayed cached, so it would still read offline and keep its
   "available offline" cache entry — violating the invariant that the offline set matches the saved set
   (which per-row remove already honours). The clear path now snapshots the saved post paths and prunes them
-  from the offline cache after the clear (RIL ISS-678).
+  from the offline cache after the clear.
 - 🧹 **print view's toolbar back link goes home on a dead/stale print URL** — on a re-slugged or
   deleted post, `/posts/[slug]/print`'s toolbar "back to article" link rendered unconditionally at
   the same dead `/posts/{slug}` that just 404'd, alongside the body's Home fallback. It now falls
-  back to Home when the post is absent (round-299 toolbar gap, RIL ISS-677).
+  back to Home when the post is absent.
 - 🐛 **reading-load highlight fetch no longer paints the old post's passages into the next post** —
   `useArticleHighlights.loadExisting` awaited the highlight GET, then wrote the list and
   injected `<mark>`s without re-checking the post id. The reader's post page component is reused
   across SPA navigation, so a slow response resolving after the reader switched articles would drop
   the OLD post's passages into the NEW post's prose. Now guarded by the loaded post id
-  (ISS-572-class, same as the existing save() guard, RIL ISS-676).
+  (same as the existing save() guard).
 - 🔒 **API proxy rejects `..`/backslash path traversal (defense-in-depth)** —
   `server/routes/api/[...path].ts` concatenates the incoming path into
   `${BACKEND_URL}/api/${path}` without validating it; the HTTP client resolves
   dot-segments, so a crafted `..`/`\` could escape the `/api/` prefix and
   forward a request (with the browser's credentials) to arbitrary backend
   paths. Now rejected up front — legitimate proxied paths only ever contain
-  `/` (RIL ISS-675). Complement to the scoped-feed proxy fix (ISS-674).
+  `/`. Complement to the scoped-feed proxy fix.
 - 🔒 **scoped RSS feed proxy bound to the true feed shapes (path-traversal hardening)** —
   the frontend catch-all `server/routes/rss/[...path].ts` validated only the FIRST path
   segment (`category|series|authors`) before forwarding `/rss/{path}` to the backend, but
   the HTTP client resolves `..`/dot-segments and normalises extra `/`/`\` when it parses the
   constructed URL — so `category/../../admin/...` escaped the `/rss/` prefix and forwarded a
   GET to arbitrary backend paths. Now the path must be exactly two safe segments
-  (`category/{name}` etc.) with no `..`/backslash, else 404 (RIL ISS-674).
+  (`category/{name}` etc.) with no `..`/backslash, else 404.
 - 🐛 **author/series/reader follow buttons no longer stamp the wrong target after a mid-toggle SPA navigation** —
   `AuthorFollowButton`, `SeriesFollowButton`, and `ReaderFollowButton` awaited the follow state change, then
   wrote `following`/`followerCount` without re-checking the target id. These controls survive `authorId`/
   `seriesId`/`readerId` changes un-keyed, so an in-flight toggle resolving after the reader navigated to
   another post/series/profile would flip the NEW target's button to "following" and inflate its count.
-  Each now captures the target id at toggle start and bails after the await if it changed (ISS-572-class,
-  matching the profile/search/badge/highlight seq guards) (RIL ISS-673).
+  Each now captures the target id at toggle start and bails after the await if it changed (matching the profile/search/badge/highlight seq guards).
 - 🐛 **select-to-save highlight no longer pollutes the next post on a mid-save SPA navigation** —
   saving a passage awaited the POST, then wrapped + added the highlight without re-checking the
   post; switching to another article before the save resolved would drop a `<mark>` into the NEW
   post's text and add the old post's highlight to its list. Now guarded by the saved post id
-  (ISS-572-class), matching the profile/search/badge seq guards (RIL ISS-672).
+  , matching the profile/search/badge seq guards.
 - 🐛 **public liked/bookmarked post lists now carry real comment_count/reading_time (N+1 helper gap)** —
   `list_reader_post_likes` and `list_reader_public_bookmarks` serialized `PostList` without the
   shared `_populate_post_metrics`, so the public profile "Liked"/"Saved" tabs (and `/me/likes`) always
   reported `comment_count=0` regardless of approved comments. Now batch-populated like every other
-  PostList path (RIL ISS-671). Same fix for `/api/search` hits, which also always reported 0 (ISS-670).
+  PostList path. Same fix for `/api/search` hits, which also always reported 0.
 - 🧹 **home feed page-turn uses the shared `scrollToPageTop()` helper** — the one page that
   established the smooth-scroll-to-top convention still called raw `window.scrollTo` on page turn
-  while every sibling paginated page used the shared helper; now consistent + SSR-safe (RIL ISS-669).
+  while every sibling paginated page used the shared helper; now consistent + SSR-safe.
 - ⚡ **author + series eager-loaded in public bookmarks list (N+1)** — the
   reader profile's public "Saved posts" tab serialized `PostList.author`
   (+`series`) but `list_reader_public_bookmarks` only eager-loaded
@@ -77,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   but only eager-loaded category/tags(/series), so every uncached page fired one
   extra lazy `SELECT` per row. `/search` (both tsvector and CJK paths), the
   `/liked` reader list, and reader recommendations now `joinedload` author and
-  series with the rest (finishing the round-465 author wave + its series gap that
+  series with the rest (finishing the author wave + its series gap that
   covered the public post lists).
 - ✏️ **deleting a highlight refreshes count / steps back from an emptied page** —
   the paginated /highlights page kept a stale `pagination.total` after a delete
@@ -89,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   combined search over posts/series/pages/authors built each post's snippet via
   a per-post `ts_headline` call, so a Postgres+ASCII merged query did one DB
   round-trip per result (up to ~50). It now reuses the same one-query batch as
-  `/search` (ISS-061), with an identical inline escaped-excerpt fallback for
+  `/search`, with an identical inline escaped-excerpt fallback for
   posts ts_headline doesn't match.
 - 🛡️ **highlight text can't be whitespace-only** — `min_length=1` counts raw
   characters, so a `"   "` passage passed validation and then stripped to an
@@ -109,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server-side (repo + router + frontend API/composable), and the list query
   dropped its redundant `joinedload` (the explicit `select(…, Post)` join
   already fetched the post), removing a duplicate `LEFT OUTER JOIN` per row.
-- ✨ **Reader passage highlights with notes (round 466)** — a signed-in reader
+- ✨ **Reader passage highlights with notes** — a signed-in reader
   can select text inside any article and save it (optionally with a short
   private note) as a highlight; saved passages are re-rendered in the article
   and managed (edit note / delete) from a new `/highlights` page, each
@@ -137,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ~65% to ~26% of tracked time); added `Icon.spec.ts` covering offline render
   and updated the CSP spec to assert the iconify CDNs are no longer whitelisted.
 - 🧪 **e2e read-after-write flakes fixed: /liked unlike + reading-history trail
-  (round 465)** — the last two members of the GH #54 flaky trio failed on
+  ** — the last two members of the GH #54 flaky trio failed on
   first attempt under serial-suite load. (1) `reader-likes` unliked on the post
   page, then navigated straight to /liked: the unlike button flips
   OPTIMISTICALLY, so the test read a server that still held the like — with the
@@ -151,59 +150,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   empty. It now waits for the article heading to render (the record() write has
   landed). Both verified green across repeated runs.
 - 🧪 **guest reply-email e2e no longer false-red: count scoped to the reply
-  subject (round 464)** — a deterministic full-suite failure: the journey's
+  subject** — a deterministic full-suite failure: the journey's
   "unsubscribe stops future mail" step counted ALL sink emails to the guest's
   address and expected 1, but the guest's own comment-approval ALSO sends the
-  "你的评论已发布 — 可管理" manage email to that same address (round 385), so the
+  "你的评论已发布 — 可管理" manage email to that same address, so the
   count was two by construction and CI's e2e gate was red on HEAD. The check
   now scopes to the reply-email subject, verifying the real contract — no
   second REPLY email after unsubscribe — while acknowledging the manage email
   legitimately shares the address.
 - ⚡ **Image-endpoint rate limiter stops paying an O(table) sweep per request
-  (round 462)** — the in-memory sliding-window limiter behind `/api/cover` and
+  ** — the in-memory sliding-window limiter behind `/api/cover` and
   `/api/og` ran a full-table prune pass on EVERY call once the bucket table
   crossed 10,000 keys — including the very calls it was about to reject, so a
   burst of distinct IPs turned the limiter itself into a CPU amplifier at
   exactly the load it exists to absorb. The sweep is now interval-gated (at
   most once per 60 s); per-key freshness is still enforced on every access.
   Cadence covered by a new test via a test-only `__lastPruneAt()` hook.
-- 🔧 **Perf benchmark scripts honor `DATABASE_URL` (round 449)** — `seed_perf_db.py`
+- 🔧 **Perf benchmark scripts honor `DATABASE_URL`** — `seed_perf_db.py`
   and `bench_perf_db.py` document running via `DATABASE_URL=...`, but both
   hardcoded the dev-PostgreSQL URL, so a documented invocation on another host
   silently benchmarked the wrong database. `DATABASE_URL` now overrides the
   target when set (the seed derives its database-creating maintenance
   connection from the same host/credentials); the dev defaults are unchanged.
-- 🧹 **Backend lint-gate regression fixed (round 449)** — the CJK search test's
+- 🧹 **Backend lint-gate regression fixed** — the CJK search test's
   DBAPI event-listener callback tripped ruff `ARG001` (unused args) and
   reddened `ruff check`; the unused arguments are now underscore-prefixed per
-  the repo convention. The CJK/trgm validated-negative decision (DEC-492)
+  the repo convention. The CJK/trgm validated-negative decision
   itself was correct.
-- 🐛 **`useLikeSync` first-test flake fixed (round 449)** — the like-mirror
+- 🐛 **`useLikeSync` first-test flake fixed** — the like-mirror
   assertion raced `vi.waitFor`'s default 1000 ms window against the cold
   dynamic module import under full-suite load (passed in isolation, ~100 %
   flaky in the failing run). The test now awaits the `like()` promise, which
   resolves only after the cloud mirror settles, so it is deterministic.
-- 🧹 **E2E TOTP helper no longer uses non-null assertions (round 449)** — the
+- 🧹 **E2E TOTP helper no longer uses non-null assertions** — the
   RFC 4226 dynamic truncation in `e2e/reader-2fa.spec.ts` extracted bytes with
   four `h[off]!` assertions; `Buffer.readUInt32BE(off)` expresses the same
   4-byte big-endian read (`& 0x7fffffff` clears the sign bit) and bounds-checks
   the offset, so a bad index throws instead of silently yielding 0. Verified
   behavior-identical over 10k random counters; `pnpm lint` is now fully clean.
-- 🔒 **Every admin write route now carries the WRITE rate-limit bucket (round 450)** —
+- 🔒 **Every admin write route now carries the WRITE rate-limit bucket** —
   five admin routes were missing `@limiter.limit` while every sibling write used it:
   `DELETE /comments/{id}/flags`, `PUT /settings/{key}`, reader
   deactivate/activate, and the on-demand `POST /digests/send-weekly`. A
   compromised admin session or a fault-looping digest send was unthrottled. A
   registry-presence regression guard covers all five; a sweep of every mutating
-  router route confirmed no other gaps. (TASK-572)
-- 🚢 **Compose exposes the newsletter rate-limit override (round 451)** — the
+  router route confirmed no other gaps.
+- 🚢 **Compose exposes the newsletter rate-limit override** — the
   per-endpoint limit list in `docker-compose.yml` documents each as
   "independently overridable" but omitted `RATE_LIMIT_NEWSLETTER` (the tight
   5/min bucket on the unauthenticated subscribe entry that fires an outbound
   email per fresh address — the same spam/abuse class as register). Its code
   default matched; the override line now lives where an operator tuning limits
-  would look. (CHG-809)
-- 🔑 **Admin auth fields get proper autocomplete (round 452)** — the admin-login
+  would look.
+- 🔑 **Admin auth fields get proper autocomplete** — the admin-login
   password, the change-password form's current/new/confirm fields, and the
   readonly current-email display in the account email-change form had no
   `autocomplete` attribute, so browsers and password managers could not
@@ -212,16 +211,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reader-side forms already solved). `current-password`/`new-password` now
   match, and the readonly display is `autocomplete="off"`. A full scan
   confirms all 21 email/password inputs across the app carry a correct value.
-  (TASK-573)
-- 🧪 **admin-categories delete e2e asserts final state, not a count delta (round 455)** —
+- 🧪 **admin-categories delete e2e asserts final state, not a count delta** —
   the delete test derived a live row count then asserted `toHaveCount(count-1)`,
   racing the delete re-render under serial-suite load (the flakiest member of
   the e2e-flaky trio in issue #54 — passed only on retry #1). Rewritten: create
   a uniquely-named category via the API, scope the row to the list container,
   delete it, and assert the final state (the named row leaves the DOM), with
   idempotent cleanup if the UI delete failed. Final-state assertions are immune
-  to the count race. (TASK-574)
-- ⚡ **Post search no longer rebuilds the tsvector per query (round 448)** — the
+  to the count race.
+- ⚡ **Post search no longer rebuilds the tsvector per query** — the
   ASCII search path in `crud.search_posts` matched `@@` against a
   `to_tsvector(...)` computed inline, so every search did a full-table scan +
   dictionary pass over all posts. Measured on a seeded 5k-post PostgreSQL
@@ -236,8 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SELECT plans an index scan, locking expression-equivalence against future
   drift. Verified: SQLite 1927 passed (93.54 %), PG-parity 1938 passed
   (93.83 %), fresh-PG bootstrap migrates to head with the index present.
-  (TASK-568, ISS-654)
-- 🗄️ **PG-parity suite no longer collides on the shared database (round 448)** —
+- 🗄️ **PG-parity suite no longer collides on the shared database** —
   running the PG-gated tests against a real PostgreSQL under `-n` exposed two
   parallel-isolation defects SQLite had been hiding. (1) The weekly-digest job's
   Postgres advisory lock is **database-scoped**, but all xdist workers used one
@@ -251,15 +248,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dev PG; a new `pg_scratch_engine` fixture gives each worker its own
   `xblog_pgscratch_{worker}` schema. Verified vs the dev PG (10.112.9.49): the
   digest+pgconn+cjk mix is now deterministically green (53 passed ×4 runs);
-  SQLite path unaffected. (TASK-567, ISS-653)
-- 🖼️ **Wide mermaid diagrams no longer clip their left edge on mobile (round 448)** —
+  SQLite path unaffected.
+- 🖼️ **Wide mermaid diagrams no longer clip their left edge on mobile** —
   the diagram container was `flex justify-center overflow-x-auto`: a diagram
   wider than the viewport overflows to *both* sides and `scrollLeft` can't go
   negative, so the start of a wide flowchart was permanently unreachable on
   small screens (the flex-overflow clip trap). Now `[&>svg]:ml-auto` — fitting
   diagrams stay centered by the auto margin, and an overflowing one collapses
-  to a reachable left edge. (ISS-652)
-- 🔒 **Reader self-service writes throttled; analytics path param bounded (round 448)** —
+  to a reachable left edge.
+- 🔒 **Reader self-service writes throttled; analytics path param bounded** —
   a backend edge-case audit found four authenticated write routes silently
   missing the `@limiter.limit` their sibling writes carry: PUT/DELETE
   `/posts/{id}/subscription` (each toggle writes a `CommentSubscription` row
@@ -272,8 +269,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (422 over uncaught 500). Regression guards appended to the rate-limit suite
   mirroring the admin write-endpoint introspection test. All four are
   authenticated routes, so this is consistency + robustness, not a live
-  exploit. (TASK-566, ISS-651)
-- ♿ **Auth a11y + link contrast + live counts + modal focus traps (round 448)** —
+  exploit.
+- ♿ **Auth a11y + link contrast + live counts + modal focus traps** —
   a reader/auth-focused a11y pass fixed four concrete gaps. (1) The auth
   inputs (login/register, 2FA code, forgot/reset-password, admin login) had
   sibling labels with no `for`/`id` binding, so a screen reader announced bare
@@ -289,8 +286,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mobile TOC sheet leaked focus on the very first Shift+Tab: focus lands on
   the `tabindex="-1"` dialog root, which the trap did not treat as a wrap
   boundary, so a keyboard user fell out behind the `aria-modal` overlay on the
-  first keypress. (TASK-565, ISS-650)
-- 🔠 **KaTeX webfonts now actually ship in the production build (round 445)** —
+  first keypress.
+- 🔠 **KaTeX webfonts now actually ship in the production build** —
   main.css's `@import "katex/dist/katex.min.css"` was inlined by the repo's
   postcss-import, which copied the stylesheet's relative `url(fonts/…)`
   verbatim into the bundle so Vite could never rebase them against
@@ -298,16 +295,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and every math block 404'd its webfonts (rendering with broken fallback
   glyphs; the math e2e only asserted `.katex` elements exist, so it never
   caught it). The stylesheet is now a direct Vite `css` entry, which resolves
-  and emits all 59 font assets with hashed names. (ISS-647)
-- 🖼️ **Shared `ReaderAvatar` component with broken-image fallback (round 447)**
+  and emits all 59 font assets with hashed names.
+- 🖼️ **Shared `ReaderAvatar` component with broken-image fallback**
   — the img-if-set-else-initial-letter avatar pattern was copy-pasted across
   the header menu, comment thread and reader profile, and every copy rendered
   a broken-image icon when the referenced static file was gone (out-of-band
   deletion or a DB restore without its static dir). The new component
   consolidates the pattern and swaps to the letter glyph on `@error`, with the
-  size/glyph tuned per site. (ISS-649)
+  size/glyph tuned per site.
 - 🧭 **Admin surfaces: expired-session 401 routing + localized error messages
-  (round 446)** — the dashboard's analytics loaders, CSV/backup download,
+  ** — the dashboard's analytics loaders, CSV/backup download,
   restore and pending-comments refresh called raw `$fetch` with `authHeaders()`,
   bypassing the transport's session-expiry handler, so a dead admin token
   stranded the operator with a raw ofetch 401 and no re-auth path; a local
@@ -318,9 +315,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   readers/newsletter/dashboard/media route through `apiErrorMessage`. The post
   editor's slug/cover placeholders are localized, calendar chips use NuxtLink
   (SPA nav instead of a full reload), and taxonomy create buttons show a busy
-  spinner while in flight. (ISS-648)
+  spinner while in flight.
 - 🐛 **e2e: /discussion no longer 500s in production, stale prefs schema
-  corrected, delete-confirm dialog accepted (round 445)** — (1) the
+  corrected, delete-confirm dialog accepted** — (1) the
   /discussion page returned a fixed 500 in the production build ("Cannot access
   'X' before initialization"): the `useSeo` reactive getter read `page`/`feed`
   before their top-level `await` declared them (their TDZ); hoisted the SEO
@@ -329,7 +326,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authoritative prefs have 10 fields — updated with the mention/reader_comment
   kinds documented. (3) The inbox delete e2e never deleted its row because
   `window.confirm` was auto-dismissed (a cancel) — the click now accepts the
-  dialog. (ISS-644/645/646; GH #52/#53/#55)
+  dialog. (GH #52/#53/#55)
 - 🗣️ **Reader login, 2FA code-step and registration now surface localized
   error messages with a correct fallback chain (rounds 441/442)** — a failed
   sign-in showed the backend's raw English envelope text to the reader (e.g.
@@ -343,15 +340,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back to the backend's human envelope message, then to any meaningful
   non-technical message, then to a generic network line. The raw ofetch
   technical string (`[POST] "...": 400 ...`) is never shown to a reader.
-  (TASK-563, ISS-642; TASK-564, ISS-643)
-- 🐛 **Backup restore now rejects unbounded comment arrays (round 440)** — the
+- 🐛 **Backup restore now rejects unbounded comment arrays** — the
   restore guard capped the post count but a single post's `comments` array was
   otherwise unbounded, so one crafted snapshot could smuggle an arbitrary
   number of comment rows into a single import. The acceptance guard now also
   caps total comments (100k, the same order as the CSV export cap; real blogs
-  never get close) and 422s before any write. (TASK-562, ISS-626)
+  never get close) and 422s before any write.
 - 🚀 **Admin CSV exports stream row-by-row instead of materializing everything
-  in memory (round 439)** — the posts/comments exports loaded every ORM row
+  in memory** — the posts/comments exports loaded every ORM row
   (`.all()`, up to 100k) and built the whole CSV in one `StringIO` before
   sending a single chunk: tens of MB of models + a buffer on an admin endpoint,
   and no bytes until every row was serialized. The posts export now pages the
@@ -359,17 +355,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refuses), the comments export iterates its scalar query with `yield_per`,
   and both stream CSV chunks that concatenate byte-for-byte identical to the
   old single pass. A consumer (or a browser tab close) that stops early saves
-  all the tail serialization. (TASK-561, ISS-637)
+  all the tail serialization.
 - 🤖 **robots.txt now Disallows private/auth/API paths so crawlers stop
-  fetching them (round 438)** — the served robots.txt was effectively “crawl
-  everything” (`Allow: /` with no Disallow). The round-437 `noindex` meta
+  fetching them** — the served robots.txt was effectively “crawl
+  everything” (`Allow: /` with no Disallow). The `noindex` meta
   stops private pages being *indexed*, but crawlers still download
   `/api/*`, `/admin/*`, login/reset/account, email-token and newsletter pages
   — wasted crawl budget against surfaces that can never rank. robots.txt now
   Disallows those paths (the sitemap/RSS/posts/discussion stay crawlable) and
   the `Sitemap:` line continues to resolve from the configured site URL.
-  (TASK-560, ISS-641)
-- 🔒 **Reader auth and all admin pages now send robots `noindex` (round 437)** —
+- 🔒 **Reader auth and all admin pages now send robots `noindex`** —
   only search/print pages were excluded from search indexes; the reader
   login/register, forgot-password, reset-password, email-change and account
   pages (public auth surfaces) and the whole `/admin/*` tree (login, dashboard,
@@ -377,22 +372,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shells and admin page URLs for credential probing. Reader auth pages now opt
   out via `useSeo({ noindex: true })` (the established robots `noindex, follow`
   path), and the admin layout emits one robots meta at the layout level so
-  every `/admin/*` page is covered without per-page edits. (TASK-559, ISS-640)
+  every `/admin/*` page is covered without per-page edits.
 - 🔒 **Backend feed/sitemap/email links no longer silently default to a
-  loopback origin in production (round 436)** — RSS/Atom item `<link>`s,
+  loopback origin in production** — RSS/Atom item `<link>`s,
   sitemap `<loc>`s and email URLs are all built from the backend's
   `settings.site_url` (routers/rss.py, emailer.py), which defaults to
   `http://localhost:3000`. The compose deployment never set `SITE_URL`, so
   every feed item and sitemap entry shipped with a loopback link only the
-  server itself could open — the backend side of the round-434 og:url origin
+  server itself could open — the backend side of the og:url origin
   bug. Compose now wires the backend `SITE_URL` to the same public origin as
   the frontend (`NUXT_PUBLIC_SITE_URL` default), the deployment doc documents
   both together, and a non-development backend that still has the loopback
   default logs a loud startup warning instead of failing silently. Verified
   live: with `SITE_URL=https://feed.test` the served feed `<link>` and sitemap
-  `<loc>`s resolve to that origin. (TASK-558, ISS-639)
+  `<loc>`s resolve to that origin.
 - 🔒 **Site-default share metadata resolves the site URL at runtime, not at
-  image build (round 434)** — `og:url` / `og:image` / `twitter:image` and the
+  image build** — `og:url` / `og:image` / `twitter:image` and the
   WebSite JSON-LD lived in the nuxt.config global head, which is evaluated when
   the image is *built*. `NUXT_SITE_URL` is set only at container runtime, so a
   deployment without a build-time URL served every page's share tags pointing
@@ -401,30 +396,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   honors the runtime `NUXT_PUBLIC_SITE_URL` (compose updated to set it — the
   plain `NUXT_SITE_URL` env is inert in a built image; Nuxt only overrides
   runtimeConfig at runtime via the `NUXT_PUBLIC_<key>` convention). Verified
-  live: SSR HTML renders `og:url` from the runtime URL. (TASK-557, ISS-638)
+  live: SSR HTML renders `og:url` from the runtime URL.
 - 🐛 **Guest thread-subscriber mail is delivered over a single SMTP session
-  (round 433)** — approving a comment on a post with N confirmed anonymous
+  ** — approving a comment on a post with N confirmed anonymous
   subscribers opened a fresh SMTP connection per address in a serial loop, so a
   popular thread blocked the approval request for N sequential connects —
   unbounded by any cap (unlike push subscriptions) and uninterruptible by the
   request-timeout middleware. The fan-out now builds every recipient and sends
   them in one session; any per-message refusal is best-effort isolated.
-  (TASK-553, ISS-633)
 - 🔒 **Unsubscribing a never-confirmed newsletter address now really revokes it
-  (round 433)** — clicking "unsubscribe" in a double-opt-in confirmation email
+  ** — clicking "unsubscribe" in a double-opt-in confirmation email
   BEFORE confirming reported `{"unsubscribed": true}` but changed nothing, so
   the same email's confirm link could still flip the address to subscribed —
   the exact opposite of the message the user saw. Revocation is now stamped
-  even while pending, so the round-393 confirm gate (re-activation needs a
-  fresh subscribe) covers both states. (TASK-554, ISS-634)
+  even while pending, so the confirm gate (re-activation needs a
+  fresh subscribe) covers both states.
 - 🔒 **The Nuxt API proxy forwards the real client IP through a trusted proxy
-  (round 433)** — behind nginx the socket peer is nginx itself, so forwarding
+  ** — behind nginx the socket peer is nginx itself, so forwarding
   the peer alone collapsed every visitor into one loopback IP and the backend's
   per-IP rate-limit buckets all shared a single slot. The proxy now resolves
   the client IP through the same trust model the frontend's own limiters use
   (`FRONTEND_TRUSTED_PROXIES`): a trusted peer's XFF yields the real client; a
-  bare/compose peer still discards client-forged XFF. (TASK-555, ISS-635)
-- 🛠 **Backend env loading is now the single, consistent point (round 433)** —
+  bare/compose peer still discards client-forged XFF.
+- 🛠 **Backend env loading is now the single, consistent point** —
   pydantic-settings reads `.env` but never exports those values to
   `os.environ`, so `is_development()` (APP_ENV) and the emailer's language
   switch (SITE_LANGUAGE) silently read nothing when a value lived only in
@@ -432,13 +426,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with Chinese email copy (or vice versa). `load_dotenv()` now populates the
   process env (without clobbering set vars), and undeclared `.env` keys are
   ignored instead of crashing `Settings()` with `extra="forbid"`.
-  (TASK-556, ISS-636)
-- 🐛 **Admin surfaces read raw-import NULL counters as false/0 too (round 432)**
-  — review follow-up to round 431: the admin posts list and editor detail
+- 🐛 **Admin surfaces read raw-import NULL counters as false/0 too**
+  — review follow-up to the admin posts list and editor detail
   emitted a raw-import `pinned`/`views` NULL as `null` while every public page
   read the same row as `false`/`0`, so an editor could misread pin state from
   its own management page. The admin emissions now coalesce to the same
-  documented defaults (post-merge review finding). (TASK-548, ISS-627)
+  documented defaults (post-merge review finding).
 - 🐛 **A raw-import NULL counter no longer 500s the whole public feed (round
   431)** — `Post.views`/`likes`/`pinned` are nullable with only Python-side
   defaults, so a row imported by raw SQL/COPY can carry NULL. Round 428
@@ -449,44 +442,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   serialization now coalesces to the documented default (0 / false), and the
   `pinned` ORDER BY coalesces in the list, adjacent window and admin list too
   (earlier version of this test was vacuous: an ORM `pinned=None` stores 0,
-  never NULL — only a raw import lands one). (TASK-548, ISS-627)
+  never NULL — only a raw import lands one).
 - 🔒 **JSON-LD/OpenGraph article dates now carry an explicit UTC marker (round
   431)** — `effectivePublishAt`/`updated_at` were emitted into
   `datePublished`/`dateModified` and `og:article:published_time`/
-  `modified_time` without the "Z" that every other consumer appends (DEC-213):
+  `modified_time` without the "Z" that every other consumer appends:
   a crawler in UTC+8 rendered a late-UTC-day post a full calendar day early on
   share cards / Rich Results. The SEO path now appends the zone marker
-  idempotently. (TASK-549, ISS-628)
+  idempotently.
 - ♿ **The media picker releases background scroll when the editor navigates
-  away with it open (round 431)** — the body-scroll lock was only released on
+  away with it open** — the body-scroll lock was only released on
   close; if the admin pressed Back while the picker was up, the next page stayed
   unscrollable until a reload. Unmounting while open now restores it (mirrors
-  MarkdownLightbox). (TASK-550, ISS-629)
-- ♿ **Search mode tabs drop `aria-pressed` (round 431)** — `role="tab"` state
+  MarkdownLightbox).
+- ♿ **Search mode tabs drop `aria-pressed`** — `role="tab"` state
   is `aria-selected`; the redundant/supported-incompatible `aria-pressed` was
-  also bound, so screen readers got a contradictory toggle state. (TASK-551,
-  ISS-630)
-- ♿ **More informative small text reaches WCAG AA (round 431)** — remaining
+  also bound, so screen readers got a contradictory toggle state.
+- ♿ **More informative small text reaches WCAG AA** — remaining
   `gray-400` metadata rows on the my-comments, series and reader-profile pages
-  bumped to `gray-500` on the light theme. (TASK-552, ISS-631)
-- 🔒 **All-digit post slugs are now rejected (round 428)** — the public post
+  bumped to `gray-500` on the light theme.
+- 🔒 **All-digit post slugs are now rejected** — the public post
   route resolves a plain-digit segment as a post ID first, so a post slugged
   `"1"` was shadowed: its canonical URL (`/posts/1`, emitted by RSS/Atom/
   sitemap) served whichever post owned that numeric id, and deleting that row
   silently flipped the article at the URL. Slugs must now contain a non-digit,
   at create and update, so a numeric slug can never be reachable as written.
-  (TASK-534, ISS-613)
-- 🐛 **NULL view/like counters now self-heal and rank at 0 (round 428)** —
+- 🐛 **NULL view/like counters now self-heal and rank at 0** —
   `Post.views`/`likes` carry a Python-side default only, so a raw-SQL/COPY row
   can land a NULL; the counter then stayed NULL forever (NULL+1=NULL) and
   ranked FIRST on PostgreSQL's popular list while LAST on SQLite. Increments
   and rankings now COALESCE the NULL to 0, making the counter self-heal and
-  the ordering dialect-parity. (TASK-535, ISS-614)
-- 🚀 **Feed cache resized 8 → 64 entries (round 428)** — the RSS/Atom/sitemap
+  the ordering dialect-parity.
+- 🚀 **Feed cache resized 8 → 64 entries** — the RSS/Atom/sitemap
   cache had fewer slots than the distinct key shapes (full + every category/
   tag/author/series scope), so a modest crawl (sitemap + a couple of feed
   subscriptions) evicted everything and forced a DB re-query + full markdown
-  re-render on every poll. (TASK-536, ISS-615)
+  re-render on every poll.
 - 🔒 **Frontend image endpoints harden their rate-limit client IP (round
   428)** — the resolver behind the CPU-heavy cover/OG generators validated the
   X-Forwarded-For leftmost node far less strictly than the backend: a
@@ -494,39 +485,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behind the trusted proxy could rotate the header and bypass the per-IP
   limit. It now mirrors the backend `_xff_client` (IP-literal validation +
   port strip + fallback to peer), closing the exact hole the backend closed in
-  its own limiter. (TASK-537, ISS-616)
+  its own limiter.
 - 💬 **English author post-count no longer leaks ICU plural syntax (round
   428)** — the en `authors.postCount` key used `{count, plural, one {post}
   other {posts}}`, which the custom translate engine cannot render; English
   readers saw the raw syntax (`3 {count, plural, one {post} other {posts}}`).
   Split into `postCountOne`/`postCountMany` like the follower count.
-  (TASK-540, ISS-617)
 - ♿ **Reader profile tabs are keyboard-navigable; informative text hits AA
-  contrast (round 428)** — the profile tablist now roves on Arrow/Home/End
+  contrast** — the profile tablist now roves on Arrow/Home/End
   like the search page and comment editor (before, only click moved tabs and
   a keyboard user could only ever reach the Comments tab), and the systemic
   gray-400/500 informative text across home/post/notifications/admin pages
-  plus the liked-page heart control were bumped to WCAG AA. (TASK-541/542,
-  ISS-618/619)
+  plus the liked-page heart control were bumped to WCAG AA.
 - ♿ **Media picker and the admin password modal lock background scroll (round
   428)** — both dialogs claimed aria-modal but never pinned `body.overflow`,
   so the page wheeled/scroll behind the overlay; they now lock on open and
   restore on close (the contract MarkdownLightbox already followed).
-  (TASK-543, ISS-620)
 - ♿ **Admin off-canvas sidebar links drop out of the Tab order when closed
-  (round 428)** — on mobile with the drawer shut, its links were translated
+  ** — on mobile with the drawer shut, its links were translated
   off-canvas but still focusable, so Tab landed on invisible Dashboard/Posts
-  links; the closed drawer is now `inert`. (TASK-544, ISS-621)
+  links; the closed drawer is now `inert`.
 - 🐛 **Admin writer-bio Save honors the shared single-flight flag (round
   428)** — `saveBio` set the shared `penBusy` guard without checking it (its
   pen-name sibling did), so both inline editors could fire PATCHes in the same
-  tick; both now consult the guard. (TASK-545, ISS-622)
-- 🐛 **Search tab roving scoped to its own tablist (round 428)** — the
+  tick; both now consult the guard.
+- 🐛 **Search tab roving scoped to its own tablist** — the
   Arrow-key handler used a document-wide tab selector (the exact anti-pattern
   CommentForm already fixed: multi-tablist pages teleport focus between
-  forms); it now scopes to the fired tablist. (TASK-546, ISS-623)
+  forms); it now scopes to the fired tablist.
 - 🔒 **A reader's account email can no longer become their public comment
-  nickname (round 427, audit finding)** — `create_comment` stamped
+  nickname** — `create_comment` stamped
   `display_name or email` into the comment's nickname column, so a reader who
   registered without a display name had their address published on every
   comment surface (thread, comment feeds, search, reader profile, RSS/Atom).
@@ -536,66 +524,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a nameless reader. The admin moderation queue still shows the real account
   email via an explicit admin-only `reader_email` field (batched, no N+1) — a
   moderator's ability to identify the account survives the public-surface fix.
-  (TASK-532, ISS-606)
-- 🐛 **Author-identity writes now invalidate the public caches (round 427)** —
+- 🐛 **Author-identity writes now invalidate the public caches** —
   renaming a writer's pen name or changing/removing their avatar left the old
   name/face rendered from cached post lists, series detail and feeds for up to
   5 minutes; those writes now clear like every other post/taxonomy write.
-  (TASK-529, ISS-607)
 - 🐛 **Editing your own approved comment no longer leaves a stale comment
-  count (round 427)** — the edit resets the comment to pending (it drops off
+  count** — the edit resets the comment to pending (it drops off
   the public surface), but the cached posts list kept the old higher approved
   count until the TTL. The edit now invalidates the cache like create/approve
-  do. (TASK-529, ISS-608)
+  do.
 - 🐛 **Account: the avatar-removal confirm dialog shows real copy, not a key
-  (round 427)** — it used the nonexistent `account.avatar.removeConfirm` key,
+  ** — it used the nonexistent `account.avatar.removeConfirm` key,
   so before destructive avatar removal the browser's native confirm showed the
   raw string `account.avatar.removeConfirm`. Now uses the existing localized
-  `account.profile.avatarRemoveConfirm`. (TASK-530, ISS-609)
+  `account.profile.avatarRemoveConfirm`.
 - 🐛 **Notifications: each failed action has its own error message and retry
-  (round 427)** — a failed mark-read / mark-all / delete collapsed into the
+  ** — a failed mark-read / mark-all / delete collapsed into the
   same generic "network error" as a failed initial load, so a reader couldn't
   tell whether their action landed. Each failure now names itself and retries
-  its exact target. (TASK-530, ISS-611)
+  its exact target.
 - ♿ **History/Liked informative labels now meet WCAG AA contrast (round
   427)** — section headers, counts and per-entry metadata used `text-gray-400`
   (~2.5:1) / dark `text-gray-500`; bumped to AA-compliant shades for
-  informative text (decorative icons keep the lighter gray). (TASK-531, ISS-610)
-- 🧭 **A zero-hit comment search now offers a way out (round 427)** — posts
+  informative text (decorative icons keep the lighter gray).
+- 🧭 **A zero-hit comment search now offers a way out** — posts
   mode got "Did you mean" suggestions for a typo'd term but comment mode
   dead-ended in a bare "No results". Comment-mode zero hits now get the same
   suggestions (the corpus is mode-agnostic) plus a one-click "search these in
-  articles" hop back to posts mode. (TASK-533, ISS-612)
+  articles" hop back to posts mode.
 - 🐛 **Admin dashboard: the Pending-comments card's header now shows the real
-  backlog, not a capped slice (round 424, audit finding)** — the quick card's
+  backlog, not a capped slice** — the quick card's
   header counted `pendingComments.length`, the length of the newest pending
   5-row slice fetched at load, so a blog with more than 5 pending comments
   showed "N pending" where N was stuck at ≤5 while the stat card beside it said
   the true total — two contradicting moderation signals on one dashboard. The
   header now uses the authoritative `pending_count` (the same number the stat
   card uses and adjusts on approve/reject), with the 5-row slice reserved for
-  the list body. (TASK-525, ISS-603)
-- ♿ **Admin a11y labels (round 424, audit)**: the media library's search box
+  the list body.
+- ♿ **Admin a11y labels**: the media library's search box
   and the tags/categories create-name fields now carry aria-labels (they were
   placeholder-only), and the comment-moderator's author-reply textarea gains an
   accessible name plus keyboard/screen-reader focus moves into it the moment
   the reply box opens (no more Tab-ing through the row's controls to reach the
-  new editing surface). (TASK-526/527, ISS-604/605)
+  new editing surface).
 - 🐛 **Bookmarks: every recently-removed bookmark stays independently undoable
-  (round 423, audit finding)** — the row-removal Undo used a single slot: removing
+  ** — the row-removal Undo used a single slot: removing
   bookmark A then bookmark B within the 6s window overwrote A's undo target, and
   since the one-click removal's cloud DELETE had already gone out, A was
   permanently gone with no recovery. Each removal now pushes its own undo entry
   (a shared sweeper prunes each 6s window independently, no timer per row), so a
   reader tidying up several bookmarks can undo each in turn, and undoing one
-  leaves the others intact. (TASK-521, ISS-599)
-- ♿ **Reader a11y/i18n cleanups (round 423, audit)**: the comment Write/Preview
+  leaves the others intact.
+- ♿ **Reader a11y/i18n cleanups**: the comment Write/Preview
   tablist's accessible label is now localized (was a hardcoded English
   "Comment markdown preview"), the fullscreen image lightbox dialog names itself
   "Image viewer" instead of reusing its Close button's label, and decorative
   avatar images across the reader menu and account page now carry empty alt text
   (their names render as adjacent text) instead of hardcoded English
-  "avatar of …". (TASK-522/523/524, ISS-600/601/602)
+  "avatar of …".
 - 🐛 **Round-422 audit fixes — three stale-response / timer races**:
   **resume-reading** no longer applies an old post's saved offset after an SPA
   post switch: an in-flight restore for the article you just left could resolve
@@ -606,8 +592,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comment list already had: a fast page-click can't let an older page paint
   under the newer page's pagination. And the post page's like-failure banner
   timer is now cleared on unmount like every other timer in the file.
-  (TASK-518/519/520, ISS-596/597/598)
-- 🛠️ **Unmount-safety sweep (round 420)**: every one-shot / debounced timer across
+- 🛠️ **Unmount-safety sweep**: every one-shot / debounced timer across
   the app now cancels on unmount — the admin media library's search debounce and
   copy-flash, header search's debounce + blur-close, admin posts list search
   debounce, the admin readers list search debounce, bookmarks' assign-failure
@@ -617,8 +602,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error flashes. A timer armed right before an SPA navigation no longer fires on
   a dead component (and leaked real timers no longer poison later fake-timer
   tests); a repo-wide scan confirms no app-code file holds an uncancelled timer
-  any more. (TASK-512..517, ISS-590..595)
-- 🛠️ **Comment/account interaction fixes from the round-418/419 reader audit**: the
+  any more.
+- 🛠️ **Comment/account interaction fixes from the 419 reader audit**: the
   **Write/Preview tab arrows** stay inside the tablist you typed in (the post page's
   bottom form and the inline reply form share a label, so roving used to hop focus
   to the *other* form's tab); editing a comment then clicking **Edit** on a different
@@ -626,8 +611,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   confirms (irreversible) and avatar upload/remove are single-flight against a
   double-click; header search's **blur→refocus** no longer closes the just-reopened
   dropdown; bookmarks' assign-failure notice + header-search timers are cleaned up
-  on navigation away. (TASK-509/510/511, ISS-585..589)
-- 🛠️ **Notification feed polish from the round-418 audit**: marking a notification
+  on navigation away.
+- 🛠️ **Notification feed polish from the audit**: marking a notification
   read (or all) while an older "load more" page request was still in flight could
   let that stale response **resurrect the just-cleared unread count** until the
   next poll — the page now drops any load-more unread snapshot superseded by a
@@ -636,28 +621,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resets to page 1 on every open, the admin media library's pager gained the same
   single-flight guard as its picker sibling (a rapid double-click can't skip two
   pages), and the search-debounce + copy-flash timers are cleaned up on
-  navigation away. (TASK-505/506/507, ISS-580..583)
-- 🛠️ **Reader like count can no longer drift from the durable like rows (round 417/418)**: a like/unlike on the post page committed the per-reader row and the public badge counter in **two separate transactions** — a crash between them could leave a liked post with an unbumped count (or a vanished row still counted) and no re-sync path. Both paths now bump the counter inside the same transaction (the comment-like fix pattern), so the badge always matches the rows. (TASK-500, ISS-574)
-- 🛠️ **Bashed/empty deep links no longer break the home feed or reader profile (round 417)**: a `?page=-3` / `?page=abc` home URL previously parsed to a negative page → API 422 → permanent dead retry; now invalid page/filter params clamp to a clean first page. A quick page-click + tab-switch on a reader profile could also let a slow stale response overwrite newer tabs — the load now ignores superseded responses. (TASK-497/498, ISS-571/572)
-- 🛠️ **Consistent long-form dates site-wide (round 417)**: the same post's date showed as bare `9/22/2026` on some (ambiguous) pages and `September 22, 2026` on others; every public page, search result, reader profile, and the admin dashboard now render the canonical long form through one `formatPostDate` helper. (TASK-499, ISS-573)
-- 🛠️ **Admin moderation/list touch-ups (round 417)**: typing a comment-search term without pressing Enter then paging no longer silently switches to the new term's result set (paging uses the applied filter snapshot); the newsletter row-delete and post-editor notify are single-flight so a double-click can't fire a duplicate DELETE / duplicate broadcast; a failed admin pages list now offers a retry button like its sibling lists. (TASK-501..504, ISS-575..578)
-- 🛠️ **Accessibility & narrow-phone polish from the round-415 audit**: the
+  navigation away.
+- 🛠️ **Reader like count can no longer drift from the durable like rows **: a like/unlike on the post page committed the per-reader row and the public badge counter in **two separate transactions** — a crash between them could leave a liked post with an unbumped count (or a vanished row still counted) and no re-sync path. Both paths now bump the counter inside the same transaction (the comment-like fix pattern), so the badge always matches the rows.
+- 🛠️ **Bashed/empty deep links no longer break the home feed or reader profile**: a `?page=-3` / `?page=abc` home URL previously parsed to a negative page → API 422 → permanent dead retry; now invalid page/filter params clamp to a clean first page. A quick page-click + tab-switch on a reader profile could also let a slow stale response overwrite newer tabs — the load now ignores superseded responses.
+- 🛠️ **Consistent long-form dates site-wide**: the same post's date showed as bare `9/22/2026` on some (ambiguous) pages and `September 22, 2026` on others; every public page, search result, reader profile, and the admin dashboard now render the canonical long form through one `formatPostDate` helper.
+- 🛠️ **Admin moderation/list touch-ups**: typing a comment-search term without pressing Enter then paging no longer silently switches to the new term's result set (paging uses the applied filter snapshot); the newsletter row-delete and post-editor notify are single-flight so a double-click can't fire a duplicate DELETE / duplicate broadcast; a failed admin pages list now offers a retry button like its sibling lists.
+- 🛠️ **Accessibility & narrow-phone polish from the audit**: the
   Write/Preview and Posts/Comments tablists now support **ArrowLeft/Right/Home/End
   roving navigation** (the standard `role="tab"` keyboard contract, previously
   Tab+Enter only); the **verified-reader badge** is no longer title/hover-only —
   it gains sr-only text so screen readers announce it; the **tag/category action
   headers, post byline, and comment sort toolbar** wrap (`flex-wrap`, search box
   `max-w-full`) instead of overflowing a 375px phone; and the **share buttons and
-  A−/A+ density keys** meet the 44px minimum tap target (round 415, TASK-495).
-- 🛠️ **Mobile nav no longer clips its bottom items on short screens (round 415)**:
+  A−/A+ density keys** meet the 44px minimum tap target.
+- 🛠️ **Mobile nav no longer clips its bottom items on short screens**:
   a signed-in reader's full "我的" menu (8–9 rows) exceeded the mobile nav's
   `max-height:500px` slide-transition end state, so the last links and sign-out
   rendered but scrolled out of reach behind the sticky header with no way to reach
   them (the panel had no overflow scroll). The panel is now a real scroll container
   clamped to the viewport below the header (`max-h-[calc(100dvh-4rem)] overflow-y-auto`),
   and the slide animates opacity/translateY instead of max-height — every item is
-  reachable at any screen height (round 415, TASK-493, ISS-567).
-- 🛠️ **Home & browse-page failure polish + form shortcut safeguards (round 415)**:
+  reachable at any screen height.
+- 🛠️ **Home & browse-page failure polish + form shortcut safeguards**:
   the home feed's **site stats and browse-by sidebar no longer masquerade as
   empty** on a transient fetch failure. A `/api/stats` hiccup previously rendered
   the hero totals and sidebar card as all-zeros (reading "this blog has 0 posts"),
@@ -671,9 +656,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   silently no-op'd), Ctrl+Enter on the admin comment-manage textarea saves the guest
   edit, the edit-save button shows a "Saving…" pending state and disabled cursor while
   the request is in flight, and the saved-flash gains an ARIA status role.
-  Frontend 2455+ unit tests green, typecheck/lint green (round 415, TASK-491/492,
-  ISS-566).
-- 🛠️ **Post-page reading polish (round 411)**: the reader-facing article page now
+  Frontend 2455+ unit tests green, typecheck/lint green.
+- 🛠️ **Post-page reading polish**: the reader-facing article page now
   cleans up its table-of-contents observer properly. **The mobile TOC's heading
   scan can no longer fire after you've left the post**: `setupTocObserver` deferred
   its heading scan with a 500 ms settle timer that was never tracked — SPA-navigating
@@ -687,7 +671,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer fire a whole-thread re-fetch for a reader who isn't on the page anymore,
   and the comment code-highlighter no longer dereferences a nulled list ref if the
   thread unmounts while the highlight bundle is still loading (it was an unhandled
-  rejection). Frontend 2455 unit tests (round 411, TASK-489/490, ISS-564/565).
+  rejection). Frontend 2455 unit tests.
 - 🛠️ **Detail & reader-auth polish rounds (rounds 403–409)**: six rounds of
   verification-first polish across both stacks, closing the full reader-auth
   review backlog. **Invalid deep links no longer loop**: discussion, search and
@@ -705,7 +689,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   statements; **liking a comment is atomic** — the like row and the counter bump
   persist in one transaction, so a crash can no longer leave a like with no
   count visible; and the **guest thread-follow consent-restart gate** (the
-  newsletter round-393 parity): replaying the original double-opt-in link after
+  newsletter parity): replaying the original double-opt-in link after
   an unsubscribe can no longer silently re-subscribe — the confirm now 400s into
   a re-subscribe state, and the confirm pages map a deliberate 400 / unknown
   token 404 / reachability failure to distinct, honest states (no more "invalid
@@ -749,8 +733,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{"error":{"message"}}` envelope, so entering a wrong current password during
   a password change/delete shows the form error instead of quietly signing you
   out. Backend 1879 + 10 skipped @ 93.7%, frontend 2405 unit tests,
-  typecheck/lint/migration-on-Postgres green (round 393, DEC-448).
-- 🛠️ **Reader-auth polish round (round 392)**: a deep-dive across the sign-in
+  typecheck/lint/migration-on-Postgres green.
+- 🛠️ **Reader-auth polish round**: a deep-dive across the sign-in
   surface found the auth forms were showing ofetch's **technical error strings**
   (`"[POST] ...: 401 Unauthorized"`) instead of the backend's human message — a
   wrong password, a bad 2FA code or a rejected registration now surface the real
@@ -768,15 +752,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-submit 422. And the **password-reset "← Back to login" link now actually
   goes to /login** — with a token present it was mislabeled navigation to
   /forgot-password. Frontend 2399 unit tests (+10), typecheck/lint green (round
-  392, DEC-446/447).
-- 🛠️ **Bug-fix & polish round (round 391)**: five verified defects fixed across
+  392).
+- 🛠️ **Bug-fix & polish round**: five verified defects fixed across
   the stack. **Account deletion now truly total**: `delete_reader_account` left
   post-likes, author-follows and both directions of reader follows/blocks
   behind, so on SQLite (no AUTOINCREMENT) a future account could inherit a
   recycled id with another reader's data or a grafted relationship — these rows
   are now reaped too. **Reply-notification deep-links land on the new reply**
   instead of your own parent comment (the promised "tap and get taken to the
-  reply" of DEC-072 was pointing at the wrong anchor). **Upload storage
+  reply" of was pointing at the wrong anchor).**Upload storage
   directory** is keyed on the same naive-UTC clock the media library uses, so a
   non-UTC server can no longer write files a month ahead of their listed
   timestamp. On **search**, a zero-hit comments-mode query no longer says
@@ -794,8 +778,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the dashboard's **pending-comment counters stay in sync** after
   approve/reject (the big stat card used to contradict the quick card, and the
   quick card went empty despite server backlog). Backend 1873 + 10 skipped,
-  frontend 2389 unit tests, typecheck/lint all green (round 391, DEC-444/445).
-- 💡 **"Did you mean" search suggestions (round 390)**: the post search is
+  frontend 2389 unit tests, typecheck/lint all green.
+- 💡 **"Did you mean" search suggestions**: the post search is
   exact substring + tsvector with no fuzzy layer, so a misspelled or
   half-remembered query ("recatvie", a CJK typo like 异步编程实贱) dead-ends on
   an empty page. A zero-hit POST search now calls a new `GET
@@ -809,8 +793,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bucket — the client only fires it after a search genuinely returned zero
   hits. Backend 1873 + frontend 2386 unit tests + a Playwright journey
   (publish → typo search → suggestion chip → corrected results) all green
-  (round 390, DEC-443).
-- 🔎 **Search inside a comment thread (round 389)**: a long discussion (sorted
+  .
+- 🔎 **Search inside a comment thread**: a long discussion (sorted
   newest/oldest/helpful, arbitrarily paginated) had no way to find "that answer
   that mentioned X" — the global comment search cannot scope to a post. The
   thread now has its own debounced search box beside the sort control: typing
@@ -821,8 +805,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clear button restores the full thread, and LIKE metacharacters are escaped so
   a `%` query matches literally. Backend 1846 + frontend 2382 unit tests + a
   Playwright journey (seed a marked thread → box narrows → clear restores) all
-  green (round 389, DEC-442).
-- 📝 **Inline Markdown footnotes (round 388)**: an author citing a source had no
+  green.
+- 📝 **Inline Markdown footnotes**: an author citing a source had no
   way to render a footnote — the GFM `[^1]` / `[^1]: ...` marker printed as
   literal raw text mid-article. The frontend marked integration (markdown
   renderer shared by the post body, print/PDF route, and the admin editor
@@ -834,20 +818,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `id`/`class` allowlist the backlink anchors need). One renderer change
   heals every consuming surface. Backend 1844 + frontend 2378 unit tests + a
   Playwright journey (publish → citation renders → raw marker absent) all green
-  (round 388, DEC-441).
-- 🔥 **Trending this week (round 387)**: the home page's Popular row ranked by
+  .
+- 🔥 **Trending this week**: the home page's Popular row ranked by
   all-time views, so a brand-new post being read right now had no way to
   surface. The home page now also shows a "Trending this week" row ranked by
   in-window views from the analytics table that already counts every pageview
-  by day (`post_views_daily`, DEC-086) — each card carries the weekly read
+  by day (`post_views_daily`) — each card carries the weekly read
   count ("N reads this week"), distinct from the all-time counter. Public
   `GET /api/posts/trending/list?days=7&limit=5` (published, effective-live
   posts only; an empty window returns `[]` and the section hides, since fresh
   installs track the daily table forward only). Backend 1843 + frontend 2371
   unit tests + a Playwright journey (publish → view burst → appears in the
-  row) all green (round 387, DEC-438).
-- 👤 **Hide blocked readers' comments (round 386)**: round 379's reader
-  blocking (DEC-425) suppressed the notification fan-outs but promised more —
+  row) all green.
+- 👤 **Hide blocked readers' comments**'s reader
+  blocking suppressed the notification fan-outs but promised more —
   "a blocked commenter is invisible to them even mid-thread" — which no render
   path honored: a blocked reader's comments kept showing in the post thread,
   the discussion feed, and comment search. Blocking is a receiver-side opt-out,
@@ -860,13 +844,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page, and pagination totals stay the server's real count (blocking is a
   per-viewer view, not a global deletion). A Playwright journey covers all
   three surfaces — thread → discussion feed → comment search. Frontend 2367
-  unit tests + the e2e journey all green (round 386, DEC-436/DEC-437).
-- ✏️ **Guest comment management (round 385)**: comment edit/delete was
+  unit tests + the e2e journey all green.
+- ✏️ **Guest comment management**: comment edit/delete was
   signed-in-reader only, so an anonymous commenter who made a typo had no way
   to fix or withdraw it (and every comment is moderated, so it became
   permanent the moment it was approved). A guest who left an email now gets a
   "your comment is live — manage it" email at approval carrying the same
-  per-comment secret token the reply email already used (DEC-332); that link
+  per-comment secret token the reply email already used; that link
   opens a flat `/comment-manage` page where they can edit the text (it
   re-enters moderation, exactly like a signed-in reader's edit) or delete the
   comment (replies are reparented so the thread stays intact). New token-gated
@@ -875,8 +859,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Zero-DDL — it reuses the existing token column and delivery path. Backend
   1839 + frontend 2358 unit tests + a Playwright journey (comment with consent
   → approval → emailed link → edit → delete → link spent) all green
-  (round 385, DEC-435).
-- 📴 **Offline reading (round 384)**: the service worker existed only for web
+  .
+- 📴 **Offline reading**: the service worker existed only for web
   push, and only for readers who opted in — everyone else had no offline story
   at all. `/sw.js` is now registered app-wide in production builds and keeps a
   network-first, bounded runtime cache of successful same-origin GETs: visiting
@@ -886,8 +870,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stale), the cache auto-evicts oldest entries past 60, and API/admin/feeds and
   cross-origin requests pass through untouched. 2351 frontend unit tests + an
   offline-reading e2e (register → visit a post → drop the network → reload →
-  article still renders) green (round 384).
-- 🐎 **Bounded reading-summary aggregation (round 383)**: `/me/history/stats`
+  article still renders) green.
+- 🐎 **Bounded reading-summary aggregation**: `/me/history/stats`
   used to scan a reader's entire history and materialize every post row —
   including `content` — to compute reading-minutes in Python (multi-MB per
   /history pageview for heavy readers). A denormalized
@@ -897,14 +881,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the streak heatmap; no post content ever leaves the database in that endpoint.
   The estimate tracks the content as last READ, so editing a post afterwards no
   longer mutates a reader's total. Migration verified on SQLite and
-  PostgreSQL 18 (round 383, ISS-451).
-- 🕳️ **Naive-UTC hardening (round 383)**: `comments.reviewed_at/edited_at` and
+  PostgreSQL 18.
+- 🕳️ **Naive-UTC hardening**: `comments.reviewed_at/edited_at` and
   `reading_history.viewed_at` are naive-UTC DateTime columns, but four write
   sites (crud approve/edit/record/import + the admin bulk-approve stamp + the
   viewed_at ORM default) assigned aware `datetime.now(UTC)` — a latent trap if
   a row is cached or serialized above the DB. Writes now use the `utc_now_naive`
-  helper consistently (round 383, ISS-452).
-- 🧭 **Compact top nav with a "My" avatar menu (round 382)**: the signed-in
+  helper consistently.
+- 🧭 **Compact top nav with a "My" avatar menu**: the signed-in
   header had grown to 14 flat links plus search, push, language and theme — it
   needed 1400px+ in English (hidden-scrollbar overflow at xl) and its width
   jumped when a reader signed in. Every reader-personal link (bookmarks,
@@ -920,7 +904,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ever-present. 2347 frontend unit tests, typecheck and lint all green; the
   my-comments e2e now drives the avatar menu (history, a guest journey,
   navigates directly).
-- 🚫 **Reader blocks (round 379)**: the blog had reader-to-reader follows,
+- 🚫 **Reader blocks**: the blog had reader-to-reader follows,
   public profiles and @-mention fan-out, but no way for a reader to stop a
   barking commenter's mentions, replies and activity landing in their inbox.
   A Block/Unblock toggle on a reader's public profile — one-way and invisible
@@ -930,8 +914,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   follow-activity each suppress a blocked commenter's fan-out, while `/account`
   lists blocked readers for one-click unblock that restores everything. 1799
   backend tests @93.77% (+18, Postgres-verified), 2318 frontend tests (+9), and
-  a reader-block e2e journey all green (DEC-425, TASK-437).
-- 📧 **Guest thread-follow by email (round 380)**: comment-thread follow was
+  a reader-block e2e journey all green.
+- 📧 **Guest thread-follow by email**: comment-thread follow was
   reader-gated, so a visitor wanting to follow ONE discussion by email had no
   on-ramp but registering. A compact form on a post's comment header takes an
   address and double opt-in confirms it (auth-free 202, generic no-oracle
@@ -941,11 +925,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pending/unsubscribed rows stay silent while a commenter's own address is
   skipped. Never needs an account. 1814 backend tests @93.72% (+15,
   Postgres-verified), 2332 frontend tests (+14), and a guest-thread-follow e2e
-  journey all green (DEC-427, TASK-438).
-- 📧 **Weekly summary for followed discussions (round 381)**: round-380 guest
+  journey all green.
+- 📧 **Weekly summary for followed discussions** guest
   thread-follow emails once per approved comment — a follower of several active
   threads is spammed daily with no cadence choice, the same gap the newsletter
-  closed in DEC-355. A confirmed follower can now pick "one weekly summary"
+  closed. A confirmed follower can now pick "one weekly summary"
   (subscribe-time flag, the confirm-page checkbox, or the token-gated
   `/guest/digest` flip): weekly rows are excluded from the per-comment fan-out
   (one channel per subscriber) and the weekly digest job (same CLI / admin
@@ -953,8 +937,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   thread aggregating that week's approved comments — deep-linked to each, same
   one-click unsubscribe. 1823 backend tests @93.67% (+9, Postgres-verified),
   2335 frontend tests (+3), and the guest-thread-follow e2e journeys (two tests)
-  all green (DEC-429, TASK-439).
-- 📧 **Weekly-digest operator console (round 378)**: the weekly digest (for both
+  all green.
+- 📧 **Weekly-digest operator console**: the weekly digest (for both
   readers and guests) ran on complete backend machinery with no admin reading
   surface —
   an operator could trigger it by CLI or the superuser endpoint but could not
@@ -967,9 +951,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or stamping) and a confirmed **send now** for superusers — the monitoring and
   preview loop that completes the digest feature. 1781 backend tests @93.75%
   (+7, Postgres-verified), 2309 frontend tests (+5), and a digest-panel e2e
-  journey all green (DEC-423, TASK-436).
-- 📊 **Reading insights on `/history` (round 372)**: the streak and 52-week
-  heatmap (DEC-316) showed the *calendar shape* of reading — but a reader
+  journey all green.
+- 📊 **Reading insights on `/history`**: the streak and 52-week
+  heatmap showed the *calendar shape* of reading — but a reader
   wondering "how many posts have I read in the last month" or "which topics do
   I actually read most" had no aggregate to look at, only the raw row list. A
   new `GET /api/reader/me/history/insights` returns the *content shape*:
@@ -983,7 +967,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   read path: un-published and scheduled posts neither leak nor count.
   1774 backend tests @93.74% (+7), 2304 frontend tests, and a new
   reading-insights e2e journey all green.
-- 💔 **In-place unlike on `/liked` (round 371)**: every reader-owned list
+- 💔 **In-place unlike on `/liked`**: every reader-owned list
   surface had a management control except the liked-posts page — bookmarks has
   per-row remove and the To-read/Done toggle, but taking a like back meant
   visiting the post and hitting the heart. Now each `/liked` card carries one:
@@ -996,10 +980,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drain-clamp reloads when the last page empties. Frontend-only: the backend
   endpoint already existed. 2300 frontend tests and a new liked-unlike e2e
   journey all green.
-- 🔍 **Liked-posts recall search (round 370)**: the last reader-owned surface
-  without keyword search finally gets it — bookmarks (DEC-124), `/history`
-  (DEC-148) and my-comments (round 369) could all be filtered by term, but the
-  `/liked` page (round 359) only paginated, so a reader who'd liked a lot of
+- 🔍 **Liked-posts recall search**: the last reader-owned surface
+  without keyword search finally gets it — bookmarks, `/history`
+  and my-comments could all be filtered by term, but the
+  `/liked` page only paginated, so a reader who'd liked a lot of
   posts couldn't find the one they now recalled. `/liked` now has a debounced
   (300 ms) search box and `GET /api/reader/me/likes` takes an optional `q` that
   matches the post title or excerpt case-insensitively (escape-aware LIKE),
@@ -1009,10 +993,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole liked set is searched, not just the loaded grid. 93.72% coverage;
   1767 backend tests, 2296 frontend tests, and a new liked-search e2e journey
   all green.
-- 🔍 **My-comments keyword search (round 369)**: a reader with a long comment
+- 🔍 **My-comments keyword search**: a reader with a long comment
   history can now find a single comment by what it says — recall-search for the
   comment you left, the last reader-owned surface still without it (bookmarks
-  and `/history` gained theirs in DEC-124/DEC-148). The `/comments` page gains
+  and `/history` gained theirs). The `/comments` page gains
   a debounced (300 ms) search box, and `GET /api/reader/me/comments` takes an
   optional `q` that matches comment content case-insensitively (escape-aware
   LIKE, so `%`/`_` match literally), composes with the status filter, and stays
@@ -1022,13 +1006,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The filter runs in SQL, so the whole history is searched, not just the loaded
   page. 93.72% coverage; 1757 backend tests, 28 frontend page tests, and a new
   my-comments-search e2e journey all green.
-- **Discussion RSS/Atom (round 368)**: the conversation is findable (round 366)
-  and browsable (round 367) — now it's SUBSCRIBABLE too, since the RSS/Atom
+- **Discussion RSS/Atom**: the conversation is findable
+  and browsable — now it's SUBSCRIBABLE too, since the RSS/Atom
   line-up previously covered posts only (site/category/tag/author/series).
   New `/rss/comments.xml` (RSS 2.0) and `/rss/comments.atom.xml` (Atom) stream
   the newest approved comments site-wide: one item per comment carrying the
   commenter (display name/nickname) + post title, with a perma link ON the
-  comment (`#comment-{id}`, DEC-321) rather than just the post headline. The
+  comment (`#comment-{id}`) rather than just the post headline. The
   visibility gate matches the discussion feed/search exactly — pending/rejected
   comments and comments on draft or not-yet-published posts never appear, and
   the content never carries email/ip — and the feeds are cached under scoped
@@ -1037,7 +1021,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   RSS/Atom auto-discovery tags, fronted by dedicated Nuxt proxy routes. 93.72%
   coverage; 1748 backend tests, 7 frontend tests, and 2 discussion-RSS e2e
   journeys all green.
-- **Latest discussion feed (round 367)**: round 366 made the discussion
+- **Latest discussion feed** made the discussion
   findable, but a visitor who wants to see what the site is talking about right
   now still had no entry point — the thread is the blog's second content
   asset, with no "what's happening" surface beyond each post's comment list and
@@ -1045,20 +1029,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   footer) streams the newest approved comments site-wide, newest first: each
   card carries the commenter identity (display name for signed-in commenters),
   the comment content, and the title of the post it lives on, and clicking
-  deep-links ONTO that exact comment (`#comment-{id}`, DEC-321) rather than
+  deep-links ONTO that exact comment (`#comment-{id}`) rather than
   just the post headline. The visibility gate matches comment search exactly:
   pending/rejected comments and comments on draft or not-yet-published posts
   never appear; emails/IPs never leave the backend. Public, no auth,
   paginated, SEO'd. 93.71% coverage; 1741 backend tests, 13 frontend tests,
   and 2 discussion-feed e2e journeys all green.
-- **Public comment search (round 366)**: the search box could find articles,
+- **Public comment search**: the search box could find articles,
   but the discussion — the blog's second content asset — was unsearchable.
   `/search` now gains a Comments mode (a search-scope tablist, living in the
   URL as `?type=comments` so a comment-search share link lands straight in that
   mode): it matches approved comments by content (every term must hit, newest
   first), and each hit carries a highlighted snippet (escaped before `<mark>`,
   so XSS-safe) plus the post brief, with the card deep-linking ONTO the comment
-  (`#comment-{id}`, DEC-321) instead of just the post headline. The
+  (`#comment-{id}`) instead of just the post headline. The
   visibility gate mirrors article search: pending/rejected comments and
   comments on draft or not-yet-published posts never match; emails/IPs never
   leave the backend. Posts-only filters (category/tag/sort/date range) hide in
@@ -1066,7 +1050,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metacharacters like `%`/`_` are matched literally (review feedback). 93.69%
   coverage; 1734 backend tests, 58 frontend search tests, and 2 comment-search
   e2e journeys all green.
-- **Reader-to-reader follow (round 365)**: the follow wheel — categories,
+- **Reader-to-reader follow**: the follow wheel — categories,
   series, tags and authors all already had a "tell me when this speaks" axis —
   finally gains its person-to-person entry: a signed-in reader can follow
   ANOTHER READER (the commenter behind a public profile) from their
@@ -1080,14 +1064,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   who turned the kind off are skipped, and a notification-write failure can
   never break the approval. `/account` gains a "Followed readers" section for
   one-click unfollow (which stops the fan-out), `reader_comment` is a real
-  per-kind opt-out on /notifications (DEC-171) like the other inbox kinds, and
+  per-kind opt-out on /notifications like the other inbox kinds, and
   the new follower count + the caller's own follow stance ride the public
   profile payload (no new endpoint, no PII). Self-follow is rejected and an
   unknown/deactivated target is a uniform 404 — no followability oracle.
   Additive `reader_follows` table (unique per pair, `notify` reserved for
   future per-follow control) + a `reader_notification_prefs.reader_comment`
   column (migrations l5n7p9r1t3v5, m7d9f1a3b5c7; round-trip SQLite + Postgres).
-- **Reader two-factor authentication (round 364)**: reader accounts have
+- **Reader two-factor authentication**: reader accounts have
   accumulated durable private data over rounds 358–363 — cloud-synced
   bookmarks/likes/history, the GDPR export bundle, email, follows, notification
   prefs and push devices — all behind a single email+password credential, so a
@@ -1108,23 +1092,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nullable `two_factor_secret` columns (migration j3l7o9q1s5t3, round-trips
   SQLite + Postgres); the secret is never serialized into any profile or token
   response. `pyotp` added as the TOTP backend.
-- **Public "Saved posts" profiles (round 363)**: round 360 gave readers an
+- **Public "Saved posts" profiles** gave readers an
   opt-in "Liked posts" discovery tab; the companion curation axis is what a
   reader chose to KEEP (save-for-later / done queue) rather than merely
   appreciate. A second `/account` checkbox (off by default, fuchsia, distinct
   from the likes flag) now publishes a "Saved posts" tab on the public
   `/readers/{id}` profile, fed by a public `GET /api/readers/{id}/bookmarks`
-  anyone can browse, newest save first. Privacy posture mirrors round 360
+  anyone can browse, newest save first. Privacy posture mirrors
   exactly: the flag defaults OFF, a reader who never opts in gets no tab, and
   the endpoint 404s identically for an unknown reader and an opted-out one
   (one indistinguishable answer — no oracle), while the published list is
   filtered to publicly-visible posts only (no draft/scheduled leak). The flag
   rides `/account` PATCH, the `/me` + public profile envelopes, and the
   portable data export; additive `public_bookmarks` column (migration
-  i2k4m6n8p0r2, `sa.false()` default like the round-361 dialect fix), served
+  i2k4m6n8p0r2, `sa.false()` default like the dialect fix), served
   no-store per-reader.
-- **Recommended for you on the post page (round 362)**: the homepage has had
-  an affinity-scored "Recommended for you" row since round 278 (DEC-128), but
+- **Recommended for you on the post page**: the homepage has had
+  an affinity-scored "Recommended for you" row since then, but
   the post page — the single highest-intent "what should I read next?" moment —
   only offered topic-similar Related Posts and person-shaped
   "More from this author", neither keyed to what the reader actually likes.
@@ -1134,7 +1118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and signed-out readers see nothing, and a reader with no affinity (cold
   start) sees no orphaned heading — the strip appears only when there is
   actually something to show.
-- **Bookmark To-read vs Done queue (round 361)**: a saved post used to be a
+- **Bookmark To-read vs Done queue**: a saved post used to be a
   single undifferentiated concept — bookmarks were "things to read later" and
   also "things I've already read and want to keep", conflated in one list with
   no way to tell them apart. The `/bookmarks` page now separates them: a new
@@ -1145,14 +1129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `reader_bookmarks.done` column (migration g1h3i5k7m9n1, defaults off so every
   existing bookmark reads as To-read), `GET /api/reader/me/bookmarks?done=…`
   filter, idempotent `PATCH /api/reader/me/bookmarks/{id}/done`, per-bookmark
-  `done` in the list serializer and the portable data export (DEC-334), and
+  `done` in the list serializer and the portable data export, and
   cloud-synced for signed-in readers — the flip is PATCHed up immediately and
   the merge preserves a Done mark made while logged out (the PUT push can't
   carry done, so a freshly-pushed server row must not clobber it). Also fixes a
   latent SQLite dialect bug the migration review surfaced: `done`/`public_likes`
   now default via `sa.false()` so pre-existing rows read back `false` on both
   engines (the string form stored TEXT `'false'` that SQLite read back True).
-- **Public "Liked posts" profiles (round 360)**: round 359 made a reader's
+- **Public "Liked posts" profiles** made a reader's
   likes durable cloud rows, but the only surface was the reader's own private
   `/liked` page — the likes were invisible to everyone else. Now a reader can
   opt in on `/account` (a checkbox beside the bio/avatar, off by default) to
@@ -1164,9 +1148,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (one indistinguishable answer — no oracle for "does this reader exist" or
   "what do they like"). The flag rides `/account` PATCH, the `/me` + public
   profile envelopes, and the portable data export (likes + flag join the
-  bundle, DEC-334). Additive `public_likes` column (migration f6h8j0l2n4p6),
+  bundle). Additive `public_likes` column (migration f6h8j0l2n4p6),
   no cache interaction (per-reader, served no-store).
-- **Cloud-synced likes + liked-posts list (round 359)**: a like used to be a
+- **Cloud-synced likes + liked-posts list**: a like used to be a
   localStorage marker that a reader could only ever add — one-shot, device-
   local, no list, no way back. A signed-in reader's like is now a durable,
   cross-device cloud row: the post-page heart is a real toggle (a second click
@@ -1179,9 +1163,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shows up on the next. Guests keep the anonymous client-deduped like, and a
   stale session surfaces a sign-in warning on `/liked` instead of silently
   losing markers.
-- **Writer avatar (round 358)**: the person-shaped author surface had a
-  voice (bio, round 357) but no face — every rendering was a generic user
-  icon while readers had had avatars since round 299. A superuser now uploads
+- **Writer avatar**: the person-shaped author surface had a
+  voice (bio) but no face — every rendering was a generic user
+  icon while readers had had avatars since then. A superuser now uploads
   a small profile picture next to the pen name in admin/users (the same
   validated media pipeline + dedicated `static/avatars` storage as the reader
   avatar), and that face renders everywhere the writer appears publicly: the
@@ -1189,17 +1173,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `/authors` index card, and the archive header. No-oracle posture holds:
   the avatar is a filename-scoped `/static` URL only, and a username-only
   admin still answers 404 with nothing to leak.
-- **Writer bio (round 357)**: the person-shaped author surface (rounds 343-356)
+- **Writer bio**: the person-shaped author surface (rounds 343-356)
   built bylines, archives, indexes, follow — but never introduced the person.
   A superuser now sets a short public "about this writer" text next to the pen
-  name in admin/users (same 500-char plain-text cap as the reader bio from
-  round 352), and it renders under the writer's name on their `/authors/{id}`
+  name in admin/users (same 500-char plain-text cap as the reader bio), and it
+  renders under the writer's name on their `/authors/{id}`
   archive header — the page where a reader decides about them — plus a
   one-line window on the writer's `/authors` index card. The archive envelope
   carries it (a new `AuthorArchive` shape) while per-post bylines stay slim,
   so no list payload repeats the text on every card. No-oracle posture holds:
   a username-only admin still answers 404 with no bio to leak.
-- **More from this author (round 356)**: a reader who just finished and loved
+- **More from this author**: a reader who just finished and loved
   one post used to have no in-place path to the writer's other work — the
   related-posts block is topic-shaped (category/tags), and the archive was a
   click away but left the article. Every post by a pen-named writer now ends
@@ -1209,8 +1193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the existing public author-archive endpoint (no backend change) — the
   person-shaped discovery surface that rounds 353-355 followed, made
   browsable at the very moment of enjoyment.
-- **Follow a writer from their archive (round 355)**: the author follow
-  (round 353) lived on post bylines and in `/account`, but not on the page
+- **Follow a writer from their archive**: the author follow
+  lived on post bylines and in `/account`, but not on the page
   where a reader actually decides about a writer — the public `/authors/{id}`
   archive. Its header already offered an RSS subscribe link; now signed-in
   readers get the same in-app follow (new-post inbox + Web Push + a place in
@@ -1219,7 +1203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   has. Reusing that component also fixes a genuine dead end: a writer with
   nothing published yet has no byline buttons anywhere, so the archive was
   the only place that follow could exist at all.
-- **Followed authors enter the follows feed (round 354)**: round 353 let a
+- **Followed authors enter the follows feed** let a
   reader follow a writer, but that follow had no browsing surface — only the
   mixed notification inbox showed the writer's new posts. Now the author
   follow pays the same discovery payoff as the topic follows: the `/follows`
@@ -1228,7 +1212,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   category/series/tag matches, newest-first as always, and authored cards
   carry the writer's pen-name byline (a `lucide:user` chip) so you can see at
   a glance which posts you got for the person and which for the topic.
-- **Author follow (round 353)**: on a multi-editor blog a reader who loved one
+- **Author follow**: on a multi-editor blog a reader who loved one
   writer's posts wants to follow just that person — a topic-shaped
   category/series/tag follow can't express it. Every post's author byline now
   carries a follow button (signed-in readers only): one click subscribes the
@@ -1239,14 +1223,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   person. Unfollow stops the flow instantly, and only a pen-named writer is
   followable — a username-only admin answers the same 404 as an unknown id
   (the no-oracle posture the rest of the site already keeps).
-- **Reader profile bio (round 352)**: a reader community is only as good as
+- **Reader profile bio**: a reader community is only as good as
   the people in it, and a profile made of a name, an avatar and a join date
   has nothing to say. Readers can now write a short "about me" in
   `/account` — plain text, one paragraph, capped at 500 chars — that renders
   under their display name on the public `/readers/{id}` page (alongside
   their approved comments and streak), completing the identity surface of a
   commenter readers actually get to know.
-- **Per-post comment control (round 351)**: a blog lives a long time, and a
+- **Per-post comment control**: a blog lives a long time, and a
   post that draws every comment the internet has to offer — high-noise
   threads, stale evergreen content, a privacy-sensitive piece — now lets the
   operator close the door on that one post without deleting the conversation
@@ -1255,7 +1239,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rendering its existing thread but replaces the comment form with a
   "Comments are closed" note, and the API refuses new comments with a clear
   403 (existing comments stay readable either way).
-- **Slug-change redirects (round 350)**: when an operator re-slugs a post,
+- **Slug-change redirects**: when an operator re-slugs a post,
   series or static page, every URL that was already out in the wild — shared
   links, search results, RSS feeds, in-app bookmarks — used to dead-end at a
   404. Re-slugging now records a permanent redirect: the old URL keeps
@@ -1264,7 +1248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   public site turns that into a true HTTP 301 — crawlers transfer link equity
   instead of wasting it, link-shares and bookmarks land on the new slug, and
   repeated renames never chain: A→B then B→C resolves A→C in one hop.
-- **Admin "duplicate post" (round 349)**: an editor running repeat-shaped
+- **Admin "duplicate post"**: an editor running repeat-shaped
   content (weekly digests, release notes, episode templates) had to hand-copy
   the previous post for every sibling. A "Duplicate" action on the admin posts
   list clones a post into a fresh draft — same content, excerpt, cover,
@@ -1274,8 +1258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is a private draft that can neither leak nor announce itself — then the
   editor jumps straight into the new draft. No comments or notifications are
   copied.
-- **Sitemap covers pages & authors (round 348)**: the sitemap grew with the
-  site — `/pages/{slug}` (round 347) and the pen-named `/authors/{id}`
+- **Sitemap covers pages & authors**: the sitemap grew with the
+  site — `/pages/{slug}` and the pen-named `/authors/{id}`
   archives + `/authors` index (rounds 343/346) are real, indexable pages, but
   the cached `/sitemap.xml` still only listed posts, series, categories and
   tags, so a freshly published privacy policy or writer archive was
@@ -1284,7 +1268,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writer's archive (username-only admins stay out, preserving no-oracle), and
   any page create/update/delete busts the feed cache so a publish reaches the
   sitemap on the next render, not after a TTL expiry.
-- **Static pages CMS (round 347)**: a self-hosted blog is expected to speak
+- **Static pages CMS**: a self-hosted blog is expected to speak
   for itself — privacy policy, terms, contact, changelog — but the only static
   page was a hardcoded `/about`, so a site owner needed a code change +
   redeploy for every such page. Admins can now create, publish and manage
@@ -1296,7 +1280,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unknown slug answers the same 404, so drafts can't be enumerated — and
   published pages are linked from the site footer, so a privacy policy or
   terms page is discoverable without a code deploy.
-- **Public writers index (DEC-359, round 346)**: `/authors` was a one-page
+- **Public writers index**: `/authors` was a one-page
   dead end before — a byline or archive link could take you to one writer, but
   there was nowhere listing every pen-named writer, so discovery on a
   multi-editor blog (and the top-level Authors nav item, which previously had
@@ -1306,13 +1290,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   /api/authors` that only ever lists writers with a public pen name (username-
   only admins stay invisible, preserving the no-oracle posture), plus a "All
   writers" back link on the archive page.
-- **Per-author RSS feed (DEC-359, round 345)**: RSS consumers can now follow a
+- **Per-author RSS feed**: RSS consumers can now follow a
   single writer — `/authors/{id}` emits an autodiscovery `<link>` and a visible
   subscribe link to `/rss/authors/{id}.xml`, which serves exactly that
   pen-named writer's published posts on the same scoped-feed contract as the
   category/series feeds. Unknown ids and username-only admins answer the same
   404 as the archive page, so the feed cannot enumerate admins.
-- **Admin post-editor author assignment (DEC-359/TASK-406)**: the post editor
+- **Admin post-editor author assignment**: the post editor
   gains an author picker — any admin can attribute a post they wrote to
   another pen-named writer (or keep the default "the writing admin"); the
   editor pre-selects a post's stored author, and the public byline/archive
@@ -1320,7 +1304,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (admin-auth, deliberately not superuser-only) exposes only pen names, so
   editors can assign authors without ever touching the credential-adjacent
   `/api/admin/users`.
-- **Post author attribution (DEC-359)**: a multi-editor blog displayed posts,
+- **Post author attribution**: a multi-editor blog displayed posts,
   categories, series, tags — but never who wrote them: a post carried no
   author identity, no byline, and there was no way to browse one writer's
   published posts. Posts now carry an author, defaulted at create to the
@@ -1332,7 +1316,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that writer's published posts, titled by pen name even before they have
   published anything. Unknown ids and username-only admins answer the same 404,
   so the surface cannot enumerate admins.
-- **Reader email change (DEC-357)**: the login email was immutable with no
+- **Reader email change**: the login email was immutable with no
   verification flow, so a reader whose address changed was stranded — per-event
   mail and the weekly digest went to the dead address and the only "fix" was
   deleting the account (total data loss). A signed-in reader can now switch
@@ -1344,10 +1328,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   working until the link is opened, a target taken by another account while
   pending is a 409, and no endpoint ever reveals whether an address belongs to
   an account.
-- **Newsletter digest cadence (DEC-355)**: the guest newsletter (DEC-351) had
+- **Newsletter digest cadence**: the guest newsletter had
   exactly one cadence — one email per new post, so a high-volume blog filled a
   subscriber's inbox daily with no lighter option (reader accounts already had
-  both per-event mail and a weekly digest, DEC-201/DEC-326). A guest subscriber
+  both per-event mail and a weekly digest). A guest subscriber
   can now choose the weekly digest instead: opt in at the footer form (a
   checkbox) or from the confirm page, and the weekly digest job — the same one
   that serves readers (one advisory lock, one SMTP session, the same rolling
@@ -1356,7 +1340,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   token unsubscribe footer. A digest subscriber is excluded from the per-post
   fan-out, so they get exactly the cadence they chose, never both. Per-post
   stays the default; the digest is opt-in like the reader schema.
-- **Admin newsletter management (DEC-354)**: the guest newsletter (DEC-351) had
+- **Admin newsletter management**: the guest newsletter had
   no operator surface — an admin could not see who was subscribed, how many were
   confirmed vs pending, or remove an address. The admin section now lists every
   subscriber (email, confirmed/pending chip, subscription date) with a status
@@ -1366,7 +1350,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   management loop cannot serve an address someone else subscribed, a dead
   mailbox, or a subscriber who asked to be removed and lost their token — this
   page closes that loop.
-- **Guest email newsletter (DEC-351)**: the blog's entire email surface (weekly
+- **Guest email newsletter**: the blog's entire email surface (weekly
   digest, per-event emails, guest reply emails) was gated behind a reader
   account or a comment, so an anonymous visitor who just wanted "email me new
   posts" had no on-ramp other than RSS (a tool for technical readers). A
@@ -1380,7 +1364,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (mirroring reply-notify), scheduled posts that cross publish_at surface the
   same exactly-once email via the fire-on-read sweep, and a mail failure never
   breaks the publish that triggered it (best effort, fail-closed without SMTP).
-- **Server-trail "Continue reading" on the home page (DEC-348)**: the home
+- **Server-trail "Continue reading" on the home page**: the home
   Continue-reading row was a purely device-local localStorage trail — a signed-in
   reader on a new device saw an empty row even though the server-side reading
   trail held exactly what they left. The row now sources a signed-in reader's
@@ -1388,7 +1372,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opening the post at the restored spot, so continue-reading works across
   devices exactly where the resume trail lives. The server trail wins over the
   device-local row; guests keep the lightweight local trail unchanged.
-- **Cross-device resume reading (DEC-346)**: the resume position was an
+- **Cross-device resume reading**: the resume position was an
   absolute pixel offset saved against one device's layout — a reader who left
   off at 900px on a desktop returns and instantly finds themselves "900px" is
   a different place on their phone. The post page now also saves the position
@@ -1397,16 +1381,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the current viewport — so a phone→desktop (or any size) continuation lands
   at the same spot. Pre-feature rows keep working via the pixel fallback, and
   the back-to-top clear wipes both values.
-- **Scheduled-post sweep on every surface (DEC-344)**: the fire-on-read
-  announcement for crossed scheduled posts (DEC-336) covered the post list,
+- **Scheduled-post sweep on every surface**: the fire-on-read
+  announcement for crossed scheduled posts covered the post list,
   post detail, and sitewide feeds — but other surfaces that show a just-live
   post (`/follows`, the follower's own aggregate feed; search; category/series
   feeds; the sitemap) did not trigger it, so a follower who watches `/follows`
   could see the post appear with no push/inbox/email. Every such surface now
   fires the same exactly-once fan-out, so no follower loses the notification
   no matter where they look.
-- **Site-language guest & recovery emails (DEC-342)**: the reader-side emails
-  were localized per reader (DEC-338/DEC-340), but the sender-side ones were
+- **Site-language guest & recovery emails**: the reader-side emails
+  were localized per reader, but the sender-side ones were
   still hardcoded Chinese — the guest reply email (a visitor with no account
   got 有人回复了你的评论) and the password reset email (a bilingual subject with
   a fully Chinese body, and a hardcoded "X-Blog" instead of the site's name).
@@ -1414,8 +1398,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   zh preserves the existing copy) and the reset email uses the configured
   `SITE_TITLE` — an English-configured site now sends English, correctly-named
   guest and recovery emails everywhere.
-- **Reader-language reply/thread/mention copy (DEC-340)**: the reader-locale
-  story (DEC-338) covered only new-post notifications — an English reader got
+- **Reader-language reply/thread/mention copy**: the reader-locale
+  story covered only new-post notifications — an English reader got
   an English "New post" email while the reply / followed-thread / @-mention
   rows and emails stayed hardcoded Chinese. The remaining kinds are now
   localized per reader too: an English reader gets "Someone replied to your
@@ -1424,7 +1408,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switch, in the same batch as a Chinese reader keeping 有人回复了你的评论 /
   你订阅的讨论有新评论 / 有人在评论中提到了你. Browser-push payloads stay the
   operator-global copy (a single payload can't vary per reader browser).
-- **Reader-language notification copy (DEC-338)**: notification copy was
+- **Reader-language notification copy**: notification copy was
   hardcoded Chinese for every reader — durable inbox titles (系列更新 /
   新文章发布 / 《…》), the per-event email Subject + body, and the weekly digest
   were all zh regardless of the reader's UI language or the site's. A signed-in
@@ -1434,7 +1418,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows, emails, and digest from the moment they switch, while a reader who
   never switches (or any existing reader) keeps the zh copy unchanged — the
   locale column is additive and NULL reads as the site default.
-- **Scheduled posts notify followers when they go live (DEC-336)**: a post
+- **Scheduled posts notify followers when they go live**: a post
   written as published-but-future `publish_at` is a first-class editorial-calendar
   affordance, but the new-post fan-out only ran at WRITE time when the post was
   already visible — so the moment the clock crossed `publish_at` and the post
@@ -1447,7 +1431,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (create/update/restore/admin editor), so a post can never be notified twice.
   Exactly-once even under concurrent workers, and retroactive: a scheduled post
   that already crossed before this shipped is announced on its next public read.
-- **Complete reader data export (DEC-334)**: `GET /api/reader/me/export` is the
+- **Complete reader data export**: `GET /api/reader/me/export` is the
   GDPR-style "download my data" bundle, but it shipped only
   account/bookmarks/comments/history — a reader couldn't recover their follows,
   notification preferences, inbox history, or device registrations. The bundle
@@ -1456,7 +1440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `push_subscriptions` (endpoints + created_at — never the cryptographic keys).
   Cross-reader data and draft/scheduled-post leakage invariants unchanged;
   contract tests cover a fully-populated reader through the real API.
-- **Guest commenter reply-email (DEC-332)**: the comment form REQUIRES an
+- **Guest commenter reply-email**: the comment form REQUIRES an
   anonymous commenter to leave an email, and that email was stored on the
   comment row but never used — the reply-notify guard was
   `parent.reader_id is not None`, so a reply to an anonymous comment notified
@@ -1466,7 +1450,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-comment unsubscribe link; a guest who never opted in (or later
   unsubscribed) is never emailed, and approval still succeeds when SMTP is
   unconfigured (best effort, like every other notification path). Additive —
-  `reply_notify_email` + `reply_notify_token` on `comments` (DEC-009) — with a
+  `reply_notify_email` + `reply_notify_token` on `comments` — with a
   public `POST /api/comments/reply-notify/unsubscribe` (idempotent; unknown
   token 404; the landing page tells a spent/unknown link apart from a network
   outage, so the holder of a still-valid token isn't told their link is dead)
@@ -1476,21 +1460,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stops later mail; unknown token 404; unconfigured SMTP no-op; token/consent
   never on the public thread list), CommentForm checkbox unit tests, the
   unsubscribe page test, and an e2e journey through the SMTP sink.
-- **Email copy of @-mentions (DEC-326)**: the @-mention fan-out (DEC-322) only
+- **Email copy of @-mentions**: the @-mention fan-out only
   reached the durable inbox and the browser push, so a reader who relies on the
-  opt-in email channel (DEC-197) never heard about the single most personal
+  opt-in email channel never heard about the single most personal
   notification — being called out by name. Mention dispatch now also sends the
   email when the reader opted into the new per-kind `email_mention` preference
   (off by default like the other email kinds), gated independently of the
   in-app mention toggle (a reader can mute the inbox row and still get the
   email, or vice versa); the email carries the same title/body/deep link as the
   inbox row. Additive `email_mention` column on `reader_notification_prefs`
-  (DEC-009). Backend contract tests (email off by default but inbox still
+  . Backend contract tests (email off by default but inbox still
   lands; email on sends to the registered address; email survives an in-app
   mention opt-out; pref toggle round-trip; prefs surface exposes the new kind)
     - a frontend page test for the new preferences row.
-- **@-mention autocomplete (DEC-324)**: an approved comment could @-mention a
-  reader (DEC-322), but the commenter had to type the exact display name from
+- **@-mention autocomplete**: an approved comment could @-mention a
+  reader, but the commenter had to type the exact display name from
   memory — zero discovery, so the capability was near-unusable in practice.
   Typing `@` in the comment box now opens a suggestion list of active readers
   whose display name matches what follows (prefix matches ranked first,
@@ -1503,7 +1487,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no email/PII), CommentForm picker unit tests (open/move/insert/escape/no-
   results), and an e2e (type `@pick` → picker → pick → submit → approve → the
   named reader's inbox gains the mention row). No DDL.
-- **@-mention notifications (DEC-322)**: when an approved comment names a
+- **@-mention notifications**: when an approved comment names a
   reader's display name (e.g. `@Riki`), that reader now gets an inbox
   notification deep-linking to the exact comment. Before this there was no way
   to call a specific person into a discussion — you could only reply to a
@@ -1512,24 +1496,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   themselves, respects the reader's per-kind opt-out, and matches names at word
   boundaries (`@Riki` never notifies a reader named `Ri`). The new kind is
   `mention`: an opt-out inbox/`@`-mention preference on by default like the
-  other in-app kinds (consistent with DEC-171), backed by an additive
-  `mention` column on `reader_notification_prefs` (DEC-009 DDL-preserving; the
+  other in-app kinds (consistent with), backed by an additive
+  `mention` column on `reader_notification_prefs` (DDL-preserving; the
   `ReaderNotification.kind` field is a `String`, so the new kind needs no
   notification-table DDL). Backend contract tests (dispatch, self-mention skip,
   disabled preference, deactivated reader, boundary matching, batched scan),
   frontend page tests (kind label + preference toggle), and an e2e journey (a
   guest comment `@<name>` → admin approve → the named reader's inbox shows the
   `mention` row and its `#comment-<id>` link lands).
-- **Comment-history deep links (DEC-321)**: the /comments page and public reader
+- **Comment-history deep links**: the /comments page and public reader
   profiles linked each comment back to its post's HEADLINE, so a reader hunting
   their own (or a profile's) comment landed at the top of the thread. The "on
   post" jump now carries the `#comment-<id>` anchor — the post page's comment
-  list landing machinery (already proven by reply-notification deep links,
-  DEC-072) scrolls the reader to the exact comment. Frontend-only: two `NuxtLink`
+  list landing machinery (already proven by reply-notification deep links)
+  scrolls the reader to the exact comment. Frontend-only: two `NuxtLink`
   targets (`app/pages/comments.vue`, `app/pages/readers/[id].vue`); page unit
   tests + an e2e journey (comment → approve → `/comments` → click → lands on
   `#comment-<id>`).
-- **Sitemap completeness: series + every post, no silent cap (DEC-318)**: the
+- **Sitemap completeness: series + every post, no silent cap**: the
   sitemap omitted series entirely — `/series/[slug]` pages are indexable but
   were unreachable-by-sitemap — and fetched posts with a hard `limit=1000` and
   no pagination, so a blog past 1000 published posts silently lost every older
@@ -1540,7 +1524,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract tests (pagination loop exercised with a paged stub; series entries)
   and an e2e fetching the sitemap through the Nuxt origin after creating a
   series. No DDL.
-- **Reader-local reading streak & heatmap (DEC-316)**: the `/history` reading
+- **Reader-local reading streak & heatmap**: the `/history` reading
   streak and 52-week activity heatmap used to bucket every read in UTC while
   rendering in the browser's local time, so for any reader outside UTC the
   streak credited the wrong calendar day and the heatmap tooltips / "today"
@@ -1557,7 +1541,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deterministically. No DDL; the backend image now pins `tzdata` so IANA zone
   resolution is reliable in production (a missing zone would otherwise reject
   every stats request once the page always declares a timezone).
-- **Tag-scoped RSS works through the Nuxt proxy (DEC-314)**: the tags page
+- **Tag-scoped RSS works through the Nuxt proxy**: the tags page
   scopes its feed as `/rss/feed.xml?tag_id={id}` (autodiscovery + subscribe
   button), but the Nuxt origin's feed proxy stripped the query string — in the
   default compose/`nuxt preview` stack (no nginx in front) a reader who
@@ -1570,8 +1554,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tag_id`, and the plain global URL stays query-less) and a Playwright e2e
   that fetches the tag-scoped feed THROUGH the Nuxt origin (where the browser
   actually goes) and verifies only that tag's posts appear.
-- **Delete individual notifications (DEC-312)**: the reader notification
-  inbox (DEC-160) is durable but had no prune path — mark read / mark-all-read
+- **Delete individual notifications**: the reader notification
+  inbox is durable but had no prune path — mark read / mark-all-read
   only clear the badge, so consumed rows accumulated forever for a reader
   following several series/categories. A signed-in reader can now delete any
   single notification from `/notifications` (a per-row trash button beside
@@ -1582,7 +1566,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   404, oversized-id 422), frontend page tests (row removed, failure keeps the
   row, badge stays truthful), and a Playwright e2e journey (seed two rows,
   API-delete one, UI-delete the survivor to empty state).
-- **Moderated-comment surfacing fix (DEC-310)**: on a moderated deployment
+- **Moderated-comment surfacing fix**: on a moderated deployment
   (auto-approve off — the default) the create endpoint returns the pending
   comment but the list only serves approved rows, so after submitting, the
   thread surfacing code used to jump pages and walk the whole thread hunting a
@@ -1594,8 +1578,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Frontend-only; the pending comment's moderation result appears when the
   reader revisits the post. Covered by unit tests (pending skips fetch/scroll,
   approved still surfaces) and an e2e asserting no post-submit paging requests.
-- **Comment-image lightbox (DEC-308)**: clicking an image inside a comment
-  opens the same fullscreen viewer that post images use (DEC-302) — full
+- **Comment-image lightbox**: clicking an image inside a comment
+  opens the same fullscreen viewer that post images use — full
   resolution, Escape/backdrop/close to dismiss, arrow keys browse THAT
   comment's images (its body plus nested replies), focus returns to the
   trigger. The comment body previously rendered markdown images as plain,
@@ -1606,9 +1590,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `javascript:`/`data:` src can never open the viewer. New unit coverage
   (click opens, dangerous src excluded) and Playwright e2e journeys in
   `comment-lightbox.spec.ts`.
-- **Comment live preview (DEC-306)**: the comment form advertises
-  sanitized-Markdown rendering (DEC-088) and every comment waits in the
-  moderation queue (DEC-066), but a commenter had no way to see their draft
+- **Comment live preview**: the comment form advertises
+  sanitized-Markdown rendering and every comment waits in the
+  moderation queue, but a commenter had no way to see their draft
   render before submitting — a malformed markup draft would burn an approval
   cycle with zero feedback. The form now has a Write/Preview toggle: the
   Preview tab renders the draft through the exact `commentMarkdownToHtml`
@@ -1619,7 +1603,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (rendering, XSS-inert preview, draft preserved on toggle, submit-reset) and
   Playwright e2e (markdown render + script/event-handler payloads never reach
   the DOM) and zh/en i18n.
-- **Markdown image lightbox (DEC-302)**: clicking any image inside a post
+- **Markdown image lightbox**: clicking any image inside a post
   opens it at full resolution in a dark fullscreen viewer — Escape, a backdrop
   click or the close button dismisses it, arrow keys (or on-screen arrows)
   browse the post's images with wrap-around and an "n / total" counter, and
@@ -1633,25 +1617,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   again. New `MarkdownLightbox.vue` (Teleport overlay with focus management
   and body-scroll lock) wired into `MarkdownContent.vue`, plus component,
   composable and Playwright e2e coverage and zh/en i18n.
-- **Reader avatars (DEC-299)**: a reader can now set a profile picture from
+- **Reader avatars**: a reader can now set a profile picture from
   `/account` (upload or remove), completing the reader-identity surface that
-  reader profiles (DEC-294) opened. The avatar renders on the public
+  reader profiles opened. The avatar renders on the public
   `/readers/{id}` profile page and beside the verified reader's name on every
   comment they leave; readers without a picture keep the initial-letter
   placeholder. New `POST /api/reader/me/avatar` (multipart, reusing the media
   uploader's defense-in-depth image validation — content-type whitelist, size
   cap, magic bytes, full Pillow decode, never-larger re-encode) and
   `DELETE /api/reader/me/avatar`, an additive `reader_accounts.avatar_url`
-  column (DDL-preserving, DEC-009), and avatar_url threaded through the reader
+  column (DDL-preserving), and avatar_url threaded through the reader
   profile, public profile and comment-reader schemas. Backend contract tests,
   frontend page/component tests, Playwright e2e and zh/en i18n.
-- **Reader privacy fix (TASK-377)**: a signed-in reader who never set a display
+- **Reader privacy fix**: a signed-in reader who never set a display
   name was shown on the public comment list under their stored email (the
   comment nickname falls back to the account email). Those comments now render
   a generic "Reader" identity instead — the email never appears as a public
   name on the post's comment list (existing rows included), while the
   verified-reader badge stays.
-- **Public reader profiles (DEC-294)**: a commenter's verified display name is
+- **Public reader profiles**: a commenter's verified display name is
   now a clickable identity — on a post, an approved signed-in reader's name
   links to `/readers/{id}`, a public (no sign-in) profile page with their
   display name, join date and approved comments on publicly-visible posts,
@@ -1662,7 +1646,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commenter. New `GET /api/readers/{id}` route (profile + comment list, no
   email/last-login PII) + backend tests, page + component tests, Playwright
   e2e and zh/en i18n.
-- **Dedicated follows-feed page (DEC-292)**: a new `/follows` page for signed-in
+- **Dedicated follows-feed page**: a new `/follows` page for signed-in
   readers showing every new post from their followed categories, series and
   tags, paged beyond the 12-post home cap. The follows-feed endpoint
   (`GET /api/reader/me/follows-feed`) is now a paginated `{items, pagination}`
@@ -1670,19 +1654,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   into it, and a stale/expired session drops the reader back to sign-in like
   the notifications inbox. Backend contract tests (incl. page/total/total_pages
   and out-of-range clamps) + frontend page tests + Playwright e2e + zh/en i18n.
-- **In-place series-follow (DEC-290)**: the post page's in-series nav box gains
+- **In-place series-follow**: the post page's in-series nav box gains
   a follow control for signed-in readers — follow/unfollow the current series
   and toggle new-part notifications right where they were reading part N,
   instead of having to leave the post for the `/series/[slug]` page. Mirrors
-  the in-place tag-follow on the post footer (DEC-196); the follow persists to
+  the in-place tag-follow on the post footer; the follow persists to
   the account page's Followed-series section.
-- **Reading density (DEC-288)**: post pages gain an A−/A+ body-text scale
+- **Reading density**: post pages gain an A−/A+ body-text scale
   (three sizes) remembered per device across page loads — long-form reading
   comfort with no account required.
-- **Per-post reading trend (DEC-287)**: the admin post editor shows a 30-day
+- **Per-post reading trend**: the admin post editor shows a 30-day
   view sparkline for the open post (`GET /api/admin/stats/views/posts/{id}`) so
   the author sees whether a post is gaining or decaying readership at a glance.
-- **Reader password recovery (DEC-286)**: a reader who forgot their password can
+- **Reader password recovery**: a reader who forgot their password can
   request a single-use email reset link at `/forgot-password` and redeem it at
   `/reset-password` (new password → all sessions revoked → auto-login). The
   request endpoint is deliberately not an account-existence oracle, and the
@@ -1707,13 +1691,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cloud/index view now gates on its own fetch and the filtered posts region on
   the posts fetch, and the my-comments page no longer unmounts its status
   filter bar + keyword search box on a refetch (no more dropped focus).
-- ♿ **Screen-reader pagination announcements (round 398)**: the home feed
+- ♿ **Screen-reader pagination announcements**: the home feed
   announced page changes but every other paginated feed (tags, categories,
   archive, discussion, search, comments, follows, liked, reader profiles)
   swapped lists invisibly to assistive tech. A shared `common.state.pageAnnounce`
   live region now announces the landed page on all of them; paginated posts
   regions keep a single `role=status` source.
-- 🛠️ **Backend delete-orphan audit (rounds 400–402)**: the additive DEC-009
+- 🛠️ **Backend delete-orphan audit (rounds 400–402)**: the additive
   tables (plain-integer FKs, no ORM cascade) once cleaned only around post
   deletes now purge on every delete path they reference. Guest thread
   subscriptions now die with their post (a deleted post could otherwise
@@ -1738,34 +1722,34 @@ tests, 93.5% backend coverage).
 - **Full-text post search** with a search page, query highlighting, and
   snippet escaping.
 - **RSS & Atom feeds** — site-wide and per-category/tag scoped feeds with
-  autodiscovery (DEC-074).
+  autodiscovery.
 - **Tags & categories** — post organization, browse pages, sidebar chips, and
   filtered home feeds.
 - **Series** — ordered multi-part sequences with in-series prev/next
-  navigation (DEC-189).
+  navigation.
 - **Nested comments** with reply support, threaded rendering, and moderation
-  status (DEC-066).
+  status.
 - **Reader accounts** — register/login with a reader JWT, plus an account page
   (email, display name, password change).
 - **Cloud bookmark sync** — local bookmarks merge to the cloud on sign-in and
   stay synced across devices.
 - **Resume reading** — the post page remembers a signed-in reader's scroll
-  position server-side and drops them back on return (DEC-167).
+  position server-side and drops them back on return.
 - **Reading streaks & activity heatmap** — `/history` shows current/longest
-  consecutive-day streaks and a 52-week heatmap (DEC-169).
+  consecutive-day streaks and a 52-week heatmap.
 - **Reader notification inbox** — durable in-app read/unread list of new posts
   in followed series/categories, replies, and followed-thread comments
-  (DEC-160).
+  .
 - **Per-kind notification preferences** — silence any notification type from
-  `/notifications` (DEC-171).
+  `/notifications`.
 - **Tag follow** — follow a topic tag for new-post push + inbox rows
-  (DEC-195).
+  .
 - **Email notifications + weekly digest** — per-event emails and an optional
-  weekly summary (DEC-197, DEC-201).
+  weekly summary.
 - **New-post Web Push** — category/all-new-posts browser push subscription
-  (DEC-076).
+  .
 - **Comment-thread subscription** — push when a comment is approved on a
-  followed discussion (DEC-078).
+  followed discussion.
 
 #### Admin
 
@@ -1775,17 +1759,17 @@ tests, 93.5% backend coverage).
   via MarkdownContent, schedule/draft/publish states, unsaved-changes guard,
   and autosave with 401 handling.
 - **Media library** — browse every uploaded image (grid, preview, copy URL,
-  in-use badge), delete unreferenced uploads, insert into the editor (DEC-183).
+  in-use badge), delete unreferenced uploads, insert into the editor.
 - **Editorial calendar** — publishing plan on a month grid with click-through
-  to the editor (DEC-162).
+  to the editor.
 - **Comments moderation** — pending/approved/rejected management with push
-  alerts on new comments (DEC-080).
+  alerts on new comments.
 - **Backup & restore** — one portable JSON snapshot (categories, tags, series,
-  posts, comments), restorable into an empty instance (DEC-082).
+  posts, comments), restorable into an empty instance.
 - **Data export** — posts/comments as CSV.
 - **Series management** and **post_count** on categories/tags lists.
 - **Reader management** and **reading analytics** with per-day readership
-  trend + hot posts (DEC-086).
+  trend + hot posts.
 
 #### Platform
 
@@ -1807,36 +1791,36 @@ tests, 93.5% backend coverage).
 ### Fixed
 
 - Import history is idempotent under unique-key race conditions (retry once
-  instead of 500, ISS-419).
+  instead of 500).
 - Reading-history clear can no longer be resurrected by a stale in-flight
-  response (ISS-425).
+  response.
 - TOC anchors and heading deep links land on the correct section; modified
-  clicks open in new tabs (ISS-422).
+  clicks open in new tabs.
 - Push subscribe is single-flight so a double-fired flow cannot paint a false
-  "denied" app-wide (ISS-423, ISS-442).
+  "denied" app-wide.
 - Search snippets/excerpts keep the XSS-safety contract on every fallback path
-  (ISS-424).
+  .
 - Reader write endpoints are rate-limited; dead-session follow controls drop
-  the token and offer sign-in (ISS-429, ISS-434).
+  the token and offer sign-in.
 - Admin dashboard pending-comments card and header show the real global queue,
-  not a page-local slice (ISS-431, ISS-439).
-- Series episode reorder is single-flight (ISS-430).
-- Stale unread-badge polls are dropped after a newer refresh (ISS-442).
+  not a page-local slice.
+- Series episode reorder is single-flight.
+- Stale unread-badge polls are dropped after a newer refresh.
 - Media delete-path reference lookup is bounded with a targeted probe
-  (ISS-432), and the media picker pager is disabled + single-flight during a
-  page refetch (ISS-440).
+  , and the media picker pager is disabled + single-flight during a
+  page refetch.
 - Thread-comment notification fan-out is batched — one flush+prune+commit, not
-  O(followers) transactions (ISS-427).
+  O(followers) transactions.
 - Bookmark folder re-assign failures surface instead of silently losing the
-  folder (ISS-428).
+  folder.
 - A stale in-flight unread-badge poll no longer overwrites a newer refresh.
 - CI gates tightened: branch coverage gate is now actually enforced
   (previously latent), and the full backend suite runs against PostgreSQL.
 
 ### Security
 
-- All authenticated reader mutations are rate-limited (ISS-429).
-- Admin create/update write endpoints rate-limited (ISS-017).
+- All authenticated reader mutations are rate-limited.
+- Admin create/update write endpoints rate-limited.
 - API proxy request body size bounded server-side and at the nginx edge.
 - Numeric `post_id` bound to 64-bit range.
 - FastAPI `/docs`, `/redoc`, `/openapi.json` not exposed at the public edge.
@@ -1847,8 +1831,8 @@ tests, 93.5% backend coverage).
 
 ### Performance
 
-- Media reference map cached with post-write invalidation (ISS-432).
-- Thread-comment fan-out batched to a single transaction (ISS-427).
+- Media reference map cached with post-write invalidation.
+- Thread-comment fan-out batched to a single transaction.
 - Feed cache keyed by full/excerpt flag to avoid body collisions.
 - Static Nuxt SSR caching behind nginx (`proxy_cache`).
 - Optimized queries for pending-count, feed, and dashboard stats.

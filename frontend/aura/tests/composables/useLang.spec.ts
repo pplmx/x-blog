@@ -39,7 +39,7 @@ describe("translate", () => {
 		// {post} other {posts}}` — ICU syntax the custom engine (no plural
 		// support, only {name} interpolation) passes through verbatim, so an
 		// English reader saw `3 {count, plural, one {post} other {posts}}`.
-		// Split into One/Many like readerProfile.followerCount* (round 428).
+		// Split into One/Many like readerProfile.followerCount*.
 		expect(translate("en", "authors.postCountOne", { count: 1 })).toBe("1 post");
 		expect(translate("en", "authors.postCountMany", { count: 3 })).toBe("3 posts");
 		expect(translate("zh", "authors.postCountOne", { count: 1 })).toBe("1 篇文章");
@@ -221,7 +221,7 @@ describe("useLang SSR guards (no window/document)", () => {
 		if (original) Object.defineProperty(window.navigator, "language", original);
 	});
 
-	it("detects an English first visit from the Accept-Language header on the server (round 295)", () => {
+	it("detects an English first visit from the Accept-Language header on the server ", () => {
 		// On the server there is no navigator.language; without a lang cookie the
 		// SSR render used to fall through to DEFAULT_LOCALE, so an English-browser
 		// first-time visitor got a fully Chinese page (HTML + persisted cookie).

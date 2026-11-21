@@ -1,11 +1,11 @@
-"""Admin newsletter-subscriber management contract tests (DEC-354, TASK-402).
+"""Admin newsletter-subscriber management contract tests.
 
-DEC-351 shipped the guest newsletter (subscribe / confirm / unsubscribe +
+ shipped the guest newsletter (subscribe / confirm / unsubscribe +
 new-post fan-out) but with no operator surface: an admin cannot see who is on
 the list, how many are confirmed vs pending, or remove an address. That is a
 real gap — a newsletter with no management is operationally broken (an address
 subscribed by someone else, a dead mailbox, a subscriber asking to be removed
-who lost their token). DEC-354 adds the admin surface.
+who lost their token). adds the admin surface.
 
 Key properties:
 - GET /api/admin/newsletter/subscribers requires an admin tier (401 anonymous,
@@ -194,7 +194,7 @@ async def test_email_search_escapes_like_wildcards(client, admin_token):
 async def test_admin_list_exposes_cadence(client, admin_token):
     """The admin list reports each subscriber's cadence so an operator can see
     why a confirmed address is NOT in the per-post fan-out (it opted into the
-    weekly digest) — DEC-355."""
+    weekly digest)."""
     await client.post(
         "/api/newsletter/subscribe",
         json={"email": "weekly@example.com", "digest_weekly": True},

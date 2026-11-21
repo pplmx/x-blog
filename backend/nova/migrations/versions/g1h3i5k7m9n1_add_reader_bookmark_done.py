@@ -1,8 +1,8 @@
-"""add reader_bookmarks.done (read-later vs done queue state, round 361)
+"""add reader_bookmarks.done (read-later vs done queue state)
 
 /bookmarks conflation fix: a saved post is either still in the To-read queue
 or already read / kept around. This additive boolean is the queue marker
-(DEC-395) alongside the existing folder classification — DEC-009-clean: a
+ alongside the existing folder classification-clean: a
 flat additive boolean on an existing table, no DB-level FK, guarded by
 table/column probes so it is idempotent on both SQLite and Postgres. Defaults
 OFF (server_default "false") so every existing bookmark reads as To-read

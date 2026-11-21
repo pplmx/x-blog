@@ -1,6 +1,6 @@
 /**
  * Conditional GET + cache-header workflow through the Nuxt origin
- * (RIL DEC-058 / TASK-130).
+ *.
  *
  * The backend implements strong-ETag 304 + Cache-Control on cacheable public
  * endpoints (routers/conditional.py); these tests verify the observable

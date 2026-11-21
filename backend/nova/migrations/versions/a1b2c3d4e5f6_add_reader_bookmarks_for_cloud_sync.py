@@ -1,10 +1,10 @@
-"""add reader_bookmarks table for cloud-synced bookmarks (DEC-059)
+"""add reader_bookmarks table for cloud-synced bookmarks
 
 Adds a ``reader_bookmarks`` table (reader_id ↔ post_id unique pair + created_at)
 so registered readers can keep a private, server-persisted bookmark list.
 
-Entirely additive: a brand-new table, no existing DDL touched (DEC-009
-preserved). Defensive like the other migrations: if the table already exists
+Entirely additive: a brand-new table, no existing DDL touched.
+Defensive like the other migrations: if the table already exists
 (e.g. a create_all-era dev DB), it is left as-is — no duplicate-table error.
 
 Note: reader_id/post_id are deliberately *not* DB-level foreign keys — SQLite's

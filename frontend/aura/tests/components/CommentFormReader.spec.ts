@@ -1,4 +1,4 @@
-/** CommentForm reader-identity behavior (DEC-062, TASK-136). */
+/** CommentForm reader-identity behavior. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -61,7 +61,7 @@ describe("CommentForm reader identity", () => {
 			parent_id: null,
 			website: "",
 			// Guest reply-email consent is never sent for signed-in readers:
-			// their reply email comes from the account-level pref (DEC-197).
+			// their reply email comes from the account-level pref.
 			reply_notify_email: false,
 		});
 	});

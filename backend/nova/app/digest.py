@@ -1,13 +1,13 @@
-"""Weekly email digest (DEC-201, TASK-222).
+"""Weekly email digest.
 
-The per-event email channel (DEC-197, TASK-217) tells an opted-in reader about
+The per-event email channel tells an opted-in reader about
 one new post / reply / thread comment as it happens. The weekly digest is the
 complementary *periodic* surface: a reader who opts into ``email_weekly_digest``
 gets one aggregated HTML email per week listing every public post newly
 published in their digest window (the max of their last digest and the rolling
 7 days — so a backlog never floods them and a missed digest is bounded).
 
-Design contract (recorded in DEC-201):
+Design contract (recorded):
 
 - Site-wide, not follow-scoped: the digest is re-discovery of the whole blog;
   per-event mail already covers a reader's follows. Returns posts newest-first.
@@ -88,7 +88,7 @@ def _dialect_name(db: AsyncSession) -> str:
 def _effective_publish_ts(post: models.Post, now_naive: datetime) -> datetime:
     """The timestamp that puts a post on the "published when" line: its
     scheduled publish_at when set, else its created_at. Shared semantic with
-    the RSS/Atom feeds via ``repositories.effective_publish_ts`` (RIL ISS-264); this
+    the RSS/Atom feeds via ``repositories.effective_publish_ts``; this
     thin wrapper pins the ``now`` fallback where the digest code expects it
     naive."""
     return effective_publish_ts(post, fallback=now_naive)
@@ -170,7 +170,7 @@ def newsletter_digest_window_start(sub: models.NewsletterSubscriber, now_naive: 
     """Where a guest subscriber's digest window begins: their last guest digest
     if one was ever sent, else the rolling 7-day cut — the mirror of
     ``digest_window_start`` for the reader prefs, so a backlog never floods a
-    guest either (DEC-355, TASK-403)."""
+    guest either."""
     if sub.digest_sent_at is None:
         return now_naive - timedelta(days=WEEKLY_WINDOW_DAYS)
     return max(sub.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
@@ -199,7 +199,7 @@ def guest_thread_digest_window_start(sub: models.GuestCommentSubscription, now_n
     digest if one was ever sent, else the rolling 7-day cut — the mirror of
     ``newsletter_digest_window_start`` for the (email, post) follow row, so a
     backlog never floods a follower and a missed digest is bounded
-    (round 381, DEC-429)."""
+    ."""
     if sub.digest_sent_at is None:
         return now_naive - timedelta(days=WEEKLY_WINDOW_DAYS)
     return max(sub.digest_sent_at, now_naive - timedelta(days=WEEKLY_WINDOW_DAYS))
@@ -244,7 +244,7 @@ async def collect_guest_thread_digest_deliveries(
     that window (the moderation gate — only visible comments are summarized,
     the same rule as the per-comment fan-out). One row per (email, post) keeps
     one digest per followed thread; ``digest_weekly`` defaults false, so no
-    follow is weekly until it opts in (DEC-429)."""
+    follow is weekly until it opts in."""
     out: list[tuple[models.GuestCommentSubscription, datetime, list[models.Comment]]] = []
     for sub in await list_confirmed_guest_thread_digest_subs(db):
         window_start = guest_thread_digest_window_start(sub, now_naive)
@@ -304,10 +304,10 @@ def build_guest_thread_digest_message(
     """One weekly summary of a followed thread: the approved comments created
     in the window, oldest first, each deep-linked onto the comment, carrying
     the same per-subscription token unsubscribe footer as per-comment thread
-    mail so the consent stays revocable from the digest itself (DEC-429).
+    mail so the consent stays revocable from the digest itself.
 
     Guests have no account or stored locale, so ``locale`` is the site's
-    configured language (DEC-342 parity) and the footer links straight to the
+    configured language parity and the footer links straight to the
     unsubscribe page, not reader prefs. The post title and comment nicknames /
     snippets are user-controlled, so they are HTML-escaped in the HTML part.
     """
@@ -373,14 +373,14 @@ def build_digest_message(
 ) -> EmailMessage:
     """One aggregated digest: text + HTML parts in the reader's language.
 
-    ``locale`` selects the copy (DEC-338/TASK-395) — ``zh`` (the default and
+    ``locale`` selects the copy — ``zh`` (the default and
     today's behavior) keeps the original 本周精选 copy, ``en`` renders an
     English digest. The reader's stored locale is threaded through by
     ``send_weekly_digest`` (NULL reads as zh), so an English reader's digest
     arrives in English while a zh reader's stays untouched.
 
     ``manage_url`` overrides the footer's "manage / turn off" target — guest
-    newsletter subscribers (DEC-355, TASK-403) get their token unsubscribe
+    newsletter subscribers get their token unsubscribe
     page instead of the reader /notifications prefs page; readers keep the
     default. ``is_guest`` picks the matching footer COPY (a guest has no
     notification-preferences page, so the label describes the unsubscribe
@@ -406,7 +406,7 @@ def build_digest_message(
     # can never render (A&B -> A&amp;B in HTML source, displayed as A&B); the
     # TEXT part uses the RAW name — HTML entities like &amp; are meaningless in
     # plain text and previously displayed literally as "A&amp;B" to the reader
-    # in text-only mail clients (ISS-447).
+    # in text-only mail clients.
     html_name_zh = f"{html.escape(display_name or '')}，" if display_name else None
     text_name_zh = f"{display_name or ''}，" if display_name else None
     if en:
@@ -569,14 +569,14 @@ async def send_weekly_digest(
                 continue
             deliveries.append((pref, acct, window_start, eligible))
         # Guest subscribers on the weekly cadence run through the SAME job (one
-        # advisory lock, one SMTP session, the same window stamping) — DEC-355.
+        # advisory lock, one SMTP session, the same window stamping).
         for sub, window_start in await collect_newsletter_digest_recipients(db, now):
             eligible = [p for p in posts if _effective_publish_ts(p, now) >= window_start]
             if not eligible:
                 skipped += 1
                 continue
             guest_deliveries.append((sub, window_start, eligible))
-        # Guest thread-followers on the weekly cadence (round 381, DEC-429):
+        # Guest thread-followers on the weekly cadence:
         # one digest per (email, post) aggregated from the APPROVED comments in
         # the window — the periodic channel for the otherwise per-comment
         # fan-out, in the same job so a single trigger serves all three.
@@ -635,7 +635,7 @@ async def send_weekly_digest(
             reader_targets.append(pref)
         for sub, window_start, eligible in guest_deliveries:
             # Guests have no account or stored locale — the digest renders in
-            # the site's configured language (DEC-342 parity) and its "manage /
+            # the site's configured language parity and its "manage /
             # turn off" footer is the token unsubscribe page, not reader prefs.
             built.append(
                 build_digest_message(
@@ -690,7 +690,7 @@ async def send_weekly_digest(
             # Per-message flags: a mid-batch failure (one refused recipient)
             # must not stall the rest — and only messages the server accepted
             # stamp digest_sent_at, so a partial delivery never re-mails anyone
-            # who already got theirs on the next run (RIL ISS-280).
+            # who already got theirs on the next run.
             delivered = send_messages_flags(built)
         except Exception:  # noqa: BLE001 — best effort, retryable
             log.exception("weekly digest SMTP delivery failed")

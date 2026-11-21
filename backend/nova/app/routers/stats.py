@@ -21,19 +21,19 @@ class BlogStatsResponse(BaseModel):
     # Posts that are published=True but whose publish_at is in the future: not
     # yet visible publicly, and distinct from drafts (published=False). Clients
     # that show a "drafts" bucket must subtract this, not just published_posts,
-    # or scheduled posts silently masquerade as drafts. (RIL TASK-036)
+    # or scheduled posts silently masquerade as drafts.
     scheduled_posts: int
     total_categories: int
     total_tags: int
     total_comments: int
     total_views: int
     total_likes: int
-    # NO pending_comments here (round 276): it is the live unmoderated-queue
+    # NO pending_comments here: it is the live unmoderated-queue
     # depth, a moderator-only signal. Exposing it on this unauthenticated
     # endpoint let a spammer poll to learn whether their comment is still
     # pending and scrape queue depth. The admin dashboard reads the
     # authoritative pending_count from the admin-scoped
-    # /api/admin/stats/comments instead (ISS-396/404).
+    # /api/admin/stats/comments instead.
 
 
 router = APIRouter(prefix="/api/stats", tags=["Stats"])

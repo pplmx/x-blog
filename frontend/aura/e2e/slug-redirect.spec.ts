@@ -1,5 +1,5 @@
 /**
- * Slug-change redirects (round 350): a re-slugged post / series / static page
+ * Slug-change redirects: a re-slugged post / series / static page
  * keeps its old URL alive.
  *
  * When an operator re-slugs an entity the backend answers the old URL with a
@@ -28,7 +28,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Slug-change redirects (round 350)", () => {
+test.describe("Slug-change redirects ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin re-slug on the live backend",

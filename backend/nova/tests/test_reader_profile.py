@@ -1,4 +1,4 @@
-"""Public reader profile endpoint tests (DEC-294, TASK-376).
+"""Public reader profile endpoint tests.
 
 A reader's display name on a comment is a verified identity; the profile page
 turns it into a linkable public homepage: GET /api/readers/{id} returns the
@@ -175,7 +175,7 @@ async def _register_named(client, name, email):
 
 class TestMentionSuggest:
     """GET /api/readers/suggest — the '@'-mention picker's public reader
-    suggestions (DEC-324, TASK-390)."""
+    suggestions."""
 
     async def test_empty_query_returns_named_active_readers_without_email(self, client, db_session):
         rid = await _register_named(client, "Riki", "suggest-a@example.com")

@@ -30,7 +30,7 @@ async def get_tags(db: AsyncSession) -> list[dict]:
     # passed) — the grouped query must JOIN Post to apply the guard, otherwise
     # drafts/scheduled posts leak their existence into the unauthenticated
     # /api/tags payload and the count can never match what listing the tag
-    # actually returns (deep-dive review, ISS-362; mirrors get_categories).
+    # actually returns (deep-dive review; mirrors get_categories).
     now = utc_now_naive()
     rows = (
         await db.execute(
@@ -59,7 +59,7 @@ async def tag_visible_post_count(db: AsyncSession, tag_id: int) -> int:
     """Count of publicly visible posts with a tag (published + effective publish
     time passed), for the single-item /api/tags/{id} endpoint. Same rationale as
     category_visible_post_count: post_count is derived, and the item endpoint
-    used to report 0 unconditionally (ISS-363)."""
+    used to report 0 unconditionally."""
     now = utc_now_naive()
     return (
         await db.execute(
@@ -109,7 +109,7 @@ async def update_tag(db: AsyncSession, tag_id: int, tag: schemas.TagCreate) -> m
         # Clear cache — and the POSTS-list + feed caches too: PostList embeds
         # this tag's name and the sitemap renders it, so the rename must not
         # leave /api/posts cards and /sitemap.xml showing the old name until the
-        # 5-min TTL (ISS-364; same rationale as update_category).
+        # 5-min TTL (same rationale as update_category).
         clear_tags_cache()
         clear_posts_list_cache()
     return db_tag
@@ -126,7 +126,7 @@ async def delete_tag(db: AsyncSession, tag_id: int) -> bool:
         ).scalar() or 0
         if post_count > 0:
             raise ValueError("Cannot delete tag: it is referenced by posts")
-        # TagFollow is an additive DEC-009 table with no ORM cascade from Tag:
+        # TagFollow is an additive table with no ORM cascade from Tag:
         # purge the follow rows too, or a deleted tag leaves stale follows that,
         # on SQLite autoincrement id reuse, re-point at an unrelated later tag
         # (same orphan class as category follows + guest thread subs).

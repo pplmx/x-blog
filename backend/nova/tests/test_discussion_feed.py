@@ -1,6 +1,6 @@
-"""Public discussion feed tests (round 367, DEC-407).
+"""Public discussion feed tests.
 
-The discussion is the blog's second content asset — comment search (DEC-405)
+The discussion is the blog's second content asset — comment search
 made it FINDABLE; the feed makes it BROWSABLE. A visitor who wants to see what
 people are saying right now has no surface otherwise. The feed must serve the
 newest approved comments on publicly-visible posts, each with the commenter

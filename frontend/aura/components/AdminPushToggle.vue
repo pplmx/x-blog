@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Admin sidebar toggle for comment-moderation alerts (DEC-080, TASK-152).
+ * Admin sidebar toggle for comment-moderation alerts.
  *
  * An admin (superuser or editor) opts this browser into a Web Push that fires
  * the moment a new comment awaits approval (deep-links to /admin/comments).
@@ -26,7 +26,7 @@ onMounted(() => {
 // the toggle. The composable RETHROWS on failure so this component owns the
 // feedback at its own click boundary (a shared error ref would fire on any
 // consumer's failure — there is only one, but per-call-site is the correct
-// contract, matching the reader composable, ISS-215).
+// contract, matching the reader composable).
 const errorVisible = ref(false);
 let errorTimer: ReturnType<typeof setTimeout> | undefined;
 function flashError() {

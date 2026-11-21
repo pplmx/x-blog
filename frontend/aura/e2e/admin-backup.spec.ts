@@ -1,5 +1,5 @@
 /**
- * Full-blog backup & restore admin journey (DEC-082, TASK-153).
+ * Full-blog backup & restore admin journey.
  *
  * The dashboard exposes a superuser-only card: download the whole blog as one
  * JSON snapshot, or restore one. This spec pins the admin-gated UI — the card
@@ -72,7 +72,7 @@ test.describe("Blog backup & restore (superuser-gated)", () => {
 	});
 
 	test("editor does not see the backup card (superuser-only)", async ({ page }) => {
-		// Idempotently mint an editor through the admin users API (DEC-054).
+		// Idempotently mint an editor through the admin users API.
 		const login = await fetch(`${API}/api/admin/login`, {
 			method: "POST",
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },

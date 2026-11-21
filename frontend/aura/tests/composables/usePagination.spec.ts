@@ -3,7 +3,7 @@
  *
  * Verifies the pure windowing helper: it returns a bounded window of page
  * numbers plus "…" markers around gaps, so a large page count doesn't render
- * one button per page (RIL TASK-083, ISS-052).
+ * one button per page.
  */
 
 import { describe, expect, it } from "vitest";

@@ -5,7 +5,7 @@ export function useUpload() {
 	// a fresh image while a drop upload is still running) share these refs, so
 	// whichever call finishes FIRST must not clear the busy flag while the other
 	// is still uploading — a shared boolean made the overlay/spinner vanish early
-	// (round-300 deep-dive).
+	//.
 	const inFlight = ref(0);
 	const error = ref<string | null>(null);
 	const isUploading = computed(() => inFlight.value > 0);
@@ -15,7 +15,7 @@ export function useUpload() {
 			// The increment is inside the try so the finally can never run without
 			// its matching increment — a synchronous throw while preparing the
 			// request (e.g. a bad runtime config resolving) would otherwise leave
-			// inFlight forever ≥1 and isUploading true (round-300 review).
+			// inFlight forever ≥1 and isUploading true.
 			inFlight.value += 1;
 			error.value = null;
 

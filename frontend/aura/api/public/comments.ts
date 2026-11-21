@@ -14,7 +14,7 @@ export interface CommentListResponse {
 	total_pages: number;
 }
 
-/** Label for a comment flag (DEC-108, TASK-166). */
+/** Label for a comment flag. */
 export interface CommentFlagResult {
 	comment_id: number;
 	flags: number;
@@ -25,8 +25,8 @@ export interface CommentFlagResult {
  * Reactive comment thread for setup usage.
  * Uses the backend's GET /api/comments/post/{post_id} endpoint. `sort` lets
  * readers reorder the thread — newest (default), oldest, or most helpful
- * (likes desc) — per DEC-094/TASK-159. `q` (optional) narrows the thread to
- * comments whose content matches — "search inside this thread" (DEC-442).
+ * (likes desc) — per. `q` (optional) narrows the thread to
+ * comments whose content matches — "search inside this thread".
  */
 export function useComments(
 	postId: number,
@@ -59,7 +59,7 @@ export function getComments(
 /**
  * Like a comment (POST /api/comments/{id}/like). Fire-and-forget from the
  * click handler, so it must run through the imperative `command` seam —
- * `useFetch` never executes outside a setup/suspense context. (ISS-111)
+ * `useFetch` never executes outside a setup/suspense context.
  */
 export function likeComment(commentId: number): Promise<Comment> {
 	return command<Comment>(`/api/comments/${commentId}/like`, { method: "POST" });
@@ -73,7 +73,7 @@ export function flagComment(commentId: number): Promise<CommentFlagResult> {
 
 /**
  * Flip a guest comment's reply-email consent off via its emailed token
- * (POST /api/comments/reply-notify/unsubscribe, DEC-332/TASK-392). The
+ * (POST /api/comments/reply-notify/unsubscribe). The
  * per-comment token comes from the unsubscribe link in the guest reply email;
  * posting it proves the address holder owns the comment. 404 = unknown token.
  */
@@ -88,11 +88,11 @@ export function unsubscribeGuestReplyNotify(token: string): Promise<{
 
 /**
  * Subscribe an ANONYMOUS visitor to a post's comment thread by email
- * (POST /api/posts/{postId}/comment-subscription/guest, DEC-427/TASK-438).
+ * (POST /api/posts/{postId}/comment-subscription/guest).
  * Auth-free, 202, generic no-oracle response; a double opt-in email is sent
  * and nothing else until the confirmation link is clicked. Guests only — a
  * signed-in reader has the push thread-follow instead. `digestWeekly` (round
- * 381, DEC-429) records a weekly-summary cadence at subscribe time; default
+ * 381) records a weekly-summary cadence at subscribe time; default
  * stays per-comment.
  */
 export function subscribeGuestThread(
@@ -121,8 +121,7 @@ export function confirmGuestThreadSubscription(
 	);
 }
 
-/** Flip a guest thread-follow's cadence via its emailed token (round 381,
- *  DEC-429): weekly summary vs a mail per approved comment. Idempotent 200;
+/** Flip a guest thread-follow's cadence via its emailed token: weekly summary vs a mail per approved comment. Idempotent 200;
  *  404 = unknown token. POST /api/posts/comment-subscription/guest/digest. */
 export function setGuestThreadDigest(
 	token: string,
@@ -148,7 +147,7 @@ export function unsubscribeGuestThreadSubscription(
 	});
 }
 
-/** One entry on the site-wide discussion feed (round 367, DEC-407). */
+/** One entry on the site-wide discussion feed. */
 export interface DiscussionFeedItem {
 	id: number;
 	nickname: string;
@@ -166,11 +165,11 @@ export interface DiscussionFeedResponse {
 }
 
 /**
- * Site-wide discussion feed (GET /api/comments/feed, round 367 / DEC-407).
+ * Site-wide discussion feed (GET /api/comments/feed).
  *
  * The newest approved comments on publicly-visible posts, each with the
  * commenter identity and the post brief so a card can deep-link onto the exact
- * comment. Search (DEC-405) made the discussion FINDABLE; the feed makes it
+ * comment. Search made the discussion FINDABLE; the feed makes it
  * BROWSABLE. Public, no auth, paginated.
  */
 export function useDiscussionFeed(page: MaybeRefOrGetter<number> = 1, limit = 20) {
@@ -179,7 +178,7 @@ export function useDiscussionFeed(page: MaybeRefOrGetter<number> = 1, limit = 20
 	);
 }
 
-/** Manage-page payload for a guest's own comment (round 385, DEC-435/TASK-444).
+/** Manage-page payload for a guest's own comment.
  *  ``comment`` is CommentPublic output; ``post`` carries the thread context so
  *  the page can deep-link back to it. */
 export interface GuestCommentManageResponse {
@@ -189,7 +188,7 @@ export interface GuestCommentManageResponse {
 
 /**
  * Load a guest's own comment for the management page (GET
- * /api/comments/manage?token=…, round 385/DEC-435). The token is the
+ * /api/comments/manage?token=…). The token is the
  * per-comment secret delivered by the approval email — possession proves the
  * address holder owns the comment. 404 = unknown token (not enumerable).
  */
@@ -199,9 +198,9 @@ export function getGuestCommentManage(token: string): Promise<GuestCommentManage
 
 /**
  * Edit a guest's own comment via its management token (PATCH
- * /api/comments/manage, round 385/DEC-435). Only ``content`` may change; the
+ * /api/comments/manage). Only ``content`` may change; the
  * edit resets approval (the replaced text re-enters moderation). 404 = unknown
- * token. Mirrors the signed-in reader edit (DEC-096) without an account.
+ * token. Mirrors the signed-in reader edit without an account.
  */
 export function editGuestCommentManage(token: string, content: string): Promise<Comment> {
 	return command<Comment>("/api/comments/manage", {
@@ -212,7 +211,7 @@ export function editGuestCommentManage(token: string, content: string): Promise<
 
 /**
  * Delete a guest's own comment via its management token (DELETE
- * /api/comments/manage?token=…, round 385/DEC-435). Replies are reparented so
+ * /api/comments/manage?token=…). Replies are reparented so
  * the thread stays coherent. 204 on success, 404 on unknown token.
  */
 export function deleteGuestCommentManage(token: string): Promise<void> {
@@ -227,7 +226,7 @@ export function deleteGuestCommentManage(token: string): Promise<void> {
  * A signed-in reader comments under their account: the reader JWT is sent so
  * the backend stamps identity from the token (client-supplied nickname is
  * ignored then). Empty headers (no reader_token) keeps anonymous comments
- * working unchanged. (DEC-062, TASK-136)
+ * working unchanged.
  */
 export function createComment(
 	postId: number,
@@ -237,7 +236,7 @@ export function createComment(
 		content: string;
 		parent_id?: number | null;
 		website?: string;
-		/** Guest reply-email consent (DEC-332): a guest ticks "email me when
+		/** Guest reply-email consent: a guest ticks "email me when
 		 * someone replies" and the backend emails their stored address when a
 		 * reply to this comment is approved. Ignored for signed-in readers. */
 		reply_notify_email?: boolean;

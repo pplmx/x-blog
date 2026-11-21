@@ -1,4 +1,4 @@
-"""Public guest-newsletter endpoints (DEC-351, TASK-401).
+"""Public guest-newsletter endpoints.
 
 An anonymous visitor who just wants "email me new posts" (no account, no
 comment) subscribes with an email address. Double opt-in: ``/subscribe``
@@ -14,7 +14,7 @@ Security posture (mirroring existing no-oracle patterns):
   oracle (same non-oracle stance as reader register / password-reset request).
   It deliberately never reveals whether a second confirmation email was sent.
 - ``token`` is a random opaque secret only the emailed link carries (stored,
-  not derivable; mirror of Comment.reply_notify_token, DEC-332). ``confirm`` /
+  not derivable; mirror of Comment.reply_notify_token). ``confirm`` /
   ``unsubscribe`` with an unknown token are 404 — indistinguishable from
   "nothing was ever subscribed at this address" for a random guess.
 - ``confirm``/``unsubscribe`` are idempotent (a twice-clicked link is a 200),
@@ -52,7 +52,7 @@ EMAIL_PATTERN = schemas.EMAIL_PATTERN
 
 class NewsletterSubscribeBody(BaseModel):
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)]
-    # Optional cadence (DEC-355, TASK-403): True chooses the weekly digest over
+    # Optional cadence: True chooses the weekly digest over
     # per-post mail, stored on the new row. Default stays per-post; a resubscribed
     # existing address keeps whatever cadence it already had (never re-flipped).
     digest_weekly: bool = False
@@ -95,7 +95,7 @@ async def newsletter_subscribe(
     each of N subscribe calls into N outbound mails to a victim address — the
     unauthenticated entry is also on a dedicated tight per-IP bucket
     (``RATE_LIMIT_NEWSLETTER``), not the looser write bucket. The unsubscribed
-    re-subscribe branch is required consent semantics (round 393): reactivation
+    re-subscribe branch is required consent semantics: reactivation
     needs a FRESH double-opt-in, never a replay of the cancelled address's old
     confirmation link.
     """
@@ -139,7 +139,7 @@ async def newsletter_subscribe(
     elif row.unsubscribed_at is not None:
         # A deliberately cancelled address re-subscribes the RIGHT way: a fresh
         # token + a fresh double-opt-in email, so replaying the old confirmation
-        # link can never silently flip it back to subscribed (round 393). The
+        # link can never silently flip it back to subscribed. The
         # anti-abuse guarantee is unchanged for pending/confirmed rows (which
         # still take the no-op path) and the tight per-IP bucket still applies.
         row.is_confirmed = False
@@ -174,7 +174,7 @@ async def newsletter_confirm(
     if row is None:
         raise HTTPException(status_code=404, detail="Invalid token")
     if not row.is_confirmed:
-        # Consent restart gate (round 393): an address that was explicitly
+        # Consent restart gate: an address that was explicitly
         # unsubscribed must NOT be re-activated by replaying its OLD
         # confirmation link with no fresh opt-in email — the holder cancelled
         # it, and re-activation starts over via subscribe (fresh token + fresh
@@ -191,7 +191,7 @@ async def newsletter_confirm(
     # The cadence is returned so the confirm page can show the address's real
     # state (a digest_weekly opt-in at subscribe time shows as such, not as an
     # unchecked per-post default) — not an oracle: only the token holder sees
-    # it (DEC-355, TASK-403).
+    # it.
     return {"confirmed": True, "digest_weekly": row.digest_weekly}
 
 
@@ -221,7 +221,7 @@ async def newsletter_unsubscribe(
     # stamp, clicking unsubscribe before confirming was a silent no-op that
     # still reported success, and the address's OLD confirm link could then
     # activate it — directly contradicting the "unsubscribed" the user saw.
-    # With the stamp, the round-393 confirm gate (re-activation requires a
+    # With the stamp, the confirm gate (re-activation requires a
     # fresh subscribe + fresh double-opt-in email) covers both states.
     row.unsubscribed_at = utc_now_naive()
     await db.commit()
@@ -241,7 +241,7 @@ async def newsletter_digest(
     (indistinguishable from never-subscribed, no oracle) and the toggle is
     idempotent (a twice-clicked link is a 200). ``enabled=False`` returns the
     address to the per-post channel; ``digest_weekly`` subscribers are served
-    by the weekly digest job instead of the per-post fan-out (DEC-355).
+    by the weekly digest job instead of the per-post fan-out.
     """
     row = (
         await db.execute(select(models.NewsletterSubscriber).where(models.NewsletterSubscriber.token == body.token))
@@ -254,7 +254,7 @@ async def newsletter_digest(
     return {"digest_weekly": body.enabled}
 
 
-# Admin subscriber management (DEC-354, TASK-402)
+# Admin subscriber management
 # ---------------------------------------------------------------------------
 # The public surface (subscribe/confirm/unsubscribe) has no operator view: an
 # admin cannot see who is on the list, how many are confirmed vs pending, or
@@ -275,7 +275,7 @@ class AdminSubscriberItem(BaseModel):
     email: str
     is_confirmed: bool
     # Exposed so an operator can see why a confirmed address is NOT in the
-    # per-post fan-out (it chose the weekly digest) — DEC-355.
+    # per-post fan-out (it chose the weekly digest).
     digest_weekly: bool = False
     created_at: datetime | None = None
     confirmed_at: datetime | None = None
@@ -335,7 +335,7 @@ async def admin_list_subscribers(
 
 
 class AdminDigestOverviewResponse(BaseModel):
-    """The operator-facing reading surface for the weekly digest (DEC-423).
+    """The operator-facing reading surface for the weekly digest.
 
     Complements the ``send-weekly`` trigger with the numbers that say whether
     the digest is alive: how many readers and guests opted into the weekly
@@ -362,7 +362,7 @@ async def admin_digest_overview(
     _current_user: auth.User = Depends(auth.get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Report the weekly digest's current state (DEC-423, TASK-436).
+    """Report the weekly digest's current state.
 
     Read-only monitoring surface next to ``POST /api/admin/digests/send-weekly``:
     reader + guest subscriber counts on the weekly cadence, the last delivery

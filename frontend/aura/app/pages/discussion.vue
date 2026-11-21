@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * Public discussion feed (round 367, DEC-407).
+ * Public discussion feed.
  *
- * Comment search (DEC-405) made the blog's thread FINDABLE; this page makes it
+ * Comment search made the blog's thread FINDABLE; this page makes it
  * BROWSABLE — a visitor who wants to see what people are saying right now has
  * no surface otherwise. The newest approved comments on publicly-visible
  * posts, each card carrying the commenter identity, the snippet/excerpt of the
  * comment, and the post brief, deep-linking ONTO the exact comment
- * (`/posts/{slug}#comment-{id}`, DEC-321). Public, no auth, paginated.
+ * (`/posts/{slug}#comment-{id}`). Public, no auth, paginated.
  */
 import { computed, onMounted } from "vue";
 import type { PaginationInfo } from "~~/api/contracts/shared";
@@ -24,7 +24,7 @@ import { commentAuthorName } from "~~/utils/commentAuthorName";
 const { t, locale } = useLang();
 const route = useRoute();
 
-// Feed auto-discovery for the discussion (round 368, DEC-409): the RSS/Atom
+// Feed auto-discovery for the discussion: the RSS/Atom
 // feeds of the latest approved comments, so a feed-reader / "subscribe" flow
 // on this page finds the right subscriptions (same pattern as app.vue's
 // post-feed discovery).
@@ -45,7 +45,7 @@ useHead({
 	],
 });
 
-// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// clamp an invalid ?page= (non-numeric, zero, negative) to
 // page 1 at the computed — the feed request must never carry NaN/0 (guaranteed
 // 422), and the out-of-range clamp watcher below short-circuits NaN/<2, so
 // without this an invalid deep link would brick the page with a dead Retry.
@@ -57,7 +57,7 @@ const page = computed(() => {
 
 const { data: feed, pending, error, refresh: refreshFeed } = await useDiscussionFeed(page, 20);
 
-// SEO must run AFTER the data refs it reads are declared (round-445, e2e#53):
+// SEO must run AFTER the data refs it reads are declared:
 // this script-setup blocks on the top-level await above, and the reactive
 // getter passed to useSeo reads page/feed. Expanding it before that await is
 // done reads them in their TDZ, which 500s the whole page in the production
@@ -74,8 +74,8 @@ useSeo(() => ({
 		pagePath: (pg) => (pg > 1 ? `/discussion?page=${pg}` : "/discussion"),
 	},
 }));
-// Blocked-reader suppression (round 386, DEC-437): the feed is public, but a
-// signed-in viewer's own block list (a receiver-side opt-out, DEC-425) should
+// Blocked-reader suppression: the feed is public, but a
+// signed-in viewer's own block list (a receiver-side opt-out) should
 // hide the blocked readers' cards. Loads asynchronously; the feed first paints
 // unadulterated and then filters once the list lands.
 const { blockedReaderIds, loadBlockedReaderIds } = useBlockedReaderIds();
@@ -93,7 +93,7 @@ function retry() {
 
 // Page-clamp: an out-of-range deep link (?page=99) has an empty page but real
 // total_pages — send the reader back to the last real page (home/archive/
-// search pattern, ISS-308).
+// search pattern).
 watch(
 	() => feed.value?.pagination,
 	(p: PaginationInfo | null | undefined) => {
@@ -118,7 +118,7 @@ const paginationTokens = computed(() =>
 	paginationPages(feed.value?.pagination?.total_pages ?? 0, page.value),
 );
 
-// Screen-reader page announcement (round 397, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the feed in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
@@ -136,7 +136,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 			<p class="text-gray-500 dark:text-gray-400 mt-2">
 				{{ t("discussion.subtitle") }}
 			</p>
-			<!-- Subscribe to the discussion stream (round 368, DEC-409): the
+			<!-- Subscribe to the discussion stream: the
 			     RSS/Atom feeds surface here so a reader can follow the
 			     conversation in their feed reader, matching the discovery
 			     links the post feeds get. -->
@@ -220,7 +220,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 				</div>
 			</div>
 
-			<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+			<!-- Pagination (windowed with ellipsis) -->
 			<div v-if="feed.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
 				<button
 					v-for="(pg, i) in paginationTokens"

@@ -1,4 +1,4 @@
-"""Admin comment-activity analytics tests (DEC-154, TASK-189)."""
+"""Admin comment-activity analytics tests."""
 
 COMMENTS_STATS = "/api/admin/stats/comments"
 _n = 0
@@ -71,7 +71,7 @@ class TestCommentActivity:
 
     async def test_pending_count_is_the_unreviewed_queue_depth(self, client, auth_headers, db_session):
         """pending_count counts only unreviewed comments — a rejected comment
-        (reviewed_at stamped) must not inflate it (round 276: the moderation
+        (reviewed_at stamped) must not inflate it (the moderation
         backlog moved from the public /api/stats to this admin-scoped
         endpoint; see also test_stats::test_stats_no_longer_exposes_pending)."""
         from datetime import datetime

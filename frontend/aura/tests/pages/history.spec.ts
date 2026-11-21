@@ -1,5 +1,5 @@
 /**
- * Reading-history page tests (DEC-114, TASK-169; DEC-116, TASK-170).
+ * Reading-history page tests.
  *
  * Verifies the empty state, the newest-first history list with viewed
  * timestamps and continue-reading links, and the confirm/cancel/clear flow.
@@ -19,7 +19,7 @@ const mockLoad = vi.fn();
 const mockLoadMore = vi.fn();
 // clear resolves true when the server copy is gone (or there was none to
 // reach); resolves false when an offline clear left the server copy alive
-// (ISS-387) — the page must then warn instead of claiming success.
+// — the page must then warn instead of claiming success.
 const mockClear = vi.fn(async () => {
 	mockHistory.value = [];
 	mockStats.value = null;
@@ -55,7 +55,7 @@ vi.mock("../../composables/useReadingHistory", () => ({
 
 vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
 
-// Reading insights (DEC-417/TASK-434): page-level best-effort fetch, driven
+// Reading insights: page-level best-effort fetch, driven
 // only for signed-in (serverEnabled) readers. Tests flip the payload/reject.
 let mockInsightsPayload: unknown = null;
 let mockInsightsReject: unknown = null;
@@ -82,7 +82,7 @@ function mountHistory() {
 	return mount(HistoryPage, { global: { stubs } });
 }
 
-describe("Reading-history page (TASK-170)", () => {
+describe("Reading-history page ", () => {
 	beforeEach(() => {
 		mockHistory.value = [];
 		mockStats.value = null;
@@ -98,7 +98,7 @@ describe("Reading-history page (TASK-170)", () => {
 		mockImportLocalTrail.mockClear();
 	});
 
-	it("invokes load with the search term after debounce (ISS-128)", async () => {
+	it("invokes load with the search term after debounce ", async () => {
 		vi.useFakeTimers();
 		const wrapper = mountHistory();
 		const input = wrapper.get('input[type="search"]');
@@ -112,7 +112,7 @@ describe("Reading-history page (TASK-170)", () => {
 		vi.useRealTimers();
 	});
 
-	it("debounces rapid keystrokes into a single load call (ISS-128)", async () => {
+	it("debounces rapid keystrokes into a single load call ", async () => {
 		vi.useFakeTimers();
 		const wrapper = mountHistory();
 		const input = wrapper.get('input[type="search"]');
@@ -134,7 +134,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.exists()).toBe(true);
 	});
 
-	it("exposes an accessible summary for the heatmap, cells aria-hidden (ISS-136)", async () => {
+	it("exposes an accessible summary for the heatmap, cells aria-hidden ", async () => {
 		mockStats.value = {
 			totalPosts: 4,
 			totalReadingMinutes: 40,
@@ -215,7 +215,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("最近浏览");
 	});
 
-	it("shows reading-summary cards when stats are available (TASK-171)", () => {
+	it("shows reading-summary cards when stats are available ", () => {
 		mockStats.value = { totalPosts: 4, totalReadingMinutes: 37 };
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("已读文章");
@@ -224,7 +224,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("37");
 	});
 
-	it("renders the latest-activity card with a localized datetime (TASK-197)", () => {
+	it("renders the latest-activity card with a localized datetime ", () => {
 		mockStats.value = {
 			totalPosts: 4,
 			totalReadingMinutes: 37,
@@ -236,14 +236,14 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).not.toContain("暂无记录");
 	});
 
-	it("shows a placeholder on the latest-activity card when there is no last read (TASK-197)", () => {
+	it("shows a placeholder on the latest-activity card when there is no last read ", () => {
 		mockStats.value = { totalPosts: 0, totalReadingMinutes: 0 };
 		const wrapper = mountHistory();
 		expect(wrapper.text()).toContain("最近阅读活动");
 		expect(wrapper.text()).toContain("暂无记录");
 	});
 
-	it("renders the reading streak card with current and longest days (TASK-201)", () => {
+	it("renders the reading streak card with current and longest days ", () => {
 		mockStats.value = {
 			totalPosts: 4,
 			totalReadingMinutes: 37,
@@ -256,7 +256,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("最长 12 天");
 	});
 
-	it("renders the 52-week activity heatmap with shaded day cells (TASK-201)", () => {
+	it("renders the 52-week activity heatmap with shaded day cells ", () => {
 		mockStats.value = {
 			totalPosts: 4,
 			totalReadingMinutes: 37,
@@ -276,7 +276,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(tooltipCells[0].attributes("title")).toContain("篇");
 	});
 
-	it("labels heatmap cells with the LOCAL calendar date (DEC-316)", () => {
+	it("labels heatmap cells with the LOCAL calendar date ", () => {
 		// The backend buckets the heatmap by the reader's local calendar
 		// days, so a cell's date string is already local — the label must
 		// show it as-is and never re-shift it by the browser offset (the
@@ -297,7 +297,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(tooltip).toContain("2026年8月22日");
 	});
 
-	it("hides the heatmap when there is no activity data (TASK-201)", () => {
+	it("hides the heatmap when there is no activity data ", () => {
 		mockStats.value = { totalPosts: 0, totalReadingMinutes: 0 };
 		const wrapper = mountHistory();
 		expect(wrapper.text()).not.toContain("阅读活跃度（近一年）");
@@ -396,7 +396,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("阅读历史已清空");
 	});
 
-	it("warns instead of claiming success when the server copy survives an offline clear (ISS-387)", async () => {
+	it("warns instead of claiming success when the server copy survives an offline clear ", async () => {
 		vi.useFakeTimers();
 		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
 		mockClear.mockResolvedValueOnce(false);
@@ -419,7 +419,7 @@ describe("Reading-history page (TASK-170)", () => {
 		vi.useRealTimers();
 	});
 
-	it("loads older server history via a load-more affordance (bounded reachability, ISS-303)", async () => {
+	it("loads older server history via a load-more affordance (bounded reachability)", async () => {
 		mockHistory.value = [{ slug: "a", title: "Article A", viewedAt: Date.now() }];
 		mockHasMore.value = true;
 		const wrapper = mountHistory();
@@ -480,7 +480,7 @@ describe("Reading-history page (TASK-170)", () => {
 		expect(wrapper.text()).toContain("网络错误");
 	});
 
-	describe("device-trail import offer (TASK-303/ISS-386)", () => {
+	describe("device-trail import offer ", () => {
 		it("offers a one-time merge when the server history doesn't cover the device trail", () => {
 			mockServerEnabled.value = true;
 			mockPendingDeviceCount.value = 3;
@@ -595,7 +595,7 @@ describe("Reading-history page (TASK-170)", () => {
 		});
 	});
 
-	describe("reading insights (DEC-417, TASK-434)", () => {
+	describe("reading insights ", () => {
 		beforeEach(() => {
 			mockInsightsPayload = null;
 			mockInsightsReject = null;

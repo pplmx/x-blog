@@ -1,5 +1,5 @@
 /**
- * Per-category / per-series RSS feed journey (DEC-130, TASK-177).
+ * Per-category / per-series RSS feed journey.
  *
  * The scoped feed endpoints are reachable and return RSS for a category (by
  * unique name) and a series (by slug), and the series/category pages surface a
@@ -8,7 +8,7 @@
 
 import { expect, test } from "@playwright/test";
 
-test.describe("Scoped RSS feeds (TASK-177)", () => {
+test.describe("Scoped RSS feeds ", () => {
 	test("category feed is reachable by name", async ({ request }) => {
 		const cats = await request.get("/api/categories");
 		expect(cats.status()).toBe(200);

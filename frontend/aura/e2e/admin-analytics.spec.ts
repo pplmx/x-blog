@@ -1,5 +1,5 @@
 /**
- * Reading-trend analytics journey (DEC-086, TASK-155).
+ * Reading-trend analytics journey.
  *
  * Posting views advances a per-day counter; the admin dashboard renders a
  * "阅读趋势" card with the period total and the hot posts. This spec pins the
@@ -39,7 +39,7 @@ test.describe("Reading-trend analytics (admin dashboard)", () => {
 	});
 
 	test("editor also sees the trend card", async ({ page }) => {
-		// Idempotently mint an editor through the admin users API (DEC-054).
+		// Idempotently mint an editor through the admin users API.
 		const login = await fetch(`${API}/api/admin/login`, {
 			method: "POST",
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },

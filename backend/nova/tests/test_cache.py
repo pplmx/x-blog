@@ -71,7 +71,7 @@ def test_clear_counter_caches_drops_lists_and_series_but_keeps_feeds():
     """A pageview/like must drop the posts-list AND series-detail caches
     (both embed the same PostList views/likes — the series detail renders
     per-episode counters, so leaving it cached served frozen numbers for the
-    300s TTL, ISS-373) while keeping the rendered RSS/Atom/sitemap feeds warm
+    300s TTL) while keeping the rendered RSS/Atom/sitemap feeds warm
     (they carry no counters; per-view full-stack clears kept them cold)."""
     posts_list_cache[(1, 10, None, None)] = [{"id": 1}]
     series_cache["deep-dive"] = {"items": [{"slug": "ep", "views": 7, "likes": 1}]}

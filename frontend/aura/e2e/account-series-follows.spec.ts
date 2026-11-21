@@ -1,5 +1,5 @@
 /**
- * Account "Followed series" journey (DEC-134, TASK-179).
+ * Account "Followed series" journey.
  *
  * A signed-in reader sees every series they follow for new-part push on the
  * account page and can unfollow from there; the change is reflected both in
@@ -19,7 +19,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Account followed series (TASK-179)", () => {
+test.describe("Account followed series ", () => {
 	test("guests see no followed-series section on the account page", async ({ page }) => {
 		await page.goto("/account");
 		await expect(page.locator("section", { hasText: "关注的系列" })).toHaveCount(0);
@@ -55,7 +55,7 @@ test.describe("Account followed series (TASK-179)", () => {
 		await expect(section).toBeVisible({ timeout: 10000 });
 		await expect(section.locator(`a[href="/series/${target.slug}"]`).first()).toBeVisible();
 
-		// Notification control (TASK-181): toggle new-part push off/on on the
+		// Notification control: toggle new-part push off/on on the
 		// account page.
 		await expect(section.getByRole("button", { name: "通知已开" })).toBeVisible();
 		await section.getByRole("button", { name: "通知已开" }).click();

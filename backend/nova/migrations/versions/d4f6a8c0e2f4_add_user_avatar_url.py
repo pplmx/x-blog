@@ -1,13 +1,13 @@
-"""add users.avatar_url — the writer's public profile picture (round 358)
+"""add users.avatar_url — the writer's public profile picture
 
-``users.bio`` (round 357) gave a pen-named writer a voice; ``avatar_url``
+``users.bio`` gave a pen-named writer a voice; ``avatar_url``
 gives them a face. A superuser uploads a small profile picture next to the
 pen name/bio in admin/users and it renders on every public rendering of the
 writer: the post byline, the /authors index card, and the /authors/{id}
 archive header — mirroring the reader avatar (ReaderAccount.avatar_url,
-DEC-299/task 378). URL string (varchar 255) rather than a file path so the
+task 378). URL string (varchar 255) rather than a file path so the
 public surface only ever carries a /static URL. NULL = no avatar yet.
-Additive nullable column, no data change, no FK (DEC-009).
+Additive nullable column, no data change, no FK.
 """
 
 from collections.abc import Sequence

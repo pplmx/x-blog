@@ -1,7 +1,7 @@
 /**
  * commentAuthorName unit tests.
  *
- * Guards the PII rule (TASK-377 class): a verified reader with no display_name
+ * Guards the PII rule class: a verified reader with no display_name
  * has their account email stamped as the comment's stored nickname (crud), so
  * ANY public rendering of a comment author must fall back to a generic identity
  * for such readers — never the email. Anonymous commenters' free-typed nicknames

@@ -1,5 +1,5 @@
 /**
- * My Comments keyword search journey (DEC-411, TASK-431).
+ * My Comments keyword search journey.
  *
  * A signed-in reader with several comments opens /comments, types a term into
  * the recall-search box, and the list narrows to the comments whose content
@@ -42,7 +42,7 @@ async function registerAndLoginReader(
 	return (await login.json()).access_token as string;
 }
 
-test.describe("My Comments search (DEC-411)", () => {
+test.describe("My Comments search ", () => {
 	test("keyword search narrows the history and a clear-search reset restores it", async ({
 		page,
 		request,

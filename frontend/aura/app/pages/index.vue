@@ -22,7 +22,7 @@ const route = useRoute();
 // Plain ref for current page — gives us explicit control over re-fetching.
 // Synced from route.query.page on init and when browser back/forward runs.
 // Clamp an invalid ?page= (non-numeric, zero, negative) to page 1 at source
-// (ISS-571, mirror of search.vue:35): `Number("-3") || 1` is -3, so a negative
+// (mirror of search.vue:35): `Number("-3") || 1` is -3, so a negative
 // deep link previously sent page=-3 to /api/posts → FastAPI 422 → permanent
 // dead Retry (the out-of-range watcher below never fires because a failed
 // fetch has no pagination). Number.parseInt keeps "3abc" honest too.
@@ -98,13 +98,13 @@ const pageAnnouncement = computed(() =>
 
 const { data: popularPosts } = await usePopularPosts();
 
-// Time-windowed fresh-content discovery (round 387, DEC-438): "what's being
+// Time-windowed fresh-content discovery: "what's being
 // read this week", distinct from the all-time Popular row below. Server-renders
 // on the same SSR pass; hides entirely when the window is empty (a fresh
 // install tracks post_views_daily forward only, so there is nothing to rank).
 const { data: trendingPosts } = await useTrendingPosts();
 
-// Personalized "Recommended for you" (DEC-128, TASK-176): shown only to
+// Personalized "Recommended for you": shown only to
 // signed-in readers, sourced from their history/bookmark category+tag affinity.
 const recommendedPosts = ref<PostList[]>([]);
 const recommending = ref(false);
@@ -130,7 +130,7 @@ onMounted(async () => {
 	await loadInProgress();
 });
 
-// "Latest from your follows" (DEC-142, TASK-183; paginated DEC-292/TASK-375):
+// "Latest from your follows" (paginated):
 // newest posts from the reader's followed categories + series, gated to
 // signed-in followers. Page 1 of 12 — the /follows page browses everything.
 const followsFeed = ref<PostList[]>([]);
@@ -156,8 +156,8 @@ async function loadFollowsFeed() {
 	}
 }
 
-// Personalized "Your series" (DEC-136, TASK-180): a signed-in reader who
-// follows series sees each one with reading progress (TASK-173) and a
+// Personalized "Your series": a signed-in reader who
+// follows series sees each one with reading progress and a
 // continue deep link, so they can resume several ongoing series in one place.
 const followedSeries = ref<FollowedSeriesItem[]>([]);
 const followedProgress = ref<Record<string, SeriesProgress | null>>({});
@@ -211,7 +211,7 @@ const { data: statsData, error: statsError, refresh: refreshStats } = await useB
 // A failed taxonomy/stats fetch must not masquerade as "no categories/tags"
 // or "0 posts" — the browse card and hero totals silently collapsed to empty
 // on a transient failure (search.vue already distinguishes the two; index
-// was the inconsistent holdout, round 414).
+// was the inconsistent holdout).
 const taxonomyFailed = computed(() => Boolean(categoriesError.value) || Boolean(tagsError.value));
 function retryTaxonomy() {
 	void refreshCategories();
@@ -268,11 +268,11 @@ useSeo(() => ({
 	},
 }));
 
-// Continue-reading trail (DEC-104, TASK-164): recently opened posts, rendered
+// Continue-reading trail: recently opened posts, rendered
 // as a compact row on the home page when the visitor has read something.
 const { recent: recentPosts } = useRecentlyViewed();
 
-// Server-trail Continue reading (DEC-348, TASK-400): the row above is a purely
+// Server-trail Continue reading: the row above is a purely
 // LOCALSTORAGE trail, so a signed-in reader on a NEW device sees an empty row
 // even though the server-side reading trail holds the resume positions they
 // left on another device. Signed-in readers therefore prefer the server trail
@@ -299,7 +299,7 @@ async function loadInProgress() {
 	}
 }
 
-// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052): render
+// Windowed, ellipsis-aware pagination buttons: render
 // the first, current±window and last page joined by "…" instead of one button
 // per page, so large blogs don't overflow the layout.
 const paginationTokens = computed(() =>
@@ -334,7 +334,7 @@ watch(
 
 // Hero/global stats — sourced from the real /api/stats aggregates (site-wide),
 // not the current page's items. Summing the first page's 10 items presented a
-// per-page number as a site total and changed with pagination (ISS-035).
+// per-page number as a site total and changed with pagination.
 const statsFailed = computed(() => Boolean(statsError.value));
 const stats = computed(() => {
 	// The stats endpoint is the source of the site-wide total. Falling back to
@@ -350,7 +350,7 @@ const stats = computed(() => {
 	const totalLikes = statsData.value?.total_likes ?? 0;
 	const totalComments = statsData.value?.total_comments ?? 0;
 	return [
-		// TASK-480/ISS-558: group per the selected site language, not the
+		// group per the selected site language, not the
 		// browser's (a de-DE browser would otherwise dot-group inside a zh/en
 		// UI). The date code elsewhere already passes the app locale.
 		{
@@ -419,7 +419,7 @@ const stats = computed(() => {
              numbers + CJK labels never overflow a 375px phone. -->
 				<div class="flex flex-wrap gap-x-8 gap-y-4 mt-8 pt-8 border-t border-white/15">
 					<!-- A stats fetch failure must not read as "this blog has 0 posts":
-               show the strip only when the totals are real (round 414). -->
+               show the strip only when the totals are real. -->
 					<template v-if="statsFailed">
 						<div class="text-sm text-white/70">
 							<Icon icon="lucide:alert-triangle" class="w-4 h-4 inline -mt-0.5 mr-1" />
@@ -442,7 +442,7 @@ const stats = computed(() => {
 			</div>
 		</section>
 
-		<!-- Continue reading (DEC-104, TASK-164; server trail DEC-348, TASK-400):
+		<!-- Continue reading (server trail):
          guests see the device-local recent row; signed-in readers see the
          server resume trail, newest-first -->
 		<section v-if="continueVisible" class="mb-10">
@@ -476,8 +476,7 @@ const stats = computed(() => {
 			</div>
 		</section>
 
-		<!-- Recommended for you (DEC-128, TASK-176: personalized, signed-in only;
-         ISS-134: gated on content so an empty-recs reader never sees the
+		<!-- Recommended for you (personalized, signed-in only: gated on content so an empty-recs reader never sees the
          orphaned heading) -->
 		<section v-if="recSignedIn && (recommending || recommendedPosts.length)" class="mb-10">
 			<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -517,7 +516,7 @@ const stats = computed(() => {
 			</div>
 		</section>
 
-		<!-- Your series (DEC-136, TASK-180): personalized, signed-in followers only -->
+		<!-- Your series: personalized, signed-in followers only -->
 		<section v-if="followedVisible" class="mb-10">
 			<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
 				<Icon icon="lucide:layers" class="w-5 h-5 text-violet-500" />
@@ -578,7 +577,7 @@ const stats = computed(() => {
 			</div>
 		</section>
 
-		<!-- Latest from your follows (DEC-142, TASK-183): signed-in followers only -->
+		<!-- Latest from your follows: signed-in followers only -->
 		<section v-if="followsFeedVisible" class="mb-10">
 			<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
 				<Icon icon="lucide:rss" class="w-5 h-5 text-emerald-500" />
@@ -632,9 +631,9 @@ const stats = computed(() => {
 		<div class="flex flex-col lg:flex-row gap-8">
 			<!-- Main posts -->
 			<div class="flex-1 min-w-0">
-				<!-- Trending this week (round 387, DEC-438): time-windowed fresh-content
+				<!-- Trending this week: time-windowed fresh-content
              ranking — distinct from the all-time Popular row below. The section
-             vanishes when the window is empty (fresh installs, DEC-086 tracks
+             vanishes when the window is empty (fresh installs tracks
              post_views_daily forward only). -->
 				<div v-if="trendingPosts?.length" class="mb-10">
 					<h2
@@ -764,7 +763,7 @@ const stats = computed(() => {
 				<div v-else-if="posts?.items?.length" class="space-y-5">
 					<PostCard v-for="post in posts.items" :key="post.id" :post="post" />
 
-					<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+					<!-- Pagination (windowed with ellipsis) -->
 					<div
 						v-if="posts.pagination.total_pages > 1"
 						class="flex items-center justify-center gap-2 mt-8"
@@ -809,7 +808,7 @@ const stats = computed(() => {
 							{{ t("home.sidebar.stats") }}
 						</h3>
 						<!-- A stats failure must not masquerade as all-zeros here either
-                 (round 414: the sidebar card duplicated the hero's 0s). -->
+                 . -->
 						<div
 							v-if="statsFailed"
 							class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400"

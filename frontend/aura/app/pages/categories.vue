@@ -37,7 +37,7 @@ const postsFilters = computed(() => ({
 // without firing it, so the unauth'd /api/posts call on the cloud view no
 // longer burns a rate-limit slot, and a posts failure can no longer brick the
 // correctly-loaded category cloud (same pattern as archive.vue's hasPeriod
-// gate and tags.vue's hasTag, deep-dive ISS-368).
+// gate and tags.vue's hasTag, deep-dive).
 const hasCategory = computed(() => !!categoryId.value);
 
 const {
@@ -75,12 +75,12 @@ function goToPage(pg: number | string) {
 	scrollToPageTop();
 }
 
-// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
+// Windowed, ellipsis-aware pagination buttons.
 const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
-// Screen-reader page announcement (round 397, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the list in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() =>
@@ -91,7 +91,7 @@ const pageAnnouncement = computed(() =>
 // after posts were deleted) would otherwise render "No posts yet" with the
 // pagination bar hidden and no way back — clamp to the last real page once
 // pagination is known (home/search already do this; deep-dive finding
-// ISS-308). Loop-safe: the clamp target is valid by construction.
+//). Loop-safe: the clamp target is valid by construction.
 watch(
 	() => posts.value?.pagination,
 	(p) => {
@@ -107,7 +107,7 @@ watch(
 	},
 );
 
-// Client-side filter for the all-categories view (deep-dive, ISS-381): a large
+// Client-side filter for the all-categories view (deep-dive): a large
 // category cloud is unscannable without a way to narrow it. Substring match on
 // the name; empty filter shows everything.
 const categoryFilter = ref("");
@@ -123,8 +123,7 @@ const categoryName = computed(() =>
 );
 
 // SEO: set dynamic head metadata based on view state. Passed as a getter so
-// SPA navigation between ?category_id=X values updates the <title> (RIL
-// TASK-080; useSeo accepts () => SeoOptions). A selected category's canonical
+// SPA navigation between ?category_id=X values updates the <title> => SeoOptions). A selected category's canonical
 // points at the filtered feed URL — never the contentless cloud stub
 // (deep-dive finding).
 function categoryPagePath(pg: number): string {
@@ -152,11 +151,11 @@ useSeo(() => ({
 		: undefined,
 }));
 
-// Scoped RSS feed (DEC-074, TASK-146): on a selected category, autodiscovery
+// Scoped RSS feed: on a selected category, autodiscovery
 // emits <link rel="alternate" type="application/rss+xml"> so browsers/feed
 // readers offer "subscribe to this category", and the visible button shares
 // the same feed URL.
-// Scoped RSS feed (DEC-130/TASK-177): use the stable per-category feed URL
+// Scoped RSS feed: use the stable per-category feed URL
 // (category has no slug — unique name is the path segment) when a category is
 // selected; fall back to the global feed on the all-categories view.
 const feedUrl = computed(() =>
@@ -177,7 +176,7 @@ useHead(() => ({
 		: [],
 }));
 
-// New-post push follow on this category (DEC-076, TASK-147): a one-tap way to
+// New-post push follow on this category: a one-tap way to
 // be notified when the author publishes here. Shares the header push state.
 const {
 	status: pushStatus,
@@ -222,7 +221,7 @@ const followIcon = computed(() =>
 	followingThisCategory.value ? "lucide:bell-ring" : "lucide:bell",
 );
 
-// Durable reader-level category follow (DEC-140/TASK-182): a signed-in reader
+// Durable reader-level category follow: a signed-in reader
 // can follow a category (persisted, cross-device) distinct from the per-device
 // new-post pin above, and manage + toggle notifications on the account page.
 const catSignedIn = computed(
@@ -254,7 +253,7 @@ function noteFollowError() {
 const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
 // Follow-state gets the same stale-response guard the series page uses
-// (deep-dive, ISS-374): without it, a slow in-flight GET can overwrite a
+// (deep-dive): without it, a slow in-flight GET can overwrite a
 // follow toggle the reader just made — the PUT commits and flips the button
 // to "following", then the stale pre-follow GET resolver flips it back and
 // resets the notify flag; SPA navigation between categories can likewise
@@ -266,9 +265,9 @@ async function loadCategoryFollow() {
 	if (!catSignedIn.value || !categoryId.value) return;
 	const seq = ++followSeq; // invalidate any in-flight older category request
 	try {
-		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
+		// Imperative $fetch seam: useFetch-based query()
 		// wrappers silently no-op when called from onMounted in a sync-setup
-		// component — the same class of regression ISS-117 fixed on the account
+		// component — the same class of regression fixed on the account
 		// page. Await the plain response directly.
 		const res = await getReaderCategoryFollows();
 		if (seq !== followSeq) return; // stale — a newer category is in flight
@@ -386,7 +385,7 @@ onUnmounted(() => {
 					</p>
 				</div>
 
-				<!-- Category-cloud filter (ISS-381): same substring narrowing the tags
+				<!-- Category-cloud filter: same substring narrowing the tags
              page got, so a large category set stays scannable. -->
 				<div v-if="categories?.length" class="max-w-md">
 					<div class="relative">
@@ -567,7 +566,7 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+				<!-- Pagination (windowed with ellipsis) -->
 				<div v-if="posts.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
 					<button
 						v-for="(pg, i) in paginationTokens"

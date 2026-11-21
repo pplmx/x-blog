@@ -1,6 +1,6 @@
 <!--
   Admin Users Page — list, create and delete admin accounts.
-  Backs onto the existing /api/admin/users API (TASK-076, ISS-045).
+  Backs onto the existing /api/admin/users API.
 -->
 <script setup lang="ts">
 import {
@@ -22,7 +22,7 @@ useHead({ title: computed(() => t("admin.users.seoTitle")) });
 // The admin users page is superuser-only (backend: get_current_superuser).
 // Hide its entire content for editors even on direct navigation (not just the
 // hidden sidebar link) so an editor never sees the provisioning form. The API
-// independently enforces a 403 on every /users call. (DEC-054, TASK-116)
+// independently enforces a 403 on every /users call.
 const storedRole =
 	typeof window !== "undefined" && typeof localStorage?.getItem === "function"
 		? localStorage.getItem("admin_role")
@@ -60,16 +60,16 @@ const actionError = ref<string | null>(null);
 const actionSuccess = ref<string | null>(null);
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): backend envelope human message,
+	// Shared admin error surfacing: backend envelope human message,
 	// else a local non-HTTP error's message, else the localized fallback.
 	return apiErrorMessage(e, t("admin.users.operationFailed"));
 }
 
-// Public pen name (DEC-359/TASK-405): the byline shown on published posts.
+// Public pen name: the byline shown on published posts.
 // Whitespace-only is saved as null (no public identity) — the same boundary
 // discipline the backend applies, so the create form never stores a blank.
 const newDisplayName = ref("");
-// Public "about this writer" (round 357): plain-text bio rendered on the
+// Public "about this writer": plain-text bio rendered on the
 // author's archive header. Optional at create, same blank-to-null rule.
 const newBio = ref("");
 
@@ -143,7 +143,7 @@ async function savePenName(userId: number) {
 	}
 }
 
-// Inline bio editing per row (round 357): the "about this writer" text that
+// Inline bio editing per row: the "about this writer" text that
 // renders on the writer's public archive header. Mirrors the pen-name editor:
 // one open at a time, Save with an empty field clears it (returns the writer
 // to no bio), Cancel discards the draft. A shared busy flag keeps the two
@@ -179,10 +179,10 @@ async function saveBio(userId: number) {
 	}
 }
 
-// Public profile picture (round 358): the face half of the identity row. A
+// Public profile picture: the face half of the identity row. A
 // superuser picks a file (hidden <input type=file> per row), uploaded raw
 // (backend re-encodes), or removes the current one. Mirrors the reader avatar
-// pattern from /account (DEC-299).
+// pattern from /account.
 const avatarBusyId = ref<number | null>(null);
 
 async function handleAvatarPick(userId: number, event: Event) {
@@ -331,7 +331,7 @@ async function handleDelete(id: number) {
 						minlength="8"
 						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
 					/>
-					<!-- Public pen name (DEC-359/TASK-405): optional at create — the byline
+					<!-- Public pen name: optional at create — the byline
              the new account will show on published posts. Leave empty for no
              public identity (the login username stays private). -->
 					<input
@@ -342,7 +342,7 @@ async function handleDelete(id: number) {
 						maxlength="50"
 						class="px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
 					/>
-					<!-- Public "about this writer" (round 357): optional at create — the
+					<!-- Public "about this writer": optional at create — the
              plain-text bio rendered on the author's archive header. Leave
              empty for no bio (same blank-to-null rule as the pen name). -->
 					<textarea
@@ -375,7 +375,7 @@ async function handleDelete(id: number) {
 			<div v-else-if="error" class="text-center py-12" role="alert">
 				<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
-           line (round-445 audit). -->
+           line. -->
 				<p class="text-red-500 mb-4">{{ t("admin.users.loadFailed") }}</p>
 				<button
 					type="button"
@@ -423,7 +423,7 @@ async function handleDelete(id: number) {
 								</span>
 							</span>
 
-							<!-- Public pen name (DEC-359/TASK-405): shown when set; an inline
+							<!-- Public pen name: shown when set; an inline
                  editor sets/clears it. An admin with no pen name has no byline
                  on the public site — the login username must never surface. -->
 							<div v-if="editingPenId === user.id" class="mt-2 flex items-center gap-2">
@@ -476,7 +476,7 @@ async function handleDelete(id: number) {
 								</button>
 							</div>
 
-							<!-- Public "about this writer" bio (round 357): a plain-text line
+							<!-- Public "about this writer" bio: a plain-text line
                  rendered on the writer's archive header. Inline edit mirrors
                  the pen-name editor; Save with an empty field clears it. -->
 							<div v-if="editingBioId === user.id" class="mt-2 flex items-start gap-2">
@@ -530,7 +530,7 @@ async function handleDelete(id: number) {
 								</button>
 							</div>
 
-							<!-- Public profile picture (round 358): a small avatar a
+							<!-- Public profile picture: a small avatar a
                  superuser uploads/removes — the face of the pen-named writer,
                  rendered on bylines, the /authors index card and the archive
                  header. Mirrors the reader avatar in /account: raw upload,

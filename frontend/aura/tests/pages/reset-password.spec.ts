@@ -1,4 +1,4 @@
-/** Reader /reset-password page tests (DEC-286, TASK-371). */
+/** Reader /reset-password page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
@@ -82,10 +82,10 @@ describe("reset-password page", () => {
 	// Deep-dive finding: the footer link is labeled "Back to login" but used to
 	// point at /forgot-password when a token was present. A token-bearing landing
 	// is still a login-page visit (or a spent-link 400) — /login for both states.
-	it("shows the success state instead of a blank page if navigation fails (round 408)", async () => {
+	it("shows the success state instead of a blank page if navigation fails ", async () => {
 		// The reader is signed in under the fresh session; a rejecting
 		// navigateTo must not be misreported as a network failure — the done
-		// success block carries them (round-342 pattern, was a blank page).
+		// success block carries them.
 		resetPassword.mockResolvedValue({ access_token: "x", reader: {} });
 		navigateTo.mockRejectedValueOnce(new Error("navigation failed"));
 		const wrapper = mountPage({ token: "abc.def.ghi" });

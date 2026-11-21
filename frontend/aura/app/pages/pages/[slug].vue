@@ -9,7 +9,7 @@ const route = useRoute();
 
 // The slug comes from the path (/pages/{slug}); keep it reactive so SPA
 // navigation between pages refetches (mirrors the posts/[slug] getter pattern,
-// TASK-090). A null slug is never a real page.
+//). A null slug is never a real page.
 const slug = computed(() => {
 	const raw = String(route.params.slug ?? "");
 	return raw === "" || raw === "undefined" ? null : raw;
@@ -29,7 +29,7 @@ function retry() {
 }
 
 // "Last updated" date for the public page (naive-UTC wire contract,
-// site-wide long form — same format as PostCard/article/bookmarks, ISS-573).
+// site-wide long form — same format as PostCard/article/bookmarks).
 const updatedLabel = computed(() => formatPostDate(page.value?.updated_at, locale.value));
 
 useSeo(() => ({

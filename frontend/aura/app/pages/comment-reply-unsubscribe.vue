@@ -1,5 +1,5 @@
 <!--
-  Guest reply-email unsubscribe (DEC-332, TASK-392).
+  Guest reply-email unsubscribe.
 
   Landed on via the `?token=` link inside a guest reply-email (the per-comment
   token only that email carries). Fires the backend unsubscribe once on the

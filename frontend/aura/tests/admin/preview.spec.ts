@@ -1,5 +1,5 @@
 /**
- * Author-preview page tests (DEC-150, TASK-187; retry affordance round 276).
+ * Author-preview page tests (retry affordance).
  *
  * Verifies the loading skeleton, the rendered draft (title/reading time),
  * the failed state — and that a failed load offers Retry (the codebase's
@@ -87,7 +87,7 @@ function mountPreview(PreviewPage: any, overrides: any = {}) {
 	});
 }
 
-describe("Author preview page (TASK-187)", () => {
+describe("Author preview page ", () => {
 	beforeEach(() => {
 		mockGetAdminPost.mockClear();
 		mockGetAdminCategories.mockClear();
@@ -127,7 +127,7 @@ describe("Author preview page (TASK-187)", () => {
 		expect(wrapper.text()).toContain("预览（尚未发布）");
 	});
 
-	it("shows a failed state AND a retry affordance on load failure (round 276)", async () => {
+	it("shows a failed state AND a retry affordance on load failure ", async () => {
 		mockGetAdminPost.mockRejectedValueOnce(new Error("network"));
 		const PreviewPage = await loadPage();
 		const wrapper = mountPreview(PreviewPage);

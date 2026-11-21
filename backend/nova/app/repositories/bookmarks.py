@@ -107,7 +107,7 @@ async def add_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -
     add_reader_bookmark). The durable row is what makes a signed-in reader's
     like cross-device; the public counter is the aggregate badge.
 
-    Row + counter commit in ONE transaction (ISS-574, like_comment's ISS-560
+    Row + counter commit in ONE transaction (like_comment's
     pattern): the old two-commit path (row commit here, counter bump in the
     router) could crash in between and leave a durable like row whose count
     was never bumped, with no re-sync path. A concurrent duplicate
@@ -130,7 +130,7 @@ async def add_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -
     except Exception:
         await db.rollback()
         raise
-    # The counter is embedded in the cached post-list payloads (ISS-141);
+    # The counter is embedded in the cached post-list payloads;
     # a brand-new like changes it, so drop those caches exactly once per commit.
     clear_counter_caches()
     await db.refresh(like)
@@ -140,7 +140,7 @@ async def add_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -
 async def remove_reader_post_like(db: AsyncSession, reader_id: int, post_id: int) -> bool:
     """Delete a like; returns True if one was removed. Idempotent.
 
-    Row + counter decrement commit in ONE transaction (ISS-574, mirroring
+    Row + counter decrement commit in ONE transaction (mirroring
     add_reader_post_like): the old two-commit path could crash between the
     row delete and the counter bump, leaving a vanished like row whose badge
     still counted it — permanently wrong, no re-sync path."""
@@ -154,7 +154,7 @@ async def remove_reader_post_like(db: AsyncSession, reader_id: int, post_id: int
     except Exception:
         await db.rollback()
         raise
-    # Counter embeds in cached post-list payloads (ISS-141); drop them once.
+    # Counter embeds in cached post-list payloads; drop them once.
     clear_counter_caches()
     return True
 
@@ -173,9 +173,8 @@ async def list_reader_post_likes(
     or scheduled post on a read path (same invariant as list_reader_bookmarks)
     — visibility is pushed into the SQL WHERE so pages are stable.
     ``limit=None`` returns the complete list (the reader data export uses
-    that, RIL ISS-288). ``q`` (optional) filters to liked posts whose title or
-    excerpt matches the term (case-insensitive, escape-aware — DEC-413/TASK-432,
-    same recall-search pattern as history DEC-148) so a reader can recall a
+    that). ``q`` (optional) filters to liked posts whose title or
+    excerpt matches the term (case-insensitive, escape-aware, same recall-search pattern as history) so a reader can recall a
     specific appreciated post.
     """
     now = utc_now_naive()
@@ -214,12 +213,12 @@ async def list_reader_post_likes(
 async def list_reader_post_likes_for_export(
     db: AsyncSession, reader_id: int
 ) -> list[tuple[models.Post, datetime | None]]:
-    """Complete liked-posts list for the reader data export (round 360).
+    """Complete liked-posts list for the reader data export.
 
     Like list_reader_post_likes but carries each like's ``created_at`` (the
     bundle wants when the reader liked the post) and is deliberately
     unbounded — a backup must be complete, never capped at the list endpoint's
-    default limit (same stance as bookmarks, RIL ISS-288). Publicly-visible
+    default limit (same stance as bookmarks). Publicly-visible
     posts only, newest like first; the same filters as the read path so a
     liked post that became a draft no longer shows here.
     """
@@ -246,7 +245,7 @@ async def list_reader_public_bookmarks(
     limit: int | None = 100,
 ) -> tuple[list[models.Post], int]:
     """Return the reader's bookmarked posts, publicly-visible only, for their
-    public "Saved posts" tab (round 363, DEC-399).
+    public "Saved posts" tab.
 
     Same shape and invariants as list_reader_post_likes: only publicly-visible
     posts (never a draft/scheduled post on a read path), newest bookmark first,
@@ -294,13 +293,11 @@ async def list_reader_bookmarks(
     the public post/comment read paths) — visibility is pushed into the SQL
     WHERE so pages are stable and non-visible posts simply don't appear.
     ``folder_id`` (if given) filters to that folder; ``done`` (if given)
-    filters to the To-read (False) or Done (True) queue state (round 361,
-    DEC-395). Returns (items, total), where total counts the reader's
-    publicly-visible bookmarks (bounded paging instead of loading every row —
-    ISS-142; DEC-120/TASK-172). Pass ``limit=None`` for the *complete* list
+    filters to the To-read (False) or Done (True) queue state. Returns (items, total), where total counts the reader's
+    publicly-visible bookmarks (bounded paging instead of loading every row).
+    Pass ``limit=None`` for the *complete* list
     (no offset/LIMIT) — the reader data export uses that so its portable
-    bundle is never silently truncated to this default page size (RIL
-    ISS-288).
+    bundle is never silently truncated to this default page size.
     """
     now = utc_now_naive()
     query = (
@@ -476,7 +473,7 @@ async def set_bookmark_folder(
 async def set_reader_bookmark_done(
     db: AsyncSession, reader_id: int, post_id: int, done: bool
 ) -> models.ReaderBookmark | None:
-    """Move a bookmark between To-read and Done (round 361, DEC-395).
+    """Move a bookmark between To-read and Done.
 
     Ownership-scoped: only the reader's own bookmark. Returns the updated
     bookmark, or None if the post isn't bookmarked by this reader (404).

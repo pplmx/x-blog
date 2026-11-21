@@ -5,7 +5,7 @@ import { usePost } from "~~/api/public/posts";
 import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { readingMinutes } from "~~/composables/useReadingTime";
 
-// Print / PDF view of a post (DEC-112, TASK-168).
+// Print / PDF view of a post.
 // Frontend-only: a clean typographic rendering of a single article that a
 // reader can save via the browser's print-to-PDF, without the site chrome.
 const route = useRoute();
@@ -19,7 +19,7 @@ const readingTime = computed(() => readingMinutes(post.value?.content));
 // engines from indexing it as a separate page (canonical lives on the article).
 // Getters (not a static value) so SPA navigation between print slugs — the
 // route keeps this component mounted — swaps the tab title with the new post
-// instead of leaving the previous one's title on the tab (round-299 deep-dive).
+// instead of leaving the previous one's title on the tab.
 useHead({
 	title: () =>
 		post.value ? `${post.value.title} — ${t("post.printPdf")}` : t("post.notFoundTitle"),
@@ -68,8 +68,8 @@ function printPage() {
 			<div v-else-if="error || !post" class="text-center py-20 text-gray-500">
 				<Icon icon="lucide:file-question" class="w-12 h-12 mx-auto mb-4 text-gray-300" />
 				<p class="mb-4">{{ t("post.notFound") }}</p>
-				<!-- A stale share/bookmark print link must not be a dead end (round-299
-             deep-dive): give the reader a path back home, like the article page. -->
+				<!-- A stale share/bookmark print link must not be a dead end (deep-dive):
+             give the reader a path back home, like the article page. -->
 				<NuxtLink
 					to="/"
 					class="px-4 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"

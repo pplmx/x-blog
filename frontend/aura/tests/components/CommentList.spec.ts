@@ -47,7 +47,7 @@ vi.mock("~~/api/reader/comments", () => ({
 	deleteMyComment: mockDeleteMyComment,
 }));
 
-// Blocked-reader suppression (round 386, DEC-437): stub the composable so a
+// Blocked-reader suppression: stub the composable so a
 // test can inject a blocked set and observe that the rows disappear from the
 // rendered thread while unblocked rows stay.
 const mockBlockedSet = ref(new Set<number>());
@@ -161,13 +161,13 @@ async function mountCommentList({
 					props: ["icon"],
 				},
 				// The verified-reader display name links to /readers/{id}
-				// (DEC-294, TASK-376); stub NuxtLink so tests can assert the
+				//; stub NuxtLink so tests can assert the
 				// href lands on the reader's public profile.
 				NuxtLink: {
 					template: '<a :href="to"><slot/></a>',
 					props: ["to"],
 				},
-				// The shared ReaderAvatar (round-446); stub to the bare img so the
+				// The shared ReaderAvatar; stub to the bare img so the
 				// avatar assertions stay on the resolved <img src>.
 				ReaderAvatar: {
 					props: ["url", "name"],
@@ -269,7 +269,7 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Bob");
 		});
 
-		it("badges an author reply from the queue (DEC-192)", async () => {
+		it("badges an author reply from the queue ", async () => {
 			const authorReply = {
 				...mockComments.items[0],
 				nickname: "X-Blog",
@@ -296,7 +296,7 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
-		it("renders a #comment-<id> anchor on every comment (DEC-072)", async () => {
+		it("renders a #comment-<id> anchor on every comment ", async () => {
 			const { wrapper } = await mountCommentList();
 			expect(wrapper.find('li[id="comment-1"]').exists()).toBe(true);
 			expect(wrapper.find('li[id="comment-2"]').exists()).toBe(true);
@@ -391,7 +391,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Markdown rendering (DEC-088, TASK-156)", () => {
+	describe("Markdown rendering ", () => {
 		it("renders comment markdown as HTML (code block, bold, line breaks)", async () => {
 			const mdComments = {
 				items: [
@@ -448,7 +448,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Syntax highlighting (DEC-090, TASK-157)", () => {
+	describe("Syntax highlighting ", () => {
 		it("tokenizes fenced code blocks in comment bodies with highlight.js", async () => {
 			const codeComments = {
 				items: [
@@ -514,7 +514,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Comment likes (DEC-092, TASK-158)", () => {
+	describe("Comment likes ", () => {
 		beforeEach(() => {
 			localStorage.clear();
 			mockLikeComment.mockReset();
@@ -569,7 +569,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Comment edit/delete by author (DEC-096, TASK-160)", () => {
+	describe("Comment edit/delete by author ", () => {
 		const ownReader = { id: 7, display_name: "Me" };
 		const ownComments = {
 			items: [
@@ -684,7 +684,7 @@ describe("CommentList", () => {
 		it("shows a saving state on the inline edit Save while the update is in flight", async () => {
 			// An unresolved promise keeps the edit in the saving state so the
 			// pending affordance is observable — a disabled-looking Save with no
-			// spinner was indistinguishable from a dead click (round-414 deep-dive).
+			// spinner was indistinguishable from a dead click.
 			let resolveUpdate: ((v: (typeof ownComments.items)[0]) => void) | undefined;
 			mockUpdateMyComment.mockImplementation(() => new Promise((res) => (resolveUpdate = res)));
 			const { wrapper } = await mountCommentList({ comments: ownComments });
@@ -736,7 +736,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Comment flag/report (DEC-108, TASK-166)", () => {
+	describe("Comment flag/report ", () => {
 		beforeEach(() => {
 			localStorage.clear();
 			mockFlagComment.mockReset();
@@ -763,7 +763,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Comment sort (DEC-094, TASK-159)", () => {
+	describe("Comment sort ", () => {
 		it("renders a sort dropdown once there are comments", async () => {
 			const { wrapper } = await mountCommentList();
 			expect(wrapper.find("select#comment-sort").exists()).toBe(true);
@@ -791,7 +791,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Search inside the thread (DEC-442, TASK-452)", () => {
+	describe("Search inside the thread ", () => {
 		it("debounced keyword input re-fetches with q and resets to page 1", async () => {
 			vi.useFakeTimers();
 			try {
@@ -889,7 +889,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Comment surfacing (ISS-384 / round 278)", () => {
+	describe("Comment surfacing ", () => {
 		const parentComment = {
 			id: 5,
 			post_id: 1,
@@ -900,7 +900,7 @@ describe("CommentList", () => {
 			created_at: "2024-01-01T00:00:00Z",
 		};
 
-		it("surfaces a reply posted under the most-helpful sort even though its parent is on page 1 (round 278)", async () => {
+		it("surfaces a reply posted under the most-helpful sort even though its parent is on page 1 ", async () => {
 			// The new reply (0 likes) sorts to the TAIL of a most-helpful
 			// thread, not page 1. Pre-fix handleReplied jumped to page 1 for
 			// every non-oldest sort and — because the parent WAS on page 1 —
@@ -962,7 +962,7 @@ describe("CommentList", () => {
 			}
 		});
 
-		it("surfaceComment under newest jumps to page 1 and scrolls the fresh comment (ISS-384 regression guard)", async () => {
+		it("surfaceComment under newest jumps to page 1 and scrolls the fresh comment (regression guard)", async () => {
 			const original = Element.prototype.scrollIntoView;
 			const scrollIntoView = vi.fn();
 			Element.prototype.scrollIntoView =
@@ -994,7 +994,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Refresh failures + page drain (ISS-307)", () => {
+	describe("Refresh failures + page drain ", () => {
 		it("surfaces a sort-refresh failure with a working retry instead of staying silent", async () => {
 			const { wrapper } = await mountCommentList();
 			mockGetComments.mockRejectedValueOnce(new Error("network down"));
@@ -1125,7 +1125,7 @@ describe("CommentList", () => {
 			expect(mockGetComments).toHaveBeenLastCalledWith(1, 2, 20, "newest", "");
 		});
 
-		it("offers first/last + ellipsis far-page affordance (ISS-370)", async () => {
+		it("offers first/last + ellipsis far-page affordance ", async () => {
 			const { wrapper } = await mountCommentList({
 				comments: { ...mockComments, total_pages: 10 },
 			});
@@ -1143,7 +1143,7 @@ describe("CommentList", () => {
 			expect(mockGetComments).toHaveBeenLastCalledWith(1, 10, 20, "newest", "");
 		});
 
-		it("shows an in-flight spinner while a pagination refetch runs (ISS-130)", async () => {
+		it("shows an in-flight spinner while a pagination refetch runs ", async () => {
 			let resolvePage!: (v: unknown) => void;
 			const { wrapper } = await mountCommentList();
 			mockGetComments.mockImplementationOnce(() => new Promise((r) => (resolvePage = r)) as never);
@@ -1217,7 +1217,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Reply on a far page jumps to the new comment (ISS-384)", () => {
+	describe("Reply on a far page jumps to the new comment ", () => {
 		it("moves to page 1 and re-fetches when a new comment is submitted from page 2+", async () => {
 			// A reader replying from page 2 under the default newest sort: the new
 			// comment (newest created_at) lands on page 1, so refreshing the current
@@ -1487,7 +1487,7 @@ describe("CommentList", () => {
 	});
 
 	describe("Unsaved-input guard on sort/page refresh (deep-dive)", () => {
-		// Regression (ISS-421): the reply-draft guard covered cancel/re-target
+		// Regression: the reply-draft guard covered cancel/re-target
 		// only. A sort switch or page turn re-fetches page 1 / swaps rows in
 		// place — the per-row reply form and the author edit box unmount and the
 		// typed text vanishes with no prompt. The refresh paths must ask first.
@@ -1639,7 +1639,7 @@ describe("CommentList", () => {
 			expect(wrapper.find("textarea").exists()).toBe(false);
 		});
 
-		it("thread search asks before discarding a dirty reply draft (round 396)", async () => {
+		it("thread search asks before discarding a dirty reply draft ", async () => {
 			// The search box commits by re-fetching page 1 and swapping rows in
 			// place — pre-fix it bypassed confirmDiscardUnsaved (added after the
 			// sort/page-turn guard) and silently dropped a half-typed reply.
@@ -1700,7 +1700,7 @@ describe("CommentList", () => {
 
 		it("clearing the thread search also asks before dropping a dirty draft", async () => {
 			// clearQuery restores the full thread by re-swapping rows — the same
-			// draft-loss path as committing a term (round 396).
+			// draft-loss path as committing a term.
 			vi.useFakeTimers();
 			const confirmSpy = vi.fn(() => false);
 			vi.stubGlobal("confirm", confirmSpy);
@@ -1735,7 +1735,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Deep replies (reply to a reply, RIL ISS-037)", () => {
+	describe("Deep replies (reply to a reply)", () => {
 		const deepComments = {
 			items: [
 				{
@@ -1797,7 +1797,7 @@ describe("CommentList", () => {
 			expect(deepOccurrences).toBe(1);
 		});
 
-		it("shows a Reply button on nested replies and opens a reply form (RIL TASK-080)", async () => {
+		it("shows a Reply button on nested replies and opens a reply form ", async () => {
 			const { wrapper } = await mountCommentList({ comments: deepComments });
 			// Two nested replies (Level1 id=11, Level2 id=12) each get a Reply button.
 			const replyButtons = wrapper.findAll("button").filter((b) => b.text() === "回复");
@@ -1817,7 +1817,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("verified reader badge (DEC-062, TASK-136)", () => {
+	describe("verified reader badge ", () => {
 		it("renders a verified badge for reader-attributed comments", async () => {
 			const readerComments = {
 				items: [
@@ -1855,7 +1855,7 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Guest");
 		});
 
-		it("links the verified reader display name to their public profile page (DEC-294, TASK-376)", async () => {
+		it("links the verified reader display name to their public profile page ", async () => {
 			const readerComments = {
 				items: [
 					{
@@ -1885,7 +1885,7 @@ describe("CommentList", () => {
 			expect(link.text()).toContain("Riki");
 		});
 
-		it("renders a reader's avatar beside their verified name (DEC-299/TASK-378)", async () => {
+		it("renders a reader's avatar beside their verified name ", async () => {
 			const readerComments = {
 				items: [
 					{
@@ -1909,7 +1909,7 @@ describe("CommentList", () => {
 			expect(avatar.exists()).toBe(true);
 		});
 
-		it("omits the avatar and falls back to the name when a reader has none (DEC-299/TASK-378)", async () => {
+		it("omits the avatar and falls back to the name when a reader has none ", async () => {
 			const readerComments = {
 				items: [
 					{
@@ -1933,7 +1933,7 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("Riki");
 		});
 
-		it("never surfaces a no-display_name reader's email as their public name (TASK-377)", async () => {
+		it("never surfaces a no-display_name reader's email as their public name ", async () => {
 			const readerComments = {
 				items: [
 					{
@@ -2118,7 +2118,7 @@ describe("CommentList", () => {
 		});
 	});
 
-	describe("Exposed refresh (ISS-126)", () => {
+	describe("Exposed refresh ", () => {
 		it("exposes refreshList so a sibling comment form can re-fetch after submit", async () => {
 			const { wrapper } = await mountCommentList();
 			const vm = wrapper.findComponent(CommentList).vm as unknown as {
@@ -2152,8 +2152,8 @@ describe("CommentList", () => {
 	});
 });
 
-describe("Comment image lightbox (DEC-308/TASK-382)", () => {
-	// A comment body containing markdown images (DEC-088 pipeline renders them
+describe("Comment image lightbox ", () => {
+	// A comment body containing markdown images (pipeline renders them
 	// as real <img>): clicking one must open the same fullscreen MarkdownLightbox
 	// the post body uses, with the comment's own images as the browse set.
 	const imageComment = {
@@ -2248,7 +2248,7 @@ describe("Comment image lightbox (DEC-308/TASK-382)", () => {
 	});
 });
 
-describe("Moderated-comment surfacing (DEC-310/TASK-383)", () => {
+describe("Moderated-comment surfacing ", () => {
 	// On a moderated deployment (AUTO_APPROVE_READER_COMMENTS off, the default)
 	// the create endpoint returns the PENDING comment (is_approved=false) but
 	// the list endpoint only serves approved rows — so a post-comment
@@ -2324,7 +2324,7 @@ describe("Moderated-comment surfacing (DEC-310/TASK-383)", () => {
 	});
 });
 
-describe("Blocked-reader suppression (round 386, DEC-437)", () => {
+describe("Blocked-reader suppression ", () => {
 	beforeEach(() => {
 		mockBlockedSet.value = new Set();
 		mockLoadBlocked.mockReset();
@@ -2402,7 +2402,7 @@ describe("Blocked-reader suppression (round 386, DEC-437)", () => {
 		// Both comments on the page are credited to one reader; blocking them
 		// leaves the filtered list empty while the server total stays > 0 (the
 		// truth of the thread) — the empty-page copy must show instead of a
-		// blank <ul> (round 386, DEC-437).
+		// blank <ul>.
 		const allByBlocked = {
 			...mockComments,
 			items: [

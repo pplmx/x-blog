@@ -1,4 +1,4 @@
-/** Reader /comment-subscribe/confirm page tests (DEC-427, TASK-438). */
+/** Reader /comment-subscribe/confirm page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -53,7 +53,7 @@ describe("comment-subscribe confirm page", () => {
 
 	it("seeds the weekly-summary checkbox from the confirm response", async () => {
 		// A subscribe-time weekly opt-in must show checked, not the per-comment
-		// default (DEC-429).
+		// default.
 		confirmGuestThreadSubscription.mockResolvedValue({ confirmed: true, digest_weekly: true });
 		const wrapper = mountPage({ token: "tok-123" });
 		await flushPromises();
@@ -115,7 +115,7 @@ describe("comment-subscribe confirm page", () => {
 		expect(wrapper.text()).not.toContain("这个确认链接无效，或已经被使用过。");
 	});
 
-	it("tells an unsubscribed address to re-subscribe instead of retry (400, round 408)", async () => {
+	it("tells an unsubscribed address to re-subscribe instead of retry (400)", async () => {
 		// The backend 400s a replayed confirm link on a deliberately
 		// unsubscribed guest-thread address (consent-restart gate); before this
 		// fix the page mislabeled it as a network error asking a dead-link

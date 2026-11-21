@@ -1,9 +1,9 @@
 /**
- * Reading-history source selector + summary (DEC-116/TASK-170, DEC-118/TASK-171).
+ * Reading-history source selector + summary.
  *
  * A signed-in reader's Continue-reading trail is server-backed so it follows
  * them across devices; guests keep the client-side localStorage trail
- * (DEC-104/TASK-169). This composable exposes one normalized `history` list
+ *. This composable exposes one normalized `history` list
  * (slug/title/viewedAt) from the API when authenticated and from the local
  * trail otherwise, plus `load()`/`clear()` on the active source. For signed-in
  * readers it also loads a `stats` summary (posts read, total reading minutes,
@@ -36,14 +36,14 @@ export interface ReadingStats {
 	totalReadingMinutes: number;
 	/** Epoch ms of the most recent view (server-only; undefined for guests). */
 	lastViewedAt?: number;
-	/** Consecutive active days (server-only; 0 for guests). DEC-169/TASK-201.
+	/** Consecutive active days (server-only; 0 for guests)..
 	 * Counted in the reader's local calendar (the browser's tz is sent to the
-	 * backend, DEC-316). */
+	 * backend). */
 	currentStreak?: number;
-	/** Longest run of consecutive active days (server-only). DEC-169/TASK-201. */
+	/** Longest run of consecutive active days (server-only).. */
 	longestStreak?: number;
 	/** Last 52 weeks of per-day read counts (server-only; reader-local calendar
-	 * dates, DEC-316). DEC-169/TASK-201. */
+	 * dates).. */
 	activity?: { date: string; count: number }[];
 }
 
@@ -51,7 +51,7 @@ export interface ReadingStats {
 const HISTORY_FETCH_LIMIT = 100;
 
 /**
- * The browser's IANA timezone id, when resolvable (DEC-316/TASK-386).
+ * The browser's IANA timezone id, when resolvable.
  *
  * Sent with the stats fetch so the backend buckets the streak + heatmap to the
  * reader's own calendar (a non-UTC reader's "today" is not UTC's). Omitted on
@@ -92,7 +92,7 @@ export function useReadingHistory() {
 	// trail, deep-dive finding).
 	const loadFailed = ref(false);
 
-	// Server-side paging (bounded reachability, RIL ISS-303): the API returns
+	// Server-side paging (bounded reachability): the API returns
 	// at most HISTORY_FETCH_LIMIT rows per page, so a reader with more history
 	// could never reach the older entries. load() resets to page 1; loadMore()
 	// appends the next page. Guests use the bounded local trail and never page.
@@ -106,7 +106,7 @@ export function useReadingHistory() {
 	 * Never true in the local-trail fallback: a server failure collapses the
 	 * list to one non-paged page, so "Load more" must not appear above it — a
 	 * click would otherwise append server rows into the on-device trail
-	 * (round-298 deep-dive). */
+	 *. */
 	const hasMore = computed(
 		() =>
 			serverEnabled.value &&
@@ -117,7 +117,7 @@ export function useReadingHistory() {
 	);
 
 	/**
-	 * Local-trail entries not yet on the server (TASK-303, ISS-386).
+	 * Local-trail entries not yet on the server.
 	 *
 	 * Signing in switches the source to the server trail, so the guest's device
 	 * records have no path into it and silently vanish from the page. This is
@@ -159,12 +159,12 @@ export function useReadingHistory() {
 	}
 
 	// Monotonic request sequence so a slow earlier response cannot overwrite a
-	// newer one after the recall-search query changed (ISS-128).
+	// newer one after the recall-search query changed.
 	let loadSeq = 0;
 
 	/** Load history (+ stats) from the active source (server if signed in, else local).
 	 * ``query`` (optional) filters to posts whose title/excerpt match (recall
-	 * search, DEC-148/TASK-186): server asks the API, guests filter in place. */
+	 * search): server asks the API, guests filter in place. */
 	async function load(query = ""): Promise<void> {
 		const seq = ++loadSeq; // invalidate any in-flight older request
 		if (!serverEnabled.value) {
@@ -203,7 +203,7 @@ export function useReadingHistory() {
 			// term filter the guest path uses — a typed term must not silently
 			// show the whole trail — and collapse paging to one page so the
 			// fallback can never grow a "Load more" that mixes server rows into
-			// on-device records (round-298 deep-dive).
+			// on-device records.
 			loadFailed.value = true;
 			const term = query.trim().toLowerCase();
 			const all = fromLocal(local.recent.value);
@@ -213,7 +213,7 @@ export function useReadingHistory() {
 		}
 		try {
 			// Declare the client timezone so the backend buckets the streak +
-			// heatmap to the reader's own calendar (DEC-316/TASK-386).
+			// heatmap to the reader's own calendar.
 			const sdata = await getReaderHistoryStats(clientTimezone());
 			if (seq !== loadSeq) return;
 			if (sdata) {
@@ -236,7 +236,7 @@ export function useReadingHistory() {
 	}
 
 	/**
-	 * Append the next server page of history (bounded reachability, ISS-303).
+	 * Append the next server page of history (bounded reachability).
 	 * Dedupes by slug so a page boundary can never double-render a row; a
 	 * failure keeps the rows already shown and surfaces a retry hint. Guests
 	 * never page (the local trail is bounded).
@@ -275,12 +275,12 @@ export function useReadingHistory() {
 	 * cleared). Returns false when a signed-in clear could not reach the server —
 	 * the on-device trail is wiped but the server copy survives and will come
 	 * back on the next signed-in load, so the page must warn instead of showing
-	 * a permanent-looking success (ISS-387). Guests only have the local trail,
+	 * a permanent-looking success. Guests only have the local trail,
 	 * so they always get true.
 	 */
 	async function clear(): Promise<boolean> {
 		// Invalidate any in-flight load()/loadMore() FIRST — the same monotonic
-		// guard those two use (ISS-128), which clear() previously bypassed. A
+		// guard those two use, which clear() previously bypassed. A
 		// Clear clicked while the initial onMounted load is still running would
 		// otherwise be overwritten by that stale pre-clear response: the guarded
 		// seq is unchanged, so the old list resurrects beneath the "cleared"

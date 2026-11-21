@@ -1,5 +1,5 @@
 /**
- * Search analytics journey (DEC-152, TASK-188).
+ * Search analytics journey.
  *
  * A public search is logged (aggregate) and the top terms appear on the admin
  * dashboard, so the operator sees what readers look for.
@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin search analytics (TASK-188)", () => {
+test.describe("Admin search analytics ", () => {
 	test("a public search shows up in the admin dashboard top searches", async ({
 		page,
 		request,

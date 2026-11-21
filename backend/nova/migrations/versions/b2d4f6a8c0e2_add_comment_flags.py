@@ -1,10 +1,10 @@
-"""add comment_flags table for reader-driven moderation reports (DEC-108)
+"""add comment_flags table for reader-driven moderation reports
 
 Readers can flag an inappropriate comment for moderator review. The additive
 ``comment_flags`` table stores one row per (comment, ip_key) so a visitor can
 flag a comment at most once (unique pair = idempotent, no click spam) and the
 moderator sees a count of distinct reporters. Only the new table is added — no
-existing DDL is touched (DEC-009).
+existing DDL is touched.
 
 Revision ID: b2d4f6a8c0e2
 Revises: a1f3c5e7d9b2

@@ -1,9 +1,8 @@
-"""add reader_accounts table for reader identity (DEC-059)
+"""add reader_accounts table for reader identity
 
 Adds a ``reader_accounts`` table (email/password/display_name/token_version/
 created_at) so readers can self-register and later own cloud-synced bookmarks.
-This is a brand-new table — none of the existing DDL is touched (DEC-009
-preserved).
+This is a brand-new table — none of the existing DDL is touched.
 
 Defensive like the series/push/role migrations: if the table already exists (a
 dev DB whose create_all safety net created it first), it is left as-is — no

@@ -135,11 +135,11 @@ logger = get_logger(__name__)
 
 #: Time-to-live of an email-change verification link (mirrors the password-reset
 #: window: long enough to reach the new inbox, short enough to expire stale
-#: links). The pending change is cleared when it lapses (DEC-357, TASK-404).
+#: links). The pending change is cleared when it lapses.
 EMAIL_CHANGE_TTL_MINUTES = 60
 
 # Reader avatar storage lives in a dedicated static/avatars/ namespace, NOT the
-# admin media library's static/uploads/ (DEC-299/TASK-378): the admin media
+# admin media library's static/uploads/: the admin media
 # listing walks static/uploads/ only, so a reader's profile picture must not
 # appear in or collide with the author's uploaded post images. The directory
 # itself is owned by the router (which passes it to these functions); only the
@@ -183,9 +183,9 @@ async def update_my_profile(
     ``updates`` is the payload's ``model_dump(exclude_unset=True)`` so the
     bio/public flags follow the exclude_unset contract: only explicitly-present
     keys are applied. Email changes are their own verified flow
-    (/me/email/request + /me/email/confirm, DEC-357).
+    (/me/email/request + /me/email/confirm).
     """
-    # `None` = no update (explicit null must NOT clear the name — DEC-318);
+    # `None` = no update (explicit null must NOT clear the name);
     # only a non-null explicit value is applied. bio / public flags may clear.
     if updates.get("display_name") is not None:
         current_reader.display_name = updates["display_name"]
@@ -212,7 +212,7 @@ async def upload_my_avatar(
     Same defense-in-depth validation as the admin image upload (content-type
     whitelist, size cap, magic bytes, full Pillow decode, never-larger re-encode
     that strips EXIF) — shared via app.image_validation so the two upload
-    surfaces can't drift apart (DEC-299/TASK-378). The new avatar is written to
+    surfaces can't drift apart. The new avatar is written to
     static/avatars/ first, then the DB row is updated and any previous avatar
     file removed, so a failed write never leaves a dangling avatar_url.
     """
@@ -289,7 +289,7 @@ async def setup_two_factor(
     db: AsyncSession,
     current_reader: auth.ReaderAccount,
 ) -> dict[str, str]:
-    """Generate fresh TOTP enrollment material (round 364, DEC-401).
+    """Generate fresh TOTP enrollment material.
 
     Returns a new base32 secret + an otpauth:// provisioning URI (for an
     authenticator QR or manual entry). Nothing is ENABLED yet — the reader must
@@ -319,7 +319,7 @@ async def enable_two_factor(
     """Prove the account AND the authenticator, then turn 2FA on.
 
     The current password is verified first (a session alone must not be able to
-    enroll a factor the owner can't remove — security review MEDIUM, DEC-401),
+    enroll a factor the owner can't remove — security review MEDIUM),
     then the single code must match the stored seed. Either failure is a flat
     400 with no hint of which half was wrong. Once enabled, POST /login starts
     returning an mfa_token instead of an access token. Existing sessions stay
@@ -375,7 +375,7 @@ async def request_email_change(
     """Start an email change: prove the account, then email a link to the NEW
     address.
 
-    This is the authenticated half (DEC-357/TASK-404): the requester must prove
+    This is the authenticated half: the requester must prove
     control of the account via the current password (401 otherwise) and the NEW
     address is proven by the emailed verification link. Not an existence oracle
     — the endpoint is behind ``get_current_reader``, so it is never anonymously
@@ -412,7 +412,7 @@ async def request_email_change(
     current_reader.email_change_token = token
     current_reader.email_change_pending = new_email
     current_reader.email_change_requested_at = utc_now_naive()
-    # Persist BEFORE sending (round 393): an email sent in front of an
+    # Persist BEFORE sending: an email sent in front of an
     # uncommitted token leaves the reader holding a dead link if the commit
     # then fails (transient DB error) — the confirm step would find no row by
     # that token. On a send failure the just-persisted pending row is cleared
@@ -475,7 +475,7 @@ async def confirm_email_change(
     row and answers 400 like any spent link. A target registered in the few
     microseconds after the occupied check trips the unique email index, which
     is caught and surfaced as the business 409 (register uses the same
-    IntegrityError -> conflict pattern) instead of a 500 (round-342 review).
+    IntegrityError -> conflict pattern) instead of a 500.
     """
     reader = (
         await db.execute(select(auth.ReaderAccount).where(auth.ReaderAccount.email_change_token == token))
@@ -494,7 +494,7 @@ async def confirm_email_change(
         await db.commit()
         raise ValueError("Invalid or expired verification link")
 
-    # Account moderation (DEC-194, TASK-214): a deactivated reader must not
+    # Account moderation: a deactivated reader must not
     # redeem a pending change — the operator disabled the account, so swapping
     # its email (or minting a fresh auto-login token) would contradict that.
     # Mirrors password reset, which refuses inactive readers. The stale pending
@@ -553,7 +553,7 @@ async def confirm_email_change(
             )
             .execution_options(synchronize_session=False)
         )
-    ).rowcount  # ty: ignore[unresolved-attribute] — SQLAlchemy CursorResult.rowcount
+    ).rowcount  # ty: ignore[missing-attribute] — SQLAlchemy CursorResult.rowcount
     if redeemed == 0:
         await db.rollback()
         raise ValueError("Invalid or expired verification link")
@@ -586,8 +586,7 @@ async def request_password_reset(db: AsyncSession, email: str) -> dict[str, str]
     """Email a password-reset link, without revealing whether the address exists.
 
     Always returns the same 202 whether or not ``email`` maps to an account, so
-    the endpoint is not an account-existence oracle (DEC-286, TASK-371 — the
-    generic-response outcome DEC-060 wanted for register). The only non-202s are
+    the endpoint is not an account-existence oracle (the generic-response outcome wanted for register). The only non-202s are
     infrastructure 503s (SMTP unconfigured / send failed), which carry no
     account information either. A reset email is only sent to active accounts;
     a deactivated reader gets the same generic 202 with no mail, so a reset link
@@ -643,7 +642,7 @@ async def confirm_password_reset(
     password epoch the new token is issued under), which invalidates every
     previously issued reader JWT *and* this reset token (its ``ver`` no longer
     matches). The reader is auto-logged-in with a fresh token, mirroring
-    register/password-change UX (DEC-286, TASK-371).
+    register/password-change UX.
     """
     reader = await auth.get_reader_for_password_reset(token, db)
     if reader is None:

@@ -1,4 +1,4 @@
-"""Reader data-export contract tests (DEC-126, TASK-175).
+"""Reader data-export contract tests.
 
 GET /api/reader/me/export returns a portable JSON bundle scoped to the caller:
 account profile, public-visible bookmarks (with folder), the reader's own
@@ -96,7 +96,7 @@ class TestExport:
     async def test_export_is_not_truncated_at_list_page_size(self, client, db_session):
         # The bookmarks LIST endpoint pages at a default 100 (max 100); the
         # portable data bundle must be complete, never silently cut to that
-        # page size (RIL ISS-288). 105 bookmarks -> all 105 in the export,
+        # page size. 105 bookmarks -> all 105 in the export,
         # while the list endpoint itself still pages at 100.
         token = await _token(client)
         for i in range(105):
@@ -172,7 +172,7 @@ class TestExport:
 
 
 class TestExportCompleteness:
-    """DEC-334/TASK-393: the export bundle must cover every reader-owned dataset —
+    """the export bundle must cover every reader-owned dataset —
     follows (category/tag/series), notification prefs, inbox notifications, and
     push subscriptions — not just account/bookmarks/comments/history."""
 

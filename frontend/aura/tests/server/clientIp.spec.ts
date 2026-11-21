@@ -2,7 +2,7 @@
  * Tests for the trust-aware client IP resolution behind the frontend's own
  * rate limiters (og/cover image endpoints).
  *
- * Mirrors the backend's `client_rate_key` contract (RIL TASK-101, ISS-081):
+ * Mirrors the backend's `client_rate_key` contract:
  * X-Forwarded-For is honored ONLY when the socket peer is a configured trusted
  * proxy; otherwise the peer is used so a direct client cannot spoof a fresh
  * bucket by sending its own X-Forwarded-For header.
@@ -35,7 +35,7 @@ describe("resolveClientIp (pure core)", () => {
 		expect(resolveClientIp("172.30.0.5", "", "*")).toBe("172.30.0.5");
 	});
 
-	// IP-literal hardening, mirroring the backend's _xff_client (TASK-351):
+	// IP-literal hardening, mirroring the backend's _xff_client:
 	// the leftmost XFF node is client-supplied even behind a trusted proxy, so
 	// a forged/port-carrying entry must not mint an attacker-chosen bucket
 	// (which would rotate past the per-IP image-endpoint limits).

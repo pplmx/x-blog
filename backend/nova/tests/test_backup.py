@@ -1,4 +1,4 @@
-"""Full-blog backup & restore contract tests (DEC-082, TASK-153).
+"""Full-blog backup & restore contract tests.
 
 Covers:
 - GET /api/admin/backup is superuser-only (401 anon/reader, 403 editor) and
@@ -276,7 +276,7 @@ class TestBackupRestore:
         """Restoring rewinds the published counter to the snapshot but a backup
         carries no per-day breakdown — the pre-restore post_views_daily rows must
         be dropped so the admin trend chart agrees with the restored counter
-        instead of permanently disagreeing (round-292 deep-dive)."""
+        instead of permanently disagreeing."""
         from app.repositories import utc_now_naive
 
         await _seed_blog(db_session)
@@ -307,7 +307,7 @@ class TestBackupRestore:
         ).scalar() == 0
 
     async def test_restore_invalidates_public_caches(self, client, db_session, auth_headers):
-        """Restoring must invalidate the public categories/posts caches (ISS-365):
+        """Restoring must invalidate the public categories/posts caches:
         an imported category + published post become visible immediately, not
         after the 30-min categories / 5-min posts-list TTL."""
         # Warm the public list caches with the (empty) blog, so stale data would
@@ -363,7 +363,7 @@ class TestBackupRestore:
 
 
 async def test_restore_rejects_unbounded_comment_arrays(client, auth_headers, monkeypatch):
-    """ISS-626: a post's ``comments`` array must be bounded — one crafted post
+    """a post's ``comments`` array must be bounded — one crafted post
     used to be able to smuggle an arbitrary number of comment rows into a single
     import. Cap at MAX_RESTORE_COMMENTS (422 before any write)."""
     from app.routers import backup as backup_router

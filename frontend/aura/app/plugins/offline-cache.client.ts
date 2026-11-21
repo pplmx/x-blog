@@ -1,5 +1,5 @@
 /**
- * App-wide service-worker registration for offline reading (round 384).
+ * App-wide service-worker registration for offline reading.
  *
  * The push path (usePushSubscription) only registers /sw.js after a reader
  * opts into web push — so visitors who never touched that button had no

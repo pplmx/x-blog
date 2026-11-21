@@ -1,5 +1,5 @@
 <!--
-  Reader login / register (DEC-059, TASK-133).
+  Reader login / register.
 
   A single page toggling between sign-in and sign-up for reader accounts —
   the identity layer for cloud-synced bookmarks. Credentials are sent to
@@ -17,12 +17,12 @@ const readerAuth = useReaderAuth();
 const { t } = useLang();
 
 // Getter form: an in-app language switch re-evaluates the title/og tags
-// (static object froze them in the initial language — deep-dive, ISS-372).
+// (static object froze them in the initial language — deep-dive).
 useSeo(() => ({
 	title: t("reader.login.seoTitle"),
 	description: t("reader.login.seoDesc"),
 	path: "/login",
-	// Reader auth flows are private surfaces — never index them (round 437).
+	// Reader auth flows are private surfaces — never index them.
 	noindex: true,
 }));
 
@@ -35,7 +35,7 @@ const displayName = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
-// Second step of a 2FA login (round 364, DEC-401): after the password proves
+// Second step of a 2FA login: after the password proves
 // the account, a 2FA-enabled reader is handed a short-lived mfa_token and must
 // present a 6-digit authenticator code before any session is stored.
 const twoFactorStep = ref(false);
@@ -46,13 +46,13 @@ const totpCode = ref("");
  * Turn a failed reader-auth call into a reader-presentable message. The api
  * layer (`command`) rethrows ofetch errors whose `.message` is the technical
  * "[POST] \"…\": 401 …" string — never show that (same rule as the comment
- * form, round-433).
+ * form).
  *
  * The reader-auth composables rethrow failures as a plain Error whose
  * `.message` is apiErrorMessage's output (backend envelope text or a safe
  * fallback) with the HTTP status preserved on `statusCode`. The backend is
  * deliberately anti-oracle: a wrong email/password and a bad authenticator
- * code are BOTH one indistinguishable 401 (reader.py, DEC-401) — so a 401 is
+ * code are BOTH one indistinguishable 401 (reader.py) — so a 401 is
  * the signal to map to the localized credentials line; a duplicate registration
  * is the one 400. Everything else falls back to the backend's human envelope,
  * then any non-technical `.message` (a 429/5xx carries meaning), then a
@@ -129,9 +129,9 @@ async function handleSubmit() {
 			}
 		}
 		// Once authenticated, push any local bookmarks up and adopt the merged
-		// server list so /bookmarks is consistent post-login. (TASK-134)
+		// server list so /bookmarks is consistent post-login.
 		await mergeLocalToCloud();
-		// Same for liked-post markers (round 359): a reader who liked posts
+		// Same for liked-post markers: a reader who liked posts
 		// while signed-out (or on an old device) keeps those likes — they're
 		// now durable cloud rows visible on /liked.
 		const { useLikeSync } = await import("~~/composables/useLikeSync");
@@ -325,7 +325,7 @@ function cancel2fa() {
 				</button>
 			</form>
 
-			<!-- Second step for a 2FA-enabled reader (round 364, DEC-401): the
+			<!-- Second step for a 2FA-enabled reader: the
            password was accepted; enter the authenticator's 6-digit code. -->
 			<form v-else @submit.prevent="handle2faSubmit" class="space-y-5">
 				<div>

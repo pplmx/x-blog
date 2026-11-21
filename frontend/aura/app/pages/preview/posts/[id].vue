@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Author preview page (DEC-150, TASK-187).
+ * Author preview page.
  *
  * Renders a not-yet-published post (draft/scheduled) as readers would see it,
  * pulling the admin-authenticated detail so the author can verify the final
@@ -28,7 +28,7 @@ const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 
 // Getter form: an in-app language switch re-evaluates the title/og tags
-// (static object froze them in the initial language — deep-dive, ISS-372).
+// (static object froze them in the initial language — deep-dive).
 useSeo(() => ({ title: t("preview.seoTitle"), path: "" }));
 
 const readingTime = computed(() => readingMinutes(post.value?.content));
@@ -52,7 +52,7 @@ onMounted(() => {
 // Loader (also the retry entry point): a transient failure must not dead-end
 // the author's preview — the rest of the app's load-error surfaces offer Retry
 // + a way back, this one previously showed the failure with no way to re-fetch
-// (deep-dive finding, round 276).
+// (deep-dive finding).
 async function load() {
 	loading.value = true;
 	failed.value = false;
@@ -61,7 +61,7 @@ async function load() {
 			getAdminPost(Number(route.params.id)),
 			// Imperative seam: a useFetch query called from onMounted silently
 			// never sends, which dropped the preview's category badge + tag chips
-			// (ISS-110/111/117/118/119, TASK-220).
+			//.
 			getAdminCategories(),
 			getAdminTags(),
 		]);

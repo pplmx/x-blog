@@ -1,4 +1,4 @@
-/** Reader /newsletter/unsubscribe page tests (DEC-351, TASK-401). */
+/** Reader /newsletter/unsubscribe page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";

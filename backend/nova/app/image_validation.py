@@ -1,7 +1,7 @@
 """Shared image validation/optimization for uploaders (admin + reader avatar).
 
-Both the admin media upload (/api/upload, DEC-185) and the reader avatar
-(POST /api/reader/me/avatar, DEC-299/TASK-378) accept a user-supplied image and
+Both the admin media upload (/api/upload) and the reader avatar
+(POST /api/reader/me/avatar) accept a user-supplied image and
 must apply identical, defense-in-depth checks before storing bytes: content-type
 whitelist, size cap, magic-byte verification (the client-controlled
 Content-Type header is never trusted), a full Pillow decode (proves the file is
@@ -37,7 +37,7 @@ MAX_SIZE = 5 * 1024 * 1024  # 5MB
 # Cap how many pixels Pillow will decode, well below its default (~178MP) bomb
 # threshold: a small file can still declare a huge pixel grid, and decoding it
 # is exactly the memory-spike an upload must not trigger. An image above this
-# cap is rejected as invalid (HTTP 400), never decoded (RIL ISS-281).
+# cap is rejected as invalid (HTTP 400), never decoded.
 Image.MAX_IMAGE_PIXELS = 40_000_000  # ~8000x5000
 
 # Magic bytes for each allowed image type — the Content-Type header alone is
@@ -68,7 +68,7 @@ def verify_image_decodes(contents: bytes) -> None:
 
     Magic bytes only prove the header; Pillow decoding proves the file is a
     real, well-formed image (rejects truncated/corrupt/polyglot uploads that
-    would otherwise be stored and break rendering). (RIL round 17)
+    would otherwise be stored and break rendering).
     """
     try:
         with Image.open(BytesIO(contents)) as image:
@@ -78,7 +78,7 @@ def verify_image_decodes(contents: bytes) -> None:
         # decoding the bomb (Image.MAX_IMAGE_PIXELS caps us well below Pillow's
         # default). DecompressionBombError is NOT an OSError subclass, so the
         # pre-existing handler missed it and let the 400 path become a 500.
-        # (RIL ISS-281)
+        #
         raise ValueError from None
     except Image.DecompressionBombWarning:
         # Between the warning threshold and the hard cap, PIL still decodes but
@@ -93,7 +93,7 @@ def optimize_image(image_bytes: bytes, content_type: str) -> bytes:
     Same-format re-encode keeps the URL/extension (and thus every existing
     /static/uploads/... reference and the media library's filename contract)
     unchanged while dropping EXIF/GPS metadata — Pillow only preserves EXIF
-    when it is explicitly passed to save(). (DEC-185, TASK-208)
+    when it is explicitly passed to save().
 
     Guarantees:
     - never-larger: the optimized result is kept only if it is strictly smaller

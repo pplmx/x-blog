@@ -249,7 +249,7 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
-		it("shows the publish date for a scheduled post, not its draft creation date (ISS-389)", async () => {
+		it("shows the publish date for a scheduled post, not its draft creation date ", async () => {
 			// Scheduled Post: created 2026-07-28, published + publish_at future
 			// (2999-08-01). The Date column must present the go-live date so the
 			// operator can see when it goes public — created_at misled by showing
@@ -263,7 +263,7 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("定时发布");
 		});
 
-		it("shows the last-edit date for a draft, not its creation date (ISS-389)", async () => {
+		it("shows the last-edit date for a draft, not its creation date ", async () => {
 			// A draft whose updated_at differs from created_at must show updated_at
 			// so a fresh draft stands out from a stale one.
 			const staleDraft = makePost(9, {
@@ -296,7 +296,7 @@ describe("Admin Posts Page", () => {
 			expect(editLink.exists()).toBe(true);
 		});
 
-		it("renders a preview link for each post (TASK-187)", async () => {
+		it("renders a preview link for each post ", async () => {
 			const PostsPage = await loadPage();
 			const wrapper = await mountWithSuspense(PostsPage);
 			const previewLink = wrapper.find('a[href="/preview/posts/1"]');
@@ -314,7 +314,7 @@ describe("Admin Posts Page", () => {
 			expect(wrapper.text()).toContain("定时发布");
 		});
 
-		it("restores the search box and status filter across a remount (editor round-trip, ISS-311)", async () => {
+		it("restores the search box and status filter across a remount (editor round-trip)", async () => {
 			// The editor returns via a hardcoded /admin/posts URL; the list's
 			// search/filter used to live in per-mount setup refs and reset on
 			// every return. The module singleton must survive the round-trip.
@@ -357,7 +357,7 @@ describe("Admin Posts Page", () => {
 
 			// The page passes useAdminPosts the live computed (a getter-backed
 			// ref); after the debounce its resolved params carry the search term +
-			// a reset skip (RIL ISS-275). Without this the snapshot URL never
+			// a reset skip. Without this the snapshot URL never
 			// carried the term and searching did nothing.
 			const params = paramsRefs[0] as { value: { q?: string; skip?: number } };
 			expect(params.value.q).toBe("test");
@@ -448,7 +448,7 @@ describe("Admin Posts Page", () => {
 		});
 	});
 
-	describe("Duplicate (round 349)", () => {
+	describe("Duplicate ", () => {
 		beforeEach(() => {
 			mockCloneAdminPost.mockReset();
 			vi.mocked(navigateTo).mockClear();

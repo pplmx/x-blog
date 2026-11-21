@@ -1,12 +1,12 @@
-"""add users.role for role-tier admin (DEC-054)
+"""add users.role for role-tier admin
 
 Adds ``users.role`` (superuser|editor) as the authoritative admin discriminator.
 Existing rows are backfilled from ``users.is_superuser``: superusers keep the
 ``superuser`` role; non-superuser accounts (previously unusable for any admin
-endpoint) become ``editor`` so they can moderate content (ISS-087, TASK-107).
+endpoint) become ``editor`` so they can moderate content.
 
-The ``is_superuser`` boolean column is preserved (DDL kept, DEC-009) and stays
-consistent with role at write sites. Defensive like the round-16 baseline: if
+The ``is_superuser`` boolean column is preserved (DDL kept) and stays
+consistent with role at write sites. Defensive like the baseline: if
 ``role`` already exists (a dev DB whose create_all safety net already created it
 before this migration ran), it is left as-is and only the version is stamped.
 

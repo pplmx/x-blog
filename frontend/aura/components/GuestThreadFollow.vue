@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * Guest email thread-follow control on a post's comment list (round 380,
- * DEC-427, TASK-438).
+ * Guest email thread-follow control on a post's comment list.
  *
  * The anonymous counterpart of ThreadSubscribeButton: thread-follow was
  * reader-gated, so a visitor who just wants to follow THIS discussion by email

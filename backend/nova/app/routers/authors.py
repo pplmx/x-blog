@@ -1,4 +1,4 @@
-"""Public author archive (DEC-359, TASK-405).
+"""Public author archive.
 
 An admin writer with a public pen name (User.display_name) has a public
 presence: their byline on posts, and this per-author archive of published
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/authors", tags=["authors"])
 async def list_authors(db: AsyncSession = Depends(get_db)):
     """Every public writer (pen-named admin), with their published-post count.
 
-    Writer discovery (DEC-359, round 346): a reader who found one byline can
+    Writer discovery: a reader who found one byline can
     browse every contributor. Only pen names are exposed — an admin with no
     pen name has no public presence and stays off this list (never the login
     username, admin login is no-oracle). The count is published posts only, so
@@ -70,10 +70,10 @@ async def get_author_posts(
     Only reachable for a public author — an admin who set a pen name. An
     unknown id and a username-only admin answer the same 404 (no public
     presence), so the endpoint neither enumerates admins nor leaks login
-    usernames (DEC-359, TASK-405).
+    usernames.
     """
     # Fire the scheduled-post publish-time fan-out on this surface too (the
-    # round-331 sweep: every surface that can show a crossed scheduled post
+    # sweep: every surface that can show a crossed scheduled post
     # announces it exactly once).
     await posts_service.maybe_notify_due_scheduled_posts(db)
     author_result = await db.execute(select(auth.User).where(auth.User.id == author_id))
@@ -84,7 +84,7 @@ async def get_author_posts(
     posts, total = await posts_service.get_posts(db, skip=(page - 1) * limit, limit=limit, author_id=author_id)
     total_pages = (total + limit - 1) // limit
     # The top-level author envelope lets the archive page title itself by pen
-    # name even when the writer has no published posts yet (DEC-359/TASK-405).
+    # name even when the writer has no published posts yet.
     response = schemas.AuthorPostsResponse.model_validate(
         {
             "items": posts,

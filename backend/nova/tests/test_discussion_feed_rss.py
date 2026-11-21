@@ -1,10 +1,10 @@
-"""Discussion RSS/Atom feed tests (round 368, DEC-409).
+"""Discussion RSS/Atom feed tests.
 
-The conversation is findable (comment search, DEC-405), browsable (/discussion,
-DEC-407) — the feeds make it SUBSCRIBABLE: a reader who wants the latest
-approved comments as a stream in their feed reader gets an RSS 2.0 and an Atom
+The conversation is findable (comment search), browsable (/discussion,
+The conversation is findable (comment search), browsable (/discussion) — the
+feeds make it SUBSCRIBABLE: a reader who wants the latest
 feed, one item per comment with the commenter + post title and a perma link ON
-the comment (``#comment-{id}``, DEC-321). Same public-visibility gate as the
+the comment (``#comment-{id}``). Same public-visibility gate as the
 discussion feed/search: pending/rejected comments and comments on draft/
 scheduled posts never appear; the content never carries email/ip.
 """
@@ -62,7 +62,7 @@ class TestRssFeed:
         item = items[0]
         assert "subscribed" in item.findtext("description", "")
         assert "rejected" not in resp.text
-        # Perma link is ON the comment, not just the post headline (DEC-321).
+        # Perma link is ON the comment, not just the post headline.
         link = item.findtext("link", "")
         assert link.endswith(f"/posts/{post['slug']}#comment-{cid}")
 
@@ -115,7 +115,7 @@ class TestRssFeed:
 
     async def test_nameless_reader_email_never_in_commenter_label(self, client, db_session, admin_token, auth_headers):
         """A reader registered without a display_name must not have their
-        ACCOUNT EMAIL in the feed's commenter label (ISS-606/TASK-532).
+        ACCOUNT EMAIL in the feed's commenter label.
 
         The write path stores a ``reader-{id}`` handle, and the feed's
         display-name fallback (rss._comment_display_name) independently

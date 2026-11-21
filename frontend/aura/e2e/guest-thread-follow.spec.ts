@@ -1,7 +1,7 @@
 /**
- * Guest email thread-follow journey (DEC-427, TASK-438).
+ * Guest email thread-follow journey.
  *
- * Thread-follow was reader-gated (DEC-078), so a visitor who just wants to
+ * Thread-follow was reader-gated, so a visitor who just wants to
  * follow ONE discussion by email had no on-ramp but registering. This journey:
  * on a public post's comment header, a guest enters an email and subscribes
  * (double opt-in, no address oracle); the SMTP sink carries the confirmation
@@ -63,7 +63,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Guest email thread-follow (TASK-438)", () => {
+test.describe("Guest email thread-follow ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("guest subscribes by email, confirms, gets thread mail, then unsubscribes", async ({
@@ -215,7 +215,7 @@ test.describe("Guest email thread-follow (TASK-438)", () => {
 		expect(confirmMatch).not.toBeNull();
 		const confirmToken = String(confirmMatch?.[1] ?? "");
 
-		// Confirm AND flip to the weekly cadence on the confirm page (DEC-429):
+		// Confirm AND flip to the weekly cadence on the confirm page:
 		// the checkbox seeds from the server answer, then trips the token-gated
 		// cadence endpoint.
 		await page.goto(`/comment-subscribe/confirm?token=${confirmToken}`);

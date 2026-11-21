@@ -1,5 +1,5 @@
 /**
- * Browser Web Push subscription composable (DEC-055, TASK-118).
+ * Browser Web Push subscription composable.
  *
  * Coordinates the reader opt-in flow with the backend /api/push endpoints:
  *   - fetches the VAPID public key (the pushManager.subscribe
@@ -30,7 +30,7 @@ export type PushStatus =
 // useBookmarks module-scoped-state pattern.
 const status = ref<PushStatus>("unsupported");
 
-// New-post notification preference for THIS browser (DEC-076/TASK-147): whether
+// New-post notification preference for THIS browser: whether
 // it wants new-post pushes and, if so, whether narrowed to one followed
 // category (null = all new posts). Kept in module scope so the category-page
 // follow button and later subscribes share one source of truth.
@@ -99,7 +99,7 @@ function subscriptionToBody(
 	return {
 		endpoint: sub.endpoint,
 		keys: { p256dh: b64url(sub.getKey("p256dh")), auth: b64url(sub.getKey("auth")) },
-		// New-post notification prefs on this browser (DEC-076/TASK-147).
+		// New-post notification prefs on this browser.
 		want_new_posts: prefs.want,
 		new_post_category_id: prefs.categoryId,
 	};
@@ -117,7 +117,7 @@ async function syncBackend(
 	prefs?: NewPostPrefs,
 ): Promise<void> {
 	// Send the reader JWT when present so the backend binds this subscription
-	// to the reader account (targeted reply notifications, DEC-064/TASK-137).
+	// to the reader account (targeted reply notifications).
 	// Anonymous browsers subscribe without it and only receive broadcasts.
 	const headers: Record<string, string> = { "Content-Type": "application/json" };
 	if (typeof localStorage?.getItem === "function") {
@@ -164,7 +164,7 @@ async function init(): Promise<void> {
 // two `Notification.requestPermission()` flows through that window — the
 // browser rejects the second, and the loser's catch reverted the SHARED module
 // status to a false "denied", disabling every push affordance app-wide until
-// the reader resets browser settings (deep-dive finding, ISS-423).
+// the reader resets browser settings (deep-dive finding).
 let inFlight: Promise<void> | null = null;
 
 /** Opt this browser in: register the SW, request permission once, subscribe. */
@@ -202,7 +202,7 @@ async function subscribe(prefs?: NewPostPrefs): Promise<void> {
 			// Transient failure: the browser state reverts to a retryable "idle"
 			// HERE, and the error is RETHROWN so the initiating caller surfaces it.
 			// (A module-scoped error ref caused a comment-thread/category follow
-			// failure to flash the header button — the wrong widget, ISS-215 re-open.)
+			// failure to flash the header button — the wrong widget re-open.)
 			status.value = "idle";
 			throw err;
 		}
@@ -238,7 +238,7 @@ async function unsubscribe(): Promise<void> {
 /**
  * Re-stamp the reader on an existing subscription after an auth change (e.g.
  * he just signed in). A browser that subscribed while anonymous stays
- * anonymous-bound until this runs; reply notifications (DEC-064) are only
+ * anonymous-bound until this runs; reply notifications are only
  * delivered to reader-bound subscriptions. Anonymous re-stamp is a no-op on
  * the backend (reader_id preserved), matching the conservative opt-in model.
  */
@@ -249,7 +249,7 @@ async function syncReaderBinding(): Promise<void> {
 }
 
 /**
- * Set this browser's new-post notification prefs (DEC-076/TASK-147). When
+ * Set this browser's new-post notification prefs. When
  * already subscribed the prefs are upserted on the backend immediately
  * (subscribe is an endpoint-keyed upsert); otherwise they are remembered so
  * the next subscribe carries them.

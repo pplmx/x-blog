@@ -157,8 +157,8 @@ describe("Admin Users Page", () => {
 			await inputs[0].setValue("newadmin");
 			await inputs[1].setValue("secretpass1");
 			await inputs[2].setValue("secretpass1");
-			// Fourth input is the optional pen name (DEC-359/TASK-405); the
-			// bio textarea is separate (round 357); the submit button follows
+			// Fourth input is the optional pen name; the
+			// bio textarea is separate; the submit button follows
 			// (4 inputs + 1 button).
 			await wrapper.find("button[type=submit]").trigger("submit");
 			await flushPromises();
@@ -277,7 +277,7 @@ describe("Admin Users Page", () => {
 			expect(deleteButtons[1].attributes("disabled")).toBeUndefined();
 		});
 
-		describe("public pen name (DEC-359/TASK-405)", () => {
+		describe("public pen name ", () => {
 			const editButtons = (wrapper: VueWrapper) => wrapper.findAll("button[aria-label='编辑笔名']");
 			// After the editor opens, the row's pen-name input is the last
 			// <input> in the DOM. Guard with explicit throws (not `!`) so the
@@ -360,7 +360,7 @@ describe("Admin Users Page", () => {
 			});
 		});
 
-		describe("public 'about this writer' bio (round 357)", () => {
+		describe("public 'about this writer' bio ", () => {
 			const bioButtons = (wrapper: VueWrapper) => wrapper.findAll("button[aria-label='编辑简介']");
 			// The bio editor is a <textarea>; the create form's bio textarea is
 			// the first one, per-row editors are added after the pen-name input.
@@ -430,7 +430,7 @@ describe("Admin Users Page", () => {
 			});
 		});
 
-		describe("public profile picture (round 358)", () => {
+		describe("public profile picture ", () => {
 			function avatarInputs(wrapper: VueWrapper) {
 				return wrapper.findAll("input[type=file]");
 			}

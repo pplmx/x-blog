@@ -159,13 +159,13 @@ let statsOverride: Record<string, number> = { ...mockStatsResult };
 let postsOverride: unknown = null;
 // When set, answers /api/admin/posts with a PAGE-WALK mock: a function from
 // the parsed { skip, limit } query to the response envelope for that page.
-// Drives the multi-page pagination regression test (ISS-443) — the dashboard
+// Drives the multi-page pagination regression test — the dashboard
 // must walk skip/limit, not re-fetch page 1 forever.
 let postsPagerOverride: ((skip: number, limit: number) => unknown) | null = null;
 // True → the /api/admin/posts route throws (401/network failure drill).
 let failPostsOverride = false;
 // True → /api/admin/posts rejects with a FetchError-shaped statusCode 401
-// (expired/revoked admin session drill, RIL ISS-273).
+// (expired/revoked admin session drill).
 let posts401Override = false;
 let commentsOverride: unknown = null;
 let trendOverride: unknown = null;
@@ -174,13 +174,13 @@ let failTrendOverride = false;
 let followsOverride: unknown = null;
 let searchesOverride: unknown = null;
 let commentStatsOverride: unknown = null;
-// Per-axis failure levers (round-278/: the follow/search/comment-activity cards
+// Per-axis failure levers (: the follow/search/comment-activity cards
 // each keep their own inline "failed — retry" block like the trend card).
 let failFollowsOverride = false;
 let failSearchesOverride = false;
 let failCommentsOverride = false;
 // /admin/me role probe: defaults to superuser so export stays visible; set to
-// { role: "editor" } to drill the editor downgrade. (DEC-054, TASK-116.)
+// { role: "editor" } to drill the editor downgrade.
 let meRoleOverride: unknown = null;
 // True → the CSV export / full backup downloads 500.
 let exportFailOverride = false;
@@ -205,7 +205,7 @@ const mockCommentsResult = {
 	top_posts: [],
 };
 
-// A zero-filled 30-day reading-trend series (DEC-086).
+// A zero-filled 30-day reading-trend series.
 const mockTrendResult = {
 	days: 30,
 	total: 0,
@@ -216,8 +216,8 @@ const mockTrendResult = {
 	top_posts: [],
 };
 
-// The dashboard now loads data client-side via $fetch in onMounted (ISS-032
-// fix), so dispatch the endpoint fixtures by URL path. The old useFetch
+// The dashboard now loads data client-side via $fetch in onMounted (fix), so
+// dispatch the endpoint fixtures by URL path. The old useFetch
 // composable stubs above are now unused by the page (the mock module remains,
 // but the component no longer imports them); the $fetch mock is authoritative.
 vi.stubGlobal(
@@ -241,23 +241,23 @@ vi.stubGlobal(
 		if (u.includes("/api/admin/tags")) return mockTags;
 		if (u.includes("/api/admin/comments")) return commentsOverride ?? mockCommentList;
 		if (u.includes("/api/stats")) return { ...statsOverride };
-		// Reading-trend analytics (DEC-086): zero-filled 30-day series so the
+		// Reading-trend analytics: zero-filled 30-day series so the
 		// trend card renders (and stays deterministic) without real data.
 		if (u.includes("/api/admin/stats/views")) {
 			if (failTrendOverride) throw new Error("trend analytics 500");
 			return trendOverride ?? mockTrendResult;
 		}
-		// Follow analytics (DEC-144/TASK-184).
+		// Follow analytics.
 		if (u.includes("/api/admin/stats/follows")) {
 			if (failFollowsOverride) throw new Error("follows analytics 500");
 			return followsOverride ?? mockFollowsResult;
 		}
-		// Search-term analytics (DEC-152/TASK-188).
+		// Search-term analytics.
 		if (u.includes("/api/admin/stats/searches")) {
 			if (failSearchesOverride) throw new Error("searches analytics 500");
 			return searchesOverride ?? mockSearchesResult;
 		}
-		// Comment activity (DEC-154/TASK-189).
+		// Comment activity.
 		if (u.includes("/api/admin/stats/comments")) {
 			if (failCommentsOverride) throw new Error("comments analytics 500");
 			return commentStatsOverride ?? mockCommentsResult;
@@ -370,7 +370,7 @@ describe("Admin Dashboard Page", () => {
 		it("redirects to /admin/login on a 401 (expired/revoked admin session)", async () => {
 			// Session expiry is NOT a transient outage: a 401 from the first
 			// admin call must drop the stale token and hard-redirect to login
-			// (RIL ISS-273) instead of the generic load-error branch above.
+			// instead of the generic load-error branch above.
 			const replace = vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
 			posts401Override = true;
 			const DashboardPage = await loadPage();
@@ -445,7 +445,7 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("1");
 		});
 
-		it("walks ALL posts across skip/limit pages, not just the first batch (ISS-443)", async () => {
+		it("walks ALL posts across skip/limit pages, not just the first batch ", async () => {
 			// The dashboard loads every post (all statuses) to build top/recency/
 			// category stats beyond the per-page cap of 100. Regression guard: the
 			// batch loop used to send `page` to a skip/limit endpoint, so every
@@ -602,7 +602,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Reading trend (DEC-086)", () => {
+	describe("Reading trend ", () => {
 		beforeEach(() => {
 			trendOverride = {
 				days: 30,
@@ -633,7 +633,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Follow analytics (TASK-184)", () => {
+	describe("Follow analytics ", () => {
 		afterEach(() => {
 			followsOverride = null;
 		});
@@ -656,7 +656,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Search analytics (TASK-188)", () => {
+	describe("Search analytics ", () => {
 		afterEach(() => {
 			searchesOverride = null;
 		});
@@ -674,7 +674,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Comment activity (TASK-189)", () => {
+	describe("Comment activity ", () => {
 		afterEach(() => {
 			commentStatsOverride = null;
 		});
@@ -696,7 +696,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Per-card analytics failure (round 278)", () => {
+	describe("Per-card analytics failure ", () => {
 		it("surfaces a failed analytics card with an inline retry that recovers it", async () => {
 			// A single failing analytics endpoint used to silently hide its card
 			// with no message — the global loadError/retry only fires when the
@@ -910,7 +910,7 @@ describe("Admin Dashboard Page", () => {
 			expect(editLink.exists()).toBe(true);
 		});
 
-		it("dates and sorts a scheduled post by its publish time, not its draft time (RIL ISS-266)", async () => {
+		it("dates and sorts a scheduled post by its publish time, not its draft time ", async () => {
 			// Drafted in January, published in February: the "recently published"
 			// card must sort/date it by the effective publish time (publish_at ??
 			// created_at), matching the public feed — not show the draft month.
@@ -953,7 +953,7 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("Plain March");
 			expect(wrapper.text()).toContain("Scheduled Feb");
 			// Both dates appear; the scheduled one shows Feb, never January.
-			// Site-wide long format (round 417, ISS-573), same as the other feeds.
+			// Site-wide long format, same as the other feeds.
 			expect(wrapper.text()).toContain("2024年2月1日");
 			expect(wrapper.text()).not.toContain("2024年1月5日");
 		});
@@ -1193,8 +1193,8 @@ describe("Admin Dashboard Page", () => {
 			});
 			// A fake download anchor's click() must not navigate: happy-dom's
 			// frame navigator can't build a URL from a blob: href and logs a
-			// noisy "URL is not a constructor" on every export test (round 258
-			// test-hygiene fix; restored by the file-scoped afterEach).
+			// noisy "URL is not a constructor" on every export test
+			// (test-hygiene fix; restored by the file-scoped afterEach).
 			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 		});
 
@@ -1227,7 +1227,7 @@ describe("Admin Dashboard Page", () => {
 			expect(vi.mocked(URL.createObjectURL)).toHaveBeenCalled();
 		});
 
-		it("passes the selected post status as a query param (RIL TASK-079)", async () => {
+		it("passes the selected post status as a query param ", async () => {
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
 			const statusSelect = wrapper.find("select");
@@ -1259,7 +1259,7 @@ describe("Admin Dashboard Page", () => {
 		});
 	});
 
-	describe("Backup & restore confirmation (DEC-082, TASK-153)", () => {
+	describe("Backup & restore confirmation ", () => {
 		const originalConfirm = window.confirm;
 		const originalFetch = globalThis.$fetch;
 
@@ -1375,7 +1375,7 @@ describe("Admin Dashboard Page", () => {
 			}
 		});
 
-		it("hides export and backup for an editor /me role (DEC-054)", async () => {
+		it("hides export and backup for an editor /me role ", async () => {
 			meRoleOverride = { role: "editor" };
 			const DashboardPage = await loadPage();
 			const wrapper = await mountWithSuspense(DashboardPage);
@@ -1384,7 +1384,7 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).not.toContain("备份与恢复");
 		});
 
-		it("passes the comment-approval status and date range as export query params (TASK-079)", async () => {
+		it("passes the comment-approval status and date range as export query params ", async () => {
 			vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:mock");
 			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 			const DashboardPage = await loadPage();
@@ -1512,7 +1512,7 @@ describe("Admin Dashboard Page", () => {
 			expect(wrapper.text()).toContain("350");
 		});
 
-		it("shows per-card failures for every analytics axis and recovers one via retry (round 278)", async () => {
+		it("shows per-card failures for every analytics axis and recovers one via retry ", async () => {
 			failFollowsOverride = true;
 			failSearchesOverride = true;
 			failCommentsOverride = true;

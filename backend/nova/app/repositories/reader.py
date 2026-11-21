@@ -10,7 +10,7 @@ from app import auth, models
 
 
 async def get_reader_public_profile(db: AsyncSession, reader_id: int) -> models.ReaderAccount | None:
-    """A reader's public identity for the profile page (DEC-294/TASK-376).
+    """A reader's public identity for the profile page.
 
     Only the fields a public page may show — no email (PII), no last_login.
     Returns None for an unknown reader so the caller can 404.
@@ -21,7 +21,7 @@ async def get_reader_public_profile(db: AsyncSession, reader_id: int) -> models.
 async def delete_reader_account(db: AsyncSession, reader_id: int) -> bool:
     """Permanently delete a reader account and detach their contributed data.
 
-    Self-service account deletion (DEC-106, TASK-165): the comment *discussion*
+    Self-service account deletion: the comment *discussion*
     is preserved but anonymized (reader_id detached, keeping the stored
     nickname/content public but no longer account-linked — no verified badge),
     while the reader's cloud-synced bookmarks, comment-thread subscriptions and

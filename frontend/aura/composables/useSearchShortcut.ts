@@ -1,5 +1,5 @@
 /**
- * Global "/" → focus the header search box (round 262, TASK-279).
+ * Global "/" → focus the header search box.
  *
  * The GitHub/forum convention: pressing "/" anywhere on a reader page drops
  * the reader into the site search, so they can start typing a query without

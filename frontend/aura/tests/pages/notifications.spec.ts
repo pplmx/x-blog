@@ -1,5 +1,5 @@
 /**
- * Reader notification inbox page tests (DEC-160, TASK-192; prefs DEC-171/TASK-202).
+ * Reader notification inbox page tests (prefs).
  *
  * Verifies the empty state, the newest-first list with read/unread badges and
  * kind labels, deep-link hrefs, single mark-as-read, mark-all-read, and the
@@ -125,7 +125,7 @@ function makeNotif(overrides: Partial<ReaderNotification> = {}): ReaderNotificat
 	};
 }
 
-describe("Notifications page (TASK-192)", () => {
+describe("Notifications page ", () => {
 	beforeEach(() => {
 		isAuthenticated.value = true;
 		mockFetch.mockReset();
@@ -181,7 +181,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.find('a[href="/posts/a#comment-9"]').exists()).toBe(true);
 	});
 
-	it("labels a series-new-part event with the series kind (ISS-114)", async () => {
+	it("labels a series-new-part event with the series kind ", async () => {
 		// The backend now emits kind=series_new_part for a new part of a followed
 		// series; the page must render the distinct 系列更新 label (not the
 		// generic 新文章发布) so series updates are visible as such.
@@ -207,7 +207,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(link.exists()).toBe(true);
 	});
 
-	it("renders a mention notification with its kind label (DEC-322)", async () => {
+	it("renders a mention notification with its kind label ", async () => {
 		mockFetch.mockResolvedValue({
 			items: [makeNotif({ id: 9, kind: "mention", title: "有人在评论中提到了你" })],
 			total: 1,
@@ -231,7 +231,7 @@ describe("Notifications page (TASK-192)", () => {
 			total_pages: 1,
 		});
 		const wrapper = await mountPage();
-		// The shared nav badge mirrors the inbox unread count (ISS-124/TASK-224).
+		// The shared nav badge mirrors the inbox unread count.
 		const badge = await badgeApi();
 		expect(badge.unreadCount.value).toBe(1);
 		// Marking read re-fetches the shared count from the server (KEEP the
@@ -246,7 +246,7 @@ describe("Notifications page (TASK-192)", () => {
 		});
 		// Target the mark-read control by its aria-label (not a positional
 		// index — the row gained a delete sibling, so the last button is no
-		// longer unambiguously mark-read, DEC-312).
+		// longer unambiguously mark-read).
 		const markReadBtn = wrapper
 			.findAll("button")
 			.find((b) => b.attributes("aria-label") === "标为已读");
@@ -285,7 +285,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(badge.unreadCount.value).toBe(0);
 	});
 
-	it("surfaces a failure and re-enables the button when mark-all fails (ISS-133)", async () => {
+	it("surfaces a failure and re-enables the button when mark-all fails ", async () => {
 		mockFetch.mockResolvedValue({
 			items: [makeNotif({ id: 1 }), makeNotif({ id: 2 })],
 			total: 2,
@@ -303,8 +303,8 @@ describe("Notifications page (TASK-192)", () => {
 		await markAll?.trigger("click");
 		await flushPromises();
 
-		// Failure is surfaced instead of failing silently (ISS-133) — and with
-		// its own copy (ISS-611: a failed mark-all must not read as a failed
+		// Failure is surfaced instead of failing silently — and with
+		// its own copy (a failed mark-all must not read as a failed
 		// inbox load), plus a targeted Retry.
 		expect(wrapper.text()).toContain("标记已读失败，请重试。");
 		expect(wrapper.text()).toContain("重试");
@@ -316,10 +316,10 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.findAll("button").some((b) => b.text().includes("标为已读"))).toBe(true);
 	});
 
-	it("renders a localized network error when the inbox fetch fails (ISS-110)", async () => {
+	it("renders a localized network error when the inbox fetch fails ", async () => {
 		mockFetch.mockRejectedValue(new Error("boom"));
 		const wrapper = await mountPage();
-		// The failure copy is a distinct notifications.loadFailed line (ISS-611),
+		// The failure copy is a distinct notifications.loadFailed line,
 		// not the generic common.errors.network — an inbox-load failure is not
 		// the same as a failed mark-read/delete.
 		expect(wrapper.text()).toContain("加载通知失败，请重试。");
@@ -330,7 +330,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("暂无通知");
 	});
 
-	it("logs an expired session out and redirects to login on a 401 (ISS-110)", async () => {
+	it("logs an expired session out and redirects to login on a 401 ", async () => {
 		mockFetch.mockRejectedValue({ statusCode: 401 });
 		const wrapper = await mountPage();
 		expect(mockLogout).toHaveBeenCalledTimes(1);
@@ -342,13 +342,13 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("网络错误，请稍后重试");
 	});
 
-	it("loads the preferences card: push/inbox on, email kinds off (DEC-171/DEC-197/DEC-201/DEC-322)", async () => {
+	it("loads the preferences card: push/inbox on, email kinds off ", async () => {
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("通知偏好");
 		expect(wrapper.text()).toContain("被提及");
 		const switches = wrapper.findAll('button[role="switch"]');
 		expect(switches).toHaveLength(10);
-		// Five on-by-default in-app kinds (incl. reader_comment, round 365)…
+		// Five on-by-default in-app kinds (incl. reader_comment)…
 		for (let i = 0; i < 5; i += 1) {
 			expect(switches[i].attributes("aria-checked")).toBe("true");
 		}
@@ -358,7 +358,7 @@ describe("Notifications page (TASK-192)", () => {
 		}
 	});
 
-	it("toggles an email kind on via updateReaderNotificationPref (DEC-197)", async () => {
+	it("toggles an email kind on via updateReaderNotificationPref ", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Order: new_post, reply, thread_comment, mention, reader_comment,
@@ -370,7 +370,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[6].attributes("aria-checked")).toBe("false");
 	});
 
-	it("toggles the weekly digest on via updateReaderNotificationPref (DEC-201)", async () => {
+	it("toggles the weekly digest on via updateReaderNotificationPref ", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Last toggle = the weekly-digest email opt-in, independent of per-event kinds.
@@ -396,7 +396,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
-	it("toggles the mention kind off and back on via updateReaderNotificationPref (DEC-322)", async () => {
+	it("toggles the mention kind off and back on via updateReaderNotificationPref ", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Order: new_post, reply, thread_comment, mention.
@@ -413,7 +413,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[2].attributes("aria-checked")).toBe("true");
 	});
 
-	it("toggles the reader-follow kind off via updateReaderNotificationPref (round 365, DEC-403)", async () => {
+	it("toggles the reader-follow kind off via updateReaderNotificationPref ", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// reader_comment is the 5th in-app kind (index 4), right after mention.
@@ -427,7 +427,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(switches[3].attributes("aria-checked")).toBe("true");
 	});
 
-	it("toggles the email copy for @-mentions (DEC-326)", async () => {
+	it("toggles the email copy for @-mentions ", async () => {
 		const wrapper = await mountPage();
 		const switches = wrapper.findAll('button[role="switch"]');
 		// Order: ... email_new_post, email_reply, email_thread_comment,
@@ -559,7 +559,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).toContain("最旧的那条");
 	});
 
-	it("a stale page-2 loadMore cannot resurrect the unread count after mark-all (round 418 audit)", async () => {
+	it("a stale page-2 loadMore cannot resurrect the unread count after mark-all ", async () => {
 		// Race: reader clicks 加载更多 then (before it resolves) 全部标为已读.
 		// The mark-all commits first (unread → 0, button hides); the older
 		// loadMore response then resolves with its pre-read server snapshot
@@ -667,7 +667,7 @@ describe("Notifications page (TASK-192)", () => {
 		expect(wrapper.text()).not.toContain("通知偏好");
 	});
 
-	it("deletes one notification row and updates the list and badge (DEC-312)", async () => {
+	it("deletes one notification row and updates the list and badge ", async () => {
 		vi.stubGlobal("confirm", () => true);
 		try {
 			mockFetch.mockResolvedValue({
@@ -756,7 +756,7 @@ describe("Notifications page (TASK-192)", () => {
 		}
 	});
 
-	it("keeps the row when the delete is not confirmed (round 396)", async () => {
+	it("keeps the row when the delete is not confirmed ", async () => {
 		vi.stubGlobal("confirm", () => false);
 		try {
 			mockFetch.mockResolvedValue({
@@ -803,7 +803,7 @@ describe("Notifications page (TASK-192)", () => {
 			await del?.trigger("click");
 			await flushPromises();
 
-			// Failure is surfaced with its own delete-specific copy (ISS-611) +
+			// Failure is surfaced with its own delete-specific copy +
 			// a targeted Retry; the row stays, and the delete button is enabled
 			// again for retry.
 			expect(wrapper.text()).toContain("删除这条通知失败，请重试。");

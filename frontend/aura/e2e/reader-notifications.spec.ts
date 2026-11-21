@@ -1,5 +1,5 @@
 /**
- * Reader notification inbox journey (DEC-160, TASK-192).
+ * Reader notification inbox journey.
  *
  * A signed-in reader who follows a category or series gets a durable inbox
  * notification when the author publishes a new post (independent of Web Push).
@@ -57,7 +57,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Reader notification inbox (TASK-192)", () => {
+test.describe("Reader notification inbox ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("shows a new-post notification for a followed category and marks it read", async ({
@@ -137,7 +137,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		expect(afterData.unread).toBe(0);
 	});
 
-	test("deletes a single notification row and the list updates (DEC-312)", async ({
+	test("deletes a single notification row and the list updates ", async ({
 		page,
 		request,
 	}) => {
@@ -210,7 +210,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		await expect(delButtons).toHaveCount(1, { timeout: 10000 });
 		// Inline delete gates on a window.confirm (notifications.vue) — accept
 		// it, else Playwright auto-dismisses the dialog as a cancel and the row
-		// is never deleted (round-445: the empty state never appeared, e2e#55).
+		// is never deleted.
 		page.once("dialog", (dialog) => void dialog.accept());
 		await delButtons.click();
 		// The row leaves the list: the 'new_post' badge text disappears because
@@ -218,7 +218,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		await expect(page.locator("body")).toContainText("暂无通知", { timeout: 10000 });
 	});
 
-	test("a @mention in an approved comment notifies the named reader (DEC-322)", async ({
+	test("a @mention in an approved comment notifies the named reader ", async ({
 		page,
 		request,
 	}) => {
@@ -291,7 +291,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		await expect(page.locator(`#comment-${commentId}`)).toBeVisible({ timeout: 10000 });
 	});
 
-	test("the comment '@' picker suggests readers and the inserted mention lands (DEC-324)", async ({
+	test("the comment '@' picker suggests readers and the inserted mention lands ", async ({
 		page,
 		request,
 	}) => {
@@ -371,7 +371,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		expect(approved.status()).toBe(200);
 
 		// The named reader's inbox gains the mention row (the UI-inserted
-		// "@Name " really resolved the DEC-322 fan-out).
+		// "@Name " really resolved the fan-out).
 		const inbox = await request.get("/api/reader/me/notifications", { headers: targetH });
 		expect(inbox.status()).toBe(200);
 		const inboxData = (await inbox.json()) as {
@@ -382,7 +382,7 @@ test.describe("Reader notification inbox (TASK-192)", () => {
 		expect(mention?.url).toBe(`/posts/${postSlug}#comment-${commentId}`);
 	});
 
-	test("an opted-in reader receives the @-mention email through the SMTP sink (DEC-326)", async ({
+	test("an opted-in reader receives the @-mention email through the SMTP sink ", async ({
 		request,
 	}) => {
 		test.skip(!(await smtpIsUp(request)), "requires the e2e SMTP sink");

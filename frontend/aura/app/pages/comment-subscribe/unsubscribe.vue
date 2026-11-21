@@ -1,5 +1,5 @@
 <!--
-  Guest thread-follow unsubscribe (DEC-427, TASK-438).
+  Guest thread-follow unsubscribe.
 
   Landed on via the `?token=` link inside every guest thread-follow email (the
   per-subscription token only those emails carry). Fires the backend

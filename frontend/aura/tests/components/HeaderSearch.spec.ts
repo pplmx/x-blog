@@ -6,7 +6,7 @@
  * (mousedown) and keyboard (click via Enter/Space) activation. The button used
  * to bind only @mousedown.prevent — a keyboard user who Tabbed to it and
  * pressed Enter/Space fired a click nobody handled, a dead primary CTA
- * (deep-dive finding ISS-174).
+ * (deep-dive finding).
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
@@ -145,7 +145,7 @@ describe("HeaderSearch", () => {
 		expect(wrapper.find(".text-red-600").exists()).toBe(false);
 	});
 
-	it("does not repopulate stale results after the query is cleared mid-flight (round 278)", async () => {
+	it("does not repopulate stale results after the query is cleared mid-flight ", async () => {
 		// Clearing the box while a previous keystroke's search is in flight must
 		// invalidate it: the empty branch used to leave requestSeq untouched, so
 		// the slow response resolved with seq === requestSeq and committed
@@ -290,7 +290,7 @@ describe("HeaderSearch", () => {
 		vi.useRealTimers();
 	});
 
-	it("clears the stuck loading spinner when the dropdown closes mid-search and reopens (round 295)", async () => {
+	it("clears the stuck loading spinner when the dropdown closes mid-search and reopens ", async () => {
 		// Closing the dropdown (Escape / blur / picking a result) invalidates the
 		// in-flight request via requestSeq; the request's finally then bails
 		// WITHOUT clearing `loading`, so reopening used to show an eternal spinner
@@ -453,7 +453,7 @@ describe("HeaderSearch", () => {
 	});
 
 	it("shows a failure notice — not 'no matches' — when the search request errors", async () => {
-		// Regression (ISS-309): the search used a raw $fetch that bypassed the
+		// Regression: the search used a raw $fetch that bypassed the
 		// transport's 429 detector, so a rate-limited search-as-you-type read as
 		// an empty dead end ("No matching posts") instead of an error.
 		// The component debounces via setTimeout(300) — flushPromises alone never

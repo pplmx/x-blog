@@ -1,5 +1,5 @@
 """Admin runtime settings endpoints + their effect on the comment trust tier
-(DEC-100, TASK-162).
+.
 
 The verified-reader auto-approve toggle is an operator-controlled site setting:
 a persisted value overrides the env fallback the comment-create path reads, so

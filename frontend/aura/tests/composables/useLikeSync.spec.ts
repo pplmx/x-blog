@@ -1,4 +1,4 @@
-/** useLikeSync tests (round 359, DEC-391/TASK-421). */
+/** useLikeSync tests. */
 
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

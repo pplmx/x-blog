@@ -1,4 +1,4 @@
-"""Slug-change redirects (round 350).
+"""Slug-change redirects.
 
 When a post / series / static page is re-slugged in the admin, the old URL
 must keep resolving: the public routes answer 404 (contract unchanged) with an

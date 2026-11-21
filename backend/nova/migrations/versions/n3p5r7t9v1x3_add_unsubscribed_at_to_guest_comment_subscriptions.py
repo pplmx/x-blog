@@ -1,10 +1,10 @@
-"""add unsubscribed_at to guest_comment_subscriptions (TASK-485, ISSUE-561)
+"""add unsubscribed_at to guest_comment_subscriptions
 
 The guest comment-thread follow had a consent-restart gap the newsletter
-closed in round 393 (NewsletterSubscriber.unsubscribed_at): unsubscribing only
+closed (NewsletterSubscriber.unsubscribed_at): unsubscribing only
 flipped is_confirmed=False, so replaying the ORIGINAL double-opt-in
 confirmation link silently re-subscribed the address with no fresh opt-in
-email. One additive nullable column (DEC-009) lets the confirm gate refuse an
+email. One additive nullable column lets the confirm gate refuse an
 unsubscribed address (400 "please subscribe again") and lets a re-subscribe
 rotate the token + send a fresh double-opt-in. Additive only; defensively
 skipped if already present.

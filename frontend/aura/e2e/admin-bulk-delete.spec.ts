@@ -1,5 +1,5 @@
 /**
- * Admin bulk-comment delete journey (DEC-110, TASK-167).
+ * Admin bulk-comment delete journey.
  *
  * An admin selects a pending comment in the moderation queue and deletes it in
  * one batch action (with confirmation), seeing the deleted-count feedback.
@@ -15,7 +15,7 @@ async function firstPost(
 	return ((await resp.json()) as { items: Array<{ id: number; slug: string }> }).items[0];
 }
 
-test.describe("Admin bulk-comment delete (DEC-110)", () => {
+test.describe("Admin bulk-comment delete ", () => {
 	test("admin deletes a selected pending comment via batch action", async ({ page, request }) => {
 		const post = await firstPost(request);
 		const stamp = Date.now();

@@ -1,8 +1,8 @@
-"""add comments.edited_at for reader self-edits (DEC-096)
+"""add comments.edited_at for reader self-edits
 
-Reader-authors can edit their own comment (DEC-096 / TASK-160). A nullable
+Reader-authors can edit their own comment. A nullable
 ``edited_at`` records the last self-edit (null => never edited) so the UI can
-show an "edited" marker. Entirely additive, matching DEC-009's additive-column
+show an "edited" marker. Entirely additive, matching's additive-column
 convention (plain nullable column, no FK).
 
 Revision ID: e8d4c2a6f0b1

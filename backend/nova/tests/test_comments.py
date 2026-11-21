@@ -36,7 +36,7 @@ async def test_create_comment(client, post):
 
 async def test_create_comment_nul_rejected_422(client, post):
     """A NUL byte in any comment string must be a 422 gate, not an uncaught
-    psycopg bind error -> 500 (ISS-454, TASK-351)."""
+    psycopg bind error -> 500."""
     for field in ("nickname", "email", "content"):
         payload = {
             "nickname": "Test User",
@@ -82,8 +82,7 @@ async def test_create_comment_honeypot_empty_passes(client, post):
 async def test_posts_list_includes_comment_count(client, post, auth_headers):
     """PostList should expose comment_count, counting approved comments only.
 
-    Comment create/approve must auto-invalidate the cached posts list (RIL
-    TASK-073, ISS-041); no manual cache clears here.
+    Comment create/approve must auto-invalidate the cached posts list; no manual cache clears here.
     """
     # No comments yet -> 0
     assert (await client.get("/api/posts")).json()["items"][0]["comment_count"] == 0
@@ -111,14 +110,14 @@ async def test_posts_list_includes_comment_count(client, post, auth_headers):
 
 
 async def test_list_comments_unknown_post_404(client):
-    """An unknown post id must 404 on the list, not return an empty page (ISS-144)."""
+    """An unknown post id must 404 on the list, not return an empty page."""
     list_response = await client.get("/api/comments/post/999999")
     assert list_response.status_code == 404
     assert list_response.json()["error"]["code"] == "NOT_FOUND"
 
 
 async def test_create_comment_rejects_malformed_email(client, post):
-    """A non-email 'email' is rejected with 422 instead of being persisted (ISS-145)."""
+    """A non-email 'email' is rejected with 422 instead of being persisted."""
     response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
@@ -192,7 +191,7 @@ async def test_create_comment_on_draft_post_returns_404(client, draft_post):
     data = response.json()
     assert data["error"]["code"] == "NOT_FOUND"
     # The draft must not be discoverable via the comment list either — listing
-    # 404s like create/like so draft ids are not an existence oracle (ISS-144).
+    # 404s like create/like so draft ids are not an existence oracle.
     assert (await client.get(f"/api/comments/post/{draft_post['id']}")).status_code == 404
 
 
@@ -253,7 +252,7 @@ async def test_list_comments(client, post, auth_headers):
 
 
 async def test_list_comments_omits_pii(client, post, auth_headers):
-    """Public comment list must not leak ip_address / email (RIL TASK-100, ISS-080)."""
+    """Public comment list must not leak ip_address / email."""
     create_response = await client.post(
         f"/api/comments/post/{post['id']}",
         json={
@@ -328,7 +327,7 @@ async def test_list_comments_pagination_stable_with_tied_timestamps(client, db_s
     or a same-instant burst yields tied timestamps. Sorting on created_at alone
     resolves ties by query plan, so the same comment can surface on two pages
     while another is skipped — crud pagination appends an id tiebreak, making
-    the paging order deterministic (round 278).
+    the paging order deterministic.
     """
     from datetime import datetime
 
@@ -374,7 +373,7 @@ async def test_list_comments_pagination_stable_with_tied_timestamps(client, db_s
 
 async def test_list_comments_keyword_filters_within_thread(client, post, auth_headers):
     """A q param on the thread list narrows to matching approved comments —
-    the "search inside this thread" gap (DEC-442, TASK-452)."""
+    the "search inside this thread" gap."""
     contents = ["Docker is the key", "An unrelated topic", "Docker compose too"]
     ids = []
     for content in contents:
@@ -414,7 +413,7 @@ async def test_list_comments_keyword_filters_within_thread(client, post, auth_he
 
 async def test_list_comments_keyword_escapes_like_metacharacters(client, post, auth_headers):
     """A q of '%' or '_' must be treated literally, not as SQL wildcards —
-    else one % returns every comment (DEC-442 follow-on, search_posts parity)."""
+    else one % returns every comment (follow-on, search_posts parity)."""
     for content in ["literal percent", "literal underscore"]:
         created = await client.post(
             f"/api/comments/post/{post['id']}",
@@ -520,7 +519,7 @@ async def test_approve_comment_unauthorized(client, post):
     assert response.status_code == 401
 
 
-# --- Comment likes (DEC-092, TASK-158) ---
+# --- Comment likes ---
 
 
 async def test_like_comment(client, post):
@@ -584,7 +583,7 @@ async def test_like_comment_not_found(client):
 async def test_huge_comment_id_is_422_not_500(client):
     """An out-of-range comment id must be a 422, never a 500.
 
-    Mirrors the posts fix (round 276): an unbounded ``comment_id: int`` path
+    Mirrors the posts fix: an unbounded ``comment_id: int`` path
     param fed an oversized-beyond-64-bit value into the DBAPI bind and 500'd
     the public like route. The IdInt bound turns it into the repo-standard 422.
     """
@@ -643,7 +642,7 @@ async def _create_approved_comment(client, db_session, post_id, nickname, conten
 
 
 async def test_list_comments_sort_likes_most_helpful_first(client, db_session, post, auth_headers):
-    """sort=likes orders approved comments by like count desc (DEC-094, TASK-159)."""
+    """sort=likes orders approved comments by like count desc."""
     low = await _create_approved_comment(client, db_session, post["id"], "Low", "not as helpful", auth_headers, likes=1)
     high = await _create_approved_comment(
         client, db_session, post["id"], "High", "the helpful answer", auth_headers, likes=5
@@ -657,7 +656,7 @@ async def test_list_comments_sort_likes_most_helpful_first(client, db_session, p
 
 
 async def test_list_comments_sort_oldest_first(client, db_session, post, auth_headers):
-    """sort=oldest returns approved comments by created_at asc (DEC-094, TASK-159)."""
+    """sort=oldest returns approved comments by created_at asc."""
     first = await _create_approved_comment(client, db_session, post["id"], "First", "first comment", auth_headers)
     second = await _create_approved_comment(client, db_session, post["id"], "Second", "second comment", auth_headers)
     third = await _create_approved_comment(client, db_session, post["id"], "Third", "third comment", auth_headers)

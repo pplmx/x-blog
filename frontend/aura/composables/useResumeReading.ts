@@ -1,5 +1,5 @@
 /**
- * Per-post resume reading (DEC-167, TASK-200).
+ * Per-post resume reading.
  *
  * A signed-in reader's last scroll offset inside a post is saved server-side
  * (ReadingHistory.scroll_position) so returning to the post drops them back
@@ -16,7 +16,7 @@
  *    post, read nothing, leave) does not wipe the saved place for next time.
  *
  * All writes go through `recordReaderHistory` → `$fetch`, matching the
- * ISS-111/DEC-165 rule: `useFetch` silently no-ops outside a setup/suspense
+ * rule: `useFetch` silently no-ops outside a setup/suspense
  * context, so fire-and-forget client calls from lifecycle/handler code must
  * use `$fetch`. Guests opt out entirely — the server trail is reader-only.
  */
@@ -62,8 +62,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 
 	let lastSaved = -1;
 	let pendingPos: number | null = null;
-	// Cross-viewport resume fraction pending alongside the pixel (DEC-346/
-	// TASK-399): captured at save time from the current document height so a
+	// Cross-viewport resume fraction pending alongside the pixel: captured at save time from the current document height so a
 	// continuation on a differently-sized viewport restores at the same place.
 	// Null when the save had no measurable scroll range.
 	let pendingFraction: number | null = null;
@@ -78,7 +77,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	// back-to-top wipe so the smooth animation's intermediate offsets cannot
 	// write a stale position back over the explicit 0).
 	let suppressSavesUntil = 0;
-	// Monotonic generation for restore() (round-422 audit, HIGH): the post
+	// Monotonic generation for restore(): the post
 	// page's postId watcher calls reset() the moment an SPA post switch happens,
 	// but an in-flight restore() that has not resolved yet sees nothing to
 	// cancel (its applyScroll hasn't begun). Without a generation an old post's
@@ -133,9 +132,9 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 			// generation, or a newer restore() superseded it) must not scroll or
 			// mark a position for the WRONG article. fractionToPixel/applyScroll
 			// below read the CURRENT document, so even the math would be against
-			// the new post — drop the whole result (round-422 audit).
+			// the new post — drop the whole result.
 			if (generation !== restoreGeneration) return null;
-			// Prefer the cross-viewport fraction (DEC-346/TASK-399): it restores
+			// Prefer the cross-viewport fraction: it restores
 			// at the same place on any viewport. Fall back to the pixel for
 			// pre-feature rows (null fraction) — today's exact behavior.
 			let pos: number | null = null;
@@ -263,7 +262,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	function jumpToTop(): void {
 		// The reader explicitly chose the top — a restore still in flight must
 		// not resolve after this and yank them back down. Same generation
-		// invalidation as reset() (round-422 audit).
+		// invalidation as reset().
 		restoreGeneration += 1;
 		cancelRestores?.();
 		window.scrollTo({ top: 0, behavior: "smooth" });
@@ -275,11 +274,11 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 			// intermediate events max out just below MIN_SAVE_PX and its final
 			// `0` is below the save threshold, so without this the next visit
 			// would restore to a stale ~100px (and show a bogus chip) instead
-			// of the top. `0` is the documented "clear" value (DEC-167).
+			// of the top. `0` is the documented "clear" value.
 			lastSaved = 0;
 			// The fraction must be cleared too or a later cross-device restore
 			// would prefer the stale nonzero fraction over the cleared pixel
-			// (DEC-346/TASK-399).
+			//.
 			recordReaderHistory(id, 0, 0).catch(() => {});
 			// The smooth scroll still fires scroll events for ~a second; ignore
 			// them so an intermediate offset cannot write over the clear.
@@ -306,7 +305,7 @@ export function useResumeReading(postId: () => number | undefined): ResumeReadin
 	function reset(): void {
 		// Invalidate any in-flight restore() for the OLD post before flushing:
 		// the pending fetch must not resolve after the switch and scroll the new
-		// article (round-422 audit). cancelRestores() below only cancels an
+		// article. cancelRestores() below only cancels an
 		// already-started applyScroll — the generation covers the fetch window.
 		restoreGeneration += 1;
 		cancelRestores?.();

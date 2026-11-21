@@ -25,27 +25,26 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/comments", tags=["comments"])
 
 # Longest allowed search/keyword term (shared with the /search router; the
-# thread-scoped q on list_comments uses the same boundary, DEC-442).
+# thread-scoped q on list_comments uses the same boundary).
 MAX_QUERY_LENGTH = 200
 
-# Reply-ish notification copy now lives in repositories (notification_copy, DEC-340/
-# TASK-396) so the durable inbox rows + emails localize per reader; the env-
+# Reply-ish notification copy now lives in repositories (notification_copy) so the durable inbox rows + emails localize per reader; the env-
 # overridable zh constants are IMPORTED from there. The constants below remain
 # for the server-generated PUSH payloads only (a single push payload can't
 # vary per reader browser, and operators keep localizing via env).
 
 
-# Sort orders accepted by GET /api/comments/post/{id} (DEC-094, TASK-159).
+# Sort orders accepted by GET /api/comments/post/{id}.
 # "newest" is the default (created_at desc); "oldest" is created_at asc; "likes"
 # is likes desc with a created_at desc tiebreak so equal counts stay deterministic.
 VALID_COMMENT_SORTS = ("newest", "oldest", "likes")
 
 
-# Moderation trust tier (DEC-098, TASK-161): when enabled, a comment authored by
+# Moderation trust tier: when enabled, a comment authored by
 # a verified reader account (reader_id stamped from the reader JWT at create,
-# DEC-062) is approved immediately instead of waiting for a moderator, while
+# ) is approved immediately instead of waiting for a moderator, while
 # anonymous comments stay fully moderated. Operator-controlled env toggle;
-# default off preserves the "every comment is moderated" stance (DEC-066).
+# default off preserves the "every comment is moderated" stance.
 def _env_flag(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
@@ -70,10 +69,10 @@ class CommentApproval(BaseModel):
 
 
 class DiscussionFeedItem(schemas.CommentPublic):
-    """One comment on the site-wide discussion feed (round 367, DEC-407).
+    """One comment on the site-wide discussion feed.
 
     The public comment shape plus the post it was left on — the feed card
-    deep-links onto the exact comment (``#comment-{id}``, DEC-321) via the
+    deep-links onto the exact comment (``#comment-{id}``) via the
     post brief, never just the post headline.
     """
 
@@ -100,9 +99,9 @@ async def discussion_feed(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Site-wide discussion feed (round 367, DEC-407).
+    """Site-wide discussion feed.
 
-    Search (DEC-405) made the discussion FINDABLE; this makes it BROWSABLE — a
+    Search made the discussion FINDABLE; this makes it BROWSABLE — a
     visitor who wants to see what people are saying right now has no surface
     otherwise. Newest approved comments on publicly-visible posts, each with
     the commenter identity (CommentPublic — emitted through CommentReaderProfile,
@@ -148,13 +147,13 @@ async def list_comments(
 
     ``sort`` lets readers reorder the thread — newest (default), oldest, or
     most helpful (likes desc). Invalid values are rejected like the search
-    sort (DEC-094, TASK-159). The post must exist and be publicly visible:
+    sort. The post must exist and be publicly visible:
     drafts/scheduled posts are 404 (same gate as create/like), so a now-draft
     post's previously approved comments are not served and the endpoint is not
-    a draft-existence oracle (ISS-144).
+    a draft-existence oracle.
 
     ``q`` (optional) narrows the thread to approved comments whose content
-    contains every term — "search inside this thread" (DEC-442, TASK-452), the
+    contains every term — "search inside this thread", the
     post-scoped answer to the global comment search. Length-bounded like every
     query surface; a whitespace-only q is rejected so it cannot degrade into a
     match-everything ILIKE.
@@ -199,7 +198,7 @@ async def create_comment(
     if not post or not comments_service.is_publicly_visible(post):
         raise HTTPException(status_code=404, detail="Post not found")
 
-    # Per-post comment control (round 351): a closed post still renders its
+    # Per-post comment control: a closed post still renders its
     # existing comments (the conversation is part of the article) but refuses
     # new ones — the UI hides the form; this is the second line of defense for
     # stale clients / direct API callers. 403 keeps "you can read, you cannot
@@ -216,10 +215,10 @@ async def create_comment(
         # _notify_comment_approved), not here — comments are moderated. The
         # moderation alert is the exception: it fires at CREATE because the
         # whole point is telling the author a comment is WAITING for approval.
-        # Best-effort — never fails the create. (DEC-080)
+        # Best-effort — never fails the create.
         created = await comments_service.create_comment(db, post_id, comment, ip_address, reader=reader)
 
-        # Moderation trust tier (DEC-098/100, TASK-161/162): when enabled, a
+        # Moderation trust tier: when enabled, a
         # verified reader's comment (reader_id stamped from the reader JWT)
         # publishes immediately instead of waiting, firing the same approval
         # notifications as a moderator approve. The persisted admin setting
@@ -251,14 +250,14 @@ async def approve_comment(
 ):
     """Approve or reject a comment. Admin only. Idempotent: re-approving an
     already-approved comment (double click / retry) is a no-op that must not
-    fan out duplicate reply + thread notifications (round-296 deep-dive)."""
+    fan out duplicate reply + thread notifications."""
     before = (await db.execute(select(models.Comment.is_approved).filter(models.Comment.id == comment_id))).scalar()
     comment = await comments_service.approve_comment(db, comment_id, approved=approval.approved)
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
     if approval.approved and not before:
-        # Shared with the verified-reader auto-approve path (DEC-098, TASK-161).
+        # Shared with the verified-reader auto-approve path.
         # comments_service.approve_comment resolved `before` from a real row (we are past
         # the 404), so `before` is the prior approval state; only a genuine
         # transition into approved fires the fan-out.
@@ -267,7 +266,7 @@ async def approve_comment(
 
 
 class ReplyNotifyUnsubscribeBody(BaseModel):
-    """Unsubscribe token from a guest reply-email (DEC-332, TASK-392)."""
+    """Unsubscribe token from a guest reply-email."""
 
     token: str = Field(min_length=1, max_length=128)
 
@@ -317,7 +316,7 @@ async def like_comment(
     db: AsyncSession = Depends(get_db),
     body: CommentLikeBody | None = None,
 ):
-    """Increment the like count for a comment (DEC-092, TASK-158).
+    """Increment the like count for a comment.
 
     Idempotent per (comment, source IP) like the flag path (security review):
     a second like from the same source is a no-op, so the count means distinct
@@ -342,16 +341,16 @@ async def like_comment(
 
 
 class CommentFlagBody(BaseModel):
-    """Optional reason when a reader flags a comment for moderation (DEC-108)."""
+    """Optional reason when a reader flags a comment for moderation."""
 
     reason: str | None = Field(default=None, max_length=200)
 
 
 class GuestCommentManageBody(BaseModel):
-    """Manage-body for a guest's own comment (round 385, DEC-435/TASK-444).
+    """Manage-body for a guest's own comment.
 
     The token is the proof of authorship: it is the per-comment secret
-    (DEC-332) delivered exclusively by mail (approval/reply emails), so
+     delivered exclusively by mail (approval/reply emails), so
     possession of it demonstrates the address owns the comment. ``content``
     mirrors CommentCreate's gate (min_length=1 post-strip; max 5000).
     """
@@ -366,7 +365,7 @@ class GuestCommentManageBody(BaseModel):
 
 
 class GuestCommentManageResponse(BaseModel):
-    """Manage-page payload: the comment plus minimal post context (round 385)."""
+    """Manage-page payload: the comment plus minimal post context."""
 
     comment: schemas.CommentPublic
     post: schemas.CommentPostBrief | None = None
@@ -379,7 +378,7 @@ async def get_guest_comment_manage(
     token: str = Query(..., min_length=1, max_length=64),
     db: AsyncSession = Depends(get_db),
 ):
-    """Load a guest's own comment for the management page (round 385).
+    """Load a guest's own comment for the management page.
 
     The token is the ownership proof (only the guest's email carries it), and
     an unknown token is a 404 so comment ids / tokens are not enumerable. The
@@ -406,9 +405,9 @@ async def edit_guest_comment_manage(
     body: GuestCommentManageBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Edit a guest's own comment via its management token (round 385).
+    """Edit a guest's own comment via its management token.
 
-    Same ownership semantics as the reader edit (DEC-096): only ``content`` may
+    Same ownership semantics as the reader edit: only ``content`` may
     change, the body is stored raw and re-rendered through the sanitized
     markdown pipeline, ``edited_at`` is stamped, and the edit resets approval
     — an approved comment whose text was replaced re-enters the moderation
@@ -422,7 +421,7 @@ async def edit_guest_comment_manage(
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Comment not found")
-    # No moderation alert on edit — exactly like the reader path (DEC-096): the
+    # No moderation alert on edit — exactly like the reader path: the
     # reset comment shows as pending in the admin queue, and an alert on every
     # edit would let a guest spam moderators by toggling their own comment.
     return updated
@@ -435,7 +434,7 @@ async def delete_guest_comment_manage(
     token: str = Query(..., min_length=1, max_length=64),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a guest's own comment via its management token (round 385).
+    """Delete a guest's own comment via its management token.
 
     Ownership-scoped exactly like the reader delete: an unknown token (or a
     token matching no comment) is a 404, so ids are not enumerable. Replies are
@@ -459,7 +458,7 @@ async def flag_comment(
     body: CommentFlagBody | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """Flag a comment for moderator review (DEC-108, TASK-166).
+    """Flag a comment for moderator review.
 
     Anonymous/reader, rate-limited, idempotent per (comment, source IP). A
     comment on a draft or otherwise non-public post responds 404 (same as an

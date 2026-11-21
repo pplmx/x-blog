@@ -19,7 +19,7 @@ const password = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
 
-// Session-expired return landing (ISS-390): the transport's admin-401 handler
+// Session-expired return landing: the transport's admin-401 handler
 // carries the path the operator was editing via ?next= when their session died
 // mid-work. Honor it after login so they land back on the draft instead of the
 // bare posts list — but only same-origin internal admin paths (no open
@@ -105,7 +105,7 @@ async function handleLogin() {
 				</p>
 			</div>
 
-			<!-- Session-expired notice (ISS-390): the transport's admin-401 handler
+			<!-- Session-expired notice: the transport's admin-401 handler
            redirected here with ?next= when the session died mid-edit. Surface
            why the operator was bounced instead of an unexplained login. -->
 			<div

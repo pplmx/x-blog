@@ -32,10 +32,10 @@ async def get_comments_paginated(
     ``sort`` is one of ``newest`` (default, created_at desc), ``oldest``
     (created_at asc) or ``likes`` (likes desc, created_at desc tiebreak).
     The caller is responsible for whitelisting the value before this runs;
-    anything else falls back to the default newest order (DEC-094, TASK-159).
+    anything else falls back to the default newest order.
 
     ``q`` narrows the thread to approved comments whose content contains every
-    whitespace-separated term (case-insensitive substring, DEC-442/TASK-452) —
+    whitespace-separated term (case-insensitive substring) —
     the "search inside this thread" surface. LIKE metacharacters are escaped so
     a ``%`` query matches literally (search_comments/search_posts parity); an
     empty/whitespace q is a no-op (full thread). The caller owns length limits.
@@ -51,7 +51,7 @@ async def get_comments_paginated(
     q_terms = [t for t in q.strip().split() if t]
     if q_terms:
         # Substring AND across terms, mirroring search_comments / the CJK-safe
-        # search_posts path (DEC-084) so Chinese terms match partial runs too.
+        # search_posts path so Chinese terms match partial runs too.
         query = query.where(
             *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in q_terms]
         )
@@ -60,7 +60,7 @@ async def get_comments_paginated(
     # Every sort appends id as a deterministic tiebreak: offset paging would
     # otherwise repeat/skip rows when two comments share a created_at (e.g. a
     # bulk-restore stamps verbatim timestamps), resolving ties by query plan
-    # instead of a stable key (round 278).
+    # instead of a stable key.
     if sort == "oldest":
         order = [models.Comment.created_at.asc(), models.Comment.id.asc()]
     elif sort == "likes":
@@ -70,7 +70,7 @@ async def get_comments_paginated(
         order = [models.Comment.created_at.desc(), models.Comment.id.desc()]
     # Eager-load the author reader on the page query so serializing
     # CommentPublic (which touches c.reader) doesn't fire one lazy query per
-    # reader-attributed comment (ISS-139).
+    # reader-attributed comment.
     comments = list(
         (
             await db.execute(
@@ -110,7 +110,7 @@ async def create_comment(
         if not parent.is_approved:
             raise ValueError("Cannot reply to a comment awaiting approval")
 
-    # Reader-attributed comments (DEC-062): when a signed-in reader authors the
+    # Reader-attributed comments: when a signed-in reader authors the
     # comment, their identity is stamped from the account — client-supplied
     # nickname/email are IGNORED (a reader cannot spoof another's display name
     # or attach a bogus email). Using the account's email would stash PII in the
@@ -119,7 +119,7 @@ async def create_comment(
     if reader is not None:
         # The public nickname for a verified reader is their display_name;
         # a reader who never set one gets a deterministic non-PII handle
-        # instead of their account email (ISS-606/TASK-532) — the email was
+        # instead of their account email — the email was
         # the old fallback, which published the address on every comment
         # surface (thread, feeds, comment search, RSS/Atom) for readers who
         # registered with only {email, password}. `reader-{id}` is stable per
@@ -132,10 +132,10 @@ async def create_comment(
         comment_email = comment.email
         reader_id = None
 
-    # Guest reply-email consent (DEC-332): honored ONLY for anonymous comments
+    # Guest reply-email consent: honored ONLY for anonymous comments
     # AND only when there is an address to deliver to (a consent with no email
     # is stored as off — nothing to send, no token). A signed-in reader's
-    # reply email is the account-level per-kind pref (DEC-197), never this
+    # reply email is the account-level per-kind pref, never this
     # comment-row consent, so their value is discarded here.
     reply_notify_email = bool(reader_id is None and comment.reply_notify_email and comment_email)
     db_comment = models.Comment(
@@ -164,7 +164,7 @@ async def create_comment(
         raise ValueError("Failed to create comment")
     # Re-load the author reader eagerly for response serialization (Comment
     # schema reads comment.reader) — async: post-commit lazy access raises
-    # MissingGreenlet (RIL async migration).
+    # MissingGreenlet ( ).
     db_comment = (
         await db.execute(
             select(models.Comment).options(joinedload(models.Comment.reader)).where(models.Comment.id == db_comment.id)
@@ -172,21 +172,20 @@ async def create_comment(
     ).scalars().first() or db_comment
     # The public posts list serializes approved comment_count per post; a new
     # (or subsequently approved) comment changes those counts, so invalidate
-    # the cached list rather than wait up to 300s TTL (RIL TASK-073, ISS-041).
+    # the cached list rather than wait up to 300s TTL.
     clear_posts_list_cache()
     return db_comment
 
 
 async def get_guest_comment_by_token(db: AsyncSession, token: str) -> models.Comment | None:
-    """Fetch an ANONYMOUS comment by its per-comment management token (DEC-332).
+    """Fetch an ANONYMOUS comment by its per-comment management token.
 
     ``reply_notify_token`` is the secret only the guest's approval/reply email
     carries, so possession proves the guest (or an address they control) holds
     the mail — the same ownership argument the unsubscribe endpoint uses. Only
     consenting anonymous comments ever have a token; a reader-attributed
     comment or a token-less guest comment can never match. Unknown token → None
-    (indistinguishable 404, ids are not enumerable). (round 385, DEC-435/
-    TASK-444)
+    (indistinguishable 404, ids are not enumerable).
     """
 
     if not token:
@@ -197,9 +196,9 @@ async def get_guest_comment_by_token(db: AsyncSession, token: str) -> models.Com
 
 
 async def update_guest_comment(db: AsyncSession, token: str, content: str) -> tuple[models.Comment | None, bool]:
-    """Edit an ANONYMOUS comment proven by its management token (round 385).
+    """Edit an ANONYMOUS comment proven by its management token.
 
-    Mirror of ``update_reader_comment`` (DEC-096) keyed by the token instead of
+    Mirror of ``update_reader_comment`` keyed by the token instead of
     ``reader_id``: only ``content`` may change (post_id/parent_id/identity are
     preserved), the body is stored raw and re-rendered through the sanitized
     markdown pipeline, and ``edited_at`` is stamped. ``was_public`` reports
@@ -227,9 +226,9 @@ async def update_guest_comment(db: AsyncSession, token: str, content: str) -> tu
 
 
 async def delete_guest_comment(db: AsyncSession, token: str) -> bool:
-    """Delete an ANONYMOUS comment proven by its management token (round 385).
+    """Delete an ANONYMOUS comment proven by its management token.
 
-    Mirror of ``delete_reader_comment`` (DEC-096): False when the token matches
+    Mirror of ``delete_reader_comment``: False when the token matches
     no comment; replies are reparented to this comment's parent (or promoted to
     top-level) rather than blocking the delete, so a guest can withdraw a
     comment that already has replies without orphaning the thread. Deeper
@@ -261,8 +260,7 @@ async def approve_comment(db: AsyncSession, comment_id: int, approved: bool = Tr
     """Approve or reject a comment. Idempotent: applying the state the comment
     already has is a no-op (no reviewed_at bump, no cache clear), so a re-approve
     click / batch re-run cannot churn state — routers that fan out notifications
-    gate on the transition themselves (round-296 deep-dive; the reader-edit path
-    already guards via ``was_public``, ISS-404)."""
+    gate on the transition themselves."""
     comment = (
         (
             await db.execute(
@@ -282,8 +280,8 @@ async def approve_comment(db: AsyncSession, comment_id: int, approved: bool = Tr
         return comment
     comment.is_approved = approved
     # Reviewed_at distinguishes "still pending" from "reviewed and rejected" for
-    # the author's comment history (DEC-066, TASK-139). Set on both outcomes.
-    # Naive UTC (ISS-452): reviewed_at is a naive-UTC DateTime column; an aware
+    # the author's comment history. Set on both outcomes.
+    # Naive UTC: reviewed_at is a naive-UTC DateTime column; an aware
     # write is a latent trap if the row is ever cached/serialized pre-flight.
     comment.reviewed_at = utc_now_naive()
     await db.commit()
@@ -300,19 +298,18 @@ async def approve_comment(db: AsyncSession, comment_id: int, approved: bool = Tr
         .first()
     )
     # Approving (or rejecting) a comment changes the approved comment_count
-    # surfaced on the cached public posts list (RIL TASK-073, ISS-041).
+    # surfaced on the cached public posts list.
     clear_posts_list_cache()
     return comment
 
 
 async def delete_reader_comment(db: AsyncSession, comment_id: int, reader_id: int) -> bool:
     """Delete one of the reader's own comments (any status). False if the
-    comment is missing or belongs to a different reader. (DEC-066, TASK-139)
+    comment is missing or belongs to a different reader.
 
     Replies are reparented to this comment's parent (or promoted to top-level
     when it had none) rather than blocking the delete, so a reader can withdraw
-    a comment that already has replies without orphaning the thread (DEC-096,
-    TASK-160). Deeper descendants ride along under the promoted reply.
+    a comment that already has replies without orphaning the thread. Deeper descendants ride along under the promoted reply.
     """
     comment = (
         (
@@ -356,9 +353,9 @@ async def update_reader_comment(
     the comment was publicly visible (approved) BEFORE the edit. ``was_public``
     tells the caller whether this edit took the comment off the public surface;
     if it was already public, an auto-approve republish must not re-notify its
-    subscribers (RIL ISS-404). Content is stored raw and re-rendered through the
+    subscribers. Content is stored raw and re-rendered through the
     same sanitized markdown pipeline as a new comment, so an edit can never
-    weaken the XSS guarantees (DEC-096, TASK-160). The ``edited_at`` marker is
+    weaken the XSS guarantees. The ``edited_at`` marker is
     stamped so the UI can surface it.
 
     Moderation integrity (security review): an edit REPLACES the comment's
@@ -383,7 +380,7 @@ async def update_reader_comment(
     # is_approved is nullable; NULL is not public, so coerce for the bool contract.
     was_public = bool(comment.is_approved)
     comment.content = content
-    # Naive UTC, like reviewed_at (ISS-452).
+    # Naive UTC, like reviewed_at.
     comment.edited_at = utc_now_naive()
     comment.is_approved = False
     comment.reviewed_at = None
@@ -392,7 +389,7 @@ async def update_reader_comment(
     # The public posts list / feeds serialize approved comment_count; an edit
     # that resets an approved comment (comment drops off the public surface,
     # count falls) must invalidate the cached list immediately — create and
-    # approve already clear, edit was the gap (ISS-608/TASK-529). The caller
+    # approve already clear, edit was the gap. The caller
     # re-applies the verified-reader auto-approve tier after this returns; if
     # it re-approves, the following approve_comment clears again (harmless
     # double-clear, keeps the invariant "writes invalidate explicitly").
@@ -419,7 +416,7 @@ async def get_all_comments(db: AsyncSession) -> list[models.Comment]:
 
 
 async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
-    """Delete many comments at once, keeping the thread consistent (DEC-110).
+    """Delete many comments at once, keeping the thread consistent.
 
     Surviving direct replies of a deleted comment are promoted to the nearest
     surviving ancestor (or top-level) — walking up past any ancestors that are
@@ -431,7 +428,7 @@ async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
     if not comments:
         return 0
     existing_ids = {c.id for c in comments}
-    # ISS-557 (performance deep-dive): the old loop issued one reply-query per
+    # (performance deep-dive): the old loop issued one reply-query per
     # comment (up to the batch cap of 100) plus one db.get per ancestor while
     # walking the parent chain. Both collapse to one query + an in-memory map:
     #  - the ancestor walk only ever follows ids INSIDE the delete set (it
@@ -466,10 +463,10 @@ async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
             .where(models.Comment.id.in_(survivor_ids))
             .values({models.Comment.parent_id: eff_parent})
         )
-    # Bulk deletes (ISS-557): the previous per-row `db.delete(c)` walked the
+    # Bulk deletes: the previous per-row `db.delete(c)` walked the
     # self-referential `replies` backref one query per comment (a batch of 100
     # = 100 extra SELECTs). comment_likes/comment_flags are additive tables
-    # with no DB-level FK (DEC-009), so their rows are reaped explicitly, then
+    # with no DB-level FK, so their rows are reaped explicitly, then
     # the comment set is removed with a single DELETE. The reparent above
     # guarantees no surviving row references a deleted id, so the self-join
     # FK cannot be violated even on PostgreSQL.
@@ -482,7 +479,7 @@ async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
         await db.rollback()
         raise ValueError("Cannot delete comments: dependent records remain")
     # Deleting approved comments changes the approved comment_count on the
-    # cached public posts list (RIL TASK-073, ISS-041).
+    # cached public posts list.
     clear_posts_list_cache()
     return len(comments)
 
@@ -498,7 +495,7 @@ async def delete_comment(db: AsyncSession, comment_id: int) -> bool:
         await db.rollback()
         raise ValueError("Cannot delete comment: it has dependent records")
     # Deleting an approved comment changes the approved comment_count surfaced
-    # on the cached public posts list (RIL TASK-073, ISS-041).
+    # on the cached public posts list.
     clear_posts_list_cache()
     return True
 
@@ -508,7 +505,7 @@ async def delete_comment_reparent(db: AsyncSession, comment_id: int) -> bool:
     nearest surviving ancestor (or top-level), so a single admin delete never
     orphans a thread or leaves a reply pointing at a deleted parent.
 
-    Mirrors the reparenting in ``bulk_delete_comments`` (DEC-110) — the plain
+    Mirrors the reparenting in ``bulk_delete_comments`` — the plain
     ``delete_comment`` refuses (400) on Postgres when replies exist and silently
     orphans them on SQLite, which left admins unable to remove a spam thread.
     Returns False when the comment does not exist.
@@ -536,7 +533,7 @@ async def delete_comment_reparent(db: AsyncSession, comment_id: int) -> bool:
         await db.rollback()
         raise ValueError("Cannot delete comment: dependent records remain")
     # Deleting an approved comment changes the approved comment_count surfaced
-    # on the cached public posts list (RIL TASK-073, ISS-041).
+    # on the cached public posts list.
     clear_posts_list_cache()
     return True
 
@@ -546,7 +543,7 @@ async def flag_comment(db: AsyncSession, comment_id: int, ip_key: str, reason: s
 
     Returns (created_new, total_distinct_flags). A second flag from the same
     source key is a no-op (unique constraint) so the moderator sees distinct
-    reporters, not click spam (DEC-108, TASK-166).
+    reporters, not click spam.
     """
     existing = (
         (
@@ -606,7 +603,7 @@ async def increment_comment_likes(db: AsyncSession, comment_id: int, commit: boo
     """Increment the like count for a comment using atomic SQL update.
 
     ``commit=False`` keeps the bump inside the caller's transaction (like_comment
-    persists the CommentLike row and the counter in ONE commit, ISS-560).
+    persists the CommentLike row and the counter in ONE commit).
     """
     stmt = update(models.Comment).where(models.Comment.id == comment_id).values(likes=models.Comment.likes + 1)
     await db.execute(stmt)
@@ -643,7 +640,7 @@ async def like_comment(db: AsyncSession, comment_id: int, ip_key: str) -> tuple[
     is_new = existing is None
     if is_new:
         db.add(models.CommentLike(comment_id=comment_id, ip_key=ip_key))
-        # ISS-560: row + counter in ONE transaction. The old code committed
+        # row + counter in ONE transaction. The old code committed
         # the CommentLike insert and the atomic counter bump separately; a
         # failure between them left a committed like row with no count and no
         # re-sync path (comments can only be liked, never re-counted). A
@@ -674,12 +671,12 @@ async def get_reader_comments(
 ) -> tuple[list[models.Comment], int]:
     """A reader's own comments, newest first, with status filter + pagination.
 
-    DEC-066/TASK-139 showed pending/rejected comments to their author (with a
-    derived status); DEC-102/TASK-163 adds a status filter (all|pending|
+     showed pending/rejected comments to their author (with a
+    derived status) adds a status filter (all|pending|
     approved|rejected) and pagination so a reader with a long history can find
     pending/rejected items and page through. ``q`` (optional) filters to the
     reader's own comments whose content matches the term (case-insensitive,
-    escape-aware — DEC-411/TASK-431) so a reader can recall a specific comment;
+    escape-aware) so a reader can recall a specific comment;
     it composes with the status filter. Public read paths still filter to
     approved only.
 
@@ -705,7 +702,7 @@ async def get_reader_comments(
         query = query.where(models.Comment.content.ilike(term, escape="\\"))
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
-    # joinedload(reader) — matching get_comments_paginated's ISS-139 fix: the
+    # joinedload(reader) — matching get_comments_paginated's fix: the
     # serialized CommentPublic.reader reads c.reader.id/display_name, so without
     # this each attributed comment costs one lazy query (N+1 on the reader's own
     # comment history list).
@@ -713,7 +710,7 @@ async def get_reader_comments(
         (
             await db.execute(
                 query.options(joinedload(models.Comment.reader))
-                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())  # id tiebreak (round 278)
+                .order_by(models.Comment.created_at.desc(), models.Comment.id.desc())  # id tiebreak
                 .offset((page - 1) * limit)
                 .limit(limit)
             )
@@ -727,7 +724,7 @@ async def list_reader_public_comments(
 ) -> tuple[list[models.Comment], int]:
     """Approved comments a reader has left on *publicly-visible* posts.
 
-    The profile page (DEC-294/TASK-376) shows a commenter's contribution; it
+    The profile page shows a commenter's contribution; it
     must not leak semi-private rows the same way the private /me/comments path
     (which includes pending/rejected for the author) or drafts do. So the scope
     is: is_approved AND the commented post is publicly visible (published,
@@ -765,11 +762,11 @@ async def list_public_comment_feed(
     page: int = 1,
     limit: int = 20,
 ) -> tuple[list[models.Comment], int]:
-    """Site-wide discussion feed (round 367, DEC-407).
+    """Site-wide discussion feed.
 
     Newest approved comments on *publicly-visible* posts — the blog's
     conversation as a browsable stream, not just a search target (comment
-    search, DEC-405). Same visibility gate as list_reader_public_comments /
+    search). Same visibility gate as list_reader_public_comments /
     search_comments: is_approved AND the commented post is published with its
     publish_at passed (drafts/scheduled posts never leak their discussion);
     pending/rejected comments stay out; email/ip never ride the rows (serialized
@@ -805,11 +802,11 @@ async def search_comments(
     page: int = 1,
     limit: int = 20,
 ) -> tuple[list[models.Comment], int]:
-    """Public comment search (round 366, DEC-405).
+    """Public comment search.
 
     Approved comments on *publicly-visible* posts whose content matches every
     whitespace-separated term (substring AND — the dialect-agnostic path
-    search_posts uses for CJK/mixed queries, DEC-084). Same public-visibility
+    search_posts uses for CJK/mixed queries). Same public-visibility
     predicate as list_reader_public_comments: is_approved AND the commented
     post is published with its publish_at passed (a draft or scheduled post
     never leaks its discussion). Threads on comment-DISABLED posts stay public
@@ -829,7 +826,7 @@ async def search_comments(
         models.Comment.is_approved.is_(True),
         models.Post.published.is_(True),
         or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now),
-        # Escape LIKE metacharacters per term (search_posts precedent, DEC-084):
+        # Escape LIKE metacharacters per term (search_posts precedent):
         # a reader searching "%" or "_" must find them literally, not match
         # every comment / treat _ as a single-char wildcard.
         *[models.Comment.content.ilike(f"%{escape_like_pattern(t)}%", escape="\\") for t in terms],

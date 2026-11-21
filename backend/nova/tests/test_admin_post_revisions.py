@@ -1,4 +1,4 @@
-"""Admin post revision-history tests (DEC-158, TASK-191).
+"""Admin post revision-history tests.
 
 Covers: revision snapshots captured on create/update, list/detail endpoints,
 restore (which becomes the live post and is itself undo-able), auth gating,

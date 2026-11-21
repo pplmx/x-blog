@@ -1,4 +1,4 @@
-"""Admin follow-analytics tests (DEC-144, TASK-184).
+"""Admin follow-analytics tests.
 
 The operator sees per-series and per-category reader follow counts (tracking,
 notify-independent) plus totals on an admin-scoped endpoint.

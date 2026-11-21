@@ -1,4 +1,4 @@
-"""Admin editorial-calendar endpoint tests (DEC-162, TASK-194).
+"""Admin editorial-calendar endpoint tests.
 
 The calendar buckets posts into a month grid by their live/scheduled/draft
 date so the operator can see the publishing plan at a glance. This suite
@@ -97,7 +97,7 @@ class TestBucketing:
         """A draft planned for a month OTHER than the viewed one (the primary
         editorial case: "writing for next month") has a non-None publish_at that
         misses the grid range; it must surface in ``unscheduled`` — landing on
-        neither list made the plan vanish (round-292 deep-dive)."""
+        neither list made the plan vanish."""
         other_month = utc_now_naive() + timedelta(days=40)
         db_session.add(
             models.Post(

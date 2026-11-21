@@ -1,9 +1,9 @@
 /**
- * useRecentlyViewed composable tests (DEC-104, TASK-164; TASK-169).
+ * useRecentlyViewed composable tests.
  *
  * The continue-reading trail records posts most-recent-first, dedups by slug,
  * timestamps every entry, and caps the list so the localStorage blob stays
- * bounded and predictable. TASK-169 raised the cap so /history can show a
+ * bounded and predictable. raised the cap so /history can show a
  * browseable trail while the home row still slices to a small subset.
  */
 
@@ -27,7 +27,7 @@ describe("useRecentlyViewed", () => {
 		expect(recent.value.map((x) => x.slug)).toEqual(["a", "b"]);
 	});
 
-	it("stamps every recorded entry with a viewedAt timestamp (TASK-169)", () => {
+	it("stamps every recorded entry with a viewedAt timestamp ", () => {
 		const { record, recent } = useRecentlyViewed();
 		const before = Date.now();
 		record({ slug: "a", title: "A" });
@@ -47,7 +47,7 @@ describe("useRecentlyViewed", () => {
 		expect(Number(recent.value[0].viewedAt)).toBeGreaterThanOrEqual(firstStamp);
 	});
 
-	it("caps the trail at 50 entries, keeping the most recent first (TASK-169)", () => {
+	it("caps the trail at 50 entries, keeping the most recent first ", () => {
 		const { record, recent } = useRecentlyViewed();
 		for (let i = 0; i < 60; i++) record({ slug: `s${i}`, title: `T${i}` });
 		expect(recent.value.length).toBe(50);

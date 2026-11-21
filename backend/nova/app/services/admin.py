@@ -121,7 +121,7 @@ __all__ = [
 
 
 async def notify_post_published(db, post, logger) -> None:
-    """Fan-out a post that just became publicly visible (DEC-336/TASK-394).
+    """Fan-out a post that just became publicly visible.
 
     Shared by the admin editor's publish transition and the create/update
     fan-out paths: stamp the exactly-once ``new_post_notified_at`` marker, then
@@ -169,7 +169,7 @@ async def update_post(
         post.title = data["title"]
     slug = data.get("slug")
     if slug is not None and slug != post.slug:
-        # Slug-change redirect (round 350): an old URL that was shared/indexed
+        # Slug-change redirect: an old URL that was shared/indexed
         # must keep pointing at this post after the rename (see record_*).
         await record_slug_redirect(db, "post", post.slug, slug)
         post.slug = slug
@@ -182,11 +182,11 @@ async def update_post(
     if data.get("pinned") is not None:
         post.pinned = data["pinned"]
     if data.get("comments_enabled") is not None:
-        # Per-post comments toggle (round 351): explicit value, never cleared
+        # Per-post comments toggle: explicit value, never cleared
         # to None (the column is non-nullable).
         post.comments_enabled = data["comments_enabled"]
     if data.get("author_id") is not None:
-        # Author reassignment (DEC-359/TASK-405, TASK-479/ISS-555): null is
+        # Author reassignment: null is
         # never sent (authors aren't cleared), so any non-null value is an
         # explicit reassignment — and an id that no longer exists must 400 like
         # the sibling FK fields (author: null, 404 writer archive/RSS, missed
@@ -223,7 +223,7 @@ async def update_post(
         else:
             post.category_id = None
 
-    # Series membership (DEC-056/TASK-123): the editor must be able to assign a
+    # Series membership: the editor must be able to assign a
     # post to a series (null = clear membership), mirroring update_post — a
     # bare title/slug update must never silently drop the post out of its series.
     if "series_id" in data:
@@ -268,7 +268,7 @@ async def update_post(
         await db.rollback()
         raise AppException(ErrorCode.DUPLICATE_SLUG, "Slug already exists", status_code=400)
     await db.refresh(post)
-    # Snapshot the updated state into version history (DEC-158, TASK-191).
+    # Snapshot the updated state into version history.
     # This route updates fields directly (it doesn't use update_post), so
     # the capture is invoked here explicitly.
     await capture_post_revision(db, post)
@@ -281,7 +281,7 @@ async def update_post(
     # frontmost publish path is the admin editor's PUT /posts/{id}, which used
     # to skip both — a follower/subscriber count that never moved.
     if not was_visible and is_publicly_visible(post):
-        # Exactly-once stamp (DEC-336/TASK-394): this editor path fans out
+        # Exactly-once stamp: this editor path fans out
         # directly (it does not route through update_post), so it must set
         # the same durable stamp the fire-on-read sweep (maybe_notify_due_...)
         # checks — otherwise the first public read of a crossed scheduled post
@@ -338,7 +338,7 @@ async def list_comments(
     # the header's "N pending" must not be the current page's pending rows (which
     # reads 0 on an approved-heavy page while the queue still has work), nor the
     # filter-scoped total. Same authoritative pending_count the dashboard uses
-    # (round 276); a tiny COUNT over one boolean-filtered column.
+    # a tiny COUNT over one boolean-filtered column.
     pending_count = (
         await db.execute(select(func.count()).select_from(models.Comment).where(models.Comment.is_approved.is_(False)))
     ).scalar() or 0
@@ -354,8 +354,8 @@ async def list_comments(
     flag_counts = await flag_counts_for_comments(db, page_ids)
     # Reader account identity for the MODERATION queue (admin-only signal).
     # reader-attributed comments never put the account email in comment.email
-    # (DEC-062), and round-427 stopped the old nickname fallback from leaking
-    # it publicly (ISS-606) — but a moderator still needs to identify the
+    # and stopped the old nickname fallback from leaking
+    # it publicly — but a moderator still needs to identify the
     # account behind a comment. Expose reader_email explicitly, on this trusted
     # admin surface only (alongside ip_address), never on a public schema.
     # Batched: one IN() lookup for the whole page, no per-row lazy load (N+1).
@@ -406,12 +406,12 @@ async def list_comments(
 
 async def batch_approve_comments(db: AsyncSession, ids: list[int], approved: bool) -> dict:
     """Approve or reject a batch of comments, fanning out notifications for those
-    that genuinely transitioned to approved (DEC-110 / round-296)."""
+    that genuinely transitioned to approved."""
     comments = (await db.execute(select(models.Comment).where(models.Comment.id.in_(ids)))).scalars().all()
     # Idempotent: a comment already in the requested reviewed state (correct
     # is_approved AND reviewed_at stamped) is a no-op, so a re-approve of
     # already-approved comments must not re-fan out reply + thread
-    # notifications (round-296 deep-dive — matches the single-approve guard in
+    # notifications (deep-dive — matches the single-approve guard in
     # comments.py). A *pending* comment (is_approved=False, reviewed_at NULL)
     # still enters `changed`: a reject must stamp reviewed_at or it would stay
     # in the moderation queue forever.
@@ -421,13 +421,12 @@ async def batch_approve_comments(db: AsyncSession, ids: list[int], approved: boo
         # Stamp reviewed_at on both outcomes so rejected comments leave the
         # moderation pending queue (get_pending_comments filters is_approved
         # AND reviewed_at is NULL) instead of lingering "pending" forever.
-        # Mirrors approve_comment's naive-UTC stamp (DEC-066, TASK-139;
-        # ISS-452 keeps these writes consistent with the naive column).
+        # Mirrors approve_comment's naive-UTC stamp (keeps these writes consistent with the naive column).
         c.reviewed_at = utc_now_naive()
     if changed:
         await db.commit()
         # Approving/rejecting changes the approved comment_count embedded in the
-        # cached public post list, so invalidate it (ISS-056).
+        # cached public post list, so invalidate it.
         clear_posts_list_cache()
     # Notify replied-to readers + thread followers when comments are APPROVED
     # in bulk, the same as the single-approve path (comments.py APPROVE) — only
@@ -440,14 +439,14 @@ async def batch_approve_comments(db: AsyncSession, ids: list[int], approved: boo
 
 async def delete_comment(db: AsyncSession, comment_id: int) -> None:
     """Delete a single comment (204), 404 when it is missing, reparenting its
-    surviving replies so the thread is never orphaned (DEC-110)."""
+    surviving replies so the thread is never orphaned."""
     comment = (await db.execute(select(models.Comment).where(models.Comment.id == comment_id))).scalar_one_or_none()
     if not comment:
         raise AppException(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", status_code=404)
     try:
         # Reparent surviving replies to the nearest surviving ancestor (or
         # top-level) so deleting a spam thread never orphans its replies or
-        # refuses on Postgres — mirrors bulk_delete_comments (DEC-110).
+        # refuses on Postgres — mirrors bulk_delete_comments.
         # The old db.delete()+commit here orphaned replies on SQLite and 400'd
         # on Postgres whenever the comment had replies (backend deep-dive).
         deleted = await delete_comment_reparent(db, comment_id)
@@ -475,7 +474,7 @@ async def reply_comment(
     ip_address: str,
     author_reply_nickname: str,
 ) -> models.Comment:
-    """Reply to a comment as the blog author (DEC-192, TASK-212).
+    """Reply to a comment as the blog author.
 
     Lets the owner answer a commenter right from the moderation queue instead
     of publishing a whole post reply. The reply is an immediately-approved
@@ -484,7 +483,7 @@ async def reply_comment(
     notifications as an approved comment — the replied-to reader plus the
     thread's followers (``_notify_comment_approved``). Content width matches
     CommentBase; rendering sanitization stays where it is for every comment
-    (render-time, DEC-088).
+    (render-time).
     """
     comment = await db.get(models.Comment, comment_id)
     if comment is None:
@@ -500,7 +499,7 @@ async def reply_comment(
         # IP matches the rate-limit bucket behind a trusted proxy.
         ip_address=ip_address,
         reader_id=None,
-        is_approved=True,  # the author's reply needs no moderation (DEC-192)
+        is_approved=True,  # the author's reply needs no moderation
         is_author_reply=True,
     )
     db.add(reply)
@@ -517,7 +516,7 @@ async def reply_comment(
 
 
 # ---------------------------------------------------------------------------
-# Admin user-accounts (superuser surface) + author identity (DEC-359, TASK-405)
+# Admin user-accounts (superuser surface) + author identity
 # ---------------------------------------------------------------------------
 
 
@@ -532,7 +531,7 @@ async def create_user(
 
     Created accounts are always editors (non-superuser), never admins — a
     provisioned editor can moderate content but cannot manage users/export.
-    This is the safe-contract fix for ISS-087 (DEC-053/DEC-054).
+    This is the safe-contract fix for.
     """
     existing = (await db.execute(select(auth.User).where(auth.User.username == username))).scalar_one_or_none()
     if existing:
@@ -565,7 +564,7 @@ async def update_user(db: AsyncSession, user_id: int, updates: dict) -> models.U
     explicit null (clear the byline/bio). The pen name/bio render on post
     bylines, series details and the RSS/Atom posts feed (AuthorBrief from cached
     objects) — a rename must not linger as the old name in lists/feeds for the
-    cache TTL (ISS-607/TASK-529).
+    cache TTL.
     """
     user = (await db.execute(select(auth.User).where(auth.User.id == user_id))).scalar_one_or_none()
     if not user:
@@ -589,7 +588,7 @@ async def delete_user(db: AsyncSession, current_user_id: int, user_id: int) -> N
     if not user:
         raise AppException(ErrorCode.NOT_FOUND, "User not found", status_code=404)
 
-    # AuthorFollow is an additive DEC-009 table with no ORM cascade from User:
+    # AuthorFollow is an additive table with no ORM cascade from User:
     # purge the writer-follow rows too, or a deleted author leaves stale
     # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
     # later user (same orphan class as category/tag/series follows — deep-dive
@@ -613,7 +612,7 @@ async def change_password(
     """Change the current admin's password.
 
     Invalidates every previously-issued JWT for this admin: bumps the token
-    version checked in get_current_user. (RIL round 16 security audit)
+    version checked in get_current_user.
     """
     if not auth.verify_password(current_password, current_user.password):
         raise ValueError("Current password is incorrect")
@@ -624,7 +623,7 @@ async def change_password(
 
 
 # Author avatar storage lives in a dedicated static/avatars/ namespace (same
-# choice as the reader avatar, DEC-299): the admin media listing walks
+# choice as the reader avatar): the admin media listing walks
 # static/uploads/ only, so a writer's profile picture must not appear in or
 # collide with the author's uploaded post images.
 AUTHOR_AVATAR_DIR = Path(__file__).parent.parent.parent / "static" / "avatars"
@@ -664,7 +663,7 @@ async def upload_user_avatar(
     content: bytes,
     content_type: str | None,
 ) -> models.User:
-    """Set an admin user's public profile picture (superuser, round 358).
+    """Set an admin user's public profile picture (superuser).
 
     Same defense-in-depth validation as the reader avatar (content-type
     whitelist, size cap, magic bytes, full Pillow decode, never-larger
@@ -706,7 +705,7 @@ async def upload_user_avatar(
     _delete_author_avatar_file(previous)
     # Avatar swaps are visible on cached post bylines / series details / feeds
     # (AuthorBrief.avatar_url) — clear so the new face appears immediately
-    # (same cache contract as the other author-identity writes, ISS-607).
+    # (same cache contract as the other author-identity writes).
     clear_posts_list_cache()
     return user
 
@@ -723,7 +722,7 @@ async def remove_user_avatar(db: AsyncSession, user_id: int) -> models.User:
         await db.refresh(user)
         _delete_author_avatar_file(previous)
         # Removing the face changes every byline that showed it; clear so the
-        # cached post lists / series / feeds drop the deleted avatar (ISS-607).
+        # cached post lists / series / feeds drop the deleted avatar.
         clear_posts_list_cache()
     return user
 
@@ -764,7 +763,7 @@ async def update_category(db: AsyncSession, category_id: int, name: str) -> dict
         await db.rollback()
         raise ValueError("Category already exists")
     clear_categories_cache()
-    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    # Renamed name is embedded in cached public post lists and feeds.
     clear_posts_list_cache()
     return {"id": category.id, "name": category.name}
 
@@ -822,7 +821,7 @@ async def update_tag(db: AsyncSession, tag_id: int, name: str) -> dict:
         await db.rollback()
         raise ValueError("Tag already exists")
     clear_tags_cache()
-    # Renamed name is embedded in cached public post lists and feeds (ISS-057).
+    # Renamed name is embedded in cached public post lists and feeds.
     clear_posts_list_cache()
     return {"id": tag.id, "name": tag.name}
 
@@ -899,7 +898,7 @@ async def list_posts(
                 # id tiebreak: imported/bulk-restored rows share created_at; without a
                 # unique final sort key, offset pages can skip/duplicate across page
                 # boundaries on ties (same fix the moderation queue got — get_comments_paginated).
-                # COALESCE pinned like get_posts (TASK-535 parity): a raw-import
+                # COALESCE pinned like get_posts parity: a raw-import
                 # NULL-pinned row must sort with the unpinned group, not first.
                 .order_by(
                     func.coalesce(models.Post.pinned, False).desc(),
@@ -938,7 +937,7 @@ async def list_posts(
                 "title": p.title,
                 "slug": p.slug,
                 "published": p.published,
-                # Coalesce raw-import NULLs (TASK-535/ISS-627 parity): the
+                # Coalesce raw-import NULLs parity: the
                 # public API reads these as false/0, so the admin list must not
                 # show null for the same rows.
                 "pinned": bool(p.pinned or False),
@@ -1006,7 +1005,7 @@ async def list_readers(
     bookmark_counts: dict[int, int] = {}
     if reader_ids:
         # Explicit typed comprehensions keep pyright happy (the plain
-        # dict(row_list) idiom resolves rows to bytes, ISS-123). Comment
+        # dict(row_list) idiom resolves rows to bytes). Comment
         # reader_id is nullable (anonymous comments) -> drop None keys.
         comment_rows = (
             await db.execute(
@@ -1049,12 +1048,12 @@ async def list_readers(
 
 
 # ---------------------------------------------------------------------------
-# Editorial calendar grid (DEC-162, TASK-194)
+# Editorial calendar grid
 # ---------------------------------------------------------------------------
 
 
 async def calendar_posts(db: AsyncSession, month: str) -> dict:
-    """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
+    """Month-bucketed posts for the editorial calendar.
 
     Each post carries a ``type`` the calendar colors (published / scheduled /
     draft) and a ``date`` the grid places it on:
@@ -1138,7 +1137,7 @@ async def calendar_posts(db: AsyncSession, month: str) -> dict:
             # publish_at that fails the grid range — it would land on neither the
             # grid nor `unscheduled`, exactly the plan item `unscheduled` exists
             # to surface. A draft is a plan, not a fact: keep it off-grid but
-            # visible in the unscheduled (plan) list (round-292 deep-dive).
+            # visible in the unscheduled (plan) list.
             unscheduled.append(entry)
 
     grid.sort(key=lambda e: (e["date"] or "", e["id"]))
@@ -1147,7 +1146,7 @@ async def calendar_posts(db: AsyncSession, month: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Reader account moderation (DEC-194, TASK-214, ISS-116)
+# Reader account moderation
 # ---------------------------------------------------------------------------
 
 
@@ -1165,7 +1164,7 @@ async def deactivate_reader(db: AsyncSession, reader_id: int) -> models.ReaderAc
     Sets is_active=False and bumps token_version so every previously issued
     JWT dies immediately; the account can no longer sign in. Old tokens are
     rejected by get_current_reader and resolve to anonymous in optional-reader
-    endpoints, so the trust-tier auto-approve path (DEC-098) cannot be gamed
+    endpoints, so the trust-tier auto-approve path cannot be gamed
     through a deactivated account. Idempotent: an already-inactive reader is
     not re-bumped.
     """

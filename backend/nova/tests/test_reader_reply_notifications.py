@@ -1,4 +1,4 @@
-"""Reader comment-reply notifications contract tests (DEC-064, TASK-137).
+"""Reader comment-reply notifications contract tests.
 
 A reader who comments on a post can receive a Web Push notification when
 someone replies to *their* comment. The push subscription is bound to the
@@ -227,7 +227,7 @@ class TestReplyNotification:
     async def test_reply_push_url_deep_links_to_new_reply(self, client, db_session, auth_headers):
         """The notification's click URL must land ON the new reply (the thing the
         reader was told about), not on their own parent comment nor the top of a
-        possibly long post (DEC-072, TASK-145)."""
+        possibly long post."""
         post, parent_id, token_a = await self._parent(client, db_session)
         await _subscribe(client, p256dh=_valid_p256dh(), auth_=_valid_auth(), headers=_auth(token_a))
         token_b = await _token(client, email=f"reply-bzz{self._COUNTER}@example.com", display_name="B")

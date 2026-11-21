@@ -191,7 +191,7 @@ class TestSettingsTypeAnnotations:
 
 
 class TestEnvFileVisibility:
-    """Regression (round 433, ISS-636): values read ONLY from .env must reach
+    """Regression: values read ONLY from.env must reach
     the direct os.getenv readers, not just pydantic-settings.
 
     pydantic-settings reads .env but does NOT export those values into
@@ -319,11 +319,11 @@ class TestSettingsEdgeCases:
 
 
 class TestDevDefaultSiteUrl:
-    """Regression (round 436): the loopback site_url guard that fails loud at
+    """Regression: the loopback site_url guard that fails loud at
     startup is a safety net for a deployment that forgets SITE_URL. Feeds,
     sitemap and email links are built from settings.site_url, so a production
     container without it silently publishes http://localhost:3000 absolute
-    links (same root cause class as the frontend og:url bake, TASK-557).
+    links (same root cause class as the frontend og:url bake).
     """
 
     def test_loopback_and_localhost_are_dev_default(self):

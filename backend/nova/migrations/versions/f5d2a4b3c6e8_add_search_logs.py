@@ -1,8 +1,8 @@
-"""add search_logs table for aggregate search analytics (DEC-152, TASK-188)
+"""add search_logs table for aggregate search analytics
 
 Privacy-safe, aggregate-only public search-term counts (one row per normalized
 query + count + last-searched). Additive table; no existing DDL is touched
-(DEC-009).
+.
 
 Revision ID: f5d2a4b3c6e8
 Revises: e6c8a0b2d4f6

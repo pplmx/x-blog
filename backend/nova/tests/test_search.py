@@ -100,7 +100,7 @@ async def test_search_no_results(client, auth_headers):
 async def test_search_blank_query_is_422(client, auth_headers):
     """A whitespace-only q must be rejected, not full-scanned.
 
-    Before the round-296 fix, q=\" \" passed min_length=1 and crud fell back to
+    Before the fix, q=\" \" passed min_length=1 and crud fell back to
     the raw term, producing a content ILIKE '% %' that matched nearly every
     published post — an anonymous full-table scan on this unauthenticated
     endpoint (this test previously asserted that buggy 200 + corpus).
@@ -164,7 +164,7 @@ async def test_search_case_insensitive(client, db_session):
 async def test_search_query_with_nul_is_422_not_500(client):
     """A NUL byte in the search query used to crash psycopg at bind time ->
     uncaught 500 on this public endpoint. It must be a clean 422 gate
-    (ISS-454, TASK-351)."""
+    ."""
     response = await client.get("/api/search", params={"q": "term\x00term"})
     assert response.status_code == 422
 
@@ -197,7 +197,7 @@ def test_highlight_sqlite_highlights_matches():
 
 
 def test_highlight_sqlite_truncation_keeps_marks_balanced():
-    """A >500-char snippet must never end inside an unclosed <mark> (RIL TASK-105, ISS-085).
+    """A >500-char snippet must never end inside an unclosed <mark>.
 
     The old ``highlighted[:500]`` could split ``<mark>...</mark>`` mid-tag, emitting
     unbalanced markup into the client's v-html snippet (DOMPurify would drop or

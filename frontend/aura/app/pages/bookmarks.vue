@@ -42,7 +42,7 @@ useSeo(() => ({
 // (deep-dive finding).
 const { isAuthenticated: signedIn } = useReaderAuth();
 
-// Clear-all cloud failure (ISS-387): offline (or a dead session) leaves the
+// Clear-all cloud failure: offline (or a dead session) leaves the
 // server copy alive, and the next merge pulls those rows straight back — so a
 // permanent-looking "cleared" state would be a lie. Flag it instead.
 const clearFailed = ref(false);
@@ -53,7 +53,7 @@ const clearingAll = ref(false);
 // Server-derived folder chips (f.count) would otherwise stay stale after a
 // remove/undo/clear while the local-first list updates instantly — reload
 // them a beat after the fire-and-forget cloud mirror settles so the (n) moves
-// with the action (round-299 deep-dive).
+// with the action.
 let countRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 function refreshFolderCountsSoon() {
 	if (!signedIn.value) return;
@@ -73,7 +73,7 @@ async function handleClearAll() {
 		// offline-cache prune below.
 		const pathsToPrune = bookmarks.value.map(postPath);
 		// clearAll wipes the localStorage mirror AND the cloud copy when signed
-		// in, so the clear actually sticks (TASK-233). The old clearBookmarks
+		// in, so the clear actually sticks. The old clearBookmarks
 		// only cleared local storage and the next cloud merge resurrected rows.
 		clearingAll.value = true;
 		clearFailed.value = false;
@@ -162,13 +162,13 @@ async function undoRemove(id: number) {
 	// that PUT carries only the post id — a removed bookmark that lived in a
 	// folder would come back UN-filed on the next cloud merge when the pull
 	// re-adopts the server row. Re-apply the folder assignment explicitly so
-	// the restored row keeps its folder across devices (deep-dive, ISS-388).
+	// the restored row keeps its folder across devices (deep-dive).
 	if (restored.folder_id != null && signedIn.value) {
 		// A failed re-assign (offline / dead session) must not be silent: the
 		// bookmark returns locally with its folder chip, but the cloud row has
 		// no folder and the next merge drops it — tell the reader so the
 		// restored bookmark's folder isn't lost without a trace (deep-dive,
-		// ISS-428 — every sibling folder action surfaces its failure).
+		// — every sibling folder action surfaces its failure).
 		if (!(await assignFolder(restored.id, restored.folder_id))) {
 			noteFolderActionFailure();
 		}
@@ -191,7 +191,7 @@ onUnmounted(() => {
 
 // When a signed-in reader opens the page, reconcile with the cloud: push any
 // local-only bookmarks up and adopt the merged server list (other-device
-// changes appear here). Safe while logged out — no-op. (TASK-134)
+// changes appear here). Safe while logged out — no-op.
 //
 // After the cloud merge settles, proactively cache the reader's saved posts for
 // offline reading (PWA slice) and reflect which of them are actually available
@@ -214,10 +214,10 @@ onMounted(async () => {
 	await refreshOfflineStatus();
 });
 
-// --- Folders (DEC-120, TASK-172) ------------------------------------------
+// --- Folders ------------------------------------------
 
 const activeFolderId = ref<"all" | number>("all");
-// Queue-state filter (round 361, DEC-395): "all" | "todo" (To-read) | "done".
+// Queue-state filter: "all" | "todo" (To-read) | "done".
 // A saved post is either still in the To-read queue or already read / kept
 // around — the reader marks it Done from the row's toggle.
 const queueFilter = ref<"all" | "todo" | "done">("all");
@@ -226,7 +226,7 @@ const showManage = ref(false);
 const folderActionFailed = ref(false);
 let folderActionTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Keyword search (DEC-124, TASK-174): matches title, category, or tag names,
+// Keyword search: matches title, category, or tag names,
 // case-insensitive, and composes with the active folder filter.
 const searchQuery = ref("");
 const searchText = computed(() => searchQuery.value.trim().toLowerCase());
@@ -365,7 +365,7 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
 				bookmark.folder_name = prevName;
 			}
 			assignFailed.value = true;
-			// Tracked like the sibling one-shot timers (round-418 audit): the
+			// Tracked like the sibling one-shot timers: the
 			// bare setTimeout fired on a dead component after an SPA nav away,
 			// and a second failing assign within 4s stacked another timer.
 			if (assignFailedTimer) clearTimeout(assignFailedTimer);
@@ -379,7 +379,7 @@ async function handleAssign(bookmark: Bookmark, raw: string) {
 	}
 }
 
-// --- Queue state (round 361, DEC-395) ------------------------------------
+// --- Queue state ------------------------------------
 // Per-row flip between To-read and Done. Optimistic local update (the list
 // re-renders immediately); setDone fires the cloud PATCH when signed in and is
 // offline-safe (the next merge reconciles). A per-row in-flight Set prevents
@@ -436,14 +436,14 @@ function handleToggleDone(bookmark: Bookmark) {
 			{{ t("bookmarks.folderFailed") }}
 		</p>
 
-		<!-- Clear-all cloud failure (ISS-387): the local mirror is empty but the
+		<!-- Clear-all cloud failure: the local mirror is empty but the
          server copy survived (offline/dead session) and will return on the next
          merge — never present that as a done deal. -->
 		<p v-if="clearFailed" class="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
 			{{ t("bookmarks.clearOffline") }}
 		</p>
 
-		<!-- Dead-session sync warning (ISS-222): the stored token is no longer
+		<!-- Dead-session sync warning: the stored token is no longer
          accepted, so bookmarks are saved locally but silently dropped by the
          cloud. The reader must know — otherwise the next merge re-imports the
          server list and their "saved" bookmark vanishes without a trace. -->
@@ -495,7 +495,7 @@ function handleToggleDone(bookmark: Bookmark) {
 			</div>
 		</div>
 
-		<!-- Bookmark search (DEC-124, TASK-174) -->
+		<!-- Bookmark search -->
 		<div v-if="bookmarkCount > 0" class="mb-6">
 			<div class="relative max-w-md">
 				<Icon
@@ -521,7 +521,7 @@ function handleToggleDone(bookmark: Bookmark) {
 			</div>
 		</div>
 
-		<!-- Queue filter (round 361, DEC-395): All / To-read / Done -->
+		<!-- Queue filter: All / To-read / Done -->
 		<div v-if="bookmarkCount > 0" class="mb-4">
 			<div
 				class="flex flex-wrap items-center gap-2"
@@ -746,7 +746,7 @@ function handleToggleDone(bookmark: Bookmark) {
 					</div>
 
 					<div class="flex flex-col items-end gap-2">
-						<!-- Done badge (round 361, DEC-395): a saved post this reader has
+						<!-- Done badge: a saved post this reader has
                  already read — keeps it out of the To-read queue but filed. -->
 						<span
 							v-if="bookmark.done"
@@ -782,7 +782,7 @@ function handleToggleDone(bookmark: Bookmark) {
 							/>
 						</button>
 
-						<!-- Remove button (aria-label, not just a title tooltip, ISS-137) -->
+						<!-- Remove button (aria-label, not just a title tooltip) -->
 						<button
 							type="button"
 							@click.stop="handleRemove(bookmark)"

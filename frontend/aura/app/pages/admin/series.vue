@@ -1,6 +1,6 @@
 <!--
   Admin Series Page
-  Manage post series (DEC-056/TASK-123): create, rename, re-slug, describe,
+  Manage post series: create, rename, re-slug, describe,
   and delete series. Deleting a series unlinks its posts (which keep existing).
   Mirrors the admin categories page.
 -->
@@ -39,7 +39,7 @@ const editingForm = ref({
 	description: "",
 });
 
-// Episode management (DEC-146/TASK-185): expand a series to see its posts in
+// Episode management: expand a series to see its posts in
 // order and reorder them with up/down, persisted via the reorder endpoint.
 const openEpisodesId = ref<number | null>(null);
 const episodesBySeries = ref<Record<number, SeriesEpisode[]>>({});
@@ -115,7 +115,7 @@ async function moveEpisode(seriesId: number, index: number, dir: -1 | 1) {
 }
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): backend envelope human message,
+	// Shared admin error surfacing: backend envelope human message,
 	// else a local non-HTTP error's message, else the localized fallback.
 	return apiErrorMessage(e, t("admin.series.operationFailed"));
 }
@@ -129,7 +129,7 @@ function generateSlug(title: string): string {
 		.replace(/^-+|-+$/g, "")
 		.trim();
 	// ASCII-only `\w` strips CJK — fall back to a deterministic ASCII slug so
-	// a pure-CJK series title still saves (mirrors the post editor, TASK-106).
+	// a pure-CJK series title still saves (mirrors the post editor).
 	if (!slug) {
 		let hash = 0;
 		for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) & 0x7fffffff;
@@ -279,7 +279,7 @@ async function handleDelete(id: number) {
 					class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
 				>
 					<!-- Spinner: says the click registered instead of reading as a frozen
-               page while the POST round-trips (round-445 audit). -->
+               page while the POST round-trips. -->
 					<Icon
 						v-if="isProcessing"
 						icon="lucide:loader-2"
@@ -301,7 +301,7 @@ async function handleDelete(id: number) {
 		<div v-else-if="error" class="text-center py-12 text-red-500">
 			<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
-           line (round-445 audit). -->
+           line. -->
 			<p class="mb-4">{{ t("admin.series.loadFailed") }}</p>
 			<button
 				type="button"
@@ -417,7 +417,7 @@ async function handleDelete(id: number) {
 						</div>
 					</div>
 
-					<!-- Episode manager (DEC-146/TASK-185) -->
+					<!-- Episode manager -->
 					<div
 						v-if="openEpisodesId === s.id"
 						class="mt-4 border-t border-gray-100 dark:border-gray-800 pt-3"

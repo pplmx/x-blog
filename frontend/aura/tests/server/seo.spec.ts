@@ -3,8 +3,7 @@
  *
  * robots.txt still proxies with a plain `$fetch<string>`.
  * sitemap.xml / rss/feed.xml / rss/atom.xml go through the shared
- * `proxyConditionalFeed` helper (server/utils/proxyFeed.ts, RIL DEC-058 /
- * TASK-130), which must preserve the backend conditional-GET contract:
+ * `proxyConditionalFeed` helper (server/utils/proxyFeed.ts), which must preserve the backend conditional-GET contract:
  * forward ETag / Cache-Control / Content-Type, honor If-None-Match -> 304
  * (bodyless), and surface genuine backend failures as a 502 createError.
  *
@@ -255,7 +254,7 @@ describe("conditional feed/sitemap proxy routes", () => {
 	}
 });
 
-describe("scoped feed query forwarding (DEC-314/TASK-385)", () => {
+describe("scoped feed query forwarding ", () => {
 	it("forwards the tag_id query so a tag-scoped feed stays scoped through the proxy", async () => {
 		// tags.vue autodiscovery + subscribe emit /rss/feed.xml?tag_id={id};
 		// before the fix the proxy stripped it and the reader silently got the

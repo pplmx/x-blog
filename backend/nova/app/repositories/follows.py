@@ -186,7 +186,7 @@ async def list_category_follow_reader_ids(db: AsyncSession, category_id: int) ->
 
 
 async def get_author_follow(db: AsyncSession, reader_id: int, author_id: int) -> models.AuthorFollow | None:
-    """A single reader→author follow row, or None (author-follow, round 353)."""
+    """A single reader→author follow row, or None (author-follow)."""
     return (
         (
             await db.execute(
@@ -270,11 +270,11 @@ async def list_author_follow_reader_ids(db: AsyncSession, author_id: int) -> lis
     ]
 
 
-# Reader → reader follow (round 365, DEC-403): the person-shaped axis of the
+# Reader → reader follow: the person-shaped axis of the
 # follow wheel. Mirrors AuthorFollow exactly — unique (reader_id, followed_id),
 # notify decouples tracking from fan-out, list-by-relationship for management.
 async def get_reader_follow(db: AsyncSession, reader_id: int, followed_id: int) -> models.ReaderFollow | None:
-    """A single reader→reader follow row, or None (reader-follow, round 365)."""
+    """A single reader→reader follow row, or None (reader-follow)."""
     return (
         (
             await db.execute(
@@ -330,7 +330,7 @@ async def list_reader_follows(db: AsyncSession, reader_id: int) -> list[models.R
 
 
 async def get_reader_block(db: AsyncSession, blocker_id: int, blocked_id: int) -> models.ReaderBlock | None:
-    """A single blocker→blocked row, or None (reader-block, round 379, DEC-425)."""
+    """A single blocker→blocked row, or None (reader-block)."""
     return (
         (
             await db.execute(
@@ -372,7 +372,7 @@ async def remove_reader_block(db: AsyncSession, blocker_id: int, blocked_id: int
 
 
 async def list_reader_blocks(db: AsyncSession, blocker_id: int) -> list[models.ReaderBlock]:
-    """The reader's reader-block rows, newest first (DEC-425)."""
+    """The reader's reader-block rows, newest first."""
     return list(
         (
             await db.execute(
@@ -387,7 +387,7 @@ async def list_reader_blocks(db: AsyncSession, blocker_id: int) -> list[models.R
 async def readers_who_block(db: AsyncSession, commenter_id: int, target_ids: list[int]) -> set[int]:
     """Reader ids in ``target_ids`` who have blocked ``commenter_id``.
 
-    Suppression helper for the personal fan-outs (DEC-425, TASK-437): a target
+    Suppression helper for the personal fan-outs: a target
     reader who blocked the commenter must not receive that commenter's mention
     / reply / thread-comment / follow-activity events — blocking is a
     receiver-side opt-out, so each dispatch point drops the blocker-of-the-
@@ -532,14 +532,13 @@ async def follows_feed_posts(
 ) -> tuple[list[models.Post], int]:
     """Recent public posts from the reader's followed categories + series + tags + authors.
 
-    The discovery payoff of the follow model (DEC-142/TASK-183; tag dimension
-    DEC-195/TASK-215; author dimension round 354/DEC-381): a post matches if its
+    The discovery payoff of the follow model (tag dimension author dimension): a post matches if its
     category is one the reader follows OR its series is one they follow OR it
     carries a tag they follow OR its author is one they follow (independent of
     per-follow notify — tracking, not push). Results are public, published,
     deduped (a post is its own row), newest by effective publish time first
     (publish_at ?? created_at, matching the global feed), capped at ``limit``
-    with ``offset`` pagination (round-306, DEC-292). A reader following nothing
+    with ``offset`` pagination. A reader following nothing
     gets an empty (list, 0) pair (the frontend hides the row).
     """
     category_ids = [
@@ -621,7 +620,7 @@ async def follows_feed_posts(
 
 
 async def get_follow_stats(db: AsyncSession, limit: int = 5) -> dict:
-    """Operator-facing follow analytics (DEC-144, TASK-184).
+    """Operator-facing follow analytics.
 
     Counts are notify-independent (tracking, not push): they capture how many
     readers follow each series and category, plus totals, so the author can see

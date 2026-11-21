@@ -1,5 +1,5 @@
 /**
- * ReaderAvatar component tests (round-446).
+ * ReaderAvatar component tests.
  *
  * The shared reader/writer profile picture with graceful degradation: renders
  * the uploaded <img> when a URL is set, the initial-letter glyph when it is

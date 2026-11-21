@@ -1,7 +1,7 @@
-"""Admin comment-moderation push contract tests (DEC-080, TASK-152).
+"""Admin comment-moderation push contract tests.
 
-The blog moderates every comment (no auto-approve, DEC-066); an admin
-(superuser or editor, DEC-054) can opt a browser into a push when a new
+The blog moderates every comment (no auto-approve); an admin
+(superuser or editor) can opt a browser into a push when a new
 comment is created (pending). Key properties:
 
 - POST /api/admin/push/subscribe requires an admin token (401 anonymous,
@@ -78,7 +78,7 @@ class TestAdminSubscribeAuth:
         assert response.status_code == 401
 
     async def test_reader_token_rejected(self, client):
-        # Audience separation (DEC-059): a reader-scoped token must never
+        # Audience separation: a reader-scoped token must never
         # authenticate against an admin endpoint.
         from app.auth import create_reader_token
 

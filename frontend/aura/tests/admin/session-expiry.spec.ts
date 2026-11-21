@@ -1,5 +1,5 @@
 /**
- * Admin session-expiry behaviour (RIL ISS-273).
+ * Admin session-expiry behaviour.
  *
  * The backend admin JWTs carry an `exp` claim (JWT_EXPIRE_DAYS, default 1
  * day). On the client, useAdminAuth must read an expired stored token as
@@ -24,7 +24,7 @@ function makeJwt(payload: Record<string, unknown>): string {
 	return `${b64({ alg: "HS256", typ: "JWT" })}.${b64(payload)}.signature`;
 }
 
-describe("admin session expiry (ISS-273)", () => {
+describe("admin session expiry ", () => {
 	beforeEach(() => {
 		localStorage.clear();
 	});
@@ -78,7 +78,7 @@ describe("admin session expiry (ISS-273)", () => {
 		expect(replace).toHaveBeenCalledWith("/admin/login");
 	});
 
-	it("handleAdminUnauthorized carries an internal admin returnTo to the login page (ISS-390)", () => {
+	it("handleAdminUnauthorized carries an internal admin returnTo to the login page ", () => {
 		const replace = vi.spyOn(window.location, "replace").mockImplementation(() => undefined);
 		const { isAuthenticated, handleAdminUnauthorized } = useAdminAuth();
 		// An autosave 401 in the post editor: the operator must land BACK in the

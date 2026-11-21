@@ -1,9 +1,9 @@
-"""add email_mention column to reader_notification_prefs (DEC-326, TASK-391).
+"""add email_mention column to reader_notification_prefs.
 
-The @-mention fan-out (DEC-322) gained an email channel: a reader who opted
+The @-mention fan-out gained an email channel: a reader who opted
 into email notifications also gets the personal "someone named you" email
 off-site. ReaderNotificationPref holds one bool per email kind, so this is one
-additive column (DEC-009) — off by default like the other email_* columns, so
+additive column — off by default like the other email_* columns, so
 email stays strictly opt-in and a reader who never opened the preferences
 surface receives nothing.
 

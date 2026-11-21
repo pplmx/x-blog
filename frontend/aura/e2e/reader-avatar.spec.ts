@@ -1,5 +1,5 @@
 /**
- * Reader avatar journey (DEC-299, TASK-378).
+ * Reader avatar journey.
  *
  * A registered reader uploads a profile picture from /account; it renders
  * beside their identity on the public reader profile page and next to an
@@ -54,7 +54,7 @@ async function pickPost(
 	return data.items?.[0] ?? null;
 }
 
-test.describe("Reader avatar (DEC-299)", () => {
+test.describe("Reader avatar ", () => {
 	test("upload shows the picture on the profile page and next to a comment; removal clears it", async ({
 		page,
 		request,
@@ -122,7 +122,7 @@ test.describe("Reader avatar (DEC-299)", () => {
 
 		// Removal clears the picture; the placeholder returns.
 		await page.goto("/account");
-		// Removal is guarded by a window.confirm (round-418 audit); Playwright
+		// Removal is guarded by a window.confirm; Playwright
 		// auto-dismisses dialogs, so accept it or the avatar is never removed.
 		page.once("dialog", (dialog) => dialog.accept());
 		await page.getByRole("button", { name: "移除" }).click();

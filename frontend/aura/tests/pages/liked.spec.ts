@@ -1,5 +1,5 @@
 /**
- * /liked page tests (round 359 journey + DEC-413/TASK-432 recall search).
+ * /liked page tests.
  *
  * Guest redirect, empty state, listing liked posts, and the recall search:
  * debounced typing refetches with the q term, a search from a deep page resets
@@ -316,7 +316,7 @@ describe("Liked page", () => {
 	});
 });
 
-describe("Liked page unlike (DEC-415, TASK-433)", () => {
+describe("Liked page unlike ", () => {
 	it("renders a per-card unlike control", async () => {
 		likesPayload = {
 			items: [samplePost],

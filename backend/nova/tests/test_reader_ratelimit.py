@@ -1,4 +1,4 @@
-"""Reader write-endpoint rate limiting (TASK-330).
+"""Reader write-endpoint rate limiting.
 
 Every authenticated reader *mutation* (bookmarks, folders, follows, history,
 comment edit/delete, notification reads) now carries the write cap

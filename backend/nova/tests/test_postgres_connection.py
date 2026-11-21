@@ -63,7 +63,7 @@ async def test_postgres_schema_creation():
     Isolation: created/dropped inside a dedicated temp schema via search_path so
     this test NEVER touches the target database's public schema — an earlier
     version did ``Base.metadata.drop_all()`` on public, which silently destroys
-    every table of whatever database TEST_DATABASE_URL points at (the round-211
+    every table of whatever database TEST_DATABASE_URL points at (the
     harness made `just test-backend-postgres` actually runnable, arming that
     footgun against a shared/dev DB). Nodes only act on the temp schema now.
     """

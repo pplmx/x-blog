@@ -7,15 +7,15 @@ export interface AdminUser {
 	username: string;
 	role: "superuser" | "editor";
 	is_superuser: boolean;
-	/** Public pen name (DEC-359/TASK-405): the byline shown on published posts;
+	/** Public pen name: the byline shown on published posts;
 	 *  null means no public identity — the login username stays fully private
 	 *  (admin login is no-oracle) but the author gets no byline/archive. */
 	display_name?: string | null;
-	/** Public "about this writer" bio (round 357): plain text rendered on the
+	/** Public "about this writer" bio: plain text rendered on the
 	 *  author's /authors/{id} archive header; null until a superuser writes
 	 *  one (whitespace-only folds to null, same as display_name). */
 	bio?: string | null;
-	/** Public profile picture (round 358): a /static URL after a superuser
+	/** Public profile picture: a /static URL after a superuser
 	 *  uploads one (admin avatar endpoint), else absent. */
 	avatar_url?: string | null;
 }
@@ -45,7 +45,7 @@ export function useAdminUsers() {
 	});
 }
 
-/** Pen-named admins for the post editor's author picker (DEC-359/TASK-406).
+/** Pen-named admins for the post editor's author picker.
  *  Any admin can read this — exposing pen names leaks nothing (they already
  *  appear on public bylines) — which is exactly why editors can assign posts
  *  to another public writer without touching the superuser-only /users. */
@@ -74,8 +74,8 @@ export function deleteAdminUser(id: number): Promise<void> {
 }
 
 /** Upload (or replace) a writer's public profile picture (superuser only,
- *  round 358) — the face half of the admin/users identity row (pen name + bio
- *  + avatar). Same multipart shape as the reader avatar (DEC-299). */
+ *) — the face half of the admin/users identity row (pen name + bio
+ * + avatar). Same multipart shape as the reader avatar. */
 export function uploadAdminUserAvatar(id: number, file: File): Promise<AdminUser> {
 	const formData = new FormData();
 	formData.append("file", file);
@@ -86,7 +86,7 @@ export function uploadAdminUserAvatar(id: number, file: File): Promise<AdminUser
 	});
 }
 
-/** Remove the writer's public profile picture (superuser only, round 358). */
+/** Remove the writer's public profile picture (superuser only). */
 export function removeAdminUserAvatar(id: number): Promise<AdminUser> {
 	return command<AdminUser>(`/api/admin/users/${id}/avatar`, {
 		method: "DELETE",
@@ -95,7 +95,7 @@ export function removeAdminUserAvatar(id: number): Promise<AdminUser> {
 }
 
 /** Edit an admin user's public pen name and "about this writer" bio
- *  (superuser only; DEC-359/TASK-405, bio round 357). An explicit
+ * (superuser only, bio). An explicit
  *  `display_name: null` / `bio: null` clears that field. */
 export function updateAdminUser(
 	id: number,

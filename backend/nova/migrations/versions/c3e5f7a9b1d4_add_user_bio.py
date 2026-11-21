@@ -1,12 +1,12 @@
-"""add users.bio — the writer's public 'about this writer' (round 357)
+"""add users.bio — the writer's public 'about this writer'
 
-``users.display_name`` (round 343) gave an admin a public pen name; ``bio``
+``users.display_name`` gave an admin a public pen name; ``bio``
 gives that public identity a voice. A short plain-text self-description set by
 a superuser next to the pen name in admin/users, rendered under the writer's
 name on their public /authors/{id} archive header — mirroring the reader bio
-on ReaderAccount (round 352). NULL = no bio yet. Text (not VARCHAR) with the
+on ReaderAccount. NULL = no bio yet. Text (not VARCHAR) with the
 500-char cap enforced at the schema boundary, exactly like the reader bio.
-Additive nullable column, no data change, no FK (DEC-009).
+Additive nullable column, no data change, no FK.
 """
 
 from collections.abc import Sequence

@@ -279,7 +279,7 @@ describe("ShareButtons", () => {
 		it("falls back to a textarea + execCommand copy when the clipboard API rejects", async () => {
 			// Insecure context / denied permission: navigator.clipboard rejects,
 			// but the execCommand fallback (same one MarkdownContent uses) should
-			// still make Copy succeed — the round-298 deep-dive found the Copy
+			// still make Copy succeed — the deep-dive found the Copy
 			// button permanently failed with a red X while the fallback existed
 			// elsewhere in the app. happy-dom's document has no execCommand, so
 			// define it (configurable) to simulate the browser fallback.

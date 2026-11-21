@@ -1,11 +1,11 @@
 /**
- * Comment search journey (round 366, DEC-405).
+ * Comment search journey.
  *
  * The search page gains a ?type=comments mode that searches the discussion:
  * a reader who remembers a terse take in a thread (or wants every approved
  * comment that mentions a topic) can find it directly. A hit carries the
  * highlighted snippet, the commenter, and the post brief, and the card
- * deep-links ONTO the comment (#comment-{id}, DEC-321). This spec seeds a
+ * deep-links ONTO the comment (#comment-{id}). This spec seeds a
  * comment with a unique marker, searches in comments mode from the public
  * UI, and lands on the exact comment.
  */
@@ -40,7 +40,7 @@ async function postAndApprove(
 	return { postId, slug, commentId };
 }
 
-test.describe("Comment search (DEC-405)", () => {
+test.describe("Comment search ", () => {
 	test("searches the discussion from the public UI and lands on the comment", async ({
 		page,
 		request,

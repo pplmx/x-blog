@@ -1,5 +1,5 @@
 /**
- * Comment-activity analytics journey (DEC-154, TASK-189).
+ * Comment-activity analytics journey.
  *
  * An approved comment shows up in the admin dashboard's comment-activity card
  * (total + most-discussed posts), the engagement axis opposite consumption.
@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin comment activity (TASK-189)", () => {
+test.describe("Admin comment activity ", () => {
 	test("an approved comment appears in the dashboard comment activity", async ({
 		page,
 		request,

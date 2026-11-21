@@ -41,7 +41,7 @@ const currentPostId = computed<number | null>(() =>
 	effIsNew.value ? null : (postId ?? hydratedId.value),
 );
 
-// Per-post reading trend (DEC-287/TASK-372): the last 30 days of views for
+// Per-post reading trend: the last 30 days of views for
 // THIS post, shown as a compact CSS-bar sparkline in the editor sidebar so the
 // operator sees whether the post is gaining or decaying readership. Fetched
 // for existing posts only (a new draft has no views yet). Buy-time research
@@ -83,20 +83,20 @@ const formData = ref<Partial<PostCreate>>({
 	cover_image: undefined,
 	series_id: undefined,
 	series_order: 0,
-	// Author attribution (DEC-359/TASK-406): undefined until the author
+	// Author attribution: undefined until the author
 	// options resolve; the current-admin watcher then defaults new posts to
 	// the writing admin and the postData watcher pre-selects an existing post.
 	author_id: undefined,
 });
 const isSubmitting = ref(false);
 const submitError = ref<string | null>(null);
-// Inline "saved" flash for a manual save of an EXISTING post (ISS-391): saving
+// Inline "saved" flash for a manual save of an EXISTING post: saving
 // no longer navigates away, so the operator needs an explicit confirmation the
 // save landed. Auto-clears after a few seconds.
 const saveSuccess = ref(false);
 let saveSuccessTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Web Push notify-subscribers (DEC-055, TASK-118): only offered on published
+// Web Push notify-subscribers: only offered on published
 // posts; superuser-only on the backend, but the button simply surfaces the
 // backend's 403 if this account is an editor.
 const isNotifying = ref(false);
@@ -106,7 +106,7 @@ const notifyMessage = ref<string | null>(null);
 // (deep-dive finding). True when the latest notify attempt failed.
 const notifyFailed = ref(false);
 
-// Draft auto-save (RIL TASK-190, DEC-156): edits are auto-persisted to a
+// Draft auto-save: edits are auto-persisted to a
 // draft after a debounce, with a visible saving/saved state and no lost work
 // on leave. Reuses the same create/update admin endpoint as manual save.
 const AUTOSAVE_DEBOUNCE_MS = 800;
@@ -146,7 +146,7 @@ function waitForAutosaveIdle(): Promise<void> {
 	});
 }
 
-// Version history (DEC-158, TASK-191): per-post saved snapshots, list +
+// Version history: per-post saved snapshots, list +
 // restore. Only meaningful for an existing post.
 const revisions = ref<PostRevisionSummary[]>([]);
 const revisionsOpen = ref(false);
@@ -157,7 +157,7 @@ const revisionMessage = ref<string | null>(null);
 // Mirrors notifyFailed: green for restore success, red for a failed restore.
 const revisionFailed = ref(false);
 
-// Unsaved-changes guard state (RIL TASK-061). Declared before the postData
+// Unsaved-changes guard state. Declared before the postData
 // watch below, whose immediate:true callback needs loadedSnapshot at setup time.
 const isDirty = ref(false);
 let loadedSnapshot = "";
@@ -207,7 +207,7 @@ const categories = ref<Array<{ id: number; name: string }>>([]);
 const tags = ref<Array<{ id: number; name: string }>>([]);
 const series = ref<Array<{ id: number; title: string; slug: string }>>([]);
 // Filter for the tag picker: with many tags the bounded-height scroll is still
-// an unbounded guess-the-name jog (ISS-311 part 3).
+// an unbounded guess-the-name jog (part 3).
 const tagSearch = ref("");
 const visibleEditorTags = computed(() => {
 	const q = tagSearch.value.trim().toLowerCase();
@@ -218,7 +218,7 @@ const existingPost = ref<AdminPostDetail | null>(null);
 
 const { data: catsData, error: catsError, refresh: refreshCategories } = await useAdminCategories();
 const { data: tagsData, error: tagsError, refresh: refreshTags } = await useAdminTags();
-// Series list for the membership dropdown (DEC-056/TASK-123). The admin keeps
+// Series list for the membership dropdown. The admin keeps
 // the option to create series on the /admin/series page; here a post is simply
 // assigned into an existing series with a 0-based position.
 const { data: seriesData, error: seriesError, refresh: refreshSeries } = await useAdminSeries();
@@ -234,7 +234,7 @@ function retryTaxonomy() {
 	void refreshSeries();
 }
 
-// Author attribution (DEC-359/TASK-406): any admin can pick who a post is
+// Author attribution: any admin can pick who a post is
 // attributed to — the writing admin by default (POST defaults to it anyway),
 // or any admin with a public pen name, the only assignable public writers.
 // Pen-named admins come from /api/admin/authors (admin-auth, deliberately not
@@ -347,7 +347,7 @@ function generateSlug(title: string): string {
 	// Chinese-only title collapses to "" (or a bare "-"), which violates the
 	// backend slug pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$ and 422s new-post saves.
 	// Fall back to a deterministic ASCII slug so a pure-CJK "fill title +
-	// content, save" flow always works (RIL TASK-106, ISS-086).
+	// content, save" flow always works.
 	if (!slug) {
 		let hash = 0;
 		for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) & 0x7fffffff;
@@ -360,7 +360,7 @@ function generateSlug(title: string): string {
 // naive-UTC datetime (see crud.utc_now_naive), while the datetime-local input
 // edits in the browser's local wall-clock. These convert between the two so a
 // scheduled time is the same instant regardless of the admin's timezone
-// (RIL TASK-072, ISS-040).
+//.
 function toLocalInputValue(utcIso: string | null): string {
 	if (!utcIso) return "";
 	// Backend returns naive UTC (no zone suffix). Treat it as UTC so the
@@ -382,7 +382,7 @@ function toUtcNaiveIso(localValue: string): string {
 }
 
 // Clearing the series membership drops the order back to 0 (a standalone post
-// must not carry a stale position into the payload — DEC-056/TASK-123).
+// must not carry a stale position into the payload).
 watch(
 	() => formData.value.series_id,
 	(val) => {
@@ -392,7 +392,7 @@ watch(
 
 // Track edits against the loaded snapshot and warn on tab-close/reload
 // (beforeunload) and SPA navigation (route leave) so a long draft is never
-// lost silently (RIL TASK-061). isDirty/loadedSnapshot/snapshot are declared
+// lost silently. isDirty/loadedSnapshot/snapshot are declared
 // above with the other state.
 watch(
 	formData,
@@ -565,7 +565,7 @@ async function handleSubmit(e: Event) {
 	// attribute patch — same class as the taxonomy create forms (deep-dive).
 	// The flag is flipped BEFORE the autosave wait below: an awaits leaves a
 	// window where a second submit re-enters past a top-only guard (review
-	// finding on the round-257 race work).
+	// finding on the race work).
 	if (isSubmitting.value) return;
 	isSubmitting.value = true;
 	submitError.value = null;
@@ -584,7 +584,7 @@ async function handleSubmit(e: Event) {
 		// Snapshot the form exactly as this save is about to persist it, mirroring
 		// runAutosave: on success we recompute dirtiness against THIS capture, not
 		// the live form, so keystrokes that land while the request is in flight are
-		// never mislabeled "saved" (round 278 admin-find).
+		// never mislabeled "saved".
 		const startedSnapshot = snapshot();
 		const payload = serializePayload();
 		// New posts start with an empty slug, which fails the backend schema
@@ -609,7 +609,7 @@ async function handleSubmit(e: Event) {
 			// that beat the first autosave-create must not leave autosavedId null,
 			// or the next keystroke's autosave re-creates with the identical slug
 			// (backend 422) or — if the slug changed — silently duplicates a draft
-			// (round 278 admin-find).
+			//.
 			if (created.id !== null) {
 				autosavedId = created.id;
 				hydratedId.value = created.id;
@@ -617,7 +617,7 @@ async function handleSubmit(e: Event) {
 			// New post saved → keep editing it rather than dropping back to the
 			// list page 1 (where a fresh draft isn't even visible under
 			// created_at-desc ordering). Landing on its editor (via /new's SPA
-			// form address) preserves the author's context (ISS-391).
+			// form address) preserves the author's context.
 			navigateTo(`/admin/posts/${created.id}`, { replace: true });
 		} else {
 			await updateAdminPost(targetId, payload);
@@ -625,14 +625,14 @@ async function handleSubmit(e: Event) {
 			// dropped the operator on list page 1 with no confirmation the save
 			// landed, and an older post (created_at-desc) wasn't even visible
 			// there. Surface an inline success flash and let them keep working or
-			// hit Cancel/back explicitly (ISS-391).
+			// hit Cancel/back explicitly.
 			//
 			// Clear any flash from an EARLIER save before arming this one (rapid
 			// successive saves would otherwise stack duplicate banners), then arm
 			// THIS save's timer. The timer must survive the handler's finally —
 			// before, the finally unconditionally cleared it, so the green
 			// "Saved" flash stayed on screen forever, claiming just-saved over
-			// subsequent unsaved edits (ISS-445).
+			// subsequent unsaved edits.
 			if (saveSuccessTimer) {
 				clearTimeout(saveSuccessTimer);
 				saveSuccessTimer = undefined;
@@ -648,7 +648,7 @@ async function handleSubmit(e: Event) {
 		// typed while the save was in flight (the debounce early-returns on a
 		// clean flag) AND disarms the beforeunload/route-leave guards for that
 		// unflushed tail. Flush the tail through the autosave pipeline, which now
-		// targets the known draft id (round 278 admin-find).
+		// targets the known draft id.
 		loadedSnapshot = startedSnapshot;
 		isDirty.value = snapshot() !== startedSnapshot;
 		if (isDirty.value) {
@@ -674,7 +674,7 @@ async function handleSubmit(e: Event) {
 		isSubmitting.value = false;
 		// NOTE: the finally deliberately does NOT clear saveSuccessTimer — the
 		// current save's success flash owns it and must auto-hide after ~3s
-		// (ISS-445). Only the catch (failed save) or a subsequent save's arming
+		//. Only the catch (failed save) or a subsequent save's arming
 		// clears it.
 	}
 }
@@ -709,7 +709,7 @@ const isScheduledFuture = computed(() => {
 });
 
 /**
- * Broadcast a Web Push notification about this published post (DEC-055).
+ * Broadcast a Web Push notification about this published post.
  *
  * The push must carry the PERSISTED post, not the live form: an unsaved
  * title/body edit would be broadcast to every subscriber, and an unsaved slug
@@ -785,7 +785,7 @@ function formatRevisionTime(iso: string): string {
 	// and showed every revision time shifted by the operator's offset.
 	// parseApiDate appends the Z the wire contract implies (deep-dive finding).
 	const d = parseApiDate(iso);
-	// TASK-480/ISS-558: render in the selected site language, not the browser's
+	// render in the selected site language, not the browser's
 	// (the admin comment list already passes the app locale this way).
 	return d ? d.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US") : iso;
 }
@@ -1021,7 +1021,7 @@ function handleFileInput(e: Event) {
 				</button>
 			</div>
 
-			<!-- Auto-save status indicator (RIL TASK-190) -->
+			<!-- Auto-save status indicator -->
 			<div
 				v-if="autoSaveStatus !== 'idle'"
 				data-testid="autosave-status"
@@ -1059,7 +1059,7 @@ function handleFileInput(e: Event) {
 			>
 				{{ submitError }}
 			</div>
-			<!-- Manual-save success flash (ISS-391): saving an existing post stays in
+			<!-- Manual-save success flash: saving an existing post stays in
            the editor, so confirm the save landed explicitly instead of the old
            silent navigate-to-list-page-1. -->
 			<div
@@ -1082,7 +1082,7 @@ function handleFileInput(e: Event) {
 				{{ notifyMessage }}
 			</div>
 
-			<!-- Version history (DEC-158, TASK-191) -->
+			<!-- Version history -->
 			<div
 				v-if="!effIsNew"
 				data-testid="revision-history"
@@ -1536,7 +1536,7 @@ function handleFileInput(e: Event) {
                    (markdown -> segments -> sanitized HTML), otherwise the
                    editor shows raw markdown source and misleads the author.
                    MarkdownContent (auto-imported) is exactly the component
-                   /posts/[slug] uses. (RIL TASK-043, ISS-030) -->
+                   /posts/[slug] uses. -->
 							<MarkdownContent :content="formData.content || ''" />
 						</div>
 					</div>
@@ -1613,7 +1613,7 @@ function handleFileInput(e: Event) {
 					</label>
 				</div>
 
-				<!-- Per-post comments toggle (round 351): closing the door keeps the
+				<!-- Per-post comments toggle: closing the door keeps the
              existing conversation visible but stops new comments on this post
              (privacy, stale content, high-noise threads). -->
 				<div class="flex items-start gap-3">
@@ -1649,7 +1649,7 @@ function handleFileInput(e: Event) {
 					</label>
 				</div>
 
-				<!-- Scheduled-publish notification note (DEC-076/TASK-235): the blog has
+				<!-- Scheduled-publish notification note: the blog has
              no background scheduler, so a scheduled post goes live silently —
              followers/Web Push subscribers are NOT notified when publish_at
              crosses. Tell the operator up front so they can notify manually
@@ -1700,7 +1700,7 @@ function handleFileInput(e: Event) {
 				</div>
 			</div>
 
-			<!-- Per-post reading trend (DEC-287/TASK-372): a compact 30-day
+			<!-- Per-post reading trend: a compact 30-day
            sparkline so the operator can tell a gaining post from a decaying
            one at a glance. The card renders only for existing posts (new
            drafts have no views); a failed fetch shows an inline retry instead

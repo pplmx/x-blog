@@ -91,7 +91,7 @@ describe("extractToc", () => {
 		expect(result[3].id).toBe("d");
 	});
 
-	it("preserves CJK headings instead of collapsing to an empty id (RIL TASK-097, ISS-077)", () => {
+	it("preserves CJK headings instead of collapsing to an empty id ", () => {
 		const html = "<h1>中文标题</h1><h2>Python 入门指南</h2>";
 		const result = extractToc(html);
 		expect(result).toHaveLength(2);

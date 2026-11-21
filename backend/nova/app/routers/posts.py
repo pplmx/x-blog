@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 
 class PostSubscriptionStatus(BaseModel):
-    """Whether the signed-in reader follows a post's comment thread (DEC-078)."""
+    """Whether the signed-in reader follows a post's comment thread."""
 
     post_id: int
     subscribed: bool
@@ -48,7 +48,7 @@ async def list_posts(
     month: int | None = Query(None, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
 ):
-    # Fire the scheduled-post publish-time fan-out (DEC-336/TASK-394) even on
+    # Fire the scheduled-post publish-time fan-out even on
     # a cache hit: the crossing has no write-time trigger, so the list read is
     # one of the first public surfaces to notice it. Cheap indexed no-op when
     # nothing crossed; exactly-once per post by the durable stamp.
@@ -104,7 +104,7 @@ async def get_post(
     # route) and Postgres would reject an out-of-range bind otherwise.
     # SLUG_PATTERN permits all-digit slugs (e.g. "123"), so a numeric segment
     # is tried as an id first and falls back to a slug lookup when no post
-    # has that id (RIL TASK-093, ISS-074).
+    # has that id.
     is_numeric_id = len(post_id) <= 15 and post_id.isdigit() and post_id.isascii()
     post = (
         await posts_service.get_post(db, int(post_id))
@@ -115,7 +115,7 @@ async def get_post(
         post = await posts_service.get_post_by_slug(db, post_id)
     # Drafts and not-yet-published scheduled posts are invisible to the public.
     if not post or not posts_service.is_publicly_visible(post):
-        # Slug-change redirect (round 350): when a post was re-slugged after
+        # Slug-change redirect: when a post was re-slugged after
         # this slug lived publicly, surface the canonical target so the web
         # layer can emit a permanent 301 instead of a soft 404 — old links
         # keep working. The 404 contract is unchanged (detail untouched); the
@@ -129,8 +129,7 @@ async def get_post(
             )
         raise HTTPException(status_code=404, detail="Post not found")
     # A scheduled post that crossed its publish_at since it was written needs
-    # its first public read to fire the new-post fan-out (DEC-336/TASK-394 —
-    # no background scheduler, DEC-076). Sweep the whole late set: cheap
+    # its first public read to fire the new-post fan-out (no background scheduler). Sweep the whole late set: cheap
     # indexed no-op when nothing crossed, exactly-once per post by stamp.
     await posts_service.maybe_notify_due_scheduled_posts(db)
     return post
@@ -148,7 +147,7 @@ async def create_post(
     if existing:
         raise HTTPException(status_code=400, detail="Slug already exists")
     try:
-        # Author attribution (DEC-359/TASK-405): default to the writing admin,
+        # Author attribution: default to the writing admin,
         # the same semantics as the admin-posts route — never a post silently
         # without an author when the writer is known.
         return await posts_service.create_post(db, post, author_id=post.author_id or _current_user.id)
@@ -242,7 +241,7 @@ async def get_trending_posts(
     limit: int = Query(5, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """Public time-windowed top posts (round 387, DEC-438).
+    """Public time-windowed top posts.
 
     Fresh-content discovery by in-window views from the ``post_views_daily``
     analytics table — /popular/list (all-time) cannot surface a new-but-already-
@@ -295,7 +294,7 @@ async def get_adjacent_posts(request: Request, post_id: IdInt, db: AsyncSession 
 
 
 # ---------------------------------------------------------------------------
-# Comment-thread subscription (DEC-078/TASK-150): a signed-in reader follows a
+# Comment-thread subscription: a signed-in reader follows a
 # post's discussion and gets a best-effort Web Push when a new comment is
 # approved. The response is reader-specific, so these endpoints deliberately
 # return plain Pydantic models — NOT conditional_json: the shared ETag cache
@@ -361,7 +360,7 @@ async def unsubscribe_from_post_thread(
 
 class GuestThreadSubscribeBody(BaseModel):
     email: Annotated[NonNulStr, Field(min_length=3, max_length=254, pattern=EMAIL_PATTERN)]
-    # Round 381 (DEC-429): the follower's cadence choice made at subscribe time
+    # Round 381: the follower's cadence choice made at subscribe time
     # — True = one weekly summary instead of a mail per approved comment.
     digest_weekly: bool = False
 
@@ -390,7 +389,7 @@ async def guest_subscribe_to_post_thread(
     body: GuestThreadSubscribeBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Guest thread-follow (DEC-427, TASK-438): an anonymous visitor subscribes
+    """Guest thread-follow: an anonymous visitor subscribes
     to a post's discussion by email, no account needed.
 
     Records the (email, post) row and emails a double opt-in confirmation link
@@ -413,7 +412,7 @@ async def guest_subscribe_to_post_thread(
     )
     if needs_opt_in:
         # Exactly ONE confirmation email: a brand-new row, or a deliberately
-        # UNSUBSCRIBED address re-subscribing (TASK-485/ISS-561 — a fresh
+        # UNSUBSCRIBED address re-subscribing (a fresh
         # token + fresh double-opt-in, so the old link can't re-activate it).
         # A pending/confirmed resubscribe is never re-emailed. Best-effort: a
         # failure is swallowed; SMTP unconfigured -> pending.
@@ -441,9 +440,9 @@ async def guest_confirm_post_thread(
     """Activate a guest thread-follow after its confirmation link is clicked
     (idempotent; an unknown token is 404 — no enumeration oracle). Replaying
     the OLD link after an unsubscribe is a 400 (consent-restart gate,
-    TASK-485/ISS-561, mirroring the newsletter round 393). The stored cadence
+    mirroring the newsletter). The stored cadence
     choice rides back so the confirm page can seed its weekly-summary toggle
-    (DEC-429)."""
+    ."""
     try:
         confirmed = await posts_service.confirm_guest_comment_subscription(db, body.token)
     except ValueError as e:
@@ -461,8 +460,7 @@ async def guest_set_post_thread_digest(
     body: GuestThreadDigestBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Flip a guest thread-follow's cadence via its emailed token (round 381,
-    DEC-429): weekly summary vs a mail per approved comment. Idempotent; an
+    """Flip a guest thread-follow's cadence via its emailed token: weekly summary vs a mail per approved comment. Idempotent; an
     unknown token is 404 — the token is the capability, no credentials."""
     if not await posts_service.set_guest_thread_digest(db, body.token, body.digest_weekly):
         raise HTTPException(status_code=404, detail="Invalid token")

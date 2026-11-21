@@ -1,5 +1,5 @@
 /**
- * Admin post revision history UI (RIL TASK-191, DEC-158).
+ * Admin post revision history UI.
  *
  * An author opens an existing post's version history and restores an earlier
  * saved snapshot; the editor then reflects the restored content.
@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin post revision history (TASK-191)", () => {
+test.describe("Admin post revision history ", () => {
 	test("an author restores an earlier version and the editor reflects it", async ({
 		page,
 		request,

@@ -1,10 +1,10 @@
-"""add comment_subscriptions table for thread-follow (DEC-078)
+"""add comment_subscriptions table for thread-follow
 
 A reader who follows a post's discussion gets a Web Push when a *new comment*
 is approved. ``comment_subscriptions`` stores the reader↔post pair (unique —
 one follow per reader per post).
 
-Entirely additive (new table, no existing DDL touched, DEC-009 preserved).
+Entirely additive (new table, no existing DDL touched preserved).
 No DB-level FOREIGN KEY on the columns (SQLite alembic can't add FK-carrying
 columns to existing tables; the reader_bookmarks/push_subscriptions tables set
 this convention) — integrity is enforced at the API layer.

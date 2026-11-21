@@ -1,4 +1,4 @@
-/** useRateLimitNotice tests (round 211 — app-wide 429 notice). */
+/** useRateLimitNotice tests. */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

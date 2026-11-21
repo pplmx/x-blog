@@ -1,9 +1,9 @@
-"""add reading_history.scroll_position for per-post resume (DEC-167)
+"""add reading_history.scroll_position for per-post resume
 
 A signed-in reader's reading-history row gains a nullable ``scroll_position``
 pixel offset so a returning reader can be dropped back where they left off
 inside a post. Entirely additive — no FK, no constraint changes, matching
-DEC-009's additive-column convention (plain nullable column; integrity enforced
+'s additive-column convention (plain nullable column; integrity enforced
 at the API layer like the other reading-history fields).
 
 Revision ID: j9c5e7d1f3b4

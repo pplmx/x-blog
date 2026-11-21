@@ -18,7 +18,7 @@ useHead({
 // sets it at container runtime) the fallback "http://localhost:3000" got baked
 // into every deployed page's og:url / og:image / WebSite JSON-LD, so crawlers
 // resolved share cards to the dev origin. These tags therefore resolve from
-// the runtime site URL (useSiteUrl → runtimeConfig.public.siteUrl, TASK-557).
+// the runtime site URL (useSiteUrl → runtimeConfig.public.siteUrl).
 // Per-page useSeo() entries take precedence for the same keys (component head
 // wins over the app root), so specific pages still override the site default.
 //

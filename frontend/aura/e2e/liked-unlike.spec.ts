@@ -1,5 +1,5 @@
 /**
- * Liked-posts in-place unlike journey (DEC-415, TASK-433).
+ * Liked-posts in-place unlike journey.
  *
  * A signed-in reader with a liked post opens /liked and takes the like back
  * right from the card (the page's one management control): the card leaves the
@@ -42,7 +42,7 @@ async function registerAndLoginReader(
 	return (await login.json()).access_token as string;
 }
 
-test.describe("Liked posts unlike (DEC-415)", () => {
+test.describe("Liked posts unlike ", () => {
 	test("taking a like back on /liked removes the card in place", async ({ page, request }) => {
 		const email = freshEmail();
 		const readerToken = await registerAndLoginReader(page, request, email);

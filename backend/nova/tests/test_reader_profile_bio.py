@@ -1,4 +1,4 @@
-"""Reader profile bio (round 352).
+"""Reader profile bio.
 
 A one-paragraph "about me" a reader writes on /account and is shown on their
 public profile page — it completes the identity surface (name + avatar + bio)

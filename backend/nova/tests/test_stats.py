@@ -82,7 +82,7 @@ async def test_stats_scheduled_post_not_counted_as_published(client, auth_header
 async def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
     """A future-dated post counts as scheduled, so drafts = total - published - scheduled.
 
-    Regression for RIL TASK-036: the dashboard derives draftCount =
+    Regression for the dashboard derives draftCount =
     total_posts - published_posts, which would otherwise fold scheduled posts
     into the draft bucket (the admin list treats them as a distinct status).
     """
@@ -121,13 +121,13 @@ async def test_stats_scheduled_post_is_not_a_draft(client, auth_headers):
 
 
 async def test_stats_no_longer_exposes_pending(client, db_session):
-    """GET /api/stats must NOT expose the moderation backlog (round 276).
+    """GET /api/stats must NOT expose the moderation backlog.
 
     The unauthenticated endpoint previously answered pending_comments — the
     live unmoderated-queue depth. That let a spammer poll to learn whether
     their comment was still pending and scrape queue depth. The count moved
     to the admin-scoped /api/admin/stats/comments; the public response must
-    not carry it (ISS-366 semantics preserved by test_reader_comment_stats).
+    not carry it (semantics preserved by test_reader_comment_stats).
     """
     from datetime import datetime
 

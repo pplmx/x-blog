@@ -48,7 +48,7 @@ class TestCreateAdmin:
         assert created_user.username == "admin"
         assert created_user.password == "hashed_admin123"
         assert created_user.is_superuser is True
-        # role is the authoritative admin discriminator (DEC-054); a superuser
+        # role is the authoritative admin discriminator; a superuser
         # must be stamped as such or every superuser-only endpoint 403s.
         from app.auth import ROLE_SUPERUSER
 

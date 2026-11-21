@@ -1,5 +1,5 @@
 /**
- * Author byline + archive journey (DEC-359, TASK-405).
+ * Author byline + archive journey.
  *
  * The multi-editor author attribution slice end to end: a superuser gives the
  * writing admin a public pen name, a fresh post publishes, and that byline
@@ -35,7 +35,7 @@ async function fetchUsers(request: APIRequestContext, token: string): Promise<Ad
 	return (await res.json()) as AdminUser[];
 }
 
-test.describe("Author byline + archive (DEC-359)", () => {
+test.describe("Author byline + archive ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin publish on the live backend",
@@ -49,7 +49,7 @@ test.describe("Author byline + archive (DEC-359)", () => {
 		const slug = `author-byline-e2e-${uid}`;
 
 		// Superuser sets the writing admin's public pen name + "about this
-		// writer" bio (round 357): neither has a public surface until a pen
+		// writer" bio: neither has a public surface until a pen
 		// name exists — the username must stay private, admin login is
 		// no-oracle.
 		const token = await adminToken(request);
@@ -61,7 +61,7 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			data: { display_name: penName, bio },
 		});
 		expect(patch.status()).toBe(200);
-		// Give the writer a face too (round 358): a tiny PNG uploaded through
+		// Give the writer a face too: a tiny PNG uploaded through
 		// the same pipeline the reader avatars use.
 		const avatar = await request.post(`/api/admin/users/${admin.id}/avatar`, {
 			headers: adminH,
@@ -113,10 +113,10 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			// the byline on the card inside it links back to the same archive.
 			await page.goto(`/authors/${admin.id}`);
 			await expect(page.locator("h1")).toContainText(penName, { timeout: 10000 });
-			// The writer's public bio (round 357) renders under the header —
+			// The writer's public bio renders under the header —
 			// the person-shaped surface now introduces the person.
 			await expect(page.locator("body")).toContainText(bio, { timeout: 10000 });
-			// And the writer's face (round 358): the header carries the
+			// And the writer's face: the header carries the
 			// uploaded avatar image.
 			const headerAvatar = page.locator("h1 img");
 			await expect(headerAvatar).toBeVisible({ timeout: 10000 });
@@ -124,7 +124,7 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			await expect(archiveCard).toBeVisible();
 			await expect(archiveCard.locator(`a[href="/authors/${admin.id}"]`)).toContainText(penName);
 
-			// --- Scoped RSS feed (round 345): the archive links the writer's
+			// --- Scoped RSS feed: the archive links the writer's
 			// own feed, and that feed actually carries the fresh post (a
 			// genuinely scoped subscription surface, still no username).
 			const feedLink = page.locator(`a[href="/rss/authors/${admin.id}.xml"]`);
@@ -140,15 +140,15 @@ test.describe("Author byline + archive (DEC-359)", () => {
 			// public archive.
 			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);
 
-			// --- Writers index (round 346): /authors lists the pen-named writer
+			// --- Writers index: /authors lists the pen-named writer
 			// with a published-count card linking back to this archive, so a
 			// reader who found one byline can browse every contributor.
 			await page.goto("/authors");
 			const indexCard = page.locator(`a[href="/authors/${admin.id}"]`).first();
 			await expect(indexCard).toContainText(penName, { timeout: 10000 });
 			await expect(indexCard).toContainText("1");
-			// The index card shows a one-line window of the bio (round 357) and
-			// the writer's avatar (round 358).
+			// The index card shows a one-line window of the bio and
+			// the writer's avatar.
 			await expect(indexCard).toContainText(bio);
 			await expect(indexCard.locator("img")).toBeVisible();
 			await expect(page.locator("body")).not.toContainText(ADMIN_USERNAME);

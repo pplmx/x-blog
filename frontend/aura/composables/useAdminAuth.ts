@@ -11,7 +11,7 @@
  * On the client, checks localStorage for the admin token AND its JWT `exp` —
  * a session that has expired (backend `JWT_EXPIRE_DAYS`, default 1 day) reads
  * as logged-out so the admin layout's guard redirects to /admin/login instead
- * of a persistent semi-authed state where every call 401s (RIL ISS-273).
+ * of a persistent semi-authed state where every call 401s.
  */
 
 const ADMIN_TOKEN_KEY = "admin_token";
@@ -72,7 +72,7 @@ export function useAdminAuth() {
 	// Re-read the store on every call (client-side only). An expired-but-present
 	// token is dropped here, so a return visit / SPA remount of an admin page
 	// after the session lapsed reads as logged-out and the layout's unauth
-	// redirect fires (RIL ISS-273).
+	// redirect fires.
 	if (hasLocalStorage()) {
 		isAuthenticated.value = hasValidAdminToken();
 	}
@@ -101,13 +101,13 @@ export function useAdminAuth() {
 	 * skew): drop the stale session and hard-redirect to /admin/login — same
 	 * rationale as the layout gate, where a SPA navigateTo to a page sharing the
 	 * 'admin' layout can leave the slot blank. Pages that surface a 401 also
-	 * call this instead of rendering a misleading generic error (RIL ISS-273).
+	 * call this instead of rendering a misleading generic error.
 	 *
 	 * Passing `returnTo` (an internal admin path, e.g. the post editor URL) makes
 	 * the login page land the operator back WHERE they were — an autosave 401
 	 * mid-draft otherwise dumped them on the bare posts list regardless of what
 	 * they were editing, a jarring context loss that read as "my work vanished"
-	 * (ISS-390). Only internal admin paths are accepted (same guard login.vue
+	 *. Only internal admin paths are accepted (same guard login.vue
 	 * applies); anything else falls back to the plain login URL.
 	 */
 	const handleAdminUnauthorized = (returnTo?: string): void => {

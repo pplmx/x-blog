@@ -190,7 +190,7 @@ describe("Series Detail Page", () => {
 			error: { message: "network down" },
 		});
 		expect(wrapper.text()).toContain("加载失败");
-		// ISS-135: never leak the raw backend/exception message to readers.
+		// never leak the raw backend/exception message to readers.
 		expect(wrapper.text()).not.toContain("network down");
 	});
 

@@ -9,7 +9,7 @@ const query = ref("");
 const open = ref(false);
 // Tracks focus immediately (not the blur-delayed dropdown close) so the "/"
 // kbd-hint chip can step aside the moment the reader is typing in here — the
-// chip advertises the global '/' shortcut (round 262, TASK-279), it is not
+// chip advertises the global '/' shortcut, it is not
 // signal once the box itself has focus.
 const focused = ref(false);
 const results = ref<PostList[]>([]);
@@ -21,8 +21,8 @@ const searched = ref(false);
 const failed = ref(false);
 const activeIndex = ref(-1);
 let timer: ReturnType<typeof setTimeout> | null = null;
-// The debounce + blur-close one-shot are cleared on unmount too (round-418
-// audit, same class as admin/media's timer leak): the header is long-lived so
+// The debounce + blur-close one-shot are cleared on unmount too (audit, same
+// class as admin/media's timer leak): the header is long-lived so
 // the window is small, but a login/logout or layout swap mid-debounce would
 // otherwise fire a delayed search/close on a dead instance.
 let blurTimer: ReturnType<typeof setTimeout> | null = null;
@@ -31,7 +31,7 @@ onBeforeUnmount(() => {
 	if (blurTimer) clearTimeout(blurTimer);
 });
 // Monotonic token so a slow, out-of-order response can't clobber a newer one:
-// only the latest request's result is applied (TASK-096, ISS-077).
+// only the latest request's result is applied.
 let requestSeq = 0;
 
 async function runSearch(q: string): Promise<void> {
@@ -77,7 +77,7 @@ function onInput(): void {
 		// keystroke must not repopulate the dropdown under an already-cleared
 		// box (the empty branch previously left requestSeq untouched, so the
 		// stale response committed and a reader could click a result unrelated
-		// to the query — round 278).
+		// to the query).
 		requestSeq += 1;
 		results.value = [];
 		searched.value = false;
@@ -109,7 +109,7 @@ function onKeydown(event: KeyboardEvent): void {
 	} else if (event.key === "Escape") {
 		if (open.value) {
 			// The dropdown actually consumed this Escape — signal it so parent
-			// menu/window listeners (e.g. ISS-131's mobile-nav close handler)
+			// menu/window listeners (e.g.'s mobile-nav close handler)
 			// don't ALSO treat it as "close the whole menu".
 			event.preventDefault();
 			close();
@@ -145,7 +145,7 @@ function close(): void {
 function onFocus(): void {
 	// A blur kicked off the 150ms close; re-focusing before it fires must
 	// cancel it, or the timer would close the just-reopened dropdown a beat
-	// later (round-418 audit finding).
+	// later.
 	if (blurTimer) {
 		clearTimeout(blurTimer);
 		blurTimer = null;
@@ -194,7 +194,7 @@ function onBlur(): void {
 				@focus="onFocus"
 				@blur="onBlur"
 			/>
-			<!-- "/" shortcut chip (round 262): advertises the global press-/ shortcut
+			<!-- "/" shortcut chip: advertises the global press-/ shortcut
            the reader layout installs (composables/useSearchShortcut.ts). Shown
            only while the box is empty AND unfocused — once the reader is typing
            in here the chip has said its piece. Purely decorative (aria-hidden);

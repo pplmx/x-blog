@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Reader follows-feed page (DEC-292, TASK-375).
+ * Reader follows-feed page.
  *
  * The home page caps "Latest from your follows" at 12 posts with no way to
  * browse the rest; this page is the full, paginated feed of every new post
@@ -23,7 +23,7 @@ const router = useRouter();
 const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 
 // Guests and stale sessions land on /login with the return path back to this
-// page (ISS-563): sign in once and come straight back to the feed instead of
+// page: sign in once and come straight back to the feed instead of
 // dumping onto the default /bookmarks landing (comments/account parity — the
 // login page only honors same-origin relative redirect values).
 const loginTarget = { path: "/login", query: { redirect: "/follows" } } as const;
@@ -57,7 +57,7 @@ const paginationTokens = computed(() =>
 	paginationPages(pagination.value?.total_pages ?? 0, page.value),
 );
 
-// Screen-reader page announcement (round 398, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the grid in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
@@ -65,7 +65,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 // The feed is auth-scoped: a stale page deep link (e.g. /follows?page=999
 // after follows changed) would otherwise render the empty state while earlier
 // pages still hold content — clamp back to the last real page once known
-// (home/search/archive pattern, deep-dive finding ISS-308).
+// (home/search/archive pattern, deep-dive finding).
 watch(
 	() => pagination.value,
 	(p) => {
@@ -99,7 +99,7 @@ async function load() {
 		// Keep the skeleton up while an out-of-range page is being clamped:
 		// the first (empty) response here lands BEFORE the clamp watch
 		// redirects, so clearing pending in a finally would flash the empty
-		// state at a reader who is following things (review finding, DEC-292).
+		// state at a reader who is following things (review finding).
 		// The clamp's follow-up navigation re-runs load() with pending true,
 		// which settles on the last real page.
 		const p = res?.pagination;

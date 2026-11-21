@@ -1,8 +1,8 @@
 /**
- * Discussion feed page tests (round 367, DEC-407)
+ * Discussion feed page tests
  *
  * A public page listing the newest approved comments across the site, each
- * card deep-linking ONTO the exact comment (#comment-{id}, DEC-321). Tests
+ * card deep-linking ONTO the exact comment (#comment-{id}). Tests
  * the rendering states: loading, error, empty, feed cards (content +
  * commenter + post brief + deep link), and pagination.
  *
@@ -16,7 +16,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { reactive, ref } from "vue";
 
-// Blocked-reader suppression (round 386, DEC-437): stub the composable so the
+// Blocked-reader suppression: stub the composable so the
 // feed-filter test can inject a blocked reader id and observe the card vanish.
 const mockBlockedSet = ref(new Set<number>());
 vi.mock("~~/composables/useBlockedReaderIds", () => ({
@@ -131,7 +131,7 @@ async function mountDiscussionPage({
 	return wrapper;
 }
 
-describe("Discussion feed page (round 367, DEC-407)", () => {
+describe("Discussion feed page ", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -141,7 +141,7 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).toContain("最新讨论");
 	});
 
-	it("offers a subscribe link to the discussion RSS feed (round 368)", async () => {
+	it("offers a subscribe link to the discussion RSS feed ", async () => {
 		const wrapper = await mountDiscussionPage();
 		expect(wrapper.text()).toContain("订阅讨论 RSS");
 		const rss = wrapper.find('a[href="/rss/comments.xml"]');
@@ -157,7 +157,7 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).toContain("Searchable Post");
 		// Second card: reader-attributed commenter uses the display name.
 		expect(wrapper.text()).toContain("Reader Five");
-		// The card deep-links ONTO the comment (DEC-321), not the post headline.
+		// The card deep-links ONTO the comment, not the post headline.
 		const link = wrapper.find('a[href="/posts/searchable-post#comment-11"]');
 		expect(link.exists()).toBe(true);
 	});
@@ -191,7 +191,7 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { page: "2" } });
 	});
 
-	it("never renders a verified reader's email as the commenter (round 396)", async () => {
+	it("never renders a verified reader's email as the commenter ", async () => {
 		// A verified reader WITHOUT a display_name has their account email
 		// stamped as the comment nickname (crud), so the feed must render the
 		// generic identity instead of the PII — same rule the thread follows.
@@ -214,7 +214,7 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).not.toContain("reader@example.com");
 	});
 
-	it("hides blocked readers' cards and keeps the rest (round 386, DEC-437)", async () => {
+	it("hides blocked readers' cards and keeps the rest ", async () => {
 		mockBlockedSet.value = new Set([5]); // Reader Five (feed item id 12)
 		const wrapper = await mountDiscussionPage();
 		// The blocked reader's card is gone; the anonymous guest card remains.
@@ -229,7 +229,7 @@ describe("Discussion feed page (round 367, DEC-407)", () => {
 		expect(wrapper.text()).toContain("this is the deepest take yet");
 	});
 
-	// TASK-478 / ISS-554: a non-numeric or <1 ?page= deep link must resolve to
+	// a non-numeric or <1 ?page= deep link must resolve to
 	// page 1. The un-clamped computed forwarded NaN/0 to the API (guaranteed
 	// 422) while the page-clamp watcher short-circuits NaN/<2, leaving a
 	// load-failed state whose Retry can never succeed. Clamping at the computed

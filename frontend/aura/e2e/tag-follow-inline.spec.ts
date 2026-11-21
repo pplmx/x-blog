@@ -1,5 +1,5 @@
 /**
- * Inline tag-follow on the post page (DEC-196, TASK-216).
+ * Inline tag-follow on the post page.
  *
  * The tag chips in a post's footer are followable in place: a signed-in reader
  * follows/unfollows the tag and toggles its new-post notifications without
@@ -34,7 +34,7 @@ async function pickTaggedPost(request: import("@playwright/test").APIRequestCont
 	return data.items.find((p) => (p.tags?.length ?? 0) > 0) ?? null;
 }
 
-test.describe("Inline tag follow on the post page (TASK-216)", () => {
+test.describe("Inline tag follow on the post page ", () => {
 	test("guests see no in-place tag-follow control on a post page", async ({ page, request }) => {
 		const post = await pickTaggedPost(request);
 		if (!post) {
@@ -126,7 +126,7 @@ test.describe("Inline tag follow on the post page (TASK-216)", () => {
 		const chip = page.locator(`article a`, { hasText: `#${post.tags[0].name}` }).first();
 		await expect(chip).toBeVisible({ timeout: 10000 });
 		await chip.click();
-		// The feed chips link to the tag-filtered view (DEC-196/TASK-219).
+		// The feed chips link to the tag-filtered view.
 		await expect(page).toHaveURL(new RegExp(`tag_id=${post.tags[0].id}`));
 		await expect(page.locator("h1").first()).toBeVisible();
 	});

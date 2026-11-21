@@ -8,7 +8,7 @@ interface Props {
 	variant?: "icon" | "full";
 	/** Disabled while the surrounding page is mid-SPA-refetch: a bookmark click
 	 * during the prev/next window would target the OLD post the reader is still
-	 * looking at. (ISS-416, article-page deep-dive) */
+	 * looking at. (article-page deep-dive) */
 	disabled?: boolean;
 }
 
@@ -40,7 +40,7 @@ function handleClick() {
 	togglingTimer = setTimeout(() => {
 		togglingId = null;
 	}, 200);
-	// Mirror to the cloud when signed in (TASK-134); local remains the
+	// Mirror to the cloud when signed in; local remains the
 	// single source of truth for the button state.
 	if (isBookmarked(props.postId)) {
 		remove(props.postId);
@@ -49,7 +49,7 @@ function handleClick() {
 	}
 }
 
-// When the stored session is dead (syncIssue === "auth", ISS-222) the toggle
+// When the stored session is dead (syncIssue === "auth") the toggle
 // works locally but the cloud silently rejects the mirror. Tell the reader on
 // the button itself, not just later on /bookmarks — the icon stays truthful
 // (the local bookmark IS saved), so only the hint text changes.

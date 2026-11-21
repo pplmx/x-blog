@@ -1,5 +1,5 @@
 <!--
-  MarkdownLightbox.vue (DEC-302, TASK-379)
+  MarkdownLightbox.vue
 
   Fullscreen viewer for post images — the click target behind every image
   the post body renders. MarkdownContent's header has long documented images

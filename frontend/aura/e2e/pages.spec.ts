@@ -1,5 +1,5 @@
 /**
- * Static pages (round 347): the admin Pages CMS -> public /pages/{slug}.
+ * Static pages: the admin Pages CMS -> public /pages/{slug}.
  *
  * An admin creates + publishes a page through the manager UI, the page renders
  * at /pages/{slug} through the same markdown pipeline as posts, and the
@@ -23,7 +23,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Static pages CMS (round 347)", () => {
+test.describe("Static pages CMS ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin publish on the live backend",
@@ -73,7 +73,7 @@ test.describe("Static pages CMS (round 347)", () => {
 			await expect(footerPage).toBeVisible({ timeout: 10000 });
 			await expect(footerPage).toContainText(title.replace(/\s+\d+$/, ""));
 
-			// Reachable through the origin's /sitemap.xml proxy (round 348): the
+			// Reachable through the origin's /sitemap.xml proxy: the
 			// published page is a real indexable URL, so it must appear for
 			// crawlers after the page write busts the feed cache.
 			const sitemap = await request.get("/sitemap.xml");

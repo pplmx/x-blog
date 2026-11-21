@@ -1,5 +1,5 @@
 /**
- * Author post-preview journey (DEC-150, TASK-187).
+ * Author post-preview journey.
  *
  * An admin previews a not-yet-published (draft) post; the preview page renders
  * it as readers would see it. Guests (no admin session) are redirected to the
@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin post preview (TASK-187)", () => {
+test.describe("Admin post preview ", () => {
 	test("an admin previews a draft post, and a guest is redirected", async ({ page, request }) => {
 		// Log in as admin and capture the token to create a draft.
 		await page.goto("/admin/login");

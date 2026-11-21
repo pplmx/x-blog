@@ -1,4 +1,4 @@
-"""Reader self-service account deletion tests (DEC-106, TASK-165).
+"""Reader self-service account deletion tests.
 
 Deleting an account requires the current password, removes the reader's
 cloud bookmarks/thread subscriptions, anonymizes their past comments

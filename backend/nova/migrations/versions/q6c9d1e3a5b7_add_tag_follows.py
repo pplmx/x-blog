@@ -1,10 +1,10 @@
-"""add tag_follows table for durable reader tag follows (DEC-195, TASK-215)
+"""add tag_follows table for durable reader tag follows
 
 Tags are the fine-grained subscription axis categories are too coarse for — a
 reader follows ``rust``, not a whole taxonomy. Mirrors ``category_follows``
-(DEC-140): durable reader↔tag unique pair + ``notify`` flag that decouples
+: durable reader↔tag unique pair + ``notify`` flag that decouples
 tracking (the home follows-feed) from push/new-post dispatch. Additive table,
-no existing DDL is touched (DEC-009).
+no existing DDL is touched.
 
 Revision ID: q6c9d1e3a5b7
 Revises: p7d2e4f6a8b0

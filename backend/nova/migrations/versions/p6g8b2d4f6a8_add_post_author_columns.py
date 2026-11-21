@@ -1,11 +1,11 @@
-"""add post author attribution columns (DEC-359, TASK-405).
+"""add post author attribution columns.
 
 ``users.display_name`` is the admin's public pen name — the byline shown on
 published posts. Deliberately separate from the login ``username`` (admin login
 is no-oracle; publishing usernames would hand out the first half of a
 credential), NULL means "no public identity" and the author stays off the
 public surface. ``posts.author_id`` is a plain additive INTEGER + index with no
-DB-level FK — the DEC-009 convention for new references into existing tables
+DB-level FK — the convention for new references into existing tables
 (SQLite alembic can't add FK-carrying columns in place; referential integrity
 is enforced at the ORM layer). Both columns nullable, no data change.
 """

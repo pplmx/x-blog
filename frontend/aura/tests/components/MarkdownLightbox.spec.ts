@@ -1,5 +1,5 @@
 /**
- * MarkdownLightbox component tests (DEC-302, TASK-379)
+ * MarkdownLightbox component tests
  *
  * The fullscreen viewer for post images. Contract:
  *   - renders nothing while `index` is null

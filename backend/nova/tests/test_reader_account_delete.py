@@ -1,4 +1,4 @@
-"""Reader self-service account deletion (DEC-303, TASK-380).
+"""Reader self-service account deletion.
 
 A signed-in reader can permanently delete their own account from the API
 (``DELETE /api/reader/me/account``) after confirming their current password. The
@@ -6,8 +6,8 @@ deletion must be total — every reader-scoped row disappears (follows across
 all three kinds, bookmarks + folders, reading history, notification rows and
 prefs, push subscriptions, comment subscriptions, avatar file) — while the
 reader's *comments* are anonymized rather than deleted: a signed-in reader's
-name/identity is unlinked (reader_id → NULL, an additive nullable column per
-DEC-009) but the discussion itself stays on the post, exactly like an
+name/identity is unlinked (reader_id → NULL, an additive nullable column) but
+the discussion itself stays on the post, exactly like an
 anonymous comment. Old tokens stop working (the account row is gone).
 """
 

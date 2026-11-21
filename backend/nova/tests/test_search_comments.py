@@ -1,4 +1,4 @@
-"""Public comment search tests (round 366, DEC-405).
+"""Public comment search tests.
 
 Post search covered posts only; /api/search/comments lets a reader find a
 DISCUSSION — any approved comment on a publicly-visible post whose content

@@ -1,4 +1,4 @@
-"""Search-term analytics tests (DEC-152, TASK-188).
+"""Search-term analytics tests.
 
 Public searches are aggregated (normalized lowercased, count-only) and the
 admin sees the top terms; logging is best-effort and never breaks search.
@@ -48,7 +48,7 @@ class TestSearchLogging:
         """crud.log_search_query upserts an exact count: first call creates the
         row, every follow-up increments by exactly one — the counter update is
         an atomic SQL expression, never a read-modify-write that can drop
-        increments under concurrent searches (round 278).
+        increments under concurrent searches.
         """
         from app import models
         from app import repositories as crud

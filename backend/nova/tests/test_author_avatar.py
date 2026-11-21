@@ -1,4 +1,4 @@
-"""Admin author-avatar contract tests (DEC-389, TASK-420, round 358).
+"""Admin author-avatar contract tests.
 
 The face half of the writer identity surface: a superuser uploads/removes a
 public profile picture for an admin User (the same admin/users screen that
@@ -148,7 +148,7 @@ async def test_remove_clears_avatar_and_deletes_file(client, admin_token, admin_
 async def test_avatar_writes_invalidate_public_caches(client, admin_token, admin_user, monkeypatch):
     """Avatar upload/remove changes AuthorBrief.avatar_url rendered from cached
     objects (post bylines, series detail, feeds) — both writes must clear the
-    public caches, not wait out the TTL (ISS-607/TASK-529)."""
+    public caches, not wait out the TTL."""
     from app.cache import posts_list_cache
 
     calls = []
@@ -184,7 +184,7 @@ async def test_avatar_endpoints_superuser_only_and_404_unknown(
     await db_session.flush()
     editor_token = await _login(client, editor.username, "editorpass123")
 
-    # Editors cannot manage users (DEC-054): avatar upload is superuser-only.
+    # Editors cannot manage users: avatar upload is superuser-only.
     r = await client.post(
         AVATAR_API.format(user_id=editor.id),
         headers=_admin_headers(editor_token),

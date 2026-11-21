@@ -1,5 +1,5 @@
 /**
- * MediaPickerModal component tests (DEC-183, TASK-207).
+ * MediaPickerModal component tests.
  *
  * The post-editor toolbar opens this picker to insert a previously uploaded
  * image. Verifies it lists media (reactive data from the media API), emits
@@ -19,7 +19,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({ public: { apiUrl: "http://localhost:1
 
 const listMock = vi.fn();
 vi.mock("../../api/admin/media", () => ({
-	// The modal passes its 1-based page as a computed ref (DEC-189 reactive-path
+	// The modal passes its 1-based page as a computed ref (reactive-path
 	// pattern) so the listing follows pagination. The mock preserves the ref so
 	// a test can drive data reactively per page — the fixed-literal bug (page
 	// always 1) would be invisible to a mock that snapshots a number here.
@@ -87,9 +87,9 @@ describe("MediaPickerModal", () => {
 		expect(document.body.textContent || "").not.toContain("components.mediaPicker.title");
 	});
 
-	it("requests the media list only when opened (round 263 lazy-fetch contract)", async () => {
+	it("requests the media list only when opened ", async () => {
 		// The picker is always-mounted twice in the post editor (media + cover).
-		// Before round 263 its eager useFetch fired two duplicate
+		// Before that, its eager useFetch fired two duplicate
 		// /api/upload/files?page_size=60 calls on EVERY editor page load even
 		// though the file's comment claimed laziness. The fix suppresses the
 		// mount fetch (immediate:false) and drives loading from the open-watcher
@@ -117,7 +117,7 @@ describe("MediaPickerModal", () => {
 		expect(src).toContain(image.url);
 	});
 
-	it("Next/Prev fetch the target page via the reactive page ref (TASK-232)", async () => {
+	it("Next/Prev fetch the target page via the reactive page ref ", async () => {
 		// Two pages of one image each: paging must move the request to the next
 		// page, not re-fetch page 1 (the old literal-1 bug).
 		const pageA = { ...image, url: image.url.replace("000000000001", "000000000001p1") };
@@ -192,7 +192,7 @@ describe("MediaPickerModal", () => {
 		expect(pageRefState.ref?.value).toBe(1);
 	});
 
-	it("resets to page 1 on every open (round 418 audit)", async () => {
+	it("resets to page 1 on every open ", async () => {
 		// currentPage is a persistent ref: paging deep into the library, closing
 		// and reopening used to re-request the remembered page (which may no
 		// longer exist after the library shrank) instead of the first page.
@@ -265,7 +265,7 @@ describe("MediaPickerModal", () => {
 		expect(wrapper.findComponent(MediaPickerModal).emitted("close")).toBeDefined();
 	});
 
-	it("closes on Escape (ISS-132)", async () => {
+	it("closes on Escape ", async () => {
 		listMock.mockReturnValue(fakeQuery([image]));
 		const wrapper = mountPicker();
 		await vi.waitFor(() => {
@@ -275,7 +275,7 @@ describe("MediaPickerModal", () => {
 		expect(wrapper.findComponent(MediaPickerModal).emitted("close")).toBeDefined();
 	});
 
-	it("moves focus to the close button on open and restores it on close (ISS-132)", async () => {
+	it("moves focus to the close button on open and restores it on close ", async () => {
 		listMock.mockReturnValue(fakeQuery([image]));
 		const trigger = document.createElement("button");
 		trigger.textContent = "picker-trigger";
@@ -296,7 +296,7 @@ describe("MediaPickerModal", () => {
 		document.body.removeChild(trigger);
 	});
 
-	it("traps Tab focus within the panel (ISS-132)", async () => {
+	it("traps Tab focus within the panel ", async () => {
 		listMock.mockReturnValue(fakeQuery([image]));
 		const wrapper = mountPicker(false);
 		await wrapper.setProps({ open: true });
@@ -314,8 +314,8 @@ describe("MediaPickerModal", () => {
 		expect(document.activeElement).toBe(panelButtons[panelButtons.length - 1]);
 	});
 
-	it("restores body overflow when unmounted while still open (round-429 audit)", async () => {
-		// A picker mounted open locks background scroll (a11y, round 428). If
+	it("restores body overflow when unmounted while still open ", async () => {
+		// A picker mounted open locks background scroll (a11y). If
 		// the editor navigates away before the modal is closed, the open-watcher
 		// else-branch never runs and the lock would stick on the next page —
 		// the same stranded-scroll class MarkdownLightbox guards with its own

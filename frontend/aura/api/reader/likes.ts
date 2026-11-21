@@ -2,7 +2,7 @@ import { readerAuthHeaders } from "../auth";
 import type { PostList, PostListResponse } from "../contracts/shared";
 import { command, query } from "../transport";
 
-/** A signed-in reader's liked-posts list (round 359): a paginated, publicly-
+/** A signed-in reader's liked-posts list: a paginated, publicly-
  *  visible, newest-like-first PostListResponse — the reader-owned surface
  *  that joins bookmarks (saved-to-read) and history (read) on the "posts I
  *  appreciated" axis. */
@@ -15,7 +15,7 @@ export function useReaderLikes() {
 
 /** Imperative liked-posts fetch for sync/merge handlers that need the data
  *  directly (bounded paging via the page/limit contract, like bookmarks).
- *  `q` (optional) filters to liked posts matching title/excerpt (DEC-413). */
+ * `q` (optional) filters to liked posts matching title/excerpt. */
 export function getReaderLikes(
 	page?: number,
 	limit?: number,
@@ -32,7 +32,7 @@ export interface AddLikeResponse {
 	already_existed: boolean;
 }
 
-/** Like a post as a signed-in reader (round 359). Idempotent server-side: the
+/** Like a post as a signed-in reader. Idempotent server-side: the
  *  public counter is bumped exactly once per NEW like. */
 export function likeReaderPost(postId: number): Promise<AddLikeResponse> {
 	return command<AddLikeResponse>(`/api/reader/me/likes/${postId}`, {
@@ -41,7 +41,7 @@ export function likeReaderPost(postId: number): Promise<AddLikeResponse> {
 	});
 }
 
-/** Remove the reader's like of a post (round 359): idempotent 204, decrements
+/** Remove the reader's like of a post: idempotent 204, decrements
  *  the public counter only when a like row was actually removed. */
 export function unlikeReaderPost(postId: number): Promise<void> {
 	return command<void>(`/api/reader/me/likes/${postId}`, {

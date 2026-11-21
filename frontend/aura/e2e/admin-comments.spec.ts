@@ -97,7 +97,7 @@ test.describe("Admin comment management", () => {
 		expect(body.items.some((c) => c.content.includes("pending filter probe"))).toBe(true);
 	});
 
-	test("admin replies to a comment as the author; the public thread badges it (DEC-192)", async ({
+	test("admin replies to a comment as the author; the public thread badges it ", async ({
 		page,
 		request,
 	}) => {

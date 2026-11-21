@@ -1,4 +1,4 @@
-"""Static pages (round 347): admin CRUD + public surface.
+"""Static pages: admin CRUD + public surface.
 
 The public surface is anonymous and no-oracle (an unpublished or unknown slug
 answer the same 404), admin management is any-admin (get_current_admin — an

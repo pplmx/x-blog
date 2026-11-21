@@ -1,4 +1,4 @@
-"""Weekly email digest tests (DEC-201, TASK-222).
+"""Weekly email digest tests.
 
 The digest is the periodic complement to the per-event email channel: one
 aggregated email per opted-in reader summarizing the public posts newly
@@ -49,7 +49,7 @@ class _FakeSMTP:
     sent: list[EmailMessage] = []
     fail_on_send: bool = False
     # Recipients that get an SMTPRecipientsRefused per-message rejection — used
-    # to exercise the digest's partial-delivery idempotency (ISS-280): a full
+    # to exercise the digest's partial-delivery idempotency: a full
     # mailbox drops that reader only, not the whole batch.
     refuse_to: set[str] | None = None
 
@@ -235,7 +235,7 @@ class TestSend:
         # A full/dead mailbox (SMTPRecipientsRefused) must drop ONLY that
         # reader: the batch continues, and only the accepted message stamps
         # digest_sent_at — so a partial delivery never re-mails the reader who
-        # already got theirs on the next run (RIL ISS-280).
+        # already got theirs on the next run.
         ok_rid = await _reader(db_session, "ok@example.com")
         bad_rid = await _reader(db_session, "full@example.com")
         await _make_post(db_session, "本周文章", "week-post")
@@ -312,7 +312,7 @@ def _plain_text(msg: EmailMessage) -> str:
 
 
 class TestNewsletterDigest:
-    """The guest side of the weekly digest (DEC-355, TASK-403): a CONFIRMED
+    """The guest side of the weekly digest: a CONFIRMED
     newsletter subscriber who opted into the weekly digest is collected by the
     same job that serves readers, gets a site-language digest whose footer is
     their token-based unsubscribe link (never the reader /notifications page),
@@ -390,9 +390,9 @@ class TestNewsletterDigest:
 
 
 class TestGuestThreadDigestExcludesOwn:
-    """The guest-thread weekly digest (DEC-429) must not echo a follower's OWN
+    """The guest-thread weekly digest must not echo a follower's OWN
     comments back at them — the same self-exclusion the per-comment channel
-    makes (round 393; a subscriber who comments this week used to be mailed a
+    makes (a subscriber who comments this week used to be mailed a
     digest listing their own words)."""
 
     async def _guest_digest_sub(self, db, email, post_id) -> int:
@@ -687,7 +687,7 @@ class TestBuilderEscape:
         # The plain-TEXT part has no markup context: an HTML entity like
         # &amp; renders literally as "A&amp;B" in a text-only mail client.
         # The raw name must appear verbatim in text while the HTML part keeps
-        # its escaped copy (ISS-447).
+        # its escaped copy.
         msg = self._msg_for_name("A&B")
         text = next(p for p in msg.walk() if p.get_content_type() == "text/plain").get_content()
         assert "A&B" in text

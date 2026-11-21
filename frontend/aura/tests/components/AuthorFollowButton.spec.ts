@@ -1,14 +1,14 @@
 /**
- * AuthorFollowButton component tests (author follow, round 353 / DEC-379).
+ * AuthorFollowButton component tests (author follow).
  *
  * The inline follow control attached to the post page's author byline: only
  * signed-in readers see it; follow state is loaded through the imperative
  * getReaderAuthorFollows seam ($fetch — useFetch never sends from a lifecycle
- * callback, ISS-119/TASK-220); clicking follows/unfollows the pen-named author
+ * callback); clicking follows/unfollows the pen-named author
  * in place. The per-author notify toggle lives in /account, so here it is a
  * single follow/unfollow toggle. Dead-session 401s drop the expired token and
- * show the sign-in prompt instead of a generic failure bubble (round-300
- * guard, mirrors SeriesFollowButton).
+ * show the sign-in prompt instead of a generic failure bubble (guard,
+ * mirrors SeriesFollowButton).
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
@@ -165,7 +165,7 @@ describe("AuthorFollowButton", () => {
 
 	it("does not stamp the new author's button when the reader navigates away mid-follow", async () => {
 		// A follow POST resolving after the SPA moves to another post's byline
-		// must not overwrite the fresh target's state (ISS-572-class stale
+		// must not overwrite the fresh target's state (class stale
 		// response). The component instance survives authorId change (not
 		// keyed), so toggleFollow must re-check the target id after the await.
 		localStorage.setItem("reader_token", "tok-1");

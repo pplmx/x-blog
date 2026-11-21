@@ -1,5 +1,5 @@
 /**
- * "Did you mean" search-suggestion journey (round 390, DEC-443).
+ * "Did you mean" search-suggestion journey.
  *
  * The post search is exact substring/tsvector with no fuzzy layer, so a
  * one-typo query dead-ends on an empty page. This spec seeds a published post
@@ -47,8 +47,8 @@ test("recovers a typo'd search via a did-you-mean suggestion", async ({ page, re
 
 		// The zero-hit empty state renders the classic hint... The empty-state
 		// text exists BOTH as the visible <h3> and as a sr-only aria-live copy
-		// (round-4xx a11y), so a bare getByText hits strict-mode ambiguity —
-		// target the visible heading by role (round-458).
+		//, so a bare getByText hits strict-mode ambiguity —
+		// target the visible heading by role.
 		await expect(page.getByRole("heading", { name: "没有找到相关文章" })).toBeVisible();
 
 		// ...and the edit-distance suggestion for the real title.

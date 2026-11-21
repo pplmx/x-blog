@@ -1,5 +1,5 @@
 /**
- * Home "Latest from your follows" journey (DEC-142, TASK-183).
+ * Home "Latest from your follows" journey.
  *
  * A signed-in reader who follows a category sees the newest public posts from
  * their follows in a "Latest from your follows" row on the home page. Guests
@@ -19,7 +19,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Home 'Latest from your follows' row (TASK-183)", () => {
+test.describe("Home 'Latest from your follows' row ", () => {
 	test("guests see no Latest-from-your-follows row", async ({ page }) => {
 		await page.goto("/");
 		await expect(page.locator("section", { hasText: "关注内容的最新文章" })).toHaveCount(0);

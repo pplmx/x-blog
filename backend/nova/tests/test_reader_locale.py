@@ -1,4 +1,4 @@
-"""Contract tests for reader-language notification copy (DEC-338, TASK-395).
+"""Contract tests for reader-language notification copy.
 
 Notification copy was hardcoded Chinese for every reader — durable inbox titles
 (系列更新 / 新文章发布 / 《…》), the per-event email Subject (item.title) and
@@ -125,7 +125,7 @@ class TestSetLocaleEndpoint:
 
 
 class TestNotificationCopyMatrix:
-    """Direct unit matrix for every kind × locale (DEC-338/DEC-340)."""
+    """Direct unit matrix for every kind × locale."""
 
     def test_matrix(self):
         from app.repositories import notification_copy

@@ -1,9 +1,9 @@
-"""add reader_comment column to reader_notification_prefs (round 365, DEC-403).
+"""add reader_comment column to reader_notification_prefs.
 
 Reader-to-reader follow (a signed-in reader follows another reader) adds a
 durable inbox fan-out when the followed reader's comment is approved. Like the
-@-mention kind (DEC-322) it is a *kind*, so ReaderNotificationPref needs one
-bool per kind — one additive column (DEC-009), on by default, so a reader who
+@-mention kind it is a *kind*, so ReaderNotificationPref needs one
+bool per kind — one additive column, on by default, so a reader who
 never opened the preferences surface keeps receiving followed-comment
 notifications until they opt out.
 

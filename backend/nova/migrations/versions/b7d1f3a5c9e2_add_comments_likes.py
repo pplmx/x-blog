@@ -1,12 +1,12 @@
-"""add comments.likes for comment upvotes (DEC-092)
+"""add comments.likes for comment upvotes
 
-Comment upvoting (DEC-092 / TASK-158) mirrors the post-likes precedent
+Comment upvoting mirrors the post-likes precedent
 (``posts.likes`` + ``POST /posts/{id}/like``): an additive per-comment counter
 incremented by an anonymous, rate-limited endpoint. The count rides
 ``CommentPublic`` so every published comment exposes it.
 
 Entirely additive (new column with a server default, no existing DDL touched,
-DEC-009 preserved). Defensive like earlier column-adds: if the column already
+ preserved). Defensive like earlier column-adds: if the column already
 exists (a dev DB whose create_all-era safety net already added it), it is left
 as-is and only the version is stamped.
 

@@ -3557,7 +3557,7 @@ def upgrade_schema() -> None:
 
     Replaces the old ``Base.metadata.create_all`` so dev seeding and CI (which
     runs this script on Postgres in the e2e job) exercise the same migration
-    chain the production Docker entrypoint uses. (RIL TASK-009)
+    chain the production Docker entrypoint uses.
     """
     cfg = Config("alembic.ini")
     command.upgrade(cfg, "head")
@@ -3591,7 +3591,7 @@ async def main():
                 admin = auth.User(
                     username="admin",
                     password=auth.get_password_hash(admin_password),
-                    # role is the authoritative admin discriminator (DEC-054); the
+                    # role is the authoritative admin discriminator; the
                     # role column's server_default would otherwise stamp "editor",
                     # leaving is_superuser=True but every superuser-only endpoint
                     # (users/export/batch/notify) 403ing for the seeded admin.
@@ -3756,7 +3756,7 @@ async def main():
                 await db.commit()
                 print("✓ 5 sample comments created")
 
-            # Post series (DEC-056/TASK-123): seed one series and group two of the
+            # Post series: seed one series and group two of the
             # demo posts into it so the public /series pages and the admin series
             # management flow have real data to exercise in dev + e2e. Idempotent:
             # skips if the series already exists.

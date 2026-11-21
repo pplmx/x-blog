@@ -36,7 +36,7 @@ const postsFilters = computed(() => ({
 // so the unauth'd /api/posts call on the cloud view no longer burns a
 // rate-limit slot, and a posts failure can no longer brick the correctly-loaded
 // tag cloud (its pending/error used to gate the whole page; same pattern as
-// archive.vue's hasPeriod gate, deep-dive ISS-368).
+// archive.vue's hasPeriod gate, deep-dive).
 const hasTag = computed(() => !!tagId.value);
 
 const {
@@ -74,12 +74,12 @@ function goToPage(pg: number | string) {
 	scrollToPageTop();
 }
 
-// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
+// Windowed, ellipsis-aware pagination buttons.
 const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
-// Screen-reader page announcement (round 397, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the list in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() =>
@@ -88,7 +88,7 @@ const pageAnnouncement = computed(() =>
 
 // A stale/out-of-range page deep link would otherwise render "No posts yet"
 // with no way back — clamp to the last real page once pagination is known
-// (home/search/archive already do this; deep-dive finding ISS-308).
+// (home/search/archive already do this; deep-dive finding).
 watch(
 	() => posts.value?.pagination,
 	(p) => {
@@ -101,7 +101,7 @@ watch(
 	},
 );
 
-// Client-side filter for the all-tags view (deep-dive, ISS-381): a real blog's
+// Client-side filter for the all-tags view (deep-dive): a real blog's
 // tag cloud can hold dozens of pills with no way to find one except scanning.
 // A small substring box narrows the cloud as you type; empty filter shows all.
 const tagFilter = ref("");
@@ -118,7 +118,7 @@ const tagName = computed(() =>
 
 // SEO: set dynamic head metadata based on view state. Passed as a getter so
 // SPA navigation between ?tag_id=X values updates the <title> without a reload
-// (RIL TASK-080; useSeo accepts () => SeoOptions). A selected tag's canonical
+// => SeoOptions). A selected tag's canonical
 // points at the tagged feed URL — never the contentless cloud stub, which would
 // consolidate the signal-rich tag view away (deep-dive finding).
 function tagPagePath(pg: number): string {
@@ -142,7 +142,7 @@ useSeo(() => ({
 		: undefined,
 }));
 
-// Scoped RSS feed (DEC-074, TASK-146): on a selected tag, autodiscovery emits
+// Scoped RSS feed: on a selected tag, autodiscovery emits
 // <link rel="alternate" type="application/rss+xml"> and the visible button
 // shares the tag-scoped feed URL.
 const feedUrl = computed(() =>
@@ -161,7 +161,7 @@ useHead(() => ({
 		: [],
 }));
 
-// Durable reader-level tag follow (DEC-195/TASK-215): a signed-in reader can
+// Durable reader-level tag follow: a signed-in reader can
 // follow a tag (persisted, cross-device) — tags are the fine-grained axis
 // categories are too coarse for — and manage + toggle notifications on the
 // account page. Mirrors the category-follow interaction on categories.vue.
@@ -194,7 +194,7 @@ function noteFollowError() {
 const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
 // Follow-state gets the same stale-response guard the series page uses
-// (deep-dive, ISS-374): without it, a slow in-flight GET can overwrite a
+// (deep-dive): without it, a slow in-flight GET can overwrite a
 // follow toggle the reader just made — the PUT commits and flips the button
 // to "following", then the stale pre-follow GET resolver flips it back and
 // resets the notify flag; SPA navigation between tags can likewise surface
@@ -206,10 +206,10 @@ async function loadTagFollow() {
 	if (!tagSignedIn.value || !tagId.value) return;
 	const seq = ++followSeq; // invalidate any in-flight older tag request
 	try {
-		// Imperative $fetch seam (ISS-110/111, TASK-199): useFetch-based query()
+		// Imperative $fetch seam: useFetch-based query()
 		// wrappers silently no-op when called outside a setup/suspense context —
-		// the same class of regression ISS-117 fixed on the account page and
-		// ISS-118 extended to SPA navigation. Await the plain response directly.
+		// the same class of regression fixed on the account page and
+		// extended to SPA navigation. Await the plain response directly.
 		const res = await getReaderTagFollows();
 		if (seq !== followSeq) return; // stale — a newer tag is in flight
 		const item = res.items.find((t) => t.id === tagId.value) ?? null;
@@ -330,7 +330,7 @@ onUnmounted(() => {
 					</p>
 				</div>
 
-				<!-- Tag-cloud filter (ISS-381): a large cloud is unscannable without it.
+				<!-- Tag-cloud filter: a large cloud is unscannable without it.
              Client-side substring match so typing narrows the pills in place. -->
 				<div v-if="tags?.length" class="max-w-md">
 					<div class="relative">
@@ -496,7 +496,7 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+				<!-- Pagination (windowed with ellipsis) -->
 				<div v-if="posts.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
 					<button
 						v-for="(pg, i) in paginationTokens"

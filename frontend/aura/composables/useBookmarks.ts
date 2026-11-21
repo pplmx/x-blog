@@ -9,7 +9,7 @@ export interface Bookmark {
 	created_at: string;
 	folder_id?: number | null;
 	folder_name?: string | null;
-	/** Queue state (round 361, DEC-395): true = Done, false/absent = To-read. */
+	/** Queue state: true = Done, false/absent = To-read. */
 	done?: boolean;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
@@ -63,7 +63,7 @@ export function useBookmarks() {
 	// Backing array is a Nuxt `useState` singleton so every consumer
 	// (BookmarkButton, Sidebar count, /bookmarks page) shares one reactive
 	// source — a plain `ref()` per call kept each component's bookmarks out of
-	// sync until a reload (RIL ISS-036). In vitest there is no `useState`, so
+	// sync until a reload. In vitest there is no `useState`, so
 	// use a local ref (tests stub useState explicitly to exercise the shared path).
 	const bookmarks = canUseNuxt()
 		? useState<Bookmark[]>(STATE_KEY, () => loadFromStorage())
@@ -110,7 +110,7 @@ export function useBookmarks() {
 		saveToStorage(bookmarks.value);
 	}
 
-	/** Move a saved post between To-read and Done (round 361, DEC-395). The
+	/** Move a saved post between To-read and Done. The
 	 *  /bookmarks page marks a post Done when it's read, pruning the To-read
 	 *  queue; marking it back To-read restores it to the queue. */
 	function setDone(id: number, done: boolean): void {
@@ -142,7 +142,7 @@ export function useBookmarks() {
 
 	const bookmarkCount = computed(() => bookmarks.value.length);
 
-	// Queue-state counts (round 361, DEC-395): a saved post is either still
+	// Queue-state counts: a saved post is either still
 	// To-read (the queue) or already Done. `done` is false/absent when not set.
 	const toReadCount = computed(() => bookmarks.value.filter((b) => !b.done).length);
 	const doneCount = computed(() => bookmarks.value.filter((b) => b.done).length);

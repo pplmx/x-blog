@@ -1,11 +1,11 @@
-"""add scroll_fraction to reading_history (DEC-346, TASK-399).
+"""add scroll_fraction to reading_history.
 
-Resume reading (DEC-167) stores an absolute scroll pixel offset that is
+Resume reading stores an absolute scroll pixel offset that is
 viewport-dependent — a phone->desktop continuation lands at the wrong place.
 The ``scroll_fraction`` column stores the same position as a 0..1 fraction of
 the scrollable document height so the client can restore proportionally on any
 viewport; NULL means "saved before this feature", and the client falls back to
-the stored pixel. Additive (DEC-009); no existing column is touched and
+the stored pixel. Additive; no existing column is touched and
 existing rows start NULL.
 """
 

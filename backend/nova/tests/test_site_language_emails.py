@@ -1,9 +1,9 @@
-"""Contract tests for site-language guest + recovery emails (DEC-342, TASK-397).
+"""Contract tests for site-language guest + recovery emails.
 
-The reader-side fan-out emails localize per reader (DEC-338/DEC-340), but the
+The reader-side fan-out emails localize per reader, but the
 sender-side emails were hardcoded Chinese regardless of the site's configured
-language: the guest reply email (DEC-332) is entirely zh (subject 有人回复了你
-的评论, body 《…》有一条新回复。) and the password reset email (DEC-286) is a
+language: the guest reply email is entirely zh (subject 有人回复了你
+的评论, body 《…》有一条新回复。) and the password reset email is a
 bilingual-subject hack (重置密码 / Reset password) with a fully Chinese body —
 and replaces the configured site title with the hardcoded name "X-Blog".
 
@@ -99,9 +99,9 @@ class TestGuestReplyEmailLanguage:
 
 
 class TestGuestCommentManageEmailLanguage:
-    """The round-385 guest manage email (DEC-435/TASK-444) sends directly from
+    """The guest manage email sends directly from
     the sender side, so it must render in the site's configured language like
-    the other sender-side guest emails (DEC-342)."""
+    the other sender-side guest emails."""
 
     def test_default_zh_copy(self, smtp_sink_fixture):
         assert send_guest_comment_manage_email(

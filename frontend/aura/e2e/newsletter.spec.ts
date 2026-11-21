@@ -1,5 +1,5 @@
 /**
- * Guest email newsletter journey (DEC-351, TASK-401).
+ * Guest email newsletter journey.
  *
  * The anonymous "email me new posts" on-ramp: a visitor subscribes an address
  * from the footer form, the backend mails a double opt-in confirmation link
@@ -55,7 +55,7 @@ function freshEmail(): string {
 	return `newsletter-${Date.now()}-${counter}@example.com`;
 }
 
-test.describe("Guest newsletter (DEC-351)", () => {
+test.describe("Guest newsletter ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("footer subscribe -> confirm -> one email per post -> unsubscribe stops mail", async ({

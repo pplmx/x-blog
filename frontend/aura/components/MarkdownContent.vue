@@ -22,7 +22,7 @@ import { type ComponentPublicInstance, computed, onMounted, ref, watch } from "v
 import { escapeHtml, highlightCode, loadHighlighter } from "~~/composables/useCodeHighlight";
 import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composables/useMarkdown";
 
-// Image-lightbox wiring (DEC-302/TASK-379): every `<img>` the post body
+// Image-lightbox wiring: every `<img>` the post body
 // renders becomes a click target for MarkdownLightbox, so readers can inspect
 // tall diagrams / screenshots / photos at full resolution (a column-width
 // image can't be scrutinised on mobile).
@@ -71,7 +71,7 @@ onMounted(async () => {
 // SPA navigation between posts (and editor preview edits), and the memoised
 // sets keyed by positional segment keys (mermaid-1, math-1, ...) would
 // otherwise skip rendering the new content's blocks and leave the previous
-// post's diagrams on screen (ISS-444).
+// post's diagrams on screen.
 watch(
 	() => props.content,
 	() => {
@@ -107,8 +107,8 @@ const renderedMermaidKeys = ref<Set<string>>(new Set());
 // --- Copy-to-clipboard state (per code block) ---
 const copiedStates = ref<Set<string>>(new Set());
 const copyFailedKeys = ref<Set<string>>(new Set());
-// The 2s copy-flash auto-clears, tracked so unmount cancels them (round-420
-// sweep — leaked real timers also break later fake-timer tests).
+// The 2s copy-flash auto-clears, tracked so unmount cancels them (sweep —
+// leaked real timers also break later fake-timer tests).
 const copyTimers = new Set<ReturnType<typeof setTimeout>>();
 onBeforeUnmount(() => {
 	for (const timer of copyTimers) clearTimeout(timer);
@@ -119,12 +119,12 @@ onBeforeUnmount(() => {
 // mermaid/math renders capture it on entry and bail early if a newer content
 // swapped in while they were awaiting — otherwise a slow render could paint
 // the OLD post's diagram into a DOM element the NEW post reuses (stale
-// diagram across SPA navigation, ISS-444).
+// diagram across SPA navigation).
 let contentEpoch = 0;
 
 const { t } = useLang();
 
-// --- Image lightbox (DEC-302/TASK-379) ---
+// --- Image lightbox ---
 // All image segments become the lightbox's image set (order = in-post order),
 // keyed so a click on a specific <img> opens the viewer at that index. Srcs
 // reuse the same sanitizeUrl the inline <img> uses — a dangerous src opens
@@ -280,7 +280,7 @@ function renderKatex(
 	import("katex")
 		.then(({ default: katex }) => {
 			// Same stale-swap guard as mermaid: a content change mid-import must
-			// not paint the old post's formula into a reused element (ISS-444).
+			// not paint the old post's formula into a reused element.
 			if (!el.isConnected || epoch !== contentEpoch) return;
 			try {
 				const html = katex.renderToString(formula, {
@@ -406,7 +406,7 @@ function lineNumbers(code: string): number[] {
 			/>
 
 			<!-- Image: preserve the natural aspect ratio (no fixed h-64 crop frame).
-           The img now wraps in a lightbox trigger (DEC-302/TASK-379): clicking
+           The img now wraps in a lightbox trigger: clicking
            opens MarkdownLightbox at full resolution; cursor-zoom-in is
            truthful again because the viewer actually exists. :deep(img) styles
            supply sizing/margins; a missing alt is decorative (alt="") per
@@ -449,7 +449,7 @@ function lineNumbers(code: string): number[] {
 @reference "tailwindcss";
 .markdown-content {
 	@apply text-gray-800 dark:text-gray-200;
-	/* Reading density (DEC-288/TASK-373): the body font/leading are em-based so
+	/* Reading density: the body font/leading are em-based so
      the post page can scale them with a `--reader-density` factor (a control
      the reader persists locally). Defaults to the long-standing 1.0625rem/1.75
      line-height unless the wrapper sets the variable — a no-op everywhere else
@@ -513,7 +513,7 @@ function lineNumbers(code: string): number[] {
 	@apply text-blue-500;
 }
 
-/* Inline footnotes (DEC-441/TASK-451): the reference sup stays small and
+/* Inline footnotes: the reference sup stays small and
    unobtrusive in the prose, and the definition list renders as a compact
    citation block separated from the body by the leading rule. The backref
    ("↩") is subtle and keeps the default link color for discoverability. */
@@ -555,7 +555,7 @@ function lineNumbers(code: string): number[] {
 
 /* The highlight.js token theme (Tokyo Night) now lives in the shared global
    assets/css/code-theme.pcss so post and comment code surfaces render alike
-   (DEC-090). Only the code-surface base styles stay here. */
+   . Only the code-surface base styles stay here. */
 
 .markdown-content :deep(img) {
 	@apply rounded-xl my-8 mx-auto max-w-full h-auto shadow-md;

@@ -35,7 +35,7 @@ def _highlight_sqlite(content: str, query: str) -> str:
     """Build an HTML snippet around the first matched term, highlighting matches.
 
     Dialect-agnostic (works for CJK and ASCII alike — the CJK/Postgres snippet
-    path since DEC-071/TASK-144). Windows around the first occurrence of any
+    path ). Windows around the first occurrence of any
     query term in the FULL content, so hits deep in long posts surface context
     instead of an arbitrary content[:300] prefix. Content is HTML-escaped
     *before* highlighting so the ``<mark>`` tags we inject are the only markup
@@ -79,7 +79,7 @@ def _contains_any_term(text: str, query: str) -> bool:
 async def _build_snippet(post: Post, query: str, is_postgres: bool, db: AsyncSession) -> str | None:
     """Generate a search snippet with highlighted matches.
 
-    Routing mirrors search_posts (DEC-070): CJK/mixed queries use the
+    Routing mirrors search_posts: CJK/mixed queries use the
     dialect-agnostic highlighter on every backend (ts_headline('english')
     cannot reliably highlight CJK on Postgres); only pure-ASCII Postgres
     queries keep ts_headline."""
@@ -112,7 +112,7 @@ async def _build_snippet(post: Post, query: str, is_postgres: bool, db: AsyncSes
 
 
 async def _build_postgres_snippets(db: AsyncSession, posts: list[Post], query: str) -> dict[int, str | None]:
-    """Compute ts_headline for a page of posts in ONE query (avoids N+1, ISS-061).
+    """Compute ts_headline for a page of posts in ONE query (avoids N+1).
 
     Each per-post ts_headline call was a round-trip; a 50-post page meant up to
     51 queries. Batch with a single GROUP BY result of headline per post id.
@@ -139,7 +139,7 @@ async def _build_postgres_snippets(db: AsyncSession, posts: list[Post], query: s
     return out
 
 
-# Sort orders accepted by /api/search (DEC-084, TASK-154). "relevance" is the
+# Sort orders accepted by /api/search. "relevance" is the
 # only one that needs the tsvector rank (and degrades to newest on the CJK
 # substring path); the rest are plain column orders.
 VALID_SORTS = ("relevance", "newest", "oldest", "views")
@@ -170,11 +170,11 @@ async def search(
         # term, so search_service.search_posts' `[t for t in query.split() if t] or [query]`
         # falls back to the raw " " → a content ILIKE '% %' matching nearly every
         # published post: an anonymous full-table scan on an unauthenticated
-        # endpoint (round-296 deep-dive). Reject it at the boundary instead.
+        # endpoint. Reject it at the boundary instead.
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     if sort not in VALID_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {list(VALID_SORTS)}")
-    # Fire the scheduled-post publish-time fan-out (DEC-344/TASK-398): search
+    # Fire the scheduled-post publish-time fan-out: search
     # surfaces a crossed scheduled post like any public surface, so it must
     # trigger the same exactly-once announce. Cheap indexed no-op when nothing
     # crossed; the durable stamp prevents duplicates.
@@ -198,8 +198,7 @@ async def search(
 
     # ts_headline is only useful for ASCII queries — CJK/mixed (and
     # punctuation-only queries that tokenize to an empty tsquery) go through
-    # the Python highlighter so Postgres snippets highlight too (DEC-071;
-    # scope must mirror search_service.search_posts's use_tsvector, TASK-246).
+    # the Python highlighter so Postgres snippets highlight too (scope must mirror search_service.search_posts's use_tsvector).
     use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
     snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
 
@@ -219,7 +218,7 @@ async def search(
         post_dict["snippet"] = snippet
         items.append(post_dict)
 
-    # Search-term analytics (DEC-152/TASK-188): best-effort aggregate count.
+    # Search-term analytics: best-effort aggregate count.
     with suppress(Exception):
         await log_search_query(db, q)
 
@@ -256,7 +255,7 @@ async def _all_post_item(post, query: str, is_postgres: bool, db: AsyncSession, 
     """One merged-search post hit; ``snippet`` is precomputed by the caller.
 
     ``search_all`` batches every post's Postgres ts_headline in ONE query
-    (mirroring /search, ISS-061) and passes the result in, so no per-post DB
+    (mirroring /search) and passes the result in, so no per-post DB
     round-trip happens inside the merged loop. Falling back to ``_build_snippet``
     here is the non-Postgres/CJK path, which is pure Python (no round-trip).
     """
@@ -334,10 +333,10 @@ async def search_all(
     (a window that always covers the merged page — one source can supply at
     most ``offset+limit`` of the top ``offset+limit`` merged items), then the
     windows are merged, globally sorted and sliced. Same CJK-aware, dialect
-    -parity substring matching as the post search (DEC-084).
+    -parity substring matching as the post search.
     """
     if not q.strip():
-        # Same non-blank guard as /api/search (round-296): a whitespace-only q
+        # Same non-blank guard as /api/search: a whitespace-only q
         # would otherwise ILIKE '% %' nearly every public row.
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     # Scheduled-post fan-out: a crossed scheduled post is a public surface and
@@ -354,7 +353,7 @@ async def search_all(
     posts, posts_total = await search_service.search_posts(db, q, page=1, limit=window, sort="newest")
 
     # Post snippets: batch the Postgres ts_headline in ONE query (mirrors
-    # /search, ISS-061) rather than one round-trip per merged post. CJK/pure-
+    # /search) rather than one round-trip per merged post. CJK/pure-
     # ASCII routing must match _build_snippet so highlighting is identical.
     use_headline = is_postgres and not _has_cjk(q) and _has_searchable_token(q)
     post_snippets = await _build_postgres_snippets(db, posts, q) if use_headline else {}
@@ -402,7 +401,7 @@ async def search_comments(
     db: AsyncSession = Depends(get_db),
 ):
     """Find a discussion: approved comments on public posts whose content
-    matches every term (round 366, DEC-405).
+    matches every term.
 
     The search box currently spans posts only; a reader who remembers a terse
     take in the thread (or wants every approved comment that mentions a topic)
@@ -412,13 +411,13 @@ async def search_comments(
     leaks its discussion, and pending/rejected comments stay out. Threads on
     comment-DISABLED posts remain public, so they keep matching. Every hit
     carries a mark-safe highlighted snippet plus the post brief, so the result
-    can land the reader ON the comment (#comment-{id}, DEC-321). Newest first
+    can land the reader ON the comment (#comment-{id}). Newest first
     with an id tiebreak.
     """
     if not q.strip():
         # Whitespace-only q tokenizes to " " and would ILIKE '% %' nearly every
         # public comment — reject at the boundary (same guard as /search,
-        # round-296 deep-dive).
+        # deep-dive).
         raise HTTPException(status_code=422, detail="q must be a non-blank search term")
     comments, total = await search_service.search_comments(db, query=q, page=page, limit=limit)
 
@@ -456,7 +455,7 @@ async def search_suggest(
     limit: int = Query(SUGGEST_LIMIT, ge=1, le=6),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search-term suggestions for a zero-hit query ("did you mean", round 390).
+    """Search-term suggestions for a zero-hit query ("did you mean").
 
     The post search is exact substring + tsvector with no fuzzy layer, so a
     misspelled or half-remembered term ("recatvie", "响应试") dead-ends on an

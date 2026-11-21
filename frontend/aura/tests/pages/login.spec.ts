@@ -1,4 +1,4 @@
-/** Reader /login page tests (DEC-059, TASK-133). */
+/** Reader /login page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
@@ -90,9 +90,9 @@ describe("login page", () => {
 	it("shows the localized error for a wrong-password 400 instead of the raw ofetch string", async () => {
 		// The api layer rethrows ofetch errors whose `.message` is the technical
 		// "[POST] \"...\": 400 ..." string; the friendly envelope lives at
-		// `data.error.message` (round-441, same rule as the comment form).
+		// `data.error.message`.
 		// useReaderAuth rethrows as a plain Error carrying the apiErrorMessage
-		// output AND the HTTP status (round-441/442) — mirror that here. A wrong
+		// output AND the HTTP status — mirror that here. A wrong
 		// email/password is a deliberate single 401 on the backend (anti-oracle).
 		loginMock.mockRejectedValue(
 			Object.assign(new Error("Incorrect email or password"), { statusCode: 401 }),
@@ -215,7 +215,7 @@ describe("login redirect (deep-dive fix)", () => {
 	});
 });
 
-describe("two-factor login step (round 364, DEC-401)", () => {
+describe("two-factor login step ", () => {
 	const challenge = {
 		access_token: null,
 		token_type: null,
@@ -297,9 +297,9 @@ describe("two-factor login step (round 364, DEC-401)", () => {
 		vi.stubGlobal("useRoute", () => ({ query: {} }));
 		loginMock.mockResolvedValue(challenge);
 		// useReaderAuth rethrows as a plain Error carrying the apiErrorMessage
-		// output AND the HTTP status (round-441/442) — mirror that here. A bad
+		// output AND the HTTP status — mirror that here. A bad
 		// authenticator code is a deliberate single 401 on the backend
-		// (anti-oracle, DEC-401).
+		// (anti-oracle).
 		login2FAMock.mockRejectedValue(
 			Object.assign(new Error("Invalid or expired login attempt"), { statusCode: 401 }),
 		);
@@ -316,7 +316,7 @@ describe("two-factor login step (round 364, DEC-401)", () => {
 		await flushPromises();
 
 		// A wrong code must never surface the technical "[POST] ..." string or the
-		// backend's English envelope — the localized line wins (round-441).
+		// backend's English envelope — the localized line wins.
 		expect(wrapper.text()).toContain("验证码错误");
 		expect(wrapper.text()).not.toContain("Invalid or expired login attempt");
 		expect(navMock).not.toHaveBeenCalled();

@@ -1,5 +1,5 @@
 /**
- * Comment-moderation alerts admin journey (DEC-080, TASK-152).
+ * Comment-moderation alerts admin journey.
  *
  * The blog moderates every comment; an admin can opt this browser into a push
  * that fires when a new comment awaits approval, deep-linking to

@@ -32,11 +32,11 @@ services:
       RATE_LIMIT_WRITE_PER_MINUTE: ${RATE_LIMIT_WRITE_PER_MINUTE:-30}
       RATE_LIMIT_AUTH_PER_MINUTE: ${RATE_LIMIT_AUTH_PER_MINUTE:-10}
       # Reader registration gets its own (stricter) bucket than login: open
-      # signup is the classic spam/abuse surface. (DEC-059, TASK-131)
+      # signup is the classic spam/abuse surface.
       RATE_LIMIT_REGISTER_PER_MINUTE: ${RATE_LIMIT_REGISTER_PER_MINUTE:-5}
       # Newsletter subscribe is ALSO an unauthenticated open entry firing an
       # outbound email on a fresh address — the same spam/abuse class as
-      # register, so it gets the same tight per-IP bucket (DEC-351/TASK-401).
+      # register, so it gets the same tight per-IP bucket.
       RATE_LIMIT_NEWSLETTER_PER_MINUTE: ${RATE_LIMIT_NEWSLETTER_PER_MINUTE:-5}
       RATE_LIMIT_SEARCH_PER_MINUTE: ${RATE_LIMIT_SEARCH_PER_MINUTE:-60}
       RATE_LIMIT_COMMENT_PER_MINUTE: ${RATE_LIMIT_COMMENT_PER_MINUTE:-20}
@@ -47,7 +47,7 @@ services:
       # default-safe peer-key behavior. Use "*" only when the backend port is
       # NOT publicly reachable.
       #
-      # IMPORTANT (DEC-059, TASK-131): in the default compose topology every
+      # IMPORTANT: in the default compose topology every
       # browser request reaches the backend via the Nuxt proxy, so with an EMPTY
       # TRUSTED_PROXIES the reader register/login buckets key on the proxy peer
       # and ALL readers share one bucket (5/min register, 10/min login). Set
@@ -60,7 +60,7 @@ services:
       # (routers/rss.py, emailer.py). Without it the backend defaults to
       # http://localhost:3000, so composed feeds/sitemap/emails would point at
       # a loopback nobody else can reach — same root cause as the frontend's
-      # runtime og:url fix (round-434/TASK-557). Default follows the frontend's
+      # runtime og:url fix. Default follows the frontend's
       # NUXT_PUBLIC_SITE_URL so both tiers always agree on the origin; set one
       # variable to configure the whole stack.
       SITE_URL: ${SITE_URL:-${NUXT_PUBLIC_SITE_URL:-http://localhost:34567}}
@@ -94,13 +94,13 @@ services:
       # the config-time default gets baked as localhost:3000 and the container's
       # NUXT_SITE_URL env is inert at runtime — Nuxt only overrides runtimeConfig
       # at runtime via the NUXT_PUBLIC_<key> convention. The URL-dependent head
-      # tags (og:url / og:image / WebSite JSON-LD, app.vue TASK-557) read this.
+      # tags (og:url / og:image / WebSite JSON-LD, app.vue) read this.
       NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:-http://localhost:34567}
       # Set only when the frontend sits BEHIND a trusted proxy (e.g. nginx) so
       # its own rate limiters (public og/cover image endpoints) key on the real
       # client IP via X-Forwarded-For rather than collapsing every user into one
       # shared bucket. Comma-separated proxy IPs, or exactly "*" (dev topology)
-      # to trust any peer. Empty => safe peer-only behavior (RIL TASK-101).
+      # to trust any peer. Empty => safe peer-only behavior.
       FRONTEND_TRUSTED_PROXIES: ${FRONTEND_TRUSTED_PROXIES:-}
     restart: unless-stopped
     depends_on:

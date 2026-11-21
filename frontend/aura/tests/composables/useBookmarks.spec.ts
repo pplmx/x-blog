@@ -107,7 +107,7 @@ describe("useBookmarks", () => {
 		});
 	});
 
-	describe("setDone / queue counts (round 361, DEC-395)", () => {
+	describe("setDone / queue counts ", () => {
 		it("starts every bookmark in the To-read queue", () => {
 			const { addBookmark, toReadCount, doneCount } = useBookmarks();
 			addBookmark(mockBookmark);
@@ -189,7 +189,7 @@ describe("useBookmarks", () => {
 		});
 	});
 
-	describe("shared state (RIL ISS-036)", () => {
+	describe("shared state ", () => {
 		it("two useBookmarks() calls share one reactive array under useState", () => {
 			// Simulate the Nuxt runtime where useState is a keyed singleton:
 			// both calls must resolve to the same backing ref.

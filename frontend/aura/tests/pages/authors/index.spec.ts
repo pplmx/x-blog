@@ -93,7 +93,7 @@ describe("Authors index page (/authors)", () => {
 		expect(link?.exists()).toBe(true);
 	});
 
-	it("shows a one-line window of the writer bio on the card when set (round 357)", async () => {
+	it("shows a one-line window of the writer bio on the card when set ", async () => {
 		const wrapper = await mountAuthorsIndex();
 		expect(wrapper.text()).toContain("Long-form on type systems.");
 	});

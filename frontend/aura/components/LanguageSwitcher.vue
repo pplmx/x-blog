@@ -33,7 +33,7 @@ function closeMenu() {
 
 function onSelect(code: Locale) {
 	setLocale(code);
-	// Persist the reader's notification-copy language (DEC-338/TASK-395): the
+	// Persist the reader's notification-copy language: the
 	// durable inbox titles and emails are generated server-side in this locale,
 	// so a signed-in reader's switch is pushed to their account. Fire-and-forget
 	// — a failed sync must never block the UI switch or throw.
@@ -75,7 +75,7 @@ function onKeydown(e: KeyboardEvent) {
 	// before). Leaving the browser's native Tab in charge re-targets a same-menu
 	// node while the popover is still in the DOM — the focused menuitem unmounts
 	// a tick later and focus falls to <body>, dropping the keyboard user out of
-	// the header entirely (round-300 deep-dive). Manual hand-off keeps tab order
+	// the header entirely. Manual hand-off keeps tab order
 	// contiguous with the surrounding nav even for a MIDDLE menuitem.
 	if (e.key === "Tab") {
 		e.preventDefault();

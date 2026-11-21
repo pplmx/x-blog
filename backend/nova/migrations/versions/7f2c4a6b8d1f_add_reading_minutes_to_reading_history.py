@@ -1,6 +1,6 @@
 """add reading_history.reading_minutes (denormalized read-time estimate)
 
-/me/history/stats (ISS-451) used to fetch the reader's ENTIRE history and
+/me/history/stats used to fetch the reader's ENTIRE history and
 materialize every post row—including `content`—just to SUM reading_minutes()
 per row in Python: an O(all-time) scan that transfers multi-MB per /history
 pageview for heavy readers.
@@ -10,7 +10,7 @@ history row (one row per reader↔post pair), so the stats endpoint can aggregat
 in SQL with zero content materialization. The data backfill below computes the
 column for pre-existing rows from their post's CURRENT content, so displayed
 totals do not jump on deploy; new writes carry the estimate for the content as
-read. Follows DEC-009: only additive DDL, no existing column touched.
+read. Follows only additive DDL, no existing column touched.
 
 Revision ID: 7f2c4a6b8d1f
 Revises: 6f9557747661

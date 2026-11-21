@@ -1,4 +1,4 @@
-"""Opt-in public liked-posts profile tab contract tests (round 360, DEC-393).
+"""Opt-in public liked-posts profile tab contract tests.
 
 Round 359 made a reader's likes durable cloud rows (reader_post_likes); this
 suite pins the new public surface around them: a reader who flips

@@ -1,5 +1,5 @@
 /**
- * SubscribeButton component tests (DEC-055, TASK-118).
+ * SubscribeButton component tests.
  *
  * Verifies the button's rendering per status (hidden when unsupported/
  * unconfigured, disabled when blocked, label/icon per state) and that clicks
@@ -110,7 +110,7 @@ describe("SubscribeButton", () => {
 		expect(unsubscribe).not.toHaveBeenCalled();
 	});
 
-	it("flashes a transient error bubble when the subscribe rejects (ISS-215)", async () => {
+	it("flashes a transient error bubble when the subscribe rejects ", async () => {
 		status.value = "idle";
 		subscribe.mockRejectedValue(new Error("network"));
 		const wrapper = mountButton();
@@ -152,7 +152,7 @@ describe("SubscribeButton", () => {
 		expect(subscribe).not.toHaveBeenCalled();
 	});
 
-	it("advertises reply notifications in the tooltip when signed in (DEC-064)", () => {
+	it("advertises reply notifications in the tooltip when signed in ", () => {
 		status.value = "idle";
 		isAuthenticated.value = true;
 		const wrapper = mountButton();
@@ -180,20 +180,20 @@ describe("SubscribeButton", () => {
 		expect(syncReaderBinding).toHaveBeenCalledOnce();
 	});
 
-	it("re-stamps when a signed-in reader loads the page already subscribed (ISS-112)", async () => {
+	it("re-stamps when a signed-in reader loads the page already subscribed ", async () => {
 		// The reader signed in on a previous page-load (token persists in
 		// localStorage) and the browser subscription already exists — the
 		// false->true transition never happens, so the re-stamp must fire on
 		// mount with both conditions already true. Without an immediate watch
 		// this anonymous subscription stays reader_id NULL forever and keeps
-		// receiving new_post pushes despite the reader's opt-out (DEC-171).
+		// receiving new_post pushes despite the reader's opt-out.
 		status.value = "subscribed";
 		isAuthenticated.value = true;
 		mountButton();
 		expect(syncReaderBinding).toHaveBeenCalledOnce();
 	});
 
-	it("shows the label text by default but hides it wide-only when compact (ISS-125/TASK-225)", async () => {
+	it("shows the label text by default but hides it wide-only when compact ", async () => {
 		// The header nav row is tight at xl (1280px) once a reader is signed
 		// in (English), so the desktop nav renders the button compact and the
 		// label surfaces only on very wide screens. Everywhere else — the
@@ -225,7 +225,7 @@ describe("SubscribeButton", () => {
 		wrapper = undefined;
 	});
 
-	it("re-stamps once init() reveals an existing subscription for a signed-in reader (ISS-112)", async () => {
+	it("re-stamps once init() reveals an existing subscription for a signed-in reader ", async () => {
 		// On load, status starts "unsupported" until the async init() detects
 		// the browser subscription — so an isAuthenticated-only watch (even
 		// immediate) fires before the guard passes, then keeps silent once

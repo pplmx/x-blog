@@ -1,9 +1,9 @@
-"""add category_follows table for durable reader category follows (DEC-140, TASK-182)
+"""add category_follows table for durable reader category follows
 
 A reader can follow a category as a durable, cross-device intent (distinct from
-the per-device new-post category pin on PushSubscription, DEC-076). Adds the
+the per-device new-post category pin on PushSubscription). Adds the
 additive ``category_follows`` table (reader↔category unique pair + notify flag);
-no existing DDL is touched (DEC-009).
+no existing DDL is touched.
 
 Revision ID: e6c8a0b2d4f6
 Revises: f4b2a6c8e0d4

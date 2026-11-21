@@ -5,12 +5,12 @@ import { useReaderAuth } from "~~/composables/useReaderAuth";
 const route = useRoute();
 const { t } = useLang();
 const isHome = computed(() => route.path === "/");
-// `reader` drives the mobile "我的" group's public-profile link (round 352);
+// `reader` drives the mobile "我的" group's public-profile link;
 // `logout` signs out from the same group.
 const { isAuthenticated, reader, logout } = useReaderAuth();
 
 // Site content navigation — always visible, identical for guests and signed-in
-// readers so the bar width is stable across auth states (round 382, top-nav
+// readers so the bar width is stable across auth states (top-nav
 // "My" menu redesign). Search is the ever-present HeaderSearch widget, so the
 // standalone /search link was dropped as redundant.
 const contentLinks = [
@@ -45,7 +45,7 @@ const myLinks = [
 	},
 ];
 
-// Unread notification badge (DEC-160, TASK-192; ISS-124/TASK-224): a
+// Unread notification badge: a
 // visibility-aware poll keeps the nav badge fresh for signed-in readers, and
 // the /notifications inbox refreshes the same shared count after a mark-read
 // action so the badge drops without a page reload. Polling follows auth state:
@@ -63,7 +63,7 @@ onUnmounted(() => {
 });
 
 const mobileMenuOpen = ref(false);
-// The menu toggle itself: Escape/focus-restore (ISS-131, TASK-231) sends focus
+// The menu toggle itself: Escape/focus-restore sends focus
 // back here when the panel closes so keyboard users never lose their place.
 const mobileMenuToggle = ref<HTMLButtonElement | null>(null);
 
@@ -72,7 +72,7 @@ const mobileMenuToggle = ref<HTMLButtonElement | null>(null);
 // /admin/* too (deep-dive finding).
 const { isDark, initTheme, toggleTheme } = useTheme();
 
-// Keyboard semantics for the mobile nav (ISS-131): Escape closes and returns
+// Keyboard semantics for the mobile nav: Escape closes and returns
 // focus to the toggle; opening the panel moves focus to its first link so the
 // next Tab/Enter starts inside the menu instead of re-walking the header.
 function handleNavKeydown(e: KeyboardEvent) {
@@ -117,8 +117,7 @@ onUnmounted(() => {
 	window.removeEventListener("keydown", handleNavKeydown);
 });
 
-// Global "/" → focus the header search (GitHub/forum convention; round 262,
-// TASK-279). The admin layout has no HeaderSearch and intentionally doesn't
+// Global "/" → focus the header search (GitHub/forum convention). The admin layout has no HeaderSearch and intentionally doesn't
 // install this — the shortcut only makes sense where a search box is visible.
 useSearchShortcut();
 
@@ -146,9 +145,9 @@ onMounted(initTheme);
 						X-Blog
 					</NuxtLink>
 
-					<!-- Desktop nav (xl+; ISS-125/TASK-225): the six content links +
+					<!-- Desktop nav (xl+): the six content links +
                search + chrome (push, avatar, language, theme) fit the xl bar —
-               round 382 moved every reader-personal link into the "My" avatar
+                moved every reader-personal link into the "My" avatar
                menu, so signing in no longer lengthens the bar and the 1400px+
                squeeze that forced internal scrolling is gone. Below xl the
                mobile menu takes over; at xl the ROW still scrolls (scrollbar
@@ -190,7 +189,7 @@ onMounted(initTheme);
 
 						<!-- Reader account: sign in (→ /login) for guests; the "My" avatar
                  menu (ReaderMenu) holds the personal links + sign-out for
-                 signed-in readers (round 382). The avatar is the SINGLE
+                 signed-in readers. The avatar is the SINGLE
                  auth-gated node in the desktop bar. -->
 						<NuxtLink
 							v-if="!isAuthenticated"
@@ -270,7 +269,7 @@ onMounted(initTheme);
 						<div class="px-4 py-2">
 							<SubscribeButton />
 						</div>
-						<!-- Mobile "我的" group (round 382): the personal links the desktop
+						<!-- Mobile "我的" group: the personal links the desktop
                  bar hides behind the avatar dropdown land here as a flat,
                  always-expanded section — the panel scrolls, so vertical room
                  is not a constraint. -->
@@ -359,16 +358,16 @@ onMounted(initTheme);
 		<!-- Footer -->
 		<footer class="border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
 			<div class="page-shell px-4 sm:px-6 lg:px-8 py-8">
-				<!-- Guest newsletter on-ramp (DEC-351/TASK-401): the anonymous "email me
+				<!-- Guest newsletter on-ramp: the anonymous "email me
              new posts" entry that sits beside the RSS link for readers who don't
              use feed readers. -->
 				<div class="mb-6 w-full sm:max-w-sm">
 					<NewsletterSubscribe />
 				</div>
-				<!-- Static pages (round 347): the published /pages/{slug} links so an
+				<!-- Static pages: the published /pages/{slug} links so an
              admin-curated privacy policy / terms / contact is discoverable. -->
 				<PagesFooterLinks />
-				<!-- Site-wide discussion feed (round 367, DEC-407): the conversation's
+				<!-- Site-wide discussion feed: the conversation's
              public entry point, beside the content links. -->
 				<nav class="mb-6" :aria-label="t('common.footer.discussion')">
 					<NuxtLink
@@ -429,7 +428,7 @@ onMounted(initTheme);
 /* The desktop nav scrolls internally when the full link set outgrows the
    viewport (English + signed-in at 1280–1536px). Hide the scrollbar so the
    header stays chrome-clean; the nav still scrolls via wheel/trackpad, and
-   the mobile menu below xl covers every case without scrolling. (ISS-125) */
+   the mobile menu below xl covers every case without scrolling. */
 nav {
 	scrollbar-width: none;
 	-ms-overflow-style: none;

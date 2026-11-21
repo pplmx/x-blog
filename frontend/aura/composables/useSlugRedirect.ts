@@ -4,7 +4,7 @@ interface FetchErrorResponse {
 }
 
 /**
- * Slug-change redirect (round 350).
+ * Slug-change redirect.
  *
  * The admin editors let an operator re-slug posts, series and static pages;
  * the backend 404s the old URL (contract unchanged) but stamps the canonical

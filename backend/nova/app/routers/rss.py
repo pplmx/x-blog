@@ -36,8 +36,8 @@ def _feed_response(body: str, media_type: str, request: Request) -> Response:
 
     Bloated feeds (RSS/Atom/sitemap) are re-polled by readers, crawlers and
     checkers; a strong ETag lets them cheaply fetch a 304 Not Modified and
-    skip re-downloading a body that hasn't changed (RIL TASK-089). Delegates to
-    the shared conditional helper (TASK-128) so feeds also carry Cache-Control
+    skip re-downloading a body that hasn't changed. Delegates to
+    the shared conditional helper so feeds also carry Cache-Control
     and the 304 revalidates the stored copy's freshness window.
     """
     return conditional_response(body, media_type, request, PUBLIC_CACHE_CONTROL)
@@ -52,7 +52,7 @@ async def _resolve_feed_scope(
     so the channel title stays unambiguous; passing both is rejected. An
     unknown scope id is a 404 rather than a silent fallback to the global
     feed: scoped feed links are emitted by the category/tag browse pages, so a
-    bad id is a real error, not a reader preference (DEC-074, TASK-146).
+    bad id is a real error, not a reader preference.
     """
     if category_id is not None and tag_id is not None:
         raise HTTPException(status_code=400, detail="Provide at most one of category_id and tag_id")
@@ -130,7 +130,7 @@ _ALLOWED_TAGS = {
     "span",
     "div",
 }
-# ``id``/``class`` are needed by the footnotes extension (DEC-441) — the
+# ``id``/``class`` are needed by the footnotes extension — the
 # python-markdown footnotes renderer emits <sup id="fnref:1"> / <li id="fn:1">
 # anchors plus ``class="footnote-ref|footnote-backref"`` styling hooks, and
 # stripping them would break the in-article backlinks a feed reader opens.
@@ -141,7 +141,7 @@ _ALLOWED_ATTRS = {"href", "src", "alt", "title", "target", "rel", "id", "class"}
 # URL-bearing attributes that would let an author ship a scriptable link into
 # an untrusted reader (web-based RSS/Atom consumers may render these). The Nuxt
 # frontend strips javascript:/data:/vbscript: via DOMPurify; mirror that here so
-# the feed path gets the same defence-in-depth (RIL TASK-091, ISS-071).
+# the feed path gets the same defence-in-depth.
 _URL_ATTRS = {"href", "src"}
 _UNSAFE_SCHEMES = ("javascript", "data", "vbscript")
 
@@ -176,7 +176,7 @@ class _FeedSanitizer(HTMLParser):
     # `<br>`/`<hr>`/`<img>` as handle_starttag (not handle_startendtag), so
     # pushing them onto the stack consumes a slot that a later real close tag
     # pops — dropping the enclosing `</p>`/`</div>`. Markdown's nl2br emits
-    # `<br>`, so this corrupted full-content RSS/Atom feeds (RIL TASK-108).
+    # `<br>`, so this corrupted full-content RSS/Atom feeds.
     _VOID_TAGS = frozenset({"br", "hr", "img"})
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
@@ -222,7 +222,7 @@ class _FeedSanitizer(HTMLParser):
 
 def _feed_content_html(content: str) -> str:
     """Render a post's Markdown to sanitized HTML for full-content feeds."""
-    # "footnotes" (DEC-441): an author's [^1]/[^1]: citation markers render as
+    # "footnotes": an author's [^1]/[^1]: citation markers render as
     # a backlinked reference list instead of leaking literal [^1] text into the
     # feed (mirrors the frontend marked footnote extension in useMarkdown.ts).
     html = md.markdown(content, extensions=["fenced_code", "tables", "nl2br", "footnotes"])
@@ -251,20 +251,20 @@ def generate_rss_feed(
         full_content: If True, include full post content. If False, use excerpt.
         self_url: The feed's own URL for atom:link rel=self; defaults to the
             global feed URL. Scoped feeds pass their scoped URL so feed readers
-            validate the subscription (DEC-074, TASK-146).
+            validate the subscription.
         language: RSS <language> tag (defaults to the deployment's site_language).
     """
     items = []
     for post in posts:
         # Feed dates must report when readers actually got the post: a
         # scheduled post's item keyed to its draft created_at would push the
-        # entry down readers' "new" ordering and mis-date it (RIL ISS-264).
+        # entry down readers' "new" ordering and mis-date it.
         pub_date = rss_service.effective_publish_ts(post).strftime("%a, %d %b %Y %H:%M:%S GMT")
         link = f"{site_url}/posts/{post.slug}"
 
         if full_content:
             # Full content RSS — render markdown to sanitized HTML so feed
-            # readers show the article, not literal markdown syntax (ISS-039).
+            # readers show the article, not literal markdown syntax.
             content = f"<content:encoded>{_cdata(_feed_content_html(post.content))}</content:encoded>"
             items.append(f"""<item>
         <title>{_cdata(post.title)}</title>
@@ -302,7 +302,7 @@ def generate_rss_feed(
 
 def _comment_permalink(site_url: str, comment: models.Comment) -> str:
     """Deep link for a comment feed item — ON the comment (#comment-{id}),
-    matching the /discussion page and DEC-321, not just the post headline."""
+    matching the /discussion page and not just the post headline."""
     slug = comment.post.slug if comment.post else ""
     return f"{site_url}/posts/{slug}#comment-{comment.id}"
 
@@ -314,7 +314,7 @@ def _comment_display_name(comment: models.Comment) -> str:
 
     A verified reader WITHOUT a display_name must never fall back to the
     stored nickname — for legacy rows that value is the account email (the
-    pre-ISS-606 fallback stamped ``display_name or email``). Use a generic
+    pre fallback stamped ``display_name or email``). Use a generic
     non-PII label instead (the thread renders the same generic identity for
     nameless readers), so RSS never publishes an email even for old rows.
     """
@@ -331,8 +331,7 @@ def generate_comments_rss_feed(
     self_url: str,
     language: str = "zh-CN",
 ) -> str:
-    """Generate an RSS 2.0 feed of the latest approved comments (round 368,
-    DEC-409). One item per comment: the post title as the entry title, the
+    """Generate an RSS 2.0 feed of the latest approved comments. One item per comment: the post title as the entry title, the
     comment content as the description, and a perma link ON the comment."""
     items = []
     for c in comments:
@@ -370,7 +369,7 @@ def generate_comments_atom_feed(
     self_url: str,
     language: str = "zh-CN",
 ) -> str:
-    """Atom feed variant of the discussion feed (round 368, DEC-409)."""
+    """Atom feed variant of the discussion feed."""
     items = []
     for c in comments:
         updated = (c.created_at or datetime.now(UTC)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -404,10 +403,10 @@ async def get_comments_rss_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """RSS 2.0 feed of the latest approved comments site-wide (round 368, DEC-409).
+    """RSS 2.0 feed of the latest approved comments site-wide.
 
-    The conversation is findable (comment search, DEC-405), browsable
-    (/discussion, DEC-407) — this makes it SUBSCRIBABLE: a reader who wants the
+    The conversation is findable (comment search), browsable
+    (/discussion) — this makes it SUBSCRIBABLE: a reader who wants the
     discussion as a stream in their feed reader gets the newest approved
     comments with the same public-visibility gate (pending/rejected and
     draft/scheduled-post comments never appear; content never carries email/ip).
@@ -440,7 +439,7 @@ async def get_comments_atom_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it; never None at runtime
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Atom feed variant of the discussion feed (round 368, DEC-409)."""
+    """Atom feed variant of the discussion feed."""
     key = ("atom-comments",)
     cached = feed_cache.get(key)
     if cached is not None:
@@ -476,17 +475,17 @@ async def get_rss_feed(
     Args:
         full: If True, include full post content instead of excerpt (default: True).
         category_id: If given, restrict the feed to posts in this category
-            (DEC-074, TASK-146). Unknown id -> 404.
+            . Unknown id -> 404.
         tag_id: If given, restrict the feed to posts with this tag
-            (DEC-074, TASK-146). Unknown id -> 404.
+            . Unknown id -> 404.
 
     Rendered feed is cached (feed_cache, TTL 300s) with the scope in the key,
     and invalidated on post writes via clear_posts_list_cache, so repeated
     poller hits don't re-query the DB or re-render markdown per request
-    (RIL TASK-085, ISS-054).
+    .
     """
     category, tag = await _resolve_feed_scope(db, category_id, tag_id)
-    # Fire the scheduled-post publish-time fan-out (DEC-336/TASK-394): an RSS
+    # Fire the scheduled-post publish-time fan-out: an RSS
     # poller is the most reliable read surface for a crossing scheduled post
     # (external cron hits the feed continuously), and the crossing has no
     # write-time trigger to announce it. Cheap indexed no-op when nothing
@@ -529,10 +528,9 @@ async def get_atom_feed(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Get Atom feed of published posts, optionally scoped to a category/tag
-    (DEC-074, TASK-146; same semantics as the RSS feed)."""
+    (same semantics as the RSS feed)."""
     category, tag = await _resolve_feed_scope(db, category_id, tag_id)
-    # Same scheduled-post publish-time fan-out as the RSS feed (DEC-336/
-    # TASK-394): the crossing has no write-time trigger, so the Atom read path
+    # Same scheduled-post publish-time fan-out as the RSS feed: the crossing has no write-time trigger, so the Atom read path
     # is one of the surfaces that notice it. Exactly-once by durable stamp.
     await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("atom", category_id, tag_id)
@@ -554,7 +552,7 @@ async def get_atom_feed(
     for post in posts:
         updated = (post.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%dT%H:%M:%SZ")
         # Same policy as the RSS pubDate: a scheduled post's <published> is its
-        # publish_at, never the draft's created_at (RIL ISS-264).
+        # publish_at, never the draft's created_at.
         published = rss_service.effective_publish_ts(post).strftime("%Y-%m-%dT%H:%M:%SZ")
         content = _feed_content_html(post.content)
         link = f"{site_url}/posts/{post.slug}"
@@ -590,7 +588,7 @@ async def get_category_rss_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """RSS 2.0 feed scoped to a category (by its unique name; DEC-130/TASK-177).
+    """RSS 2.0 feed scoped to a category (by its unique name).
 
     Category has no slug column — its unique ``name`` is the stable, URL-encoded
     path segment. Unknown name -> 404. Cached under a scoped key.
@@ -598,7 +596,7 @@ async def get_category_rss_feed(
     category = await rss_service.get_category_by_name(db, name)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
+    # Scheduled-post publish-time fan-out: a scoped feed is
     # a polled surface that surfaces crossed posts — fire the exactly-once
     # sweep like the sitewide feeds. Cheap indexed no-op when nothing crossed.
     await rss_service.maybe_notify_due_scheduled_posts(db)
@@ -638,14 +636,14 @@ async def get_series_rss_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """RSS 2.0 feed scoped to a series (by its slug; DEC-130/TASK-177).
+    """RSS 2.0 feed scoped to a series (by its slug).
 
     Unknown slug -> 404. Cached under a scoped key.
     """
     series = await rss_service.get_series_by_slug(db, slug)
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
-    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): same sweep as the
+    # Scheduled-post publish-time fan-out: same sweep as the
     # other polled feed surfaces; a series feed poller is a reliable crossing
     # trigger. Exactly-once by the durable stamp.
     await rss_service.maybe_notify_due_scheduled_posts(db)
@@ -683,7 +681,7 @@ async def get_author_rss_feed(
     request: Request = None,  # type: ignore[assignment] — FastAPI injects it
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """RSS 2.0 feed scoped to one public writer (DEC-359, round 345).
+    """RSS 2.0 feed scoped to one public writer.
 
     Subscribing to /rss/authors/{id}.xml delivers exactly that writer's
     published posts. Same no-oracle boundary as the archive page: a pen-named
@@ -694,7 +692,7 @@ async def get_author_rss_feed(
     author = (await db.execute(select(auth.User).where(auth.User.id == author_id))).scalar_one_or_none()
     if author is None or not author.display_name:
         raise HTTPException(status_code=404, detail="Author not found")
-    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): a scoped feed is
+    # Scheduled-post publish-time fan-out: a scoped feed is
     # a polled surface — fire the exactly-once sweep like the other feeds.
     await rss_service.maybe_notify_due_scheduled_posts(db)
     key = ("rss-author", author_id, full)
@@ -733,7 +731,7 @@ async def get_author_rss_feed(
 
 # Sitemap endpoints (at root)
 
-# Page size for the sitemap's post walk (DEC-318, TASK-387). One page per
+# Page size for the sitemap's post walk. One page per
 # fetch bounds per-request memory while the loop covers the FULL post set —
 # a single hard limit silently dropped every post past it from the sitemap
 # (and thus from search engines).
@@ -743,7 +741,7 @@ SITEMAP_POST_PAGE = 1000
 @seo_router.get("/sitemap.xml")
 async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db)) -> Response:  # type: ignore[assignment]
     """Get XML sitemap of the site."""
-    # Scheduled-post publish-time fan-out (DEC-344/TASK-398): the sitemap's
+    # Scheduled-post publish-time fan-out: the sitemap's
     # crawl hit surfaces a crossed post — fire the exactly-once sweep too.
     await rss_service.maybe_notify_due_scheduled_posts(db)
     cached = feed_cache.get("sitemap")
@@ -823,7 +821,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
         urls.append(entry)
 
     # Series (indexable /series/{slug} pages — the old sitemap omitted them
-    # entirely, so serialized content was unreachable-by-sitemap, DEC-318).
+    # entirely, so serialized content was unreachable-by-sitemap).
     for series in series_list:
         updated = (series.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%d")
         urls.append(f"""<url>
@@ -849,7 +847,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     <priority>0.6</priority>
 </url>""")
 
-    # Authors (round 348): the /authors index and every pen-named writer's
+    # Authors: the /authors index and every pen-named writer's
     # archive are indexable /authors/{id} pages — before this they were
     # reachable-by-link but unknown to crawlers. The index is unconditional
     # (it renders an empty state, still a real page); each writer's lastmod is
@@ -893,7 +891,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     <priority>0.5</priority>
 </url>""")
 
-    # Static pages (round 347): a published /pages/{slug} is a real indexable
+    # Static pages: a published /pages/{slug} is a real indexable
     # page (privacy policy / terms / contact), so it belongs in the sitemap;
     # drafts are unpublished and must stay out.
     published_pages = (await db.execute(select(models.Page).where(models.Page.published.is_(True)))).scalars().all()
@@ -923,7 +921,7 @@ def get_robots_txt():
 
     # Private / auth surfaces must not just be un-indexed, they must not be
     # FETCHED: robots.txt Disallow rules mirror the page-level noindex meta
-    # (round 437) and save the crawl budget — noindex alone still makes a
+    # and save the crawl budget — noindex alone still makes a
     # crawler download /admin/*, /login, /api/*, email-token pages, etc.
     # Anything not listed stays crawlable by default. Comments are public
     # content-bearing pages, so /discussion and the RSS/sitemap endpoints are

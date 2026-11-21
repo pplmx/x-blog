@@ -1,8 +1,8 @@
-"""add mention column to reader_notification_prefs (DEC-322, TASK-389).
+"""add mention column to reader_notification_prefs.
 
 The @-mention fan-out (an approved comment names a reader's display name as
 @<name>) adds a new notification *kind*. ReaderNotificationPref holds one bool
-per kind, so this is one additive column (DEC-009) — on by default like
+per kind, so this is one additive column — on by default like
 new_post/reply/thread_comment, so a reader who never opened the preferences
 surface keeps receiving mentions.
 

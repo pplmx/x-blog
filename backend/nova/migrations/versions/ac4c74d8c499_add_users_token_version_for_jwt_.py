@@ -3,10 +3,10 @@
 Adds ``users.token_version`` (default 0) so a password change can bump it and
 invalidate every previously signed JWT (checked in app/auth.get_current_user).
 
-Defensive like the round-13 baseline: if the column already exists (a dev DB
+Defensive like the baseline: if the column already exists (a dev DB
 whose create_all safety net already created it before this migration ran), the
 column is left as-is and only the version is stamped — no duplicate-column
-error on adoption. (RIL round 16 security audit)
+error on adoption.
 
 Revision ID: ac4c74d8c499
 Revises: 1e0bb4163cc8

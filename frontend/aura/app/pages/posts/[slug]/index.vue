@@ -27,7 +27,7 @@ import { extractToc } from "~~/composables/useToc";
 const { t, locale } = useLang();
 const route = useRoute();
 // Pass a reactive getter (not a static string) so useFetch refetches when the
-// slug changes via SPA navigation between posts (TASK-090, ISS-073).
+// slug changes via SPA navigation between posts.
 const {
 	data: post,
 	pending,
@@ -35,7 +35,7 @@ const {
 	refresh: refreshPost,
 } = await usePost(() => route.params.slug as string);
 
-// Slug-change redirect (round 350): a re-slugged post's old shared/indexed
+// Slug-change redirect: a re-slugged post's old shared/indexed
 // URL must 301 to the canonical new one (emitted during SSR), not dead-end.
 useSlugRedirect(error.value);
 
@@ -54,11 +54,11 @@ function focusPostTitle() {
 	});
 }
 
-// Continue-reading trail (DEC-104, TASK-164): remember this post client-side
+// Continue-reading trail: remember this post client-side
 // when its detail page loads (dedup/cap/prune live in useRecentlyViewed).
 const { record } = useRecentlyViewed();
 const { isAuthenticated } = useReaderAuth();
-// Reading density (DEC-288/TASK-373): A-/A+ body-text scale, persisted locally.
+// Reading density: A-/A+ body-text scale, persisted locally.
 // The composable sets the scale factor on <html> (documentElement), where the
 // Markdown body reads it via the inherited --reader-density CSS var.
 const {
@@ -80,7 +80,7 @@ watch(
 // `<h1>` tags; feeding it raw Markdown always yielded an empty TOC on real
 // posts (tests masked this by mocking content as HTML). markdownToHtml uses
 // the same heading renderer/MarkdownContent uses, so the emitted ids match
-// what extractToc computes (RIL TASK-104, ISS-084).
+// what extractToc computes.
 const toc = computed(() =>
 	post.value?.content ? extractToc(markdownToHtml(post.value.content)) : [],
 );
@@ -93,21 +93,21 @@ const coverImageUrl = computed(() => {
 });
 
 // Derive the id reactively so related/adjacent follow the post when the slug
-// changes via SPA navigation (TASK-090, ISS-073). The per-query `pending` flags
+// changes via SPA navigation. The per-query `pending` flags
 // gate their template sections: on SPA nav they refetch while retaining the
 // PREVIOUS post's data, and without the gate the reader would see the old
 // post's "Related Posts"/prev-next/series cards under the new article.
 const postId = computed(() => post.value?.id);
 const { data: relatedPosts, pending: relatedPending } = await useRelatedPosts(() => postId.value);
 
-// Reader passage highlights (round 466, DEC-511 / TASK-583): select-to-save
+// Reader passage highlights: select-to-save
 // inside the article for signed-in readers, plus best-effort re-render of the
 // reader's saved passages. Non-fatal — reading never depends on it.
 const proseEl = ref<HTMLElement | null>(null);
 const highlight = useArticleHighlights(proseEl, postId, isAuthenticated);
 const { data: adjacent, pending: adjacentPending } = await useAdjacentPosts(() => postId.value);
 
-// "More from this author" (round 356): the person-shaped discovery strip.
+// "More from this author": the person-shaped discovery strip.
 // The author archive endpoint is public + paginated newest-first; we fetch the
 // first page and drop the post being read so the strip never re-links the
 // article under itself. Refetches on SPA nav like related/adjacent (the
@@ -124,7 +124,7 @@ const moreByAuthorVisible = computed(
 	() => authorArchivePending.value !== true && moreByAuthor.value.length > 0,
 );
 
-// In-series navigation (DEC-056): when this post belongs to a series, load the
+// In-series navigation: when this post belongs to a series, load the
 // series' ordered posts and locate this post so we can render a series chip and
 // next/previous-in-series links. The getter returns null when the post has no
 // series, which makes useFetch skip the request entirely.
@@ -145,7 +145,7 @@ const seriesNav = computed(() => {
 });
 
 // Apply post SEO; re-run when the post changes via SPA navigation so the
-// title/og:image/canonical/JSON-LD follow the new slug (TASK-090, ISS-073).
+// title/og:image/canonical/JSON-LD follow the new slug.
 watchEffect(() => {
 	if (post.value) {
 		usePostSeo(post.value);
@@ -158,10 +158,10 @@ const likeError = ref<string | null>(null);
 // action bar for the whole article visit; auto-dismiss after a few seconds
 // (mirrors the resume-chip timer pattern).
 let likeErrorTimer: ReturnType<typeof setTimeout> | null = null;
-// "Liked this post" state. Guests: a client-side dedup marker (RIL ISS-038)
+// "Liked this post" state. Guests: a client-side dedup marker
 // so an anonymous visitor can like at most once, driving the one-shot button
 // and the anonymous POST /like counter bump. Signed-in readers: the marker is
-// the UI mirror of a durable cloud like (round 359) — like()/unlike() mirror
+// the UI mirror of a durable cloud like — like()/unlike() mirror
 // to the reader likes API (a real unlike decrements the counter), and the
 // button becomes a toggle instead of a one-shot.
 const { isLiked, recordLike, undoLike, persist } = useLikes();
@@ -229,7 +229,7 @@ async function flipLike(op: "like" | "unlike") {
 			}, 5000);
 		}
 		// Roll the optimistic marker back so a failed flip doesn't leave the
-		// button stuck pre-filled (TASK-234). Use the captured id — undoing
+		// button stuck pre-filled. Use the captured id — undoing
 		// `post.value` here could flip the wrong (new) post's marker.
 		if (op === "like") {
 			undoLike(targetId);
@@ -252,7 +252,7 @@ function handleUnlike() {
 
 const scrollProgress = ref(0);
 const activeTocId = ref("");
-// Mobile/tablet TOC (TASK-223): the sticky sidebar is xl+ only, so below that
+// Mobile/tablet TOC: the sticky sidebar is xl+ only, so below that
 // width a floating trigger opens a slide-up sheet with the same outline. The
 // trigger appears once the reader scrolls past the header so it never covers
 // the cover image; the sheet locks background scroll and shares the desktop
@@ -308,12 +308,12 @@ function onSheetKeydown(event: KeyboardEvent) {
 }
 
 // Re-created per post so SPA navigation between posts re-observes the new
-// article's headings (TASK-231-era deep-dive finding): the old single-shot
+// article's headings (era deep-dive finding): the old single-shot
 // onMounted observer stayed pinned to the first post's headings and the TOC
 // highlight froze on SPA nav.
 let tocObserver: IntersectionObserver | null = null;
 // The settle timer that defers the heading scan until the article renders
-// (ISS-564): tracked so SPA navigation between posts and unmount clear it —
+//: tracked so SPA navigation between posts and unmount clear it —
 // an untracked timer fired against the NEXT post's DOM (double-observing its
 // headings) or scanned a dismantled document after teardown.
 let tocSettleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -350,7 +350,7 @@ function setupTocObserver() {
 		});
 	}, 500);
 }
-// Per-post resume reading (DEC-167, TASK-200): restore a signed-in reader's
+// Per-post resume reading: restore a signed-in reader's
 // saved scroll offset when the post opens, and save it (debounced) while they
 // scroll. Only active client-side for authenticated readers (the server trail
 // is reader-only); guests are unaffected.
@@ -401,8 +401,8 @@ function beginReadingSession(postId: number) {
 	}
 }
 
-// Personalized "Recommended for you" (round 362, DEC-397): the homepage has
-// the affinity-based strip (DEC-128, TASK-176) but the post page — the
+// Personalized "Recommended for you": the homepage has
+// the affinity-based strip but the post page — the
 // highest-intent "what should I read next?" moment — only offered topic-similar
 // Related Posts and person-shaped More-from-this-author. A signed-in reader who
 // finishes an article now gets posts scored from THEIR history/bookmark
@@ -465,12 +465,12 @@ onMounted(() => {
 	if (postId) {
 		beginReadingSession(postId);
 	}
-	// Personalized recommendations (round 362, DEC-397): affinity-based strip
+	// Personalized recommendations: affinity-based strip
 	// at the article end for signed-in readers; loads once per mount.
 	void loadPersonalRecs();
 	// A heading deep link (#section-id, as opposed to CommentList's
 	// #comment-<id>) must land the reader ON the section, not at the article
-	// top with a dead hash in the address bar (TASK-324).
+	// top with a dead hash in the address bar.
 	scrollToHeadingHash();
 	const updateProgress = () => {
 		const scrolled = window.scrollY;
@@ -490,7 +490,7 @@ onMounted(() => {
 		tocObserver?.disconnect();
 		tocObserver = null;
 		// Cancel the pending heading scan when the reader leaves before the
-		// article settles (ISS-564): an untracked timer would fire against a
+		// article settles: an untracked timer would fire against a
 		// dismantled document — or the NEXT post's DOM after an SPA nav —
 		// and re-observe headings nobody is looking at.
 		if (tocSettleTimer) {
@@ -506,7 +506,7 @@ onMounted(() => {
 		}
 		// A like-failure auto-dismiss that never fired must not survive the
 		// unmount: it would only null a detached ref, but the repo pattern is
-		// every timer in this file is cleared here (round-422 audit, LOW).
+		// every timer in this file is cleared here.
 		// clearLikeError() also nulls the banner — harmless on teardown.
 		clearLikeError();
 	});
@@ -515,7 +515,7 @@ onMounted(() => {
 // Mount-time heading deep link: #section-id in the URL (opened in a new tab
 // via a TOC anchor's middle/cmd-click, a shared link, or a manual edit) must
 // scroll to that section instead of leaving the reader at the top with a dead
-// hash (TASK-324). comment-* hashes belong to CommentList's own deep-link
+// hash. comment-* hashes belong to CommentList's own deep-link
 // handling below the article.
 function scrollToHeadingHash(): void {
 	if (typeof window === "undefined") return;
@@ -534,7 +534,7 @@ function scrollToHeading(event: MouseEvent) {
 	// A real <a href="#id"> must behave like a link: Ctrl/Cmd/Shift/middle-
 	// click opens the heading URL in a new tab instead of only smooth-scrolling
 	// the current page. Let the browser's default action run for modified/
-	// auxiliary clicks; only plain left-clicks get the SPA scroll (TASK-324).
+	// auxiliary clicks; only plain left-clicks get the SPA scroll.
 	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
 		return;
 	}
@@ -558,15 +558,14 @@ function handleSheetTocSelect(event: MouseEvent) {
 
 // Reading time (shared with the print/PDF view so they agree). The CJK-aware
 // logic lives in composables/useReadingTime to keep the detail page and the
-// print route consistent with backend crud.reading_minutes (RIL round 72).
+// print route consistent with backend crud.reading_minutes.
 const readingTime = computed(() => readingMinutes(post.value?.content));
 
 // After the standalone top-level form submits, surface the new comment: the
 // list jumps to the page that holds it, refreshes, and scrolls it into view —
 // a mere refreshList() was a silent failure for anyone above the fold or on
 // page 2+, because the top-level form on "newest" sorts the new comment to
-// page 1 which the current-page refresh never fetched (round 278; the same
-// surfacing the inline reply path got with ISS-384).
+// page 1 which the current-page refresh never fetched.
 const commentListRef = ref<{ surfaceComment: (c?: Comment) => Promise<void> } | null>(null);
 function handleCommentSubmitted(created: Comment | undefined) {
 	void commentListRef.value?.surfaceComment(created);
@@ -583,7 +582,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 			/>
 		</div>
 
-		<!-- Resume-reading chip (DEC-167, TASK-200): shown briefly when the page
+		<!-- Resume-reading chip: shown briefly when the page
          jumped the reader back to their saved position; lets them return to
          the top in one click and then fades. -->
 		<transition name="fade">
@@ -608,7 +607,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 			</div>
 		</transition>
 
-		<!-- Mobile/tablet TOC (TASK-223): below xl the sticky sidebar is hidden, so
+		<!-- Mobile/tablet TOC: below xl the sticky sidebar is hidden, so
          a floating trigger opens a slide-up sheet with the same outline. The
          trigger appears once the reader scrolls past the header (never over the
          hero); the sheet reuses the shared scroll-spy to highlight the active
@@ -827,7 +826,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							{{ t("post.views", { count: post.views }) }}
 						</span>
 
-						<!-- Print / PDF view (DEC-112, TASK-168): SEO-consistent link to the
+						<!-- Print / PDF view: SEO-consistent link to the
                  print-friendly route; the print button itself calls window.print(). -->
 						<NuxtLink
 							:to="`/posts/${post.slug}/print`"
@@ -848,9 +847,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					</h1>
 
 					<div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-						<!-- Author byline (DEC-359/TASK-405): present only when the writing
+						<!-- Author byline: present only when the writing
                  admin chose a public pen name; links to their archive. The
-                 inline follow control (round 353) is the primary surface where
+                 inline follow control is the primary surface where
                  a reader subscribes to this writer's new posts. -->
 						<NuxtLink
 							v-if="post.author"
@@ -898,12 +897,12 @@ function handleCommentSubmitted(created: Comment | undefined) {
 
 				<!-- Markdown content (density: the em-based body font/leading in
              MarkdownContent scale with the inherited --reader-density var set
-             on <html> by useReadingDensity, DEC-288/TASK-373) -->
+             on <html> by useReadingDensity) -->
 				<div v-if="post.content" ref="proseEl" class="prose-config" @mouseup="highlight.onMouseUp">
 					<MarkdownContent :content="post.content" />
 				</div>
 
-				<!-- Select-to-highlight toolbar (round 466): appears at the
+				<!-- Select-to-highlight toolbar: appears at the
              selection while a signed-in reader selects text in the article. -->
 				<Teleport to="body">
 					<div
@@ -950,7 +949,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					{{ t("post.highlight.saveFailed") }}
 				</p>
 
-				<!-- Tags (each chip is followable in place for signed-in readers, DEC-196/TASK-216) -->
+				<!-- Tags (each chip is followable in place for signed-in readers) -->
 				<footer
 					v-if="post.tags?.length"
 					class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800"
@@ -985,7 +984,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 				>
 					<BookmarkButton :post-id="post.id" :post="post" variant="full" :disabled="pending" />
 					<span class="w-px h-6 bg-gray-200 dark:bg-gray-700" />
-					<!-- Like (round 359): a signed-in reader's like is a durable cloud
+					<!-- Like: a signed-in reader's like is a durable cloud
                row and the button is a real toggle (second click un-likes and
                decrements the count); a guest's like stays the one-shot
                client-deduped POST /like (disabled once liked, no unlike). -->
@@ -1026,7 +1025,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					<ShareButtons :title="post.title" />
 				</div>
 
-				<!-- Reading density (DEC-288/TASK-373): A-/A+ body-text scale for
+				<!-- Reading density: A-/A+ body-text scale for
              long-form comfort, remembered per device. The buttons apply a CSS
              var to the prose wrapper; heading sizes intentionally stay so the
              hierarchy survives the scale. -->
@@ -1125,7 +1124,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					</div>
 				</section>
 
-				<!-- More from this author (round 356): the person-shaped discovery strip.
+				<!-- More from this author: the person-shaped discovery strip.
              Related Posts is topic-shaped; this is the writer's own recent work,
              so a reader who just enjoyed one post can browse the author in place.
              Hidden when the writer has nothing else public (or no pen name). -->
@@ -1175,12 +1174,12 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					</div>
 				</section>
 
-				<!-- Recommended for you (round 362, DEC-397): personalized, signed-in
+				<!-- Recommended for you: personalized, signed-in
              only, affinity-scored from this reader's history/bookmarks. Related
              Posts is topic-similar to THIS article; this strip is keyed to what
              the reader actually likes across the whole site — the article-end
              "what should I read next?" moment. Hidden for guests and when the
-             response is empty/loading (no orphaned heading, ISS-134 pattern). -->
+             response is empty/loading (no orphaned heading pattern). -->
 				<section
 					v-if="isAuthenticated && (personalRecsLoading || personalRecs.length)"
 					class="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800"
@@ -1265,7 +1264,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					</NuxtLink>
 				</nav>
 
-				<!-- In-series navigation (DEC-056): prev/next within the series order,
+				<!-- In-series navigation: prev/next within the series order,
              shown only when the post belongs to a series with a resolved
              position. Gated on seriesPending so an SPA switch to a post from a
              DIFFERENT series never shows the old series' next/prev links. -->
@@ -1283,9 +1282,9 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<span>{{ t("series.serialLabel") }} — {{ seriesNav.series.title }}</span>
 						</NuxtLink>
 						<span class="flex items-center gap-3 shrink-0">
-							<!-- In-place series-follow (DEC-290/TASK-374): a signed-in reader
+							<!-- In-place series-follow: a signed-in reader
                    reading part N can subscribe to future parts without leaving
-                   the post — the identical discoverability gap DEC-196 closed
+                   the post — the identical discoverability gap closed
                    for tags. Renders nothing for guests. -->
 							<SeriesFollowButton
 								:series-id="seriesNav.series.id"

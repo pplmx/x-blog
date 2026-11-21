@@ -142,7 +142,7 @@ export function command<T>(path: string, options?: ApiCommandOptions): Promise<T
  * Surface a friendly app-wide notice when the backend rate-limits a request
  * (HTTP 429). slowapi's body is a technical "Rate limit exceeded: N per
  * minute"; the RateLimitNotice banner renders a localized, actionable message
- * instead of whichever unhelpful text the page happened to show (round 211).
+ * instead of whichever unhelpful text the page happened to show.
  */
 function flagRateLimit(response: { status?: number } | undefined): void {
 	if (response?.status === 429) useRateLimitNotice().show();
@@ -157,7 +157,7 @@ function fetcherResponseError(error: unknown): { status?: number } | undefined {
 /**
  * Resolve the actually-requested path from a query() argument (string, ref,
  * or getter — the getter form is what reactive listings pass, e.g. the admin
- * posts list path built in api/admin/posts.ts, ISS-275). Used to scope the
+ * posts list path built in api/admin/posts.ts). Used to scope the
  * admin-401 handler to /api/admin/* so a 401 on a reader endpoint (which the
  * reader pages handle by redirecting to /login) never kicks an admin redirect.
  */
@@ -175,7 +175,7 @@ function resolveRequestPath(path: ApiQueryPath): string {
  * React to a 401 from an ADMIN endpoint: an expired/revoked admin token makes
  * every admin call 401 — that is not a transient failure. Drop the stale token
  * and hard-redirect to /admin/login instead of letting the page render a
- * misleading generic error (RIL ISS-277, ISS-273). Scoped to /api/admin/* and
+ * misleading generic error. Scoped to /api/admin/* and
  * the login call explicitly excluded: a 401 from POST /api/admin/login means
  * wrong credentials, which the login page already handles in-place.
  *
@@ -185,7 +185,7 @@ function resolveRequestPath(path: ApiQueryPath): string {
  * instead of the bare posts list — an editor whose session expired mid-draft
  * saw every subsequent call 401 → hard redirect to /admin/login, and after
  * re-login landed on the posts list with no path back to the draft they were
- * writing (ISS-390). Only a same-origin internal admin path is honored (the
+ * writing. Only a same-origin internal admin path is honored (the
  * composable re-validates); non-admin pages pass nothing → plain login URL.
  */
 function flagAdminUnauthorized(response: { status?: number } | undefined, path: string): void {

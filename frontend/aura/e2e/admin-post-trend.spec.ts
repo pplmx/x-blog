@@ -1,5 +1,5 @@
 /**
- * Per-post reading-trend sparkline in the post editor (DEC-287, TASK-372).
+ * Per-post reading-trend sparkline in the post editor.
  *
  * An author opens an existing published post and sees the 30-day view-trend
  * card. The post's per-day series are seeded through the *public* /view
@@ -12,7 +12,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin per-post reading trend (TASK-372)", () => {
+test.describe("Admin per-post reading trend ", () => {
 	test("the editor shows a trend card with the seeded daily views", async ({ page, request }) => {
 		// Log in and capture the admin token to seed a published post.
 		await page.goto("/admin/login");

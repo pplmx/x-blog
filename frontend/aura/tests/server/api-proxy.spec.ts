@@ -152,14 +152,14 @@ describe("API proxy", () => {
 		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
 	});
 
-	it("forwards the REAL client through a trusted proxy (nginx topology, round 433)", async () => {
+	it("forwards the REAL client through a trusted proxy (nginx topology)", async () => {
 		// deploy/nginx.conf proxies location / → the Nuxt container, so the
 		// socket peer is nginx (loopback) and the original client rides in
 		// X-Forwarded-For. Forwarding only the peer would collapse every user
 		// into that one loopback IP and the backend's per-IP rate-limit buckets
 		// all shared one slot. With the peer listed as a trusted proxy
 		// (FRONTEND_TRUSTED_PROXIES, same trust model as the frontend's own
-		// limiters — RIL TASK-101/ISS-081), the proxy must forward the leftmost
+		// limiters), the proxy must forward the leftmost
 		// XFF entry — the REAL client — not the nginx peer.
 		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "127.0.0.1");
 		// loadHandler re-stubs FRONTEND_TRUSTED_PROXIES to "" — set the trust
@@ -177,7 +177,7 @@ describe("API proxy", () => {
 		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
 	});
 
-	it("does not trust XFF from an untrusted peer (bare compose topology, round 433)", async () => {
+	it("does not trust XFF from an untrusted peer (bare compose topology)", async () => {
 		// Browser → Nuxt directly, no proxy in between: the peer is the true
 		// client and any client-supplied XFF is a spoof — it must be discarded
 		// even though a FRONTEND_TRUSTED_PROXIES value is configured for a
@@ -221,7 +221,7 @@ describe("API proxy", () => {
 		expect(result).toEqual({ error: "validation failed" });
 	});
 
-	it("forwards backend headers on error responses (X-Redirect-To, round 350)", async () => {
+	it("forwards backend headers on error responses (X-Redirect-To)", async () => {
 		// A re-slugged entity 404s with its canonical target on X-Redirect-To;
 		// dropping it at the proxy edge would orphan the old URL (no 301). The
 		// error body passes through AND the header must reach the browser.

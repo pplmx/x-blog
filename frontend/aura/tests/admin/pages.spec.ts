@@ -1,5 +1,5 @@
 /**
- * Admin Pages Page Tests (round 347)
+ * Admin Pages Page Tests
  *
  * The static-pages CMS manager: loading/error/empty states, creating a page
  * (title + auto slug + markdown content + publish toggle), inline editing,
@@ -100,7 +100,7 @@ describe("Admin Pages Page", () => {
 			expect(wrapper.text()).toContain("页面加载失败");
 			expect(wrapper.text()).not.toContain("还没有页面");
 			// A failed list must not be a dead end: the retry button re-runs the
-			// fetch (sibling admin lists contract, round-417 polish).
+			// fetch (sibling admin lists contract polish).
 			const retry = wrapper.findAll("button").find((b) => b.text().includes("重试"));
 			expect(retry).toBeDefined();
 			expect(state.refresh).not.toHaveBeenCalled();
@@ -268,7 +268,7 @@ describe("Admin Pages Page", () => {
 			await flushPromises();
 
 			// In-flight: both network row actions are disabled, so a second tap
-			// can't issue a concurrent delete/toggle (deep-dive F3(b) round 395).
+			// can't issue a concurrent delete/toggle (deep-dive F3(b)).
 			expect(deleteButton?.attributes("disabled")).toBeDefined();
 			const unpublishWhileBusy = wrapper.findAll("button").find((b) => b.text().includes("下架"));
 			expect(unpublishWhileBusy?.attributes("disabled")).toBeDefined();

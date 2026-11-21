@@ -1,5 +1,5 @@
 /**
- * Admin Media Library journey (DEC-183, TASK-207).
+ * Admin Media Library journey.
  *
  * 1. An author uploads an image in the post editor (real file input) — the
  *    markdown lands in the textarea and the image appears in the media library.
@@ -26,7 +26,7 @@ async function login(page: import("@playwright/test").Page) {
 	return { headers: { Authorization: `Bearer ${token}` } };
 }
 
-test.describe("Admin media library (DEC-183)", () => {
+test.describe("Admin media library ", () => {
 	test("upload → library appears → copy + delete unreferenced, delete refused in-use", async ({
 		page,
 		request,
@@ -85,7 +85,7 @@ test.describe("Admin media library (DEC-183)", () => {
 		await expect(page.locator(`text=${uploadedName}`)).toBeVisible();
 		await expect(page.locator(`text=${referencedName}`)).toBeVisible();
 
-		// 3b. Filename search (DEC-189): typing a substring filters to the
+		// 3b. Filename search: typing a substring filters to the
 		//     matching card after the debounce; clearing restores the listing.
 		const searchBox = page.locator('input[type="search"]');
 		const uploadedCard = page.locator(`div:has(> div > img[alt="${uploadedName}"])`).first();
@@ -114,7 +114,7 @@ test.describe("Admin media library (DEC-183)", () => {
 		await expect(page.locator(`img[alt="${referencedName}"]`)).toBeVisible();
 	});
 
-	test("select and batch-delete unreferenced uploads (DEC-191)", async ({ page, request }) => {
+	test("select and batch-delete unreferenced uploads ", async ({ page, request }) => {
 		const { headers } = await login(page);
 
 		// Seed two unreferenced uploads + one referenced upload (embedded in a

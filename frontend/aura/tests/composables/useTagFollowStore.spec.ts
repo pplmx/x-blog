@@ -1,5 +1,5 @@
 /**
- * useTagFollowStore composable tests (DEC-196, TASK-216).
+ * useTagFollowStore composable tests.
  *
  * The shared reader tag-follow cache keys its load by the stored reader token
  * so every TagFollowButton on a page shares one GET. `invalidate()` drops only

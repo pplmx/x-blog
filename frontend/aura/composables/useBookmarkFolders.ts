@@ -1,5 +1,5 @@
 /**
- * Cloud bookmark folders (DEC-120, TASK-172).
+ * Cloud bookmark folders.
  *
  * Thin client wrapper over the reader bookmark-folder API: create/rename/
  * delete folders, load them with their saved-post counts, and file a

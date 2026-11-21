@@ -1,4 +1,4 @@
-"""Author follows (round 353).
+"""Author follows.
 
 On a multi-editor blog a reader who loved one writer's posts subscribes to
 JUST that person — topic-shaped category/series/tag follows can't express it.

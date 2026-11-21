@@ -1,5 +1,5 @@
 /**
- * Per-post comment control (round 351): closing the door on one post's
+ * Per-post comment control: closing the door on one post's
  * comments without deleting the conversation or disabling the whole site.
  *
  * Operator closes comments in the editor -> readers see a "comments closed"
@@ -22,7 +22,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Per-post comment control (round 351)", () => {
+test.describe("Per-post comment control ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin editor save on the live backend",

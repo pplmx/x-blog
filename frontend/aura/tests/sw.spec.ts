@@ -1,5 +1,5 @@
 /**
- * Service worker behavior tests (DEC-055, TASK-118).
+ * Service worker behavior tests.
  *
  * Classic service workers cannot import/export, so this loads public/sw.js
  * in a fake `self` scope and drives its registered event handlers directly:
@@ -131,7 +131,7 @@ describe("service worker (public/sw.js)", () => {
 	});
 });
 
-describe("service worker offline cache (round 384)", () => {
+describe("service worker offline cache ", () => {
 	const origin = "https://blog.example.com";
 	const location = { origin };
 	// Shared fake CacheStorage: put/match/key-sets against a URL-keyed Map, so

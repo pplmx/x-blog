@@ -1,5 +1,5 @@
 /**
- * Reader notification-preferences journey (DEC-171, TASK-202).
+ * Reader notification-preferences journey.
  *
  * A signed-in reader can silence a whole notification kind (new posts, replies,
  * thread comments) — the toggle is persisted server-side and gates both the
@@ -15,7 +15,7 @@ import { expect, test } from "@playwright/test";
 
 const password = "e2epass123";
 
-test.describe("Reader notification preferences (TASK-202)", () => {
+test.describe("Reader notification preferences ", () => {
 	test("toggles a notification kind off and persists across reload", async ({ page, request }) => {
 		// Register a fresh reader.
 		const email = `prefs-${Date.now()}@example.com`;
@@ -29,7 +29,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		// Before touching the UI: the preferences API reports all kinds on.
 		// Mirrors the authoritative NotificationPrefs schema in reader.py — the
 		// push/inbox kinds default on, the opt-in email_* kinds default off. The
-		// @-mention kinds (DEC-322/DEC-326) and reader_comment fan-out (DEC-403)
+		// @-mention kinds and reader_comment fan-out
 		// joined the set after the original seven, so this pinned the full 10.
 		const initial = await request.get("/api/reader/me/notification-preferences", {
 			headers: readerH,
@@ -68,7 +68,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(replySwitch).toHaveAttribute("aria-checked", "false");
 		// Persistence is async (the PATCH flies on the switch change); poll the
 		// API for the expected state so a single GET can't outrun the write
-		// (same write-read race as ISS-121 — flaked under full-suite load).
+		// (same write-read race as flaked under full-suite load).
 		await expectPrefs(request, readerH, {
 			new_post: true,
 			reply: false,
@@ -82,7 +82,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(replySwitch).toHaveAttribute("aria-checked", "false");
 	});
 
-	test("email notification kinds are off by default and toggle on persists (DEC-197, TASK-218)", async ({
+	test("email notification kinds are off by default and toggle on persists ", async ({
 		page,
 		request,
 	}) => {
@@ -134,7 +134,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
 		await expect(emailNewPost).toHaveAttribute("aria-checked", "true");
 	});
 
-	test("weekly digest opt-in is off by default and toggles on persists (DEC-201, TASK-222)", async ({
+	test("weekly digest opt-in is off by default and toggles on persists ", async ({
 		page,
 		request,
 	}) => {
@@ -172,7 +172,7 @@ test.describe("Reader notification preferences (TASK-202)", () => {
  *
  * The UI writes prefs with a fire-and-forget PATCH, so a single GET right after
  * flipping a switch can outrun the server commit and observe the stale value
- * (flaked under full-suite load, ISS-121 class). Waiting on the API state makes
+ * (flaked under full-suite load class). Waiting on the API state makes
  * the read deterministic regardless of PATCH timing.
  */
 async function expectPrefs(

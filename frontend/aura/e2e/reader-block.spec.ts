@@ -1,5 +1,5 @@
 /**
- * Reader-block journey (round 379, DEC-425).
+ * Reader-block journey.
  *
  * The harassment-control cousin of the follow journey: a signed-in reader
  * blocks another commenter straight from their public profile (/readers/{id})
@@ -106,7 +106,7 @@ async function inboxHas(
 	return body.items.some((row) => row.kind === kind);
 }
 
-test.describe("Reader block (DEC-425)", () => {
+test.describe("Reader block ", () => {
 	test("block from the profile → mentions stop, unblock restores them", async ({
 		page,
 		request,

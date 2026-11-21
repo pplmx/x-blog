@@ -1,4 +1,4 @@
-"""Reader TOTP two-factor authentication contract tests (round 364, DEC-401).
+"""Reader TOTP two-factor authentication contract tests.
 
 Reader accounts now guard durable private data (cloud-synced bookmarks/likes/
 history, GDPR export), so a single leaked email+password is the only thing
@@ -57,8 +57,7 @@ async def _setup(client, token):
 async def _enable(client, token, secret, code=None, password="readerpass123"):
     """Enable 2FA with the current password + a code (defaults to the CURRENT
     valid code for `secret`). Enrollment requires the password too — a stolen
-    session alone must not be able to register a factor (security review,
-    DEC-401)."""
+    session alone must not be able to register a factor (security review)."""
     if code is None:
         code = pyotp.TOTP(secret).now()
     return await client.post(ENABLE, json={"current_password": password, "code": code}, headers=_auth(token))

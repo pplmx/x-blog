@@ -1,11 +1,11 @@
-"""add email_* opt-in columns to reader_notification_prefs (DEC-197, TASK-217).
+"""add email_* opt-in columns to reader_notification_prefs.
 
-The reader notification arc (DEC-160/171/195) delivered the inbox + browser push.
+The reader notification arc delivered the inbox + browser push.
 This adds the third, opt-in channel: a per-kind email copy of the fan-out,
 delivered over SMTP. Email is off by default for every reader (server_default
 false) so nothing changes unless a reader turns a kind's email toggle on.
 
-Additive columns only (DEC-009) — the reader_notification_prefs table already
+Additive columns only — the reader_notification_prefs table already
 exists, so like the reader moderation columns (p7d2e4f6a8b0) this adds columns
 rather than a new table, defensively skipping any that are already present.
 """

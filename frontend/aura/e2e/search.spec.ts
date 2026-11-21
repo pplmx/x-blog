@@ -43,7 +43,7 @@ test.describe("Search", () => {
 		await expect(searchInput).toBeVisible();
 	});
 
-	test("CJK search result renders a highlighted snippet (DEC-071)", async ({ page, request }) => {
+	test("CJK search result renders a highlighted snippet ", async ({ page, request }) => {
 		// Seed a CJK post whose match sits deep in the body, so only the
 		// context-window snippet (not excerpt[:N]) can surface it highlighted.
 		const login = await request.post("/api/admin/login", {

@@ -1,4 +1,4 @@
-/** Reader /forgot-password page tests (DEC-286, TASK-371). */
+/** Reader /forgot-password page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";

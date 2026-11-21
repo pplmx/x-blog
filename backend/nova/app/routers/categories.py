@@ -27,8 +27,7 @@ async def get_category(request: Request, category_id: IdInt, db: AsyncSession = 
         raise HTTPException(status_code=404, detail="Category not found")
     # post_count is derived (not a column); the list endpoint computes it in a
     # grouped query, and validating the bare ORM object here would leave the
-    # schema default 0 even for categories with many publicly visible posts
-    # (ISS-363).
+    # schema default 0 even for categories with many publicly visible posts.
     data = schemas.Category.model_validate(category).model_dump(mode="json")
     data["post_count"] = await categories_service.category_visible_post_count(db, category_id)
     return conditional_json(data, request)

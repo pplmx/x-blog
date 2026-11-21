@@ -20,7 +20,7 @@ from pydantic import (
 )
 
 # Bounded integer alias for path/query id + pagination params (deep-dive,
-# round 276). Post/Comment id columns are 32-bit autoincrement integers;
+# Post/Comment id columns are 32-bit autoincrement integers;
 # SQLite holds 64-bit but no real id ever exceeds 2^31-1. An unbounded
 # `id: int` param accepted garbage like /api/posts/99999999999999999999/like
 # (a valid Python int) then fed it into SQLAlchemy, where the DBAPI raised
@@ -41,7 +41,7 @@ def _reject_nul(value: object) -> object:
     so a client-supplied NUL in a bound string surfaced as an uncaught 500 on
     public endpoints (search q/category/tag, reader registration email) instead
     of the codebase's documented "422 over uncaught 500" boundary behavior
-    (ISS-454). No legitimate input contains a NUL, so rejecting it is safe and
+    . No legitimate input contains a NUL, so rejecting it is safe and
     matches the existing max_length == VARCHAR-width boundary convention.
     """
     if isinstance(value, str) and "\x00" in value:
@@ -70,7 +70,7 @@ def _reject_numeric_slug(value: str | None) -> str | None:
     serves whichever post owns that numeric id instead, and deleting that post
     silently flips the URL to a different article. SLUG_PATTERN already admits
     all-digit slugs, so the schema must refuse them for posts — a numeric slug
-    can never be reached as written (TASK-534, ISS-613).
+    can never be reached as written.
     """
     # PostUpdate.slug is Optional: None means "don't change the field" and
     # must pass through untouched (test_post_update_slug_none_means_no_update).
@@ -90,7 +90,7 @@ PostSlug = Annotated[NonNulStr, AfterValidator(_reject_numeric_slug)]
 
 # Shared email shape for every address the API accepts (reader registration and
 # anonymous comment submission) so a malformed "email" can't be persisted and
-# shown in the moderation queue (ISS-145). ReaderRegister used a module-local
+# shown in the moderation queue. ReaderRegister used a module-local
 # copy; the single constant keeps both writers in sync.
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+\z"
 
@@ -105,13 +105,13 @@ def _strip_blank(value: str) -> str:
     and surfaced as a blank card, an empty RSS/Atom ``<title>``/``<description>``
     (rss.py emits these unconditionally), or blank moderation-queue rows.
     Stripping *before* length validation makes whitespace-only equal "" and
-    lets ``min_length=1`` reject it (round 276 deep-dive).
+    lets ``min_length=1`` reject it.
     """
     return value.strip()
 
 
 def _normalize_naive_utc(value: datetime | None) -> datetime | None:
-    """Coerce an aware datetime to the naive-UTC domain (DEC-213).
+    """Coerce an aware datetime to the naive-UTC domain.
 
     Timestamps are stored/serialized as naive UTC (see crud.utc_now_naive).
     A caller can still send a zone-marked ISO (e.g. a date-picker's
@@ -191,7 +191,7 @@ class SeriesBrief(BaseModel):
     """Lightweight series reference embedded in post payloads (id + identity).
 
     Standalone (not a Series serialization) so a Post payload doesn't drag in
-    the full series/post-list recursion (TASK-121).
+    the full series/post-list recursion.
     """
 
     id: int
@@ -227,7 +227,7 @@ class SeriesCreate(BaseModel):
     @classmethod
     def strip_title(cls, value: object) -> object:
         # Whitespace-only title passed min_length=1 (raw char count) and then
-        # rendered as a blank series card/feed row — same round-276 gap as the
+        # rendered as a blank series card/feed row — same gap as the
         # other title/name fields, this time on the create path.
         return _strip_blank(value) if isinstance(value, str) else value
 
@@ -254,7 +254,7 @@ class PageLink(BaseModel):
 
 
 class PagePublic(PageLink):
-    """Public page detail (round 347): rendered via the post markdown pipeline."""
+    """Public page detail: rendered via the post markdown pipeline."""
 
     content: str
     updated_at: datetime | None = None
@@ -309,14 +309,14 @@ class PostBase(BaseModel):
     # excerpt/cover_image 500) so PostgreSQL rejects over-length input with
     # 422 instead of an uncaught DataError -> 500. min_length=1 (after
     # stripping) rejects a blank title that would render a blank card and an
-    # empty RSS/Atom channel title (round 276 deep-dive).
+    # empty RSS/Atom channel title.
     title: Annotated[NonNulStr, Field(min_length=1, max_length=200)]
     slug: Annotated[PostSlug, Field(max_length=200, pattern=SLUG_PATTERN.pattern)]
     content: Annotated[NonNulStr, Field(...)]  # required markdown body
     excerpt: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
     published: bool = False
     pinned: bool = False
-    # Comments on/off for this post (round 351); existing comments stay
+    # Comments on/off for this post; existing comments stay
     # visible either way — only new comment creation is gated.
     comments_enabled: bool = True
     publish_at: datetime | None = None
@@ -324,8 +324,8 @@ class PostBase(BaseModel):
     series_id: int | None = None
     # Negative order would sort an episode ahead of its peers in the public
     # series detail (order_by series_order, id) — reject rather than persist
-    # a wrong-visible-state edge (RIL ISS-294). The update path guards with
-    # ge=0; create must agree (round-297 deep-dive).
+    # a wrong-visible-state edge. The update path guards with
+    # ge=0; create must agree.
     series_order: int = Field(default=0, ge=0)
     cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
 
@@ -346,9 +346,9 @@ class PostCreate(PostBase):
     # Cap the tag list length and each name at the Tag.name width (String(50),
     # TagCreate.name max_length=50): an unbounded list lets one admin request
     # create arbitrary rows, and an over-length name would hit the PostgreSQL
-    # VARCHAR overflow -> uncaught DataError 500 (round-297 deep-dive).
+    # VARCHAR overflow -> uncaught DataError 500.
     tags: list[Annotated[str, StringConstraints(max_length=50)]] = Field(default_factory=list, max_length=50)
-    # The writing admin (DEC-359/TASK-405): defaults to the authenticated admin
+    # The writing admin: defaults to the authenticated admin
     # at create; an editor may attribute to another admin via the UI.
     author_id: int | None = None
 
@@ -377,23 +377,23 @@ class PostUpdate(BaseModel):
         return _strip_blank(value) if isinstance(value, str) else value
 
     pinned: bool | None = None
-    # Per-post comments toggle (round 351); None = "don't change".
+    # Per-post comments toggle; None = "don't change".
     comments_enabled: bool | None = None
     publish_at: datetime | None = None
     category_id: int | None = None
     # series_id: int = assign/change, null = clear the series membership
     # (mirrors category_id semantics under model_dump(exclude_unset=True)).
     series_id: int | None = None
-    # Author attribution (DEC-359, TASK-405): the admin user who owns the post.
+    # Author attribution: the admin user who owns the post.
     # None = "don't change" (the UI never sends null — authors aren't cleared).
     author_id: int | None = None
     # Negative order would sort an episode ahead of its peers in the public
     # series detail (order_by series_order, id) — reject rather than persist
-    # a wrong-visible-state edge (RIL ISS-294).
+    # a wrong-visible-state edge.
     series_order: int | None = Field(default=None, ge=0)
     cover_image: Annotated[NonNulStr | None, Field(default=None, max_length=500)]
-    # Cap the replacement list at the same width as PostCreate.tags (round-297
-    # deep-dive); unknown ids are still validated in crud.update_post.
+    # Cap the replacement list at the same width as PostCreate.tags (deep-dive);
+    # unknown ids are still validated in crud.update_post.
     tag_ids: list[int] | None = Field(default=None, max_length=50)
 
     @field_validator("cover_image")
@@ -413,7 +413,7 @@ def _coalesce_null_zero(value: object) -> object:
     """Map a stray NULL to 0 for a read-side counter that declares `= 0`.
 
     Post.views/likes are nullable in the DB with only a Python-side default,
-    so a raw-SQL/COPY import (the TASK-535 trigger) can land a genuine NULL
+    so a raw-SQL/COPY import (the trigger) can land a genuine NULL
     row. The read schemas declare these non-NULL with a default, and FastAPI
     validates them on the way out, so such a row would 500 the whole feed
     (PostListResponse validation) instead of being readable. Coalescing at the
@@ -426,8 +426,8 @@ def _coalesce_null_false(value: object) -> object:
     """Map a stray NULL to False for a read-side `pinned` field.
 
     Same raw-import NULL-parity discipline as ``_coalesce_null_zero`` (and the
-    ORDER BY COALESCE in crud.get_posts/get_adjacent_posts/admin list —
-    TASK-535). Post.pinned is nullable with only a Python-side default, so a
+    ORDER BY COALESCE in crud.get_posts/get_adjacent_posts/admin list).
+    Post.pinned is nullable with only a Python-side default, so a
     NULL-pinned row must read back as ``false``, never a validation 500.
     (``likes`` is numeric — though also nullable — and is handled by
     ``_coalesce_null_zero``.)
@@ -447,7 +447,7 @@ class Post(PostBase):
     updated_at: datetime
     # pinned: override PostBase.pinned (bool = False) — PostBase also backs the
     # create/update *input* schemas where a NULL must stay rejected; the read
-    # side coalesces a raw-import NULL to False instead (TASK-535 parity).
+    # side coalesces a raw-import NULL to False instead parity.
     pinned: PinnedFlag = False
     views: CounterInt = 0
     likes: CounterInt = 0
@@ -494,14 +494,14 @@ def reading_minutes(content: str | None) -> int:
 
 
 class UploadPostRef(BaseModel):
-    """A post whose content or cover_image references an uploaded image (DEC-183)."""
+    """A post whose content or cover_image references an uploaded image."""
 
     id: int
     title: str
 
 
 class UploadFileInfo(BaseModel):
-    """One uploaded image in the admin media library (DEC-183)."""
+    """One uploaded image in the admin media library."""
 
     url: str
     year: int
@@ -521,13 +521,13 @@ class UploadListResponse(BaseModel):
 
 
 class UploadBatchDeleteRequest(BaseModel):
-    """URLs to batch-delete (media library bulk delete, DEC-191)."""
+    """URLs to batch-delete (media library bulk delete)."""
 
     urls: list[str] = Field(default_factory=list, max_length=50)
 
 
 class AuthorBrief(BaseModel):
-    """A post's author as shown publicly (DEC-359, TASK-405).
+    """A post's author as shown publicly.
 
     Deliberately excludes the login username: admin login is no-oracle, so
     publishing the username would leak the first half of an admin credential.
@@ -538,7 +538,7 @@ class AuthorBrief(BaseModel):
 
     id: int
     display_name: str
-    # Public profile picture (round 358): a /static URL when a superuser set
+    # Public profile picture: a /static URL when a superuser set
     # one, else null. Unlike the bio — which stays off list payloads so the
     # text never repeats on every card — an avatar URL is one small string and
     # is exactly what a byline needs to render the writer's face, so it rides
@@ -550,10 +550,10 @@ class AuthorBrief(BaseModel):
 
 
 class AuthorIndex(BaseModel):
-    """A public writers-index row (DEC-359, round 346): pen name + how many
+    """A public writers-index row: pen name + how many
     published posts they have, so the /authors page can show contributors with
     substance (a writer with nothing live yet appears with a zero). The public
-    "about this writer" bio (round 357) rides here too so the index card can
+    "about this writer" bio rides here too so the index card can
     show a line of who the writer is."""
 
     id: int
@@ -570,12 +570,12 @@ class PostList(BaseModel):
     excerpt: str | None
     snippet: str | None = None
     published: bool
-    # Read-side NULL coalescing (TASK-535 raw-import parity): Post.pinned is
+    # Read-side NULL coalescing (raw-import parity): Post.pinned is
     # nullable with only a Python-side default, so a raw-import NULL row must
     # read back as False — never fail this feed's serialization as a 500.
     pinned: PinnedFlag = False
     # Scheduled publication time: lets list cards date a post by when it went
-    # live (publish_at ?? created_at) instead of its draft time (RIL ISS-265).
+    # live (publish_at ?? created_at) instead of its draft time.
     publish_at: datetime | None = None
     created_at: datetime
     views: CounterInt = 0
@@ -595,7 +595,7 @@ class PostList(BaseModel):
     def no_author_without_pen_name(cls, value: object) -> object:
         # A User row with no display_name is not a public author: don't emit an
         # AuthorBrief whose name would be null (and never leak the login
-        # username). (DEC-359/TASK-405)
+        # username).
         if value is None or getattr(value, "display_name", None) is None:
             return None
         return value
@@ -609,7 +609,7 @@ class PaginationMeta(BaseModel):
 
 
 class TrendingPost(PostList):
-    """A public top-post by in-window views (round 387, DEC-438).
+    """A public top-post by in-window views.
 
     PostList plus the sum of views within the trending window (default: last 7
     days) from ``post_views_daily``, so the home page can say 'N reads this
@@ -628,7 +628,7 @@ class PostListResponse(BaseModel):
 
 
 class AuthorArchive(BaseModel):
-    """A public author as shown on their archive header (round 357).
+    """A public author as shown on their archive header.
 
     ``AuthorBrief`` stays slim for per-post lists (a bio on every card would
     bloat every feed); the person-shaped archive envelope is where the writer
@@ -645,7 +645,7 @@ class AuthorArchive(BaseModel):
 
 
 class AuthorPostsResponse(PostListResponse):
-    """A public author's archive (DEC-359, TASK-405).
+    """A public author's archive.
 
     Adds the author's identity on top of a plain post list so the archive page
     can title itself by pen name even when the writer has published no posts
@@ -658,7 +658,7 @@ class AuthorPostsResponse(PostListResponse):
 
 
 class PostRevisionSummary(BaseModel):
-    """A lightweight row in the version-history list (DEC-158, TASK-191)."""
+    """A lightweight row in the version-history list."""
 
     id: int
     created_at: datetime
@@ -668,7 +668,7 @@ class PostRevisionSummary(BaseModel):
 
 
 class PostRevisionDetail(BaseModel):
-    """A full snapshot of a post at a point in time (DEC-158, TASK-191)."""
+    """A full snapshot of a post at a point in time."""
 
     id: int
     post_id: int
@@ -682,7 +682,7 @@ class PostRevisionDetail(BaseModel):
     series_id: int | None = None
     series_order: int = 0
     publish_at: datetime | None = None
-    pinned: PinnedFlag = False  # read-side raw-import NULL coalesce (TASK-535)
+    pinned: PinnedFlag = False  # read-side raw-import NULL coalesce
     published: bool = False
     model_config = ConfigDict(from_attributes=True)
 
@@ -717,10 +717,10 @@ class CommentBase(BaseModel):
     # drops PII). Keeps the schemas free of conflicting overrides.
     # min_length=1 (after stripping) rejects whitespace-only nickname/content —
     # a blank body would otherwise pass moderation toward the queue and
-    # blank-nickname reader accounts were sign-up-able (round 276 deep-dive).
+    # blank-nickname reader accounts were sign-up-able.
     nickname: Annotated[NonNulStr, Field(min_length=1, max_length=50)]
     # Bounded so the public, unauthenticated comment endpoint cannot bloat the DB
-    # / response with unbounded bodies (security audit round 16).
+    # / response with unbounded bodies (security audit).
     content: Annotated[NonNulStr, Field(min_length=1, max_length=5000)]
 
     @field_validator("nickname", "content", mode="before")
@@ -735,13 +735,13 @@ class CommentCreate(CommentBase):
     # empty placeholder (their identity is stamped from the JWT and this value
     # is ignored). Column width 100 matches the VARCHAR (no DataError on
     # PostgreSQL), and a non-empty address must be well-formed so garbage
-    # doesn't reach the moderation queue (ISS-145) — enforced by the validator
+    # doesn't reach the moderation queue — enforced by the validator
     # below, which still lets the signed-in "" placeholder through.
     email: Annotated[NonNulStr, Field(max_length=100)]
-    # Guest reply-email consent (DEC-332): True means the commenter wants a
+    # Guest reply-email consent: True means the commenter wants a
     # best-effort email when a reply to this comment is approved. Only honored
     # for ANONYMOUS comments — a signed-in reader's reply email is the
-    # account-level per-kind pref (DEC-197), so this field is ignored when a
+    # account-level per-kind pref, so this field is ignored when a
     # reader JWT stamps the row (the same rule as nickname/email).
     reply_notify_email: bool = False
     # Anti-spam honeypot: a hidden field real humans never see or fill, but
@@ -773,21 +773,21 @@ class Comment(CommentBase):
     parent_id: int | None = None
     ip_address: str
     is_approved: bool = True
-    # Author reply from the moderation queue (DEC-192/TASK-212): True when the
+    # Author reply from the moderation queue: True when the
     # blog owner answered a commenter. Mirrored on CommentPublic so readers see
     # the author badge.
     is_author_reply: bool = False
-    # Comment upvote count (DEC-092/TASK-158); mirrored on CommentPublic.
+    # Comment upvote count; mirrored on CommentPublic.
     likes: int = 0
     created_at: datetime
-    # When the reader-author last edited this comment (DEC-096/TASK-160);
+    # When the reader-author last edited this comment;
     # None = never edited.
     edited_at: datetime | None = None
     # Full row: reader-attributed comments store no free-text email (identity
     # is the account), anonymous comments keep theirs — nullable covers both.
     email: str | None = None
     # Reader-attributed identity (None for anonymous free-text commenters) —
-    # mapped from the ORM comment.reader relationship (DEC-062).
+    # mapped from the ORM comment.reader relationship.
     reader: CommentReaderProfile | None = None
 
     @field_validator("reader", mode="before")
@@ -799,7 +799,7 @@ class Comment(CommentBase):
     def _redact_reader_nickname(self):
         """Never expose a reader's account email as the public nickname.
 
-        Round-427 audit (ISS-606/TASK-532): create_comment used to stamp
+        Round-427 audit: create_comment used to stamp
         ``display_name or email`` into the nickname column, so a reader who
         registered without a display_name had their address published on every
         comment surface. The write path now stores a ``reader-{id}`` handle,
@@ -815,12 +815,12 @@ class Comment(CommentBase):
 
 
 class CommentReaderProfile(BaseModel):
-    """Public reader identity attached to an attributed comment (DEC-062).
+    """Public reader identity attached to an attributed comment.
 
     Deliberately NO email — a comment's reader_id is verified (stamped from the
     reader JWT), but the account email is PII and must not ride a public
     comment list. display_name is the author-controlled, reader-facing handle;
-    avatar_url is the reader's public profile picture (DEC-299/TASK-378).
+    avatar_url is the reader's public profile picture.
     """
 
     id: int
@@ -871,14 +871,14 @@ class CommentPublic(CommentBase):
     post_id: int
     parent_id: int | None = None
     is_approved: bool = True
-    # Author reply from the moderation queue (DEC-192/TASK-212) — drives the
+    # Author reply from the moderation queue — drives the
     # reader-facing "author" badge. Not PII, safe on the public list.
     is_author_reply: bool = False
-    # Comment upvote count (DEC-092/TASK-158): harmless on the public list,
+    # Comment upvote count: harmless on the public list,
     # unlike the PII fields dropped from this schema.
     likes: int = 0
     created_at: datetime
-    # When the reader-author last edited this comment (DEC-096/TASK-160);
+    # When the reader-author last edited this comment;
     # None = never edited. Not PII, safe on the public list.
     edited_at: datetime | None = None
     # email is dropped from the public serialization entirely (PII); ip_address
@@ -886,7 +886,7 @@ class CommentPublic(CommentBase):
     # free-text email (the account email is PII and stays off this schema).
     email: str | None = Field(default=None, exclude=True)
     # Reader-attributed identity (None for anonymous free-text commenters) —
-    # mapped from the ORM comment.reader relationship (DEC-062).
+    # mapped from the ORM comment.reader relationship.
     reader: CommentReaderProfile | None = None
 
     @field_validator("reader", mode="before")
@@ -898,7 +898,7 @@ class CommentPublic(CommentBase):
     def _redact_reader_nickname(self):
         """Never expose a reader's account email as the public nickname.
 
-        Same guard as Comment._redact_reader_nickname (ISS-606/TASK-532): a
+        Same guard as Comment._redact_reader_nickname: a
         reader-attributed comment without a display_name always serializes the
         deterministic non-PII handle, protecting legacy rows that stored the
         account email in the nickname column.
@@ -911,7 +911,7 @@ class CommentPublic(CommentBase):
 
 
 # ---------------------------------------------------------------------------
-# Reader passage highlights (round 466, DEC-511 / TASK-583): a signed-in reader
+# Reader passage highlights: a signed-in reader
 # saves an exact passage from a post, optionally with a short private note.
 # ---------------------------------------------------------------------------
 
@@ -920,7 +920,7 @@ class ReaderHighlightCreate(BaseModel):
     post_id: IdInt
     # min_length=1 alone does not reject "   " (Pydantic counts raw chars):
     # strip before length validation (same _strip_blank guard as titles/bodies,
-    # round-276 deep-dive) so whitespace-only text is a 422, not a blank
+    # deep-dive) so whitespace-only text is a 422, not a blank
     # highlight saved after the router's .strip().
     text: Annotated[NonNulStr, Field(min_length=1, max_length=300)]
     note: Annotated[NonNulStr | None, Field(default=None, max_length=1000)]

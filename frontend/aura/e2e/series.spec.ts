@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Post series journey (DEC-056).
+ * Post series journey.
  *
  * Public side: the seeded "FastAPI 深入浅出" series (init_db slug
  * `fastapi-tour`) renders on /series with its post count, and /series/[slug]

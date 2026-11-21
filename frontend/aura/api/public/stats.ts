@@ -10,7 +10,7 @@ export interface BlogStats {
 	total_views: number;
 	total_likes: number;
 	// No pending_comments: the moderation backlog is admin-scoped and reads
-	// from /api/admin/stats/comments (round 276).
+	// from /api/admin/stats/comments.
 }
 
 export function useBlogStats() {

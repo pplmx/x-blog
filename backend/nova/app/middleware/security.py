@@ -2,8 +2,8 @@
 
 The API never renders user HTML — it returns JSON and (in dev) the FastAPI
 Swagger UI / ReDoc doc pages. So the CSP here is a conservative baseline, not
-the strict nonce policy served by the Nuxt origin (frontend nitro middleware,
-TASK-126) which does render user-supplied markdown/comments. ``'unsafe-inline'``
+the strict nonce policy served by the Nuxt origin (frontend nitro middleware)
+which does render user-supplied markdown/comments. ``'unsafe-inline'``
 in ``script-src`` is required only so the CDN-hosted Swagger UI / ReDoc
 bootstrap (with its inline config object) keeps loading; no user-controlled
 script executes on this origin. Routes may still set a more specific header

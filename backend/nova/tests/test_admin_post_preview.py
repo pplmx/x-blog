@@ -1,4 +1,4 @@
-"""Author preview-read tests (DEC-150, TASK-187).
+"""Author preview-read tests.
 
 The admin post detail endpoint (used by the editor and the preview page) reads a
 post's full detail regardless of publish state, so an author can preview how a

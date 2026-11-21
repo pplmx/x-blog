@@ -1,14 +1,14 @@
 """Conditional-response helper: strong ETag, If-None-Match 304, Cache-Control.
 
 Public GET endpoints opt out of the global ``no-store`` default
-(``middleware/cache.py``, TASK-129) by building their responses through here: a
+(``middleware/cache.py``) by building their responses through here: a
 strong ETag lets revalidating clients (feed readers, crawlers, browsers) get a
 cheap 304 instead of a re-downloaded body, and ``Cache-Control`` bounds how long
 browsers and shared caches may serve the payload before revalidating —
 so a post write is visible within that window via the changed ETag.
 
-The feeds/sitemap used an inline version of this (``rss._feed_response``,
-TASK-089); this is now the single implementation for both feeds and the public
+The feeds/sitemap used an inline version of this (``rss._feed_response``);
+this is now the single implementation for both feeds and the public
 JSON list endpoints. Write-on-read and private endpoints keep the ``no-store``
 default on purpose.
 """

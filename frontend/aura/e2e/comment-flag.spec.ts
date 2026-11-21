@@ -1,5 +1,5 @@
 /**
- * Comment flag/report journey (DEC-108, TASK-166).
+ * Comment flag/report journey.
  *
  * A visitor can flag an inappropriate comment (one per browser via
  * localStorage; the backend dedups per source), and an admin's moderation
@@ -38,7 +38,7 @@ async function postAndApprove(
 	return commentId;
 }
 
-test.describe("Comment flagging (DEC-108)", () => {
+test.describe("Comment flagging ", () => {
 	test("a visitor flags a comment and it appears in the admin queue", async ({ page, request }) => {
 		const post = await firstPost(request);
 		const stamp = Date.now();

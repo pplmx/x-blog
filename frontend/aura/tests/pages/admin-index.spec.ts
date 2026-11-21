@@ -1,7 +1,7 @@
 /**
  * Admin Dashboard page tests.
  *
- * The pending-comments quick-card regression (TASK-332/ISS-431): the dashboard
+ * The pending-comments quick-card regression: the dashboard
  * used to fetch the newest 100 comments and slice out the pending ones, so on
  * a blog with >100 approved comments a pending item parked behind them was
  * invisible on the card while the count badge said pending ≥ 1. It now fetches
@@ -86,7 +86,7 @@ describe("Admin Dashboard Page", () => {
 		return wrapper;
 	}
 
-	it("fetches the pending queue, not the newest-100 slice (ISS-431)", async () => {
+	it("fetches the pending queue, not the newest-100 slice ", async () => {
 		const wrapper = await mountDashboard();
 
 		// The regression: the comments fetch asks for pending-only so pending
@@ -101,7 +101,7 @@ describe("Admin Dashboard Page", () => {
 		expect(wrapper.text()).toContain("A pending comment an old page would never have shown");
 	});
 
-	it("header count shows the authoritative pending count, not the capped 5-row slice (round-424 audit)", async () => {
+	it("header count shows the authoritative pending count, not the capped 5-row slice ", async () => {
 		// The quick card's header used pendingComments.length — the length of the
 		// pending slice fetched with limit 5 — so a blog with more than 5 pending
 		// comments showed "N pending" where N was capped by the slice, while the

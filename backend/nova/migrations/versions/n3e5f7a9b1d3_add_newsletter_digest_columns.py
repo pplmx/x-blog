@@ -1,10 +1,10 @@
-"""add newsletter digest cadence columns (DEC-355, TASK-403).
+"""add newsletter digest cadence columns.
 
 ``digest_weekly`` (opt-in weekly digest instead of per-post mail; server
 default false preserves today's per-post behavior for existing rows) and
 ``digest_sent_at`` (the idempotency stamp of the guest digest job, mirroring
 ReaderNotificationPref.digest_sent_at). Pure additive columns on the existing
-newsletter_subscribers table; no data change. DEC-009 additive style with
+newsletter_subscribers table; no data change. additive style with
 idempotent has_column guards so re-applying is a no-op.
 """
 

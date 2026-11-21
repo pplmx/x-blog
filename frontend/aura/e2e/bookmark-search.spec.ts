@@ -1,5 +1,5 @@
 /**
- * Bookmark search journey (DEC-124, TASK-174).
+ * Bookmark search journey.
  *
  * A reader with saved posts can type into the /bookmarks search box and see
  * only matching posts (by title/category/tag); clearing restores the full list.
@@ -22,7 +22,7 @@ async function bookmarkPost(page: import("@playwright/test").Page, href: string)
 	return title.trim();
 }
 
-test.describe("Bookmark search (TASK-174)", () => {
+test.describe("Bookmark search ", () => {
 	test("search filters the saved list and clears", async ({ page, request }) => {
 		const email = freshEmail();
 		const reg = await request.post("/api/reader/register", {

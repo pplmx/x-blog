@@ -1,5 +1,5 @@
 /**
- * Reader reading-density preference (DEC-288, TASK-373).
+ * Reader reading-density preference.
  *
  * Long-form reading comfort: a reader can scale the article body text up or
  * down (3 steps) to suit their eyes/display. The choice is device-local

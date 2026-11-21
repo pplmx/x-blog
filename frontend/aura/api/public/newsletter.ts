@@ -1,7 +1,7 @@
 import { command } from "../transport";
 
 /**
- * Guest email newsletter (DEC-351, TASK-401).
+ * Guest email newsletter.
  *
  * An anonymous visitor subscribes with an email address; the backend replies
  * with one generic message regardless of whether the address is new, already
@@ -19,7 +19,7 @@ export interface NewsletterSubscribeResult {
 
 /** POST /api/newsletter/subscribe — record the address and (best effort) mail
  *  its double opt-in link. 202 regardless of prior state (no oracle).
- *  `digestWeekly` (false default, DEC-355/TASK-403) opts the address into the
+ * `digestWeekly` (false default) opts the address into the
  *  weekly digest instead of per-post mail once confirmed. */
 export function subscribeNewsletter(
 	email: string,
@@ -32,7 +32,7 @@ export function subscribeNewsletter(
 }
 
 /** POST /api/newsletter/digest — flip one address's cadence between per-post
- *  mail and the weekly digest via its emailed token (DEC-355/TASK-403).
+ * mail and the weekly digest via its emailed token.
  *  200 idempotent; 404 for an unknown token (indistinguishable from a spam
  *  guess, mirroring confirm/unsubscribe). */
 export function setNewsletterDigest(
@@ -48,7 +48,7 @@ export function setNewsletterDigest(
 /** POST /api/newsletter/confirm — activate an address via its emailed token.
  *  200 idempotent; 404 for an unknown token (indistinguishable from a spam
  *  guess, mirroring reply-notify unsubscribe). `digest_weekly` reflects the
- *  address's real cadence so the confirm page can show it (DEC-355). */
+ * address's real cadence so the confirm page can show it. */
 export function confirmNewsletter(
 	token: string,
 ): Promise<{ confirmed: boolean; digest_weekly: boolean }> {

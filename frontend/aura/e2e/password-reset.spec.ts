@@ -1,5 +1,5 @@
 /**
- * Reader password-reset UI journey (DEC-286, TASK-371).
+ * Reader password-reset UI journey.
  *
  * Both the browser-observable surface and, when the e2e SMTP sink is running,
  * the full happy path: request a reset, get the single-use token from the

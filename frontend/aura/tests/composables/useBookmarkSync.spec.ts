@@ -1,4 +1,4 @@
-/** useBookmarkSync tests (DEC-059, TASK-134). */
+/** useBookmarkSync tests. */
 
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -230,7 +230,7 @@ describe("useBookmarkSync", () => {
 		// The failed mirror must not throw or undo the local add.
 		await vi.waitFor(() => expect(addReaderBookmarkMock).toHaveBeenCalledWith(5));
 		expect(useBookmarks().isBookmarked(5)).toBe(true);
-		// Transient failures stay silent — only a dead session warns (ISS-222).
+		// Transient failures stay silent — only a dead session warns.
 		expect(sync.syncIssue.value).toBeNull();
 	});
 
@@ -421,7 +421,7 @@ describe("useBookmarkSync", () => {
 		expect(useBookmarks().bookmarks.value.map((b) => b.id)).toEqual([9]);
 	});
 
-	it("merge pages through total_pages so no bookmarks are dropped (ISS-142)", async () => {
+	it("merge pages through total_pages so no bookmarks are dropped ", async () => {
 		localStorage.setItem("reader_token", "jwt.token");
 		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
 		const p1 = { ...cloudItem, id: 9 };
@@ -496,7 +496,7 @@ describe("useBookmarkSync", () => {
 		expect(useBookmarkSync().syncing.value).toBe(false);
 	});
 
-	it("stops pushing cleared ids when Clear-all lands mid-push (TASK-233, deep-dive)", async () => {
+	it("stops pushing cleared ids when Clear-all lands mid-push (deep-dive)", async () => {
 		localStorage.setItem("reader_token", "jwt.token");
 		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
 		fetchReaderBookmarksMock.mockResolvedValue({ items: [cloudItem], total: 1 });
@@ -595,7 +595,7 @@ describe("useBookmarkSync", () => {
 		expect(bookmarksStore.bookmarks.value.map((b) => b.id)).toEqual([]);
 	});
 
-	it("merge preserves a local logged-out Done mark across the pull (DEC-395)", async () => {
+	it("merge preserves a local logged-out Done mark across the pull ", async () => {
 		localStorage.setItem("reader_token", "jwt.token");
 		addReaderBookmarkMock.mockResolvedValue(okFetch([null]));
 		// The server row is freshly PUT (it can't carry done) → reads To-read here.
@@ -624,7 +624,7 @@ describe("useBookmarkSync", () => {
 	});
 });
 
-describe("setDone (round 361, DEC-395)", () => {
+describe("setDone ", () => {
 	beforeEach(() => {
 		localStorage.setItem("reader_token", "jwt.token");
 	});

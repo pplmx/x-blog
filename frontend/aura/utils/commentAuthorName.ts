@@ -10,7 +10,7 @@
  *
  * Mirrors the inline treatment CommentList uses; centralised because the same
  * rule now applies to the discussion feed, comment search results and the
- * reply-composer header, not just the thread (DEC-294/TASK-376/377).
+ * reply-composer header, not just the thread.
  */
 export function commentAuthorName(
 	comment: { reader: { display_name: string | null } | null; nickname: string },

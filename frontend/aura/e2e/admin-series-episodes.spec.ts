@@ -1,5 +1,5 @@
 /**
- * Admin series episode management journey (DEC-146, TASK-185).
+ * Admin series episode management journey.
  *
  * An author opens a series in the admin, sees its episodes in order, and
  * reorders them; the new order is persisted (read back via the episodes API).
@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 const stamp = Date.now();
 
-test.describe("Admin series episode management (TASK-185)", () => {
+test.describe("Admin series episode management ", () => {
 	test("an auth reorders a series' episodes from the admin", async ({ page, request }) => {
 		// Log in as admin and capture the token to seed a series via the API.
 		await page.goto("/admin/login");

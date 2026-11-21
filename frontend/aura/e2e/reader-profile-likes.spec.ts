@@ -1,5 +1,5 @@
 /**
- * Opt-in public liked-posts profile tab journey (round 360, DEC-393).
+ * Opt-in public liked-posts profile tab journey.
  *
  * The first reader-to-reader discovery surface: a signed-in reader flips the
  * public-likes opt-in on /account, and their public /readers/{id} profile
@@ -61,7 +61,7 @@ async function likeFirstPost(page: import("@playwright/test").Page): Promise<str
 	return href;
 }
 
-test.describe("Public liked-posts profile tab (DEC-393)", () => {
+test.describe("Public liked-posts profile tab ", () => {
 	test("opt in on /account → the public profile gained a tab a guest can browse", async ({
 		page,
 		request,

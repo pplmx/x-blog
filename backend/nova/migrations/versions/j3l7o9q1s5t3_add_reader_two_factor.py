@@ -1,9 +1,9 @@
-"""add reader_accounts two-factor columns (TOTP 2FA, round 364)
+"""add reader_accounts two-factor columns (TOTP 2FA)
 
 Reader accounts guard durable private data (cloud-synced bookmarks/likes/
 history, GDPR export) behind a single password; these two additive columns let
 a reader raise that to password + a TOTP code (RFC 6238, any authenticator
-app). DEC-009-clean: two flat additive columns on an existing table, no DB-level
+app). clean: two flat additive columns on an existing table, no DB-level
 FK, guarded by table/column probes so both are idempotent on SQLite and
 Postgres. two_factor_enabled defaults OFF via sa.false() — THE dialect-safe
 form (never the literal "false", which on SQLite stores TEXT that bool() reads

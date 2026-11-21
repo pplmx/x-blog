@@ -58,23 +58,23 @@ async def record_reading_history(
     Idempotent: recording the same post again refreshes ``viewed_at`` in place
     (moving it to the front of the newest-first list) instead of duplicating —
     a reader revisiting a post bumps it, mirroring read-trail semantics
-    (DEC-116, TASK-170).
+    .
 
-    ``scroll_position`` (per-post resume, DEC-167/TASK-200) and
-    ``scroll_fraction`` (cross-viewport resume, DEC-346/TASK-399) are updated
+    ``scroll_position`` (per-post resume) and
+    ``scroll_fraction`` (cross-viewport resume) are updated
     in place *only* when the caller passes an explicit value: a plain view
     (None) preserves whatever position was last saved, so reopening a post does
     not wipe the reader's place. ``0`` is meaningful (scrolled back to the very
     top) and clears the saved offset.
     """
     existing = await get_reading_history(db, reader_id, post_id)
-    # Denormalized reading-time estimate (ISS-451): recomputed on every upsert
+    # Denormalized reading-time estimate: recomputed on every upsert
     # so it tracks the content the reader just saw, letting /me/history/stats
     # SUM it in SQL instead of fetching full post content per row.
     post = await db.get(models.Post, post_id)
     minutes = schemas.reading_minutes(post.content) if post else 1
     if existing:
-        # Naive UTC (ISS-452): viewed_at is a naive-UTC DateTime column.
+        # Naive UTC: viewed_at is a naive-UTC DateTime column.
         existing.viewed_at = utc_now_naive()
         existing.reading_minutes = minutes
         if scroll_position is not None:
@@ -111,8 +111,8 @@ async def import_reader_history(
     """Bulk-merge a device-local reading trail into a reader's server history.
 
     Signing in switches the history source from the on-device localStorage
-    trail to the server trail (DEC-116/TASK-170); without a migration the
-    guest's reads silently vanish from the page (RIL ISS-386, TASK-303). This
+    trail to the server trail; without a migration the
+    guest's reads silently vanish from the page. This
     upserts by post slug: a public post absent from the server history is added
     with the guest's original ``viewed_at`` (falling back to now for
     timestamp-less legacy rows), while an already-present entry keeps the LATER
@@ -129,7 +129,7 @@ async def import_reader_history(
 
     # A fast-clock device can send a read timestamp years in the future; since
     # the merge only ever moves a read forward, that row would pin its post at
-    # the top of history permanently (TASK-348/ISS-450). Bound each record's
+    # the top of history permanently. Bound each record's
     # instant to now before folding: a timestamp a small skew window beyond now
     # is kept as-is (a slightly-ahead but honest device), anything further is
     # clamped so ordering stays honest.
@@ -139,7 +139,7 @@ async def import_reader_history(
     # Fold duplicates and normalize each record to its newest read instant.
     # A timestamp-less (legacy) record must never clobber a real timestamp seen
     # elsewhere in the same batch: folding it to None would import as "now" and
-    # inflate the reader's streak/activity (round-292 deep-dive).
+    # inflate the reader's streak/activity.
     by_slug: dict[str, datetime | None] = {}
     for slug, viewed_at in items:
         if viewed_at is not None and viewed_at > future_cutoff:
@@ -156,7 +156,7 @@ async def import_reader_history(
     # resolve as existing), so a lost unique-key race needs no special-casing —
     # on IntegrityError we roll back and re-run once, and the row the winner
     # committed is now found by the existing_by_post query, committing cleanly
-    # instead of 500ing (RIL ISS-419/TASK-321; same retry contract as
+    # instead of 500ing (same retry contract as
     # _commit_reader_upsert).
     for _attempt in range(2):
         try:
@@ -204,7 +204,7 @@ async def _import_reader_history_pass(
                 row.viewed_at = viewed_at
                 # The reader re-saw the post (and possibly its edited content):
                 # refresh the denormalized estimate like record_reading_history
-                # does (ISS-451).
+                # does.
                 row.reading_minutes = schemas.reading_minutes(post.content)
                 db.add(row)
             imported += 1
@@ -228,7 +228,7 @@ async def list_reader_history(
     """Return the reader's viewed posts (publicly visible only) newest-first.
 
     ``q`` (optional) filters to viewed posts whose title or excerpt matches the
-    term (case-insensitive, escape-aware — DEC-148/TASK-186) so a reader can
+    term (case-insensitive, escape-aware) so a reader can
     recall a past read.
 
     Paginated. Same non-leak invariant as bookmarks/subscriptions: a viewed post
@@ -290,13 +290,12 @@ async def list_reader_history(
 async def list_reader_in_progress(
     db: AsyncSession, reader_id: int, limit: int = 6
 ) -> tuple[list[tuple[models.Post, datetime]], int]:
-    """The reader's posts with a saved resume position, newest-first (DEC-348,
-    TASK-400).
+    """The reader's posts with a saved resume position, newest-first.
 
     Feeds the home "Continue reading" row: the cross-device SERVER trail
-    (``ReadingHistory.scroll_position``, DEC-167; ``scroll_fraction`` DEC-346)
+    (``ReadingHistory.scroll_position``; ``scroll_fraction``)
     surfaced outside /history — the existing home row is a localStorage-only
-    trail (DEC-104), so a signed-in reader on a new device sees nothing of what
+    trail, so a signed-in reader on a new device sees nothing of what
     they left. "In progress" = a saved, POSITIVE position: plain views (no
     position saved) and rows cleared back to the top (0) are not. Same non-leak
     invariant as the list: a post that went dark stops appearing (row kept).
@@ -352,14 +351,14 @@ def _local_today(tz: tzinfo | None) -> date:
     """Today's calendar date in the reader's zone (UTC when ``tz`` is absent).
 
     The streak and heatmap are anchored to the reader's own calendar so a
-    non-UTC reader sees "today" where their wall clock says today (DEC-316).
+    non-UTC reader sees "today" where their wall clock says today.
     """
     now_utc = datetime.now(UTC)
     return now_utc.date() if tz is None else now_utc.astimezone(tz).date()
 
 
 def _read_local_date(viewed_at: datetime, tz: tzinfo | None) -> date:
-    """The calendar date a read falls on in the reader's zone (DEC-316).
+    """The calendar date a read falls on in the reader's zone.
 
     ``viewed_at`` is stored as naive UTC (the naive-UTC wire contract); when no
     ``tz`` is supplied the UTC calendar date is the answer (the legacy
@@ -378,7 +377,7 @@ def _current_streak(dates: set, *, today: date) -> int:
     """Consecutive active days ending ``today`` (or yesterday while today is
     still inactive — a reader who has not read *yet* today keeps their
     streak). ``today`` is the caller's calendar anchor: local when the stats
-    request carried a timezone, UTC otherwise (DEC-316)."""
+    request carried a timezone, UTC otherwise."""
     if not dates:
         return 0
     anchor = today if today in dates else today - timedelta(days=1)
@@ -406,7 +405,7 @@ def _day_activity(counts: dict, *, today: date) -> list[dict]:
     """Per-day read counts for the last ``ACTIVITY_DAYS`` days ending ``today``
     (ascending, zeros included) for a GitHub-style heatmap. ``today`` is the
     caller's calendar anchor — local when the stats request carried a
-    timezone, UTC otherwise (DEC-316)."""
+    timezone, UTC otherwise."""
     window_start = today - timedelta(days=ACTIVITY_DAYS - 1)
     out: list[dict] = []
     d = window_start
@@ -419,19 +418,19 @@ def _day_activity(counts: dict, *, today: date) -> list[dict]:
 async def reader_history_stats(
     db: AsyncSession, reader_id: int, recent_limit: int = 6, *, tz: tzinfo | None = None
 ) -> dict:
-    """Aggregate a reader's reading summary from their history (DEC-118).
+    """Aggregate a reader's reading summary from their history.
 
     Returns total visible posts read, the sum of their reading minutes, the
     most-recent viewed timestamp, and the ``recent_limit`` most recent
-    (post, viewed_at) pairs. Since DEC-169/TASK-201 it also returns the
+    (post, viewed_at) pairs. Since then it also returns the
     current/longest reading streak and a 52-week per-day activity list for the
-    gamification surface on /history. Since DEC-316 the streak and activity are
+    gamification surface on /history. Since then the streak and activity are
     anchored to the reader's own calendar: ``tz`` (an IANA tzinfo) shifts each
     read and the "today" window to the reader's local date; without it the
     legacy UTC bucketing is used. Uses the same public-visibility filter as
     the history list so un-published posts don't leak or count.
 
-    Cost (ISS-451): the summary used to scan the reader's ENTIRE history and
+    Cost: the summary used to scan the reader's ENTIRE history and
     materialize every post row — including `content` — to compute minutes in
     Python (multi-MB per pageview at scale). It now aggregates the denormalized
     ``reading_history.reading_minutes`` in SQL and only pulls narrow
@@ -457,7 +456,7 @@ async def reader_history_stats(
     # Aggregate over the subquery's OWN columns (subq.c.*) — referencing
     # models.ReadingHistory.* on an outer-select whose FROM is the subquery
     # makes SQLAlchemy cross-join reading_history again (cartesian product:
-    # 3 posts -> count 9), RIL async migration.
+    # 3 posts -> count 9),.
     aggregate = (
         await db.execute(
             select(
@@ -489,8 +488,7 @@ async def reader_history_stats(
 
     # recent: bounded LIMIT with eager category/tags — the recent items are
     # serialized via ReadingHistoryItem.from_post which reads post.category and
-    # post.tags, so without eager loading that's a lazy SELECT per recent row
-    # (round-292 deep-dive).
+    # post.tags, so without eager loading that's a lazy SELECT per recent row.
     recent = (
         (
             await db.execute(
@@ -518,9 +516,9 @@ async def reader_history_stats(
 
 
 async def reader_history_insights(db: AsyncSession, reader_id: int, top_categories: int = 5) -> dict:
-    """Aggregate "what and how much" the reader has read (DEC-417/TASK-434).
+    """Aggregate "what and how much" the reader has read.
 
-    The streak/heatmap (reader_history_stats, DEC-316) show the calendar shape
+    The streak/heatmap (reader_history_stats) show the calendar shape
     of reading; this adds the content shape: distinct publicly-visible posts
     read all-time, in the trailing 30 days, and the most-read categories (by
     distinct post count). One row per reader-post in ReadingHistory, so counts
@@ -577,10 +575,10 @@ async def reader_series_progress(db: AsyncSession, reader_id: int, series: model
 
     ``posts`` is the series' ordered, publicly visible posts (series_order then
     id). A post counts as read when it appears in the reader's reading_history
-    (server-backed trail, TASK-170). Returns total count, the read post ids,
+    (server-backed trail). Returns total count, the read post ids,
     how many are read, the first *unread* post slug (None when complete), and a
     completion flag. Public-visibility invariants hold via get_series_visible_posts.
-    (DEC-122/TASK-173)
+
     """
     posts = await get_series_visible_posts(db, series)
     if not posts:
@@ -612,7 +610,7 @@ async def reader_series_progress(db: AsyncSession, reader_id: int, series: model
 
 
 async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
-    """Assemble a reader's portable data bundle (DEC-126/TASK-175).
+    """Assemble a reader's portable data bundle.
 
     Scoped strictly to the caller: profile, public-visible bookmarks (with
     folder name), all of the reader's own comments (any moderation status),
@@ -624,10 +622,10 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
     account_data = {
         "email": account.email if account else None,
         "display_name": account.display_name if account else None,
-        # Opt-in public liked-posts flag (round 360, DEC-393) — like the bio
+        # Opt-in public liked-posts flag — like the bio
         # it is the reader's own choice and belongs in their portable bundle.
         "public_likes": bool(account and account.public_likes),
-        # Opt-in public bookmarks flag (round 363, DEC-399) — like public_likes
+        # Opt-in public bookmarks flag — like public_likes
         # it is the reader's own privacy choice and belongs in their bundle.
         "public_bookmarks": bool(account and account.public_bookmarks),
         "created_at": account.created_at.isoformat() if account and account.created_at else None,
@@ -635,7 +633,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
 
     bookmarks = []
     # limit=None — a backup must be complete, never silently capped at the
-    # list endpoint's default 100 bookmarks (RIL ISS-288).
+    # list endpoint's default 100 bookmarks.
     rows, _total = await list_reader_bookmarks(db, reader_id, limit=None)
     for post, _, folder_name, done in rows:
         bookmarks.append(
@@ -644,7 +642,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
                 "title": post.title,
                 "slug": post.slug,
                 "folder_name": folder_name,
-                # Queue state (round 361, DEC-395): whether this save is marked
+                # Queue state: whether this save is marked
                 # Done or still To-read.
                 "done": bool(done),
                 "created_at": post.created_at.isoformat() if post.created_at else None,
@@ -660,8 +658,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
         ).scalars()
     )
     # One query for all parent posts, not one db.get per comment — a prolific
-    # commenter's export was O(comments) round trips on an unbounded endpoint
-    # (RIL ISS-282).
+    # commenter's export was O(comments) round trips on an unbounded endpoint.
     post_by_id: dict[int, models.Post] = {}
     comment_post_ids = {c.post_id for c in comment_rows if c.post_id is not None}
     if comment_post_ids:
@@ -710,8 +707,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
             }
         )
 
-    # Reader-owned follow rows (DEC-140/TASK-182, DEC-138/TASK-181,
-    # DEC-195/TASK-215): the categories/tags/series this reader follows, with
+    # Reader-owned follow rows: the categories/tags/series this reader follows, with
     # the notify flag that couples a follow to push fan-out. Join names/slugs
     # in one query each so the bundle stays portable (a follow is dead weight
     # without the name of the thing followed).
@@ -749,7 +745,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
         for row, title, slug in series_rows
     ]
 
-    # Notification preferences (DEC-171/TASK-202, DEC-197/TASK-217): one row per
+    # Notification preferences: one row per
     # reader holding every push/inbox/email kind toggle. A missing row reads as
     # all-defaults — export None so the client can distinguish "no prefs set"
     # from explicit values.
@@ -778,7 +774,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
         else None
     )
 
-    # Durable inbox rows (DEC-160/TASK-192): the reader's own notification
+    # Durable inbox rows: the reader's own notification
     # history — kind, title, deep link, read state. No cross-reader data.
     notification_rows = list(
         (
@@ -802,7 +798,7 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
         for n in notification_rows
     ]
 
-    # Push subscriptions (DEC-055/TASK-117): which browsers/endpoints this
+    # Push subscriptions: which browsers/endpoints this
     # reader registered. The endpoint + created_at identify the device;
     # p256dh/auth are the encryption keys and must NOT ride a data bundle
     # (same PII-adjacent bar as a comment's reply-notify token).
@@ -825,13 +821,13 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
 
     return {
         "account": account_data,
-        # Naive UTC, matching every other timestamp in the bundle (DEC-213):
+        # Naive UTC, matching every other timestamp in the bundle:
         # an aware "+00:00" exported_at next to zone-less created_at/viewed_at
         # made a client that parses datetimes uniformly see mixed semantics.
-        # (round 276 deep-dive)
+        #
         "exported_at": utc_now_naive().isoformat(),
         "bookmarks": bookmarks,
-        # Liked posts (round 359/360): the durable reader likes now join the
+        # Liked posts: the durable reader likes now join the
         # bundle — publicly-visible only (same invariant as the /me/likes read
         # path), complete (never capped at the list default).
         "likes": [
@@ -855,14 +851,14 @@ async def export_reader_data(db: AsyncSession, reader_id: int) -> dict:
 async def recommend_posts(db: AsyncSession, reader_id: int, limit: int = 6) -> list[models.Post]:
     """Personalized post recommendations from the reader's interests.
 
-    Interest signal = the reader's publicly-visible reading history (TASK-170)
-    plus bookmarks (TASK-132): category and tag weights are the number of known
+    Interest signal = the reader's publicly-visible reading history
+    plus bookmarks: category and tag weights are the number of known
     posts carrying each. Candidate posts are public posts the reader has
     *not* read or bookmarked; each is scored by its shared category (×10) and
     shared tags (×2), then ranked by score desc, recency desc, id desc for a
     stable ordering. Posts with zero affinity are dropped. Only posts with
     affinity are recommended, so a cold-start reader gets an empty list (the
-    frontend hides the row). (DEC-128/TASK-176)
+    frontend hides the row).
     """
     now = utc_now_naive()
 
@@ -908,7 +904,7 @@ async def recommend_posts(db: AsyncSession, reader_id: int, limit: int = 6) -> l
     # Bound the candidate scan: scoring runs in Python, so a retrieve-all would
     # materialize EVERY public post (incl. their 200KB+ content column) per
     # request — an O(all posts) load on an authenticated-triggerable endpoint
-    # (round 278 perf finding). Cap the pool to the most-recent
+    # Cap the pool to the most-recent
     # CANDIDATE_SCAN_LIMIT posts (effective-publish desc — the same "when it
     # went live" line every other list uses), which keeps the heuristic's
     # quality identical on blogs under the cap while hard-bounding a
@@ -951,7 +947,7 @@ async def recommend_posts(db: AsyncSession, reader_id: int, limit: int = 6) -> l
             # Recency is the effective publish time (publish_at ?? created_at),
             # the same "published when" line every other list surface uses —
             # ranking a June-scheduled post by its January draft date pushed it
-            # below a later-drafted post published sooner (RIL ISS-283, ISS-265).
+            # below a later-drafted post published sooner.
             -effective_publish_ts(item[1], fallback=now).timestamp(),
             -item[1].id,
         )

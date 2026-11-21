@@ -1,5 +1,5 @@
 /**
- * Reader reading-density preference (DEC-288, TASK-373).
+ * Reader reading-density preference.
  *
  * The A+/A− control on a post page scales the article body text, persists per
  * device (localStorage), and a fresh document load applies the stored choice.
@@ -43,7 +43,7 @@ async function clearPreferenceOnce(page: import("@playwright/test").Page): Promi
 	});
 }
 
-test.describe("Reading density (TASK-373)", () => {
+test.describe("Reading density ", () => {
 	test("A+ grows the body text, persists, and re-applies on a fresh load", async ({ page }) => {
 		await clearPreferenceOnce(page);
 		const href = await openFirstPost(page);

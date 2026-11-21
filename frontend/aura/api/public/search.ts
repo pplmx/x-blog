@@ -6,9 +6,9 @@ type Getter<T> = () => T;
 type MaybeGetter<T> = T | Getter<T> | Ref<T>;
 
 /**
- * One comment search hit (round 366, DEC-405): the public comment shape plus
+ * One comment search hit: the public comment shape plus
  * a mark-safe highlighted snippet and the post brief, so a result can land ON
- * the comment (#comment-{id}, DEC-321) instead of just the post headline.
+ * the comment (#comment-{id}) instead of just the post headline.
  * Never carries the email or IP (the Comment contract omits both).
  */
 export interface CommentSearchItem extends Comment {
@@ -66,7 +66,7 @@ export interface AllSearchParams {
 }
 
 /**
- * One "did you mean" suggestion (round 390, DEC-443): a canonical topic — a
+ * One "did you mean" suggestion: a canonical topic — a
  * tag, a category, or a recent public post title — that an edit-distance pass
  * judged close enough to a zero-hit query to offer as a recovery path.
  * `hits` is the count of PUBLIC posts the suggestion actually matches, so a
@@ -89,7 +89,7 @@ function queryPath(path: string, params: MaybeGetter<QueryParams>): string | Get
 }
 
 /**
- * Reactive comment search (GET /api/search/comments, round 366 / DEC-405).
+ * Reactive comment search (GET /api/search/comments).
  *
  * Finds approved comments on publicly-visible posts by content, newest first,
  * each with a highlighted snippet + the post brief. Same URL-reactive contract

@@ -1,4 +1,4 @@
-"""Chinese-aware search contract tests (DEC-070, TASK-143).
+"""Chinese-aware search contract tests.
 
 Production search (crud.search_posts) used Postgres to_tsvector('english'),
 which tokenizes CJK as opaque runs — partial/prefix Chinese queries ('评' vs
@@ -96,7 +96,7 @@ LONG_CONTENT = "开头甲" + "填充甲" * 200 + "评论系统出现在中段" +
 
 
 class TestSearchSnippet:
-    """Snippet generation for CJK/mid-content matches (DEC-071, TASK-144).
+    """Snippet generation for CJK/mid-content matches.
 
     Bare function tests against _build_snippet (dialect False = the Python
     highlighter path). The original behavior windowed content[:300], so a term
@@ -159,7 +159,7 @@ class TestSearchSnippet:
         assert "Some content here" in out or out == ""
 
     async def test_pg_snippet_fallback_escapes_raw_content(self):
-        # Regression (ISS-424): when ts_headline yields no scalar for a post,
+        # Regression: when ts_headline yields no scalar for a post,
         # the epilogue used to return the RAW excerpt/content[:200] — breaking
         # the snippet XSS-safety contract that every other branch guarantees.
         # Force that branch with a mocked nil scalar and a non-CJK (ts_headline

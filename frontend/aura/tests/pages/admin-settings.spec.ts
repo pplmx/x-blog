@@ -1,5 +1,5 @@
 /**
- * Admin Settings page tests (DEC-100, TASK-162).
+ * Admin Settings page tests.
  *
  * Loads the current auto-approve setting from the admin endpoint and toggles it
  * back through PUT, showing a saved/error state.
@@ -97,7 +97,7 @@ describe("Admin Settings page", () => {
 	it("clears the saved banner when the toggle changes after saving", async () => {
 		// "设置已保存" describes persisted state — flipping the checkbox after a
 		// save makes it stale, so the banner must vanish until saved again
-		// (RIL ISS-285).
+		//.
 		mockFetchSiteSetting.mockResolvedValue({
 			key: "auto_approve_reader_comments",
 			value: "false",
@@ -121,7 +121,7 @@ describe("Admin Settings page", () => {
 		expect(wrapper.text()).not.toContain("设置已保存");
 	});
 
-	it("does not flash Saved when the toggle moved to the opposite value mid-save (round 278)", async () => {
+	it("does not flash Saved when the toggle moved to the opposite value mid-save ", async () => {
 		// Save persisted "true" while the operator flipped the toggle back to
 		// false before the request resolved: the completion must not resurrect
 		// the banner next to a control whose value was never persisted.

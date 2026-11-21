@@ -16,7 +16,7 @@ const coverImageUrl = computed(() => coverImageSrc(post.value.title));
 
 // A card dates a post by when it went live (publish_at ?? created_at): the
 // feed now orders by effective publish time, so a scheduled post must show
-// the date readers actually got it, not the month it was drafted (RIL ISS-265).
+// the date readers actually got it, not the month it was drafted.
 const date = computed(
 	() =>
 		parseApiDate(effectivePublishTs(props.post))?.toLocaleDateString(
@@ -102,17 +102,17 @@ const date = computed(
 		</NuxtLink>
 
 		<!-- Category + tag chips sit OUTSIDE the card link (a nested interactive
-         element inside a NuxtLink is invalid HTML, DEC-196/TASK-216), and each
+         element inside a NuxtLink is invalid HTML), and each
          chip is itself a link to the filtered view so the feed's taxonomy is
          discoverable: the category chip (once a dead pill that looked clickable
-         but did nothing, deep-dive ISS-375) now goes to /?category_id=, and
+         but did nothing, deep-dive) now goes to /?category_id=, and
          tag chips go to /?tag_id= — exactly the sidebar/jump pattern. -->
 		<div v-if="post.author || post.category || post.tags?.length" class="px-6 pb-6">
 			<div class="flex flex-wrap gap-2 pt-2 border-t border-gray-50 dark:border-gray-800">
-				<!-- Author byline chip (DEC-359/TASK-405): who wrote this, linking to
+				<!-- Author byline chip: who wrote this, linking to
              that writer's archive. Like the category chip it lives OUTSIDE the
-             card NuxtLink (nested interactive elements are invalid HTML,
-             DEC-196) and is itself a link to the per-writer surface. -->
+             card NuxtLink (nested interactive elements are invalid HTML)
+             and is itself a link to the per-writer surface. -->
 				<NuxtLink
 					v-if="post.author"
 					:to="`/authors/${post.author.id}`"

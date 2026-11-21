@@ -73,12 +73,12 @@ function mountLayout() {
 				RateLimitNotice: {
 					template: '<div class="rate-limit-stub" />',
 				},
-				// Footer newsletter form (DEC-351): auto-imported by Nuxt but not
+				// Footer newsletter form: auto-imported by Nuxt but not
 				// in vitest, so stub it out of the layout snapshot.
 				NewsletterSubscribe: {
 					template: '<div class="newsletter-stub" />',
 				},
-				// Footer static-pages links (round 347): client-side fetch, so
+				// Footer static-pages links: client-side fetch, so
 				// stub it out of the layout test just like the newsletter form.
 				PagesFooterLinks: {
 					template: '<div class="pages-footer-links-stub" />',
@@ -140,7 +140,7 @@ describe("Default Layout", () => {
 		});
 
 		it("renders the copyright with the CURRENT year, not a hardcoded one", () => {
-			// TASK-485/round-408: the footer used to hardcode "© 2026"; it must
+			// the footer used to hardcode "© 2026"; it must
 			// always show this year so the footer never goes stale.
 			const wrapper = mountLayout();
 			expect(wrapper.text()).toContain(`© ${new Date().getFullYear()} X-Blog.`);
@@ -202,13 +202,13 @@ describe("Default Layout", () => {
 
 			// The mobile nav panel should exist (desktop nav renders Home too)
 			expect(wrapper.find("#mobile-nav").exists()).toBe(true);
-			// The toggle flips its accessible name with its state (ISS-570): a
+			// The toggle flips its accessible name with its state: a
 			// screen-reader user must hear "close" while the panel is open,
 			// not "open" on a control that collapses the menu.
 			expect(wrapper.find('button[aria-label="关闭菜单"]').exists()).toBe(true);
 		});
 
-		it("closes the mobile menu on Escape (ISS-131)", async () => {
+		it("closes the mobile menu on Escape ", async () => {
 			const wrapper = mountLayout();
 			const menuButton = wrapper.find('button[aria-label="打开菜单"]');
 			await menuButton.trigger("click");
@@ -223,7 +223,7 @@ describe("Default Layout", () => {
 		});
 	});
 
-	describe("Mobile menu keyboard focus (ISS-131)", () => {
+	describe("Mobile menu keyboard focus ", () => {
 		// These assert real focus movement, so the layout must be attached to
 		// the DOM (the non-attached mountLayout() leaves focus tracking inert).
 		afterEach(() => {
@@ -267,7 +267,7 @@ describe("Default Layout", () => {
 		});
 	});
 
-	describe("Reader account nav (TASK-133)", () => {
+	describe("Reader account nav ", () => {
 		it("hides the personal links from guests — they live in the signed-in 'My' menu", () => {
 			const wrapper = mountLayout();
 			expect(wrapper.find('a[href="/bookmarks"]').exists()).toBe(false);

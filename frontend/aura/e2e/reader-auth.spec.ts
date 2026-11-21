@@ -1,5 +1,5 @@
 /**
- * Reader account + cloud-synced bookmarks journey (DEC-059, TASK-131/133/134).
+ * Reader account + cloud-synced bookmarks journey.
  *
  * Exercises the end-to-end reader story through the same-origin frontend proxy
  * (register → bookmark → sign in → bookmarks persist to the cloud → the
@@ -66,7 +66,7 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible({ timeout: 5000 });
 	});
 
-	test("guest on an auth-scoped page returns there after sign-in (ISS-563)", async ({
+	test("guest on an auth-scoped page returns there after sign-in ", async ({
 		page,
 		request,
 	}) => {
@@ -90,7 +90,7 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		request,
 	}) => {
 		// Wrong email/password is a deliberate single 401 on the backend
-		// ("Incorrect email or password", anti-oracle, DEC-401); the frontend maps
+		// ("Incorrect email or password", anti-oracle); the frontend maps
 		// it to the localized zh line (rounds 441/442) — and must never surface
 		// the ofetch technical string or a misleading generic network error, or
 		// navigate away from the form.

@@ -1,5 +1,5 @@
 /**
- * Scoped category/tag RSS feeds (DEC-074, TASK-146).
+ * Scoped category/tag RSS feeds.
  *
  * A reader on a category/tag page gets a topic-scoped feed: the page emits an
  * <link rel="alternate" type="application/rss+xml"> autodiscovery tag plus a
@@ -69,7 +69,7 @@ test.describe("Scoped category feed", () => {
 		const catId = await createCategory(request, categoryName);
 		// Two valid subscribe forms: the backend's query-scoped feed (what the
 		// feed channel self-links, fetched at the backend origin) and the
-		// page's stable path-scoped URL (/rss/category/<name>.xml, DEC-130).
+		// page's stable path-scoped URL (/rss/category/<name>.xml).
 		const queryFeedUrl = `/rss/feed.xml?category_id=${catId}`;
 		const pageFeedUrl = `/rss/category/${encodeURIComponent(categoryName)}.xml`;
 		const backendFeedUrl = `${BACKEND}${queryFeedUrl}`;
@@ -105,7 +105,7 @@ test.describe("Scoped category feed", () => {
 		expect(alternates).toContain(pageFeedUrl);
 
 		// With Web Push configured the same topic view offers a one-tap
-		// "follow new posts" toggle (DEC-076/TASK-147).
+		// "follow new posts" toggle.
 		await expect(page.getByRole("button", { name: "关注新文章" })).toBeVisible();
 	});
 
@@ -127,7 +127,7 @@ test.describe("Scoped category feed", () => {
 	});
 });
 
-test.describe("Tag-scoped feed through the Nuxt origin (DEC-314/TASK-385)", () => {
+test.describe("Tag-scoped feed through the Nuxt origin ", () => {
 	test("the tag page's ?tag_id feed URL stays tag-scoped via the proxy", async ({
 		page,
 		request,

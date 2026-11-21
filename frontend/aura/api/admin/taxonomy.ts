@@ -13,7 +13,7 @@ export function useAdminCategories() {
 /**
  * Imperative categories list (lifecycle-hook loader on the preview page) — the
  * imperative seam; a useFetch query called from onMounted silently never sends
- * (ISS-110/111/117/118/119, TASK-220), which left the preview's category badge
+ *, which left the preview's category badge
  * missing. Mirrors getReaderSeriesFollows.
  */
 export function getAdminCategories(): Promise<Category[]> {

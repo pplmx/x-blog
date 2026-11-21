@@ -1,4 +1,4 @@
-"""Reading-trend analytics contract tests (DEC-086, TASK-155).
+"""Reading-trend analytics contract tests.
 
 - Incrementing views also upserts (and advances) today's post_views_daily row.
 - GET /api/admin/stats/views is admin-gated (401 anon, 401 reader token,
@@ -117,7 +117,7 @@ class TestViewsStatsAuth:
 
 
 class TestPostViewsTrend:
-    """Per-post daily series for the editor (DEC-287, TASK-372)."""
+    """Per-post daily series for the editor."""
 
     async def test_per_post_series_scoped_and_zero_filled(self, client, db_session, auth_headers):
         p1 = await _create_post(db_session, "trend-a")

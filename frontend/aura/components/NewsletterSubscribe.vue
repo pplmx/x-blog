@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Footer newsletter subscribe (DEC-351, TASK-401).
+ * Footer newsletter subscribe.
  *
  * The anonymous "email me new posts" on-ramp: a bare email input and button
  * (no account, no comment). POSTs once to the backend, which always answers
@@ -13,7 +13,7 @@ import { ref, watch } from "vue";
 
 const { t } = useLang();
 const email = ref("");
-// Weekly-digest cadence (DEC-355, TASK-403): chose once at subscribe time; it
+// Weekly-digest cadence: chose once at subscribe time; it
 // is stored on the row and honored only after the double opt-in completes.
 const digest = ref(false);
 const state = ref<"idle" | "submitting" | "done" | "error">("idle");

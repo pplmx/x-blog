@@ -1,9 +1,9 @@
-"""Reader 'latest from your follows' feed tests (DEC-142, TASK-183).
+"""Reader 'latest from your follows' feed tests.
 
 A signed-in reader sees the newest public posts from their followed categories
 or series. Covers auth scoping, empty-when-following-nothing, category/series
 scoping, dedup, exclusion of non-public posts, the limit cap, and the paginated
-envelope (DEC-292/TASK-375).
+envelope.
 """
 
 from sqlalchemy import update
@@ -13,7 +13,7 @@ _n = 0
 
 
 def _items(resp):
-    """The follows-feed is now a paginated envelope (DEC-292/TASK-375):
+    """The follows-feed is now a paginated envelope:
     ``{items, pagination}`` instead of a bare list."""
     assert "items" in resp.json()
     assert "pagination" in resp.json()
@@ -132,7 +132,7 @@ class TestFollowsFeed:
     async def test_silent_tag_follow_still_tracked_in_feed(self, client, auth_headers):
         """A tag follow with notify off is tracking-only: it feeds the home
         feed but must not fan out a push — tracking vs push are decoupled
-        (mirrors category/series, DEC-195)."""
+        (mirrors category/series)."""
         token = await _token(client)
         tag_id = await _create_tag(client, auth_headers, name="nginx")
         await client.put(f"/api/reader/me/tags/{tag_id}/follow", headers=_auth(token))
@@ -188,7 +188,7 @@ class TestFollowsFeed:
     async def test_orders_by_effective_publish_time(self, client, auth_headers, db_session):
         """The follows-feed is a feed surface: a post drafted long ago but live
         today leads one drafted-today that went live earlier — effective publish
-        at ?? created_at ordering, matching the global feed (RIL ISS-265/267)."""
+        at ?? created_at ordering, matching the global feed."""
         from datetime import UTC, datetime, timedelta
 
         from app import models
@@ -225,7 +225,7 @@ class TestFollowsFeed:
         # Buggy created_at order put recent first (sched looks 30 days old).
         assert slugs.index(sched["slug"]) < slugs.index(recent["slug"])
 
-    # --- Pagination (DEC-292/TASK-375): the envelope carries total/total_pages
+    # --- Pagination: the envelope carries total/total_pages
     # so the dedicated /follows page can browse past the home cap of 12. ------
 
     async def test_pagination_envelope_reports_total_and_pages(self, client, auth_headers):
@@ -274,7 +274,7 @@ class TestFollowsFeed:
 
 
 async def _pen_named_author(db, username="feed-author"):
-    """A followable writer: a User with a public pen name (round 353 gate)."""
+    """A followable writer: a User with a public pen name."""
     from app.auth import User
 
     u = User(username=username, password="x", role="editor", display_name=f"Pen {username}")
@@ -285,7 +285,7 @@ async def _pen_named_author(db, username="feed-author"):
 
 
 class TestFollowsFeedAuthorScope:
-    """The follows-feed's author dimension (round 354, DEC-381): a reader
+    """The follows-feed's author dimension: a reader
     following a writer sees that writer's public posts, even when none of the
     post's topics are followed — the person-shaped follow pays the same
     discovery payoff as the topic follows."""

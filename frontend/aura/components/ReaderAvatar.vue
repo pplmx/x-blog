@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Reader profile picture with graceful degradation (round-446 polish).
+ * Reader profile picture with graceful degradation.
  *
  * The img-if-set-else-initial-letter pattern was copy-pasted across the header
  * menu, comment list, /account and the reader profile page. This consolidates

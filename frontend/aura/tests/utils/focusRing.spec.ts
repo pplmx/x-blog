@@ -1,7 +1,7 @@
 /**
  * nextFocusable unit tests.
  *
- * The production bug this guards (round-300 review): LanguageSwitcher's Tab
+ * The production bug this guards: LanguageSwitcher's Tab
  * hand-off runs on nextTick, but the popover is inside a CSS leave transition
  * (~150ms) at that moment — it is STILL in the document, so any scan that does
  * not exclude it would re-target a menuitem that unmounts a moment later,

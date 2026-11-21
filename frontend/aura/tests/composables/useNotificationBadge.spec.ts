@@ -1,5 +1,5 @@
 /**
- * useNotificationBadge composable tests (ISS-124, TASK-224).
+ * useNotificationBadge composable tests.
  *
  * The badge count is a module-level singleton shared by the default layout and
  * the /notifications inbox, so a `refresh()` after mark-read actions drops the
@@ -28,7 +28,7 @@ function stubDocument(hidden: boolean) {
 	vi.stubGlobal("document", { hidden });
 }
 
-describe("useNotificationBadge (TASK-224)", () => {
+describe("useNotificationBadge ", () => {
 	beforeEach(async () => {
 		authRef.value = false;
 		fetchNotifications.mockReset();
@@ -90,7 +90,7 @@ describe("useNotificationBadge (TASK-224)", () => {
 		expect(unreadCount.value).toBe(2);
 	});
 
-	it("discards a signed-in fetch that resolves after the session ends (ISS-124)", async () => {
+	it("discards a signed-in fetch that resolves after the session ends ", async () => {
 		// A refresh started while signed in can resolve after logout(); the
 		// count must not be written back over the now-0 baseline.
 		authRef.value = true;

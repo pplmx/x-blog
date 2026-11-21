@@ -1,9 +1,9 @@
-"""Admin weekly-digest overview contract tests (DEC-423, TASK-436).
+"""Admin weekly-digest overview contract tests.
 
-The weekly digest (DEC-201, TASK-222) has complete backend machinery —
+The weekly digest has complete backend machinery —
 ``send_weekly_digest`` with an advisory lock, idempotent ``digest_sent_at``
 stamping, a ``dry_run`` preview and a summary dict — plus a superuser
-``POST /api/admin/digests/send-weekly`` trigger. But until round 378 (DEC-423)
+``POST /api/admin/digests/send-weekly`` trigger. But until recently
 an operator had no *reading* surface for it: no way to see how many readers
 and guests opted into the weekly cadence, when the last digest actually went
 out, or how many posts the current window would contain. Those are exactly the

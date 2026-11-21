@@ -1,5 +1,5 @@
 /**
- * Reader profile bio (round 352): the "about me" a reader writes on /account
+ * Reader profile bio: the "about me" a reader writes on /account
  * shows up on their public profile page.
  *
  * Registers a reader through the API, signs in through the UI, types a bio in
@@ -16,7 +16,7 @@ function freshEmail(): string {
 	return `bio-${Date.now()}@example.com`;
 }
 
-test.describe("Reader profile bio (round 352)", () => {
+test.describe("Reader profile bio ", () => {
 	test("write a bio in account -> it renders on the public profile", async ({ page, request }) => {
 		const email = freshEmail();
 		const reg = await request.post("/api/reader/register", {

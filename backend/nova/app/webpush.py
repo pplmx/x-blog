@@ -16,7 +16,7 @@ scalar used to sign the VAPID token.
 All reads are lazy (per-call, not at import) so tests can vary the
 configuration and a partially-configured deployment — exactly one of the two
 key env vars set — fails closed instead of silently pushing with only half a
-key. (DEC-055, TASK-117)
+key.
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ def push_removed_status(exc: BaseException) -> int | None:
     return status if status in (404, 410) else None
 
 
-# SSRF guard (security review, round 249): a push *endpoint* is an attacker-
+# SSRF guard (security review): a push *endpoint* is an attacker-
 # supplied URL the server will later connect to. /api/push/subscribe is
 # unauthenticated and rate-limited.
 #
@@ -279,7 +279,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
     publish. Callers fire this only after a write makes the post immediately
     visible (published, publish_at == None or passed) — scheduled (future
     publish_at) posts are not notified until they are actually published by a
-    later write (this blog has no background scheduler today, DEC-076).
+    later write (this blog has no background scheduler today).
     """
     if not vapid_configured():
         return {"sent": 0, "failed": 0, "removed": 0}
@@ -303,8 +303,8 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
         stmt = stmt.where(models.PushSubscription.new_post_category_id.is_(None))
     by_endpoint = {sub.endpoint: sub for sub in (await db.scalars(stmt)).all()}
 
-    # Also notify readers who follow this post's series ('new part' push,
-    # DEC-132/TASK-178): any of their PushSubscriptions receive the same
+    # Also notify readers who follow this post's series ('new part' push):
+    # any of their PushSubscriptions receive the same
     # notification. Unioned by endpoint so a series follower who also opted
     # into all/category new-post push gets exactly one notification.
     if post.series_id is not None:
@@ -328,7 +328,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow this post's category with notifications
-    # on (DEC-140/TASK-182): durable reader-level intent, distinct from the
+    # on: durable reader-level intent, distinct from the
     # per-device new-post category pin. Unioned by endpoint so a category
     # follower already reached via all/category new-post push gets one push.
     if post.category_id is not None:
@@ -354,7 +354,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow any of this post's tags with notifications
-    # on (DEC-195/TASK-215): tags are the fine-grained axis categories are too
+    # on: tags are the fine-grained axis categories are too
     # coarse for. One query for the whole tag set; unioned by endpoint so a tag
     # follower already reached via all/category new-post push gets one push.
     tag_ids = [t.id for t in (post.tags or [])]
@@ -381,7 +381,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
                 by_endpoint[sub.endpoint] = sub
 
     # Also notify readers who follow this post's author with notifications on
-    # (round 353): a writer follow is the person-shaped umbrella over the
+    # a writer follow is the person-shaped umbrella over the
     # topic-shaped category/series/tag follows. Unioned by endpoint so a writer
     # follower already reached via all/category/tag push gets one push.
     if post.author_id is not None:
@@ -406,7 +406,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
             ).all():
                 by_endpoint[sub.endpoint] = sub
 
-    # Per-kind opt-out (DEC-171, TASK-202): drop push subscriptions whose reader
+    # Per-kind opt-out: drop push subscriptions whose reader
     # turned 'new_post' off — same reader-level intent as the inbox gating in
     # crud.record_new_post_notifications, so an opted-out reader gets neither the
     # durable row nor the browser push. Anonymous subscriptions (reader_id NULL)
@@ -427,8 +427,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
         if opt_out_reader_ids:
             by_endpoint = {endpoint: s for endpoint, s in by_endpoint.items() if s.reader_id not in opt_out_reader_ids}
 
-    # Deactivated readers must go silent on every channel (DEC-194, RIL
-    # ISS-278): their follow rows still carry notify=True, so without this an
+    # Deactivated readers must go silent on every channel: their follow rows still carry notify=True, so without this an
     # operator who disabled an account would still have its devices pushed.
     # Anonymous subscriptions (reader_id NULL) have no account to deactivate.
     linked_ids = [s.reader_id for s in by_endpoint.values() if s.reader_id is not None]
@@ -456,7 +455,7 @@ async def dispatch_new_post(db: AsyncSession, post: models.Post, logger) -> dict
 # per browser; operators can localize via env). The blog moderates every comment
 # and the author's only discovery path was re-opening the moderation queue —
 # this push tells them a new comment is waiting, with a short preview so they
-# can judge it before opening the queue. (DEC-080)
+# can judge it before opening the queue.
 MODERATION_NOTIF_TITLE = os.getenv("MODERATION_NOTIFICATION_TITLE", "新评论待审核")
 MODERATION_NOTIF_BODY = os.getenv(
     "MODERATION_NOTIFICATION_BODY",
@@ -468,17 +467,17 @@ async def dispatch_moderation_pending(db: AsyncSession, post: models.Post, comme
     """Push 'a new comment awaits moderation' to opted-in admin accounts.
 
     Fired when a comment is CREATED (every comment starts pending in this blog —
-    no auto-approve, DEC-066). Target: every admin (superuser or editor,
-    DEC-054) who opted this browser in via /api/admin/push/subscribe. Consumer
+    no auto-approve). Target: every admin (superuser or editor) who opted this
+    browser in via /api/admin/push/subscribe. Consumer
     is the blog operator, whose one-sided push arc until now only went
-    reader-ward (reply/new-post/thread, DEC-064/076/078).
+    reader-ward (reply/new-post/thread).
 
     Deliberately queries ``AdminPushSubscription`` (not ``PushSubscription``):
     the two tables are separated so a moderation push can never leak into the
     reader fan-outs, mirroring the User/ReaderAccount audience separation
-    (DEC-059). Best effort — unconfigured VAPID or no subscriptions is a silent
+    . Best effort — unconfigured VAPID or no subscriptions is a silent
     no-op, and the shared dispatch helper retires dead (404/410) endpoints
-    without failing the comment create (DEC-080).
+    without failing the comment create.
     """
     if not vapid_configured():
         return {"sent": 0, "failed": 0, "removed": 0}

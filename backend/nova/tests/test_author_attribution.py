@@ -1,4 +1,4 @@
-"""Post author attribution contract tests (DEC-359, TASK-405).
+"""Post author attribution contract tests.
 
 Posts carry an ``author_id`` (defaulting to the writing admin), admins get a
 public pen name (``display_name``) deliberately distinct from their login
@@ -78,7 +78,7 @@ async def test_admin_create_defaults_author_to_writing_admin(client, admin_token
 async def test_admin_create_route_also_authors_to_writing_admin(client, admin_token, admin_user):
     # The second admin-create route (POST /api/posts) must default author_id to
     # the writing admin too — a post created there with no explicit author
-    # would otherwise never get a byline (round-343 deep-dive).
+    # would otherwise never get a byline.
     await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Route Writer")
     r = await client.post(
         "/api/posts",
@@ -177,7 +177,7 @@ async def _set_bio(client, headers, user_id: int, bio: str | None) -> None:
 async def test_admin_user_patch_invalidates_public_caches(client, admin_token, admin_user, monkeypatch):
     """The pen-name/bio PATCH changes AuthorBrief fields rendered from cached
     objects (post lists, series detail, RSS/Atom posts feed) — the write must
-    invalidate those caches, not wait out the TTL (ISS-607/TASK-529)."""
+    invalidate those caches, not wait out the TTL."""
     from app.services import admin as admin_module
 
     calls = []
@@ -219,7 +219,7 @@ async def test_admin_user_patch_sets_and_clears_bio(client, admin_token, admin_u
 async def test_admin_user_patch_bio_whitespace_and_boundary(client, admin_token, admin_user):
     headers = _admin_headers(admin_token)
     # Whitespace-only bio folds to None (empty bio = no bio), like the reader
-    # profile bio validator (ISS-456-style boundary discipline).
+    # profile bio validator (style boundary discipline).
     r = await client.patch(f"/api/admin/users/{admin_user.id}", headers=headers, json={"bio": "   "})
     assert r.status_code == 200, r.text
     assert r.json()["bio"] is None
@@ -247,7 +247,7 @@ async def test_admin_user_create_stores_bio(client, admin_token):
 
 
 async def test_author_archive_envelope_carries_bio(client, admin_token, admin_user):
-    # The person-shaped archive envelope introduces the writer (round 357): the
+    # The person-shaped archive envelope introduces the writer: the
     # "about this writer" bio rides on the envelope's author, NOT on the
     # per-post AuthorBrief (which would bloat every list payload with the same
     # text). The username never leaks.
@@ -305,7 +305,7 @@ async def test_admin_user_patch_is_superuser_only_and_404_unknown(client, db_ses
     await db_session.flush()
     editor_token = await _login(client, editor.username, "editorpass123")
 
-    # Editors cannot manage users (DEC-054): PATCH /users is superuser-only.
+    # Editors cannot manage users: PATCH /users is superuser-only.
     r = await client.patch(
         f"/api/admin/users/{editor.id}", headers=_admin_headers(editor_token), json={"display_name": "x"}
     )
@@ -325,7 +325,7 @@ async def test_admin_user_create_stores_pen_name(client, admin_token):
     assert r.json()["display_name"] == "New Pen"
 
     # Whitespace-only pen name is rejected as "no public identity" (None), not
-    # stored blank (ISS-456-style boundary discipline).
+    # stored blank (style boundary discipline).
     r = await client.post(
         "/api/admin/users",
         headers=_admin_headers(admin_token),
@@ -455,7 +455,7 @@ async def test_admin_update_post_reassigns_author(client, admin_token, admin_use
 
 async def test_author_rss_feed_scopes_to_one_writer(client, admin_token, admin_user, db_session):
     # /rss/authors/{id}.xml delivers ONLY that writer's published posts
-    # (round 345): each pen-named writer gets their own scoped feed, no
+    # each pen-named writer gets their own scoped feed, no
     # cross-writer bleed and no username in the payload.
     await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Feed Writer")
     other = auth.User(
@@ -502,7 +502,7 @@ async def test_author_rss_404_for_unknown_or_username_only_author(client, db_ses
 
 
 async def test_public_authors_index_lists_pennamed_with_counts(client, admin_token, admin_user, db_session):
-    # GET /api/authors (writer discovery, round 346): every pen-named admin
+    # GET /api/authors (writer discovery): every pen-named admin
     # with their published-post count; never the username; a pen-name-less
     # admin stays off the list.
     await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Index Writer")
@@ -543,7 +543,7 @@ async def test_author_archive_envelope_identifies_author_even_when_empty(client,
     await _set_pen_name(client, _admin_headers(admin_token), admin_user.id, "Nobody Yet")
     body = (await client.get(f"/api/authors/{admin_user.id}/posts")).json()
     assert body["items"] == []
-    # The envelope is AuthorArchive (round 357): bio rides here (null until a
+    # The envelope is AuthorArchive: bio rides here (null until a
     # superuser writes one) rather than on per-post AuthorBrief.
     assert body["author"] == {"id": admin_user.id, "display_name": "Nobody Yet", "bio": None, "avatar_url": None}
     _no_username_leak(body)

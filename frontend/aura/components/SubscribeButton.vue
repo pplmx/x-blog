@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * Header button that drives the reader Web Push opt-in (DEC-055, TASK-118).
+ * Header button that drives the reader Web Push opt-in.
  *
  * Hidden until we know the browser and backend can support push
  * (PushManager + a configured VAPID public key). From there it toggles
  * subscribe/unsubscribe and reflects the Permission API's blocked state.
  *
- * Reader-aware since DEC-064: a subscription taken while signed in is bound to
+ * Reader-aware: a subscription taken while signed in is bound to
  * the reader account, so its tooltip advertises comment-reply notifications;
  * signing in re-stamps an existing (previously anonymous) subscription so
  * reply notifications turn on without requiring a re-subscribe.
@@ -40,9 +40,9 @@ onUnmounted(() => {
 // Re-bind an existing (previously anonymous) subscription whenever the reader
 // is signed in AND the browser subscription is detected. Safe no-op when there
 // is none / not subscribed; the backend keeps reader_id on anonymous re-stamp,
-// so logout leaves the browser-level subscription untouched (DEC-064).
+// so logout leaves the browser-level subscription untouched.
 //
-// The combined immediate watch is the ISS-112 fix: an isAuthenticated-only,
+// The combined immediate watch is the fix: an isAuthenticated-only,
 // non-immediate watch left anonymous subscriptions unbound forever —
 //  (a) a reader already signed in on load (stored token) never transitions
 //      false->true, so the re-stamp never ran; and
@@ -52,7 +52,7 @@ onUnmounted(() => {
 // Watching both refs (immediate covers the already-set initial state) means the
 // first moment both hold true triggers the bind; redundant firings are harmless
 // — syncBackend subscribe is an endpoint-keyed upsert and syncReaderBinding
-// guards on status itself. Once bound, the reader's new_post opt-out (DEC-171)
+// guards on status itself. Once bound, the reader's new_post opt-out
 // filters this subscription the same way it filters the inbox row.
 watch(
 	[isAuthenticated, status],
@@ -97,7 +97,7 @@ const icon = computed(() => {
 // Tooltip advertises the reply-notification benefit for signed-in readers;
 // anonymous visitors just see the base label. A browser-blocked state has no
 // in-page recovery (a denied permission can't be re-requested), so the tooltip
-// points at the browser's own site-settings panel instead (round-300 polish).
+// points at the browser's own site-settings panel instead.
 const hint = computed(() => {
 	if (status.value === "denied") return ` · ${t("common.push.deniedHint")}`;
 	if (isAuthenticated.value) return ` · ${t("common.push.repliesIn")}`;
@@ -109,7 +109,7 @@ const title = computed(() => `${label.value}${hint.value}`);
 // at xl once a reader is signed in (English). Everywhere else (mobile menu,
 // which only ever shows below xl) keeps the full label: an unconditional
 // `hidden 2xl:inline` would leave the mobile-menu button icon-only forever
-// since the menu never reaches 2xl. (ISS-125/TASK-225)
+// since the menu never reaches 2xl.
 const props = defineProps<{ compact?: boolean }>();
 
 async function onClick() {
@@ -125,7 +125,7 @@ async function onClick() {
 
 <template>
 	<span v-if="visible" class="relative inline-flex shrink-0">
-		<!-- Transient push-failure bubble (ISS-215): a failed subscribe/unsubscribe
+		<!-- Transient push-failure bubble: a failed subscribe/unsubscribe
          is announced via role=alert instead of silently reverting. Anchored
          absolutely so it never shifts the header row. -->
 		<span
@@ -148,7 +148,7 @@ async function onClick() {
            (English + signed-in + the wide "blocked" label would overflow), so
            the text shows only on very wide screens; the tooltip/aria-label
            always keep it meaningful. Non-compact (mobile menu) always shows the
-           text. (ISS-125/TASK-225) -->
+           text. -->
 			<span class="text-sm" :class="props.compact ? 'hidden 2xl:inline' : 'inline'">{{
 				label
 			}}</span>

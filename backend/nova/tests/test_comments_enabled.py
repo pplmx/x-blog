@@ -1,4 +1,4 @@
-"""Per-post comment control (round 351).
+"""Per-post comment control.
 
 ``posts.comments_enabled`` lets an operator close the door on a post's
 comments — stale content, privacy, high-noise threads — without deleting the

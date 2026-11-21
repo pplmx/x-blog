@@ -1,4 +1,4 @@
-"""Comment flagging tests (DEC-108, TASK-166).
+"""Comment flagging tests.
 
 Readers can flag a comment for moderation; one flag per (comment, source) is
 enforced (idempotent, no click spam), and the admin list can filter to flagged
@@ -187,7 +187,7 @@ class TestBulkDelete:
     async def test_bulk_delete_is_batched_not_n_plus_one(self, client, db_session, auth_headers, test_engine):
         """Deleting a deep thread must not run one query per deleted id.
 
-        ISS-557: the old loop issued a reply-query per comment plus a db.get
+        the old loop issued a reply-query per comment plus a db.get
         per ancestor while walking the chain. The batch rewrite answers the
         thread with one parent_id IN (...) query and an in-memory parent map.
         (The reparent behavior itself is locked in by the sibling tests;

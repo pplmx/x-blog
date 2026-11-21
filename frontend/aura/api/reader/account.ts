@@ -6,17 +6,17 @@ export interface ReaderProfile {
 	id: number;
 	email: string;
 	display_name: string | null;
-	/** Short "about me" (round 352): reader-written plain text on the public
+	/** Short "about me": reader-written plain text on the public
 	 *  profile page; null until the reader writes one. */
 	bio: string | null;
 	avatar_url: string | null;
-	/** Opt-in public "Liked posts" profile tab (round 360, DEC-393) — false by
+	/** Opt-in public "Liked posts" profile tab — false by
 	 *  default; the reader's likes stay private unless they choose to publish. */
 	public_likes: boolean;
-	/** Opt-in public "Saved posts" profile tab (round 363, DEC-399) — false by
+	/** Opt-in public "Saved posts" profile tab — false by
 	 *  default; the reader's curated bookmarks stay private unless published. */
 	public_bookmarks: boolean;
-	/** TOTP 2FA flag (round 364, DEC-401): true when login demands a second
+	/** TOTP 2FA flag: true when login demands a second
 	 *  step. Present on the authenticated /me envelope only — the secret itself
 	 *  is never exposed by any endpoint. */
 	two_factor_enabled: boolean;
@@ -31,7 +31,7 @@ export function useCurrentReader() {
 	});
 }
 
-/** Upload (or replace) the reader's profile picture (DEC-299/TASK-378). */
+/** Upload (or replace) the reader's profile picture. */
 export function uploadReaderAvatar(file: File): Promise<ReaderProfile> {
 	const formData = new FormData();
 	formData.append("file", file);
@@ -42,7 +42,7 @@ export function uploadReaderAvatar(file: File): Promise<ReaderProfile> {
 	});
 }
 
-/** Remove the reader's profile picture (DEC-299/TASK-378). */
+/** Remove the reader's profile picture. */
 export function removeReaderAvatar(): Promise<ReaderProfile> {
 	return command<ReaderProfile>("/api/reader/me/avatar", {
 		method: "DELETE",
@@ -50,7 +50,7 @@ export function removeReaderAvatar(): Promise<ReaderProfile> {
 	});
 }
 
-/** Download the signed-in reader's portable data bundle (DEC-126/TASK-175). */
+/** Download the signed-in reader's portable data bundle. */
 export function getReaderDataExport(): Promise<Record<string, unknown>> {
 	return command<Record<string, unknown>>("/api/reader/me/export", {
 		headers: readerAuthHeaders(),
@@ -62,9 +62,9 @@ export function getReaderDataExport(): Promise<Record<string, unknown>> {
 export function updateReaderProfile(body: {
 	display_name?: string;
 	bio?: string | null;
-	/** Opt-in publishing of the public "Liked posts" profile tab (round 360). */
+	/** Opt-in publishing of the public "Liked posts" profile tab. */
 	public_likes?: boolean;
-	/** Opt-in publishing of the public "Saved posts" profile tab (round 363). */
+	/** Opt-in publishing of the public "Saved posts" profile tab. */
 	public_bookmarks?: boolean;
 }): Promise<ReaderProfile> {
 	return command<ReaderProfile>("/api/reader/me", {
@@ -75,7 +75,7 @@ export function updateReaderProfile(body: {
 }
 
 /**
- * TOTP 2FA management (round 364, DEC-401). setup returns the base32 secret +
+ * TOTP 2FA management. setup returns the base32 secret +
  * otpauth URI (nothing is enabled yet); enable proves possession with one
  * 6-digit code and flips the flag; disable requires the current password AND a
  * valid code. The flag rides the returned ReaderProfile so /account can adopt
@@ -109,7 +109,7 @@ export function disableReader2FA(current_password: string, code: string): Promis
 	});
 }
 
-/** Persist the reader's notification-copy language (DEC-338/TASK-395): the
+/** Persist the reader's notification-copy language: the
  * durable inbox titles and emails are generated with this locale once the
  * language switcher calls it for a signed-in reader. */
 export function setReaderLocale(locale: "en" | "zh"): Promise<{ locale: "en" | "zh" }> {
@@ -134,7 +134,7 @@ export function changeReaderPassword(body: {
 }
 
 /** Permanently delete the reader's own account (204 on success; 401 when the
- *  password is wrong). Past comments are anonymized, not deleted. (DEC-106) */
+ * password is wrong). Past comments are anonymized, not deleted. */
 export function deleteReaderAccount(password: string): Promise<void> {
 	return command<void>("/api/reader/me/account", {
 		method: "DELETE",

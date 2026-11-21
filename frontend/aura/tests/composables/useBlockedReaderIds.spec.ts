@@ -1,8 +1,8 @@
 /**
- * useBlockedReaderIds composable tests (round 386, DEC-437).
+ * useBlockedReaderIds composable tests.
  *
  * The composable exposes the signed-in viewer's block list as a reactive set
- * (a receiver-side opt-out, DEC-425) so the thread, discussion feed and
+ * (a receiver-side opt-out) so the thread, discussion feed and
  * comment search can drop blocked authors' rows. Guests short-circuit to an
  * empty set (the anonymous fast path is byte-identical); the fetch is best
  * effort — a failure must never break a public comment surface.
@@ -24,7 +24,7 @@ vi.mock("../../composables/useReaderAuth", () => ({
 
 import { useBlockedReaderIds } from "../../composables/useBlockedReaderIds";
 
-describe("useBlockedReaderIds (round 386, DEC-437)", () => {
+describe("useBlockedReaderIds ", () => {
 	beforeEach(() => {
 		authRef.value = false;
 		getBlockedReaders.mockReset();

@@ -1,5 +1,5 @@
 <!--
-  Guest newsletter confirmation (DEC-351, TASK-401).
+  Guest newsletter confirmation.
 
   Landed on via the `?token=` link inside the double opt-in confirmation email
   (the per-subscriber token only that email carries). Fires the backend confirm
@@ -29,7 +29,7 @@ const token = computed(() => {
 });
 
 const state = ref<"pending" | "done" | "invalid" | "unsubscribed" | "error">("pending");
-// Weekly-digest cadence toggle (DEC-355, TASK-403): once confirmed, the holder
+// Weekly-digest cadence toggle: once confirmed, the holder
 // can switch to (or back from) a weekly summary instead of per-post mail using
 // the same token the confirm link carried.
 const digestOn = ref(false);
@@ -71,7 +71,7 @@ async function run() {
 		const { digest_weekly } = await confirmNewsletter(token.value);
 		// Seed the cadence checkbox from the server's answer — a digest opt-in
 		// made at subscribe time must show as checked, not as the per-post
-		// default (DEC-355; only the token holder sees this).
+		// default (only the token holder sees this).
 		digestOn.value = digest_weekly;
 		state.value = "done";
 	} catch (e) {
@@ -160,7 +160,7 @@ onMounted(() => void run());
 				class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
 			>
 				<!-- A replayed confirm link on a deliberately-unsubscribed address is
-             a business-level 400 (round 393) — the holder must re-subscribe,
+             a business-level 400 — the holder must re-subscribe,
              not retry this (now dead) link. -->
 				<p class="text-sm text-amber-700 dark:text-amber-300">
 					{{ t("newsletter.confirm.unsubscribed") }}

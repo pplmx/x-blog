@@ -4,9 +4,9 @@
 			<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
 				{{ t("components.commentList.title") }} ({{ total }})
 			</h2>
-			<!-- Comment-thread follow (DEC-078/TASK-150): signed-in readers subscribe
+			<!-- Comment-thread follow: signed-in readers subscribe
            to this discussion and get a push on each newly approved comment.
-           Guests get the email variant (round 380, DEC-427) — it renders
+           Guests get the email variant — it renders
            nothing for signed-in readers, so the two never overlap. -->
 			<ThreadSubscribeButton v-if="props.postId" :post-id="props.postId" />
 			<GuestThreadFollow v-if="props.postId" :post-id="props.postId" />
@@ -33,7 +33,7 @@
 			</button>
 		</p>
 
-		<!-- Comment sort (DEC-094/TASK-159): reorder the thread by newest / oldest
+		<!-- Comment sort: reorder the thread by newest / oldest
          / most helpful (likes). Shown once there is a discussion to sort. -->
 		<div v-if="total > 0" class="flex flex-wrap items-center justify-end gap-2 mb-3 text-sm">
 			<label for="comment-sort" class="text-gray-500 dark:text-gray-400">{{
@@ -49,7 +49,7 @@
 				<option value="oldest">{{ t("components.commentList.sortOldest") }}</option>
 				<option value="likes">{{ t("components.commentList.sortLikes") }}</option>
 			</select>
-			<!-- Search inside the thread (DEC-442/TASK-452): debounced keyword box
+			<!-- Search inside the thread: debounced keyword box
            that narrows the list to matching approved comments. -->
 			<div class="relative">
 				<input
@@ -77,7 +77,7 @@
 				</button>
 			</div>
 			<!-- In-flight feedback for sort/pagination refetches (pending only covers
-           the initial mount; ISS-130). -->
+           the initial mount). -->
 			<Icon
 				v-if="refreshing"
 				icon="lucide:loader-2"
@@ -118,7 +118,7 @@
 		<!-- Empty state: only a genuinely empty discussion says "be the first".
          An empty page under a non-zero total means deletion just drained the
          last page — refreshing clamps back to it, and the copy stays truthful.
-         Gates on the blocked-filtered visibleComments (round 386, DEC-437): a
+         Gates on the blocked-filtered visibleComments: a
          page whose every row is by a blocked reader renders the empty state
          instead of a blank thread. -->
 		<div
@@ -140,16 +140,16 @@
 					<div class="flex-1">
 						<div class="flex items-center gap-2 mb-1">
 							<!-- A verified reader's backend-stamped nickname IS their display
-                   name, so the identity is the name itself (DEC-294/TASK-376):
+                   name, so the identity is the name itself:
                    render it as a link to their public profile. A reader without
                    a display_name must NOT fall back to their stored nickname
-                   (that is their email — crud stamps display_name or email,
-                   TASK-377), so render a generic identity instead; only a truly
+                   (that is their email — crud stamps display_name or email),
+                   so render a generic identity instead; only a truly
                    anonymous commenter keeps their free-typed nickname. -->
-							<!-- Avatar (DEC-299/TASK-378): a reader-set picture beside the
+							<!-- Avatar: a reader-set picture beside the
                    verified identity, linking to the same public profile. The
                    shared ReaderAvatar degrades to the letter if the file is
-                   gone (round-446) — a deleted avatar must not leave a broken
+                   gone — a deleted avatar must not leave a broken
                    image icon in the thread. -->
 							<ReaderAvatar
 								v-if="comment.reader"
@@ -171,7 +171,7 @@
 								}}</template>
 								<template v-else>{{ comment.nickname }}</template>
 							</span>
-							<!-- Author reply (DEC-192): an official answer from the blog owner,
+							<!-- Author reply: an official answer from the blog owner,
                    distinguished from a commenter so readers trust the source. -->
 							<span
 								v-if="comment.is_author_reply"
@@ -193,7 +193,7 @@
 								formatDate(comment.created_at)
 							}}</span>
 						</div>
-						<!-- Comment markdown rendering (DEC-088): sanitized via the same
+						<!-- Comment markdown rendering: sanitized via the same
                  pipeline as post content, with line breaks preserved. -->
 						<div
 							class="comment-body text-sm text-gray-700 dark:text-gray-300"
@@ -212,7 +212,7 @@
 										: t("components.commentList.reply")
 								}}
 							</button>
-							<!-- Comment likes (DEC-092/TASK-158): anonymous upvote with a
+							<!-- Comment likes: anonymous upvote with a
                    localStorage dedup so one browser registers at most one like. -->
 							<button
 								type="button"
@@ -243,7 +243,7 @@
 							<span class="sr-only" role="status" aria-live="polite">
 								{{ t("components.commentList.likesCount", { count: comment.likes ?? 0 }) }}
 							</span>
-							<!-- Comment flag/report for moderation (DEC-108, TASK-166): a
+							<!-- Comment flag/report for moderation: a
                    visitor flags an inappropriate comment; one per browser. -->
 							<button
 								type="button"
@@ -268,7 +268,7 @@
 										: t("components.commentList.flag")
 								}}</span>
 							</button>
-							<!-- Own-comment edit/delete (DEC-096, TASK-160): only the author
+							<!-- Own-comment edit/delete: only the author
                    sees these; "edited" marks a self-edit. -->
 							<span v-if="comment.edited_at" class="text-xs text-gray-400 dark:text-gray-500">{{
 								t("components.commentList.edited")
@@ -307,7 +307,7 @@
 							/>
 						</div>
 
-						<!-- Inline edit form for the author's own comment (DEC-096) -->
+						<!-- Inline edit form for the author's own comment -->
 						<div
 							v-if="editingId === comment.id"
 							class="mt-3 space-y-2"
@@ -369,7 +369,7 @@
 							<span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
 								<Icon icon="lucide:corner-down-right" class="w-3 h-3 inline" />
 							</span>
-							<!-- Avatar (DEC-299/TASK-378): same treatment as the top-level
+							<!-- Avatar: same treatment as the top-level
                    comment — shown for any reader who has set a picture. -->
 							<img
 								v-if="reply.reader && reply.reader.avatar_url"
@@ -501,7 +501,7 @@
 							</template>
 						</div>
 
-						<!-- Inline reply form for this reply (reply-to-reply, RIL TASK-080) -->
+						<!-- Inline reply form for this reply (reply-to-reply) -->
 						<div v-if="replyTo?.id === reply.id" class="mt-3">
 							<CommentForm
 								:post-id="props.postId"
@@ -515,7 +515,7 @@
 							/>
 						</div>
 
-						<!-- Inline edit form for the author's own reply (DEC-096) -->
+						<!-- Inline edit form for the author's own reply -->
 						<div
 							v-if="editingId === reply.id"
 							class="mt-3 space-y-2"
@@ -563,7 +563,7 @@
 			</li>
 		</ul>
 
-		<!-- Pagination (DEC-102, TASK-163; ISS-370: first/current/last + ellipsis
+		<!-- Pagination (first/current/last + ellipsis
          like the my-comments/feed pages, so deep history can reach the far
          pages instead of a fixed local window) -->
 		<nav v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
@@ -587,7 +587,7 @@
 			</button>
 		</nav>
 
-		<!-- Comment-image lightbox (DEC-308/TASK-382): the same fullscreen viewer
+		<!-- Comment-image lightbox: the same fullscreen viewer
          the post body opens, driven by the delegated click above. -->
 		<MarkdownLightbox :images="lightboxImages" v-model:index="lightboxIndex" />
 	</section>
@@ -619,7 +619,7 @@ import MarkdownLightbox, { type LightboxImage } from "./MarkdownLightbox.vue";
 // Upgrade the comments already on screen to DOMPurify once it finishes loading
 // (same pattern as MarkdownContent): the regex fallback guarantees XSS-safety
 // from the very first paint, and flipping purifyReady recomputes every body
-// through the stronger sanitizer. (DEC-088, TASK-156)
+// through the stronger sanitizer.
 const purifyReady = ref(false);
 onMounted(async () => {
 	await loadPurify();
@@ -636,12 +636,12 @@ function commentBodyHtml(content: string): string {
 	return commentMarkdownToHtml(content);
 }
 
-// Syntax highlighting for comment code blocks (DEC-090, TASK-157): the same
+// Syntax highlighting for comment code blocks: the same
 // lazy client-only highlight.js used for post content. Fences already render
 // as <pre><code class="language-..."> from the markdown pass; tokenize each
 // block once the list is on screen. highlightCode escapes its source (plain
 // text fallback for unknown languages), so installing the highlighted HTML
-// never weakens the v-html XSS guarantees from TASK-156.
+// never weakens the v-html XSS guarantees.
 const listEl = ref<HTMLElement | null>(null);
 
 async function highlightCommentCode(): Promise<void> {
@@ -660,8 +660,8 @@ async function highlightCommentCode(): Promise<void> {
 	}
 }
 
-// --- Comment-image lightbox (DEC-308/TASK-382) ---
-// The post body opens MarkdownLightbox for its images (DEC-302) but the
+// --- Comment-image lightbox ---
+// The post body opens MarkdownLightbox for its images but the
 // comment body — same marked+sanitizer pipeline, rendered as plain v-html —
 // never did, so a commenter pasting a screenshot/diagram gets a column-width
 // image that cannot be scrutinised. Click delegation on the list root: find
@@ -754,7 +754,7 @@ const total = computed(() => commentData.value?.total || 0);
 const totalPages = computed(() => commentData.value?.total_pages || 0);
 const currentPage = ref(1);
 
-// --- Search inside the thread (DEC-442, TASK-452) ---
+// --- Search inside the thread ---
 // A thread can be arbitrarily long, so a reader who remembers a phrase ("that
 // answer about Docker") can scope the list to matching approved comments
 // instead of paging through everything. Mirrors the global comment search's
@@ -794,9 +794,9 @@ function clearQuery(): void {
 }
 const searching = computed(() => currentQuery.value !== "");
 
-// Blocked-reader suppression (round 386, DEC-437): rows authored by readers
+// Blocked-reader suppression: rows authored by readers
 // the signed-in viewer has blocked are dropped from the rendered thread (a
-// receiver-side opt-out, per DEC-425). The block list loads asynchronously, so
+// receiver-side opt-out, per). The block list loads asynchronously, so
 // the thread first paints unadulterated and then filters once the list lands —
 // an unblocked reply to a blocked comment still renders via the tree's
 // parent-missing promote (we censor the blocked author, not their audience).
@@ -812,7 +812,7 @@ const visibleComments = computed<Comment[]>(() =>
 	comments.value.filter((c) => !c.reader || !blockedReaderIds.value.has(c.reader.id)),
 );
 
-// Deep-link landing (DEC-072): a reply notification opens /posts/<slug>#comment-<id>;
+// Deep-link landing: a reply notification opens /posts/<slug>#comment-<id>;
 // once the list renders, scroll the anchor into view (comments carry scroll-mt
 // so the sticky header doesn't cover the target). The anchor may live on a page
 // past the first (only page 1 is loaded at mount): walk the pages until the
@@ -830,7 +830,7 @@ function scrollToComment(targetId: string): void {
 async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
 	if (deepLinkResolved && !force) return;
 	// Optional explicit target (a freshly-posted comment that needs locating on
-	// a non-newest page, ISS-384); default keeps reading window.location.hash.
+	// a non-newest page); default keeps reading window.location.hash.
 	const resolvedId = targetId ?? window.location.hash.slice(1);
 	if (!resolvedId.startsWith("comment-")) return;
 	const targetNum = Number.parseInt(resolvedId.slice("comment-".length), 10);
@@ -879,7 +879,7 @@ onMounted(async () => {
 	void landOnDeepLink();
 });
 
-// Comment sort (DEC-094/TASK-159): newest is the default; changing it resets
+// Comment sort: newest is the default; changing it resets
 // to page 1 and re-fetches so the reorder is immediately visible.
 const currentSort = ref<CommentSort>("newest");
 
@@ -907,9 +907,9 @@ watch(visibleComments, async () => {
 	void highlightCommentCode();
 });
 
-// --- Comment likes (DEC-092, TASK-158) ---
+// --- Comment likes ---
 
-// One like per comment per browser, matching the post-like dedup (ISS-038).
+// One like per comment per browser, matching the post-like dedup.
 const LIKED_PREFIX = "liked-comments:";
 function isCommentLiked(id: number): boolean {
 	if (typeof window === "undefined") return false;
@@ -948,7 +948,7 @@ async function handleCommentLike(comment: Comment): Promise<void> {
 	}
 }
 
-// --- Comment edit/delete by the author (DEC-096, TASK-160) ---
+// --- Comment edit/delete by the author ---
 // Only a signed-in reader who authored a comment can edit/delete it. The
 // controls render only on the reader's own comments (comment.reader.id matches
 // the current reader's id); anonymous comments have no owner and no controls.
@@ -968,7 +968,7 @@ const editOriginal = ref("");
 // Comment ids with an in-flight edit/delete (disables the buttons + spinner).
 const actionIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
-// Success acknowledgement for a saved edit (round 396): under moderation a
+// Success acknowledgement for a saved edit: under moderation a
 // saved edit re-enters the queue — say so instead of leaving the reader
 // believing their new text is live (and confused when a refresh drops it).
 const editFeedback = ref<string | null>(null);
@@ -982,7 +982,7 @@ function startEdit(comment: Comment): void {
 	// re-target — don't prompt to discard the draft the reader is working on.
 	if (editingId.value === comment.id) return;
 	// Re-targeting while another comment's edit box holds unsaved text would
-	// silently discard it (round-418 audit) — the same hole the reply-draft
+	// silently discard it — the same hole the reply-draft
 	// path closed (confirmDiscardReplyDraft): the sibling edit draft must get
 	// the same confirm before the editor is re-pointed at another comment.
 	if (!confirmDiscardEditDraft()) return;
@@ -1089,7 +1089,7 @@ async function confirmDelete(comment: Comment): Promise<void> {
 	}
 }
 
-// --- Comment flag/report (DEC-108, TASK-166) ---
+// --- Comment flag/report ---
 // A visitor flags an inappropriate comment for moderation; the backend dedups
 // by (comment, source), and the browser keeps its own guard so one person
 // reports a comment at most once (mirrors the like dedup).
@@ -1128,7 +1128,7 @@ async function handleCommentFlag(comment: Comment): Promise<void> {
 // then render top-level comments (parent_id null, or whose parent is not on
 // the current page) with all their nested descendants. Walking the ancestor
 // chain means replies-to-replies stay under their top-level comment instead of
-// being dropped (RIL ISS-037).
+// being dropped.
 const byId = computed(() => {
 	const m = new Map<number, Comment>();
 	for (const c of visibleComments.value) m.set(c.id, c);
@@ -1196,7 +1196,7 @@ function toggleReply(comment: Comment) {
 			? null
 			: // The composer "replying to {name}" header must show a reader's PUBLIC
 				// identity — a verified reader without a display_name would render as
-				// their account email if we used the stored nickname (TASK-377, same
+				// their account email if we used the stored nickname (same
 				// PII rule as the row header).
 				{
 					id: comment.id,
@@ -1207,11 +1207,11 @@ function toggleReply(comment: Comment) {
 
 const refreshing = ref(false);
 // Sort/pagination refetch failures were silent (void refreshList() + unhandled
-// rejections): an offline reader flipped the sort and saw nothing change (ISS-307).
+// rejections): an offline reader flipped the sort and saw nothing change.
 const refreshError = ref<string | null>(null);
 // Monotonic request sequence so a slow earlier response (page fetch) cannot
 // overwrite a newer sort/filter response (same guard as comments.vue/mine,
-// useReadingHistory ISS-128, HeaderSearch).
+// useReadingHistory HeaderSearch).
 let refreshSeq = 0;
 
 async function fetchPage(seq: number): Promise<void> {
@@ -1267,14 +1267,14 @@ function retryRefresh(): void {
  * Jump the list to the page that holds a just-created comment, refresh, then
  * scroll it into view — walking pages if the initial guess was off. Shared by
  * inline replies (handleReplied) and the standalone bottom-of-page form via
- * defineExpose (round 278).
+ * defineExpose.
  *
  * The old top-level path (posts/[slug]/index.vue) only refreshed the CURRENT
  * page, so a comment posted from page 2+ was never fetched at all; and the
  * reply path guessed page 1 for every non-oldest sort, but under "most
  * helpful" a brand-new comment has 0 likes and sorts to the TAIL of the
  * thread — neither rendered, both read as a silent failure inviting a double
- * post (ISS-384 fixed newest; round 278 closes likes + the top-level form).
+ * post (fixed newest closes likes + the top-level form).
  */
 async function surfaceComment(created: Comment | undefined): Promise<void> {
 	// Moderated deployment (AUTO_APPROVE_READER_COMMENTS off — the default):
@@ -1317,7 +1317,7 @@ async function surfaceComment(created: Comment | undefined): Promise<void> {
 			// re-order, or a multi-page 0-like block whose start page we
 			// guessed) — walk pages like the deep-link path does. Always walk:
 			// gating on the parent's presence let a "most helpful" reply with
-			// its parent on page 1 stay invisible (round 278, ISS-384 follow-up).
+			// its parent on page 1 stay invisible.
 			void landOnDeepLink(`comment-${newId}`, true);
 		}
 	}
@@ -1331,7 +1331,7 @@ function handleReplied(created: Comment | undefined) {
 // by "…"), matching the shared archive/search/category/tag/my-comments feeds —
 // the previous hand-rolled 5-window had no far-page affordance, so a deep
 // thread offered no way to jump to the first/last page without walking the
-// window (survey finding, ISS-370).
+// window (survey finding).
 const paginationTokens = computed(() => paginationPages(totalPages.value, currentPage.value));
 
 async function loadPage(page: number | "…") {
@@ -1358,11 +1358,11 @@ function formatDate(dateStr: string): string {
 }
 
 // Expose the imperative refetch so a sibling comment form (post page) can
-// refresh the list/count after a successful top-level submission (ISS-126).
+// refresh the list/count after a successful top-level submission.
 defineExpose({ refreshList, surfaceComment });
 </script>
 
-<!-- Comment markdown typography (DEC-088): code blocks/links/quotes inside the
+<!-- Comment markdown typography: code blocks/links/quotes inside the
      sanitized comment body read like the post body, minus the heavy features. -->
 <style scoped>
 .comment-body :deep(pre) {

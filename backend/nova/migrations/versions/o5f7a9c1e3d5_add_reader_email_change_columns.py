@@ -1,10 +1,10 @@
-"""add reader email-change verification columns (DEC-357, TASK-404).
+"""add reader email-change verification columns.
 
 ``email_change_pending`` (the NEW address, proven by an emailed link),
 ``email_change_token`` (opaque one-time secret the link carries; unique so no
 two accounts can share a pending change) and ``email_change_requested_at``
 (expiry clock, 60-minute TTL). Pure additive columns on the existing
-reader_accounts table; no data change. DEC-009 additive style with idempotent
+reader_accounts table; no data change. additive style with idempotent
 has_column guards so re-applying is a no-op.
 """
 

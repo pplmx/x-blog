@@ -13,10 +13,10 @@ useHead({ title: computed(() => t("admin.postsList.seoTitle")) });
 // and the debounced term that actually drives the query. Only the debounced
 // value feeds queryParams, so the reactive listing path (below) refetches at
 // most once per settled search — never on every keypress (media page pattern,
-// DEC-189). The state is a module singleton (useAdminPostListState): an editor
+//). The state is a module singleton (useAdminPostListState): an editor
 // Save/Cancel round-trip unmounts this page, and without the singleton the
 // search/filter/page would reset to the unfiltered first page on return
-// (ISS-311 part 1).
+// (part 1).
 const { searchQuery, searchInput, statusFilter, currentPage } = useAdminPostListState();
 const pageSize = 20;
 
@@ -33,7 +33,7 @@ const queryParams = computed(() => {
 // Pass the computed (a getter-backed path), NOT queryParams.value (a one-time
 // snapshot): useFetch watches the path, so changing q/status/skip re-fetches
 // with the new params. snapshotting at setup locked every later refresh() to
-// the original URL and search/status/pagination did nothing (RIL ISS-275).
+// the original URL and search/status/pagination did nothing.
 const { data, pending, error, refresh } = await useAdminPosts(queryParams);
 const posts = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
@@ -64,7 +64,7 @@ function onSearchInput() {
 	}, 300);
 }
 
-// Same timer-leak class the media page fixed (ISS-582): a 300ms debounce
+// Same timer-leak class the media page fixed: a 300ms debounce
 // armed right before SPA navigation away would otherwise fire on the
 // unmounted instance and issue a stray refetch.
 onBeforeUnmount(() => {
@@ -158,7 +158,7 @@ function statusDot(post: AdminPost): string {
 	return "bg-amber-500";
 }
 
-// What the "Date" column means per status (deep-dive finding, ISS-389): the old
+// What the "Date" column means per status (deep-dive finding): the old
 // column always showed created_at, so a Scheduled post showed its *draft*
 // creation date next to the "Scheduled" chip — the operator could not see when
 // it goes live — and stale drafts were indistinguishable from fresh ones. Now:
@@ -285,7 +285,7 @@ function displayDate(post: AdminPost): string {
 		<div v-else-if="!pending && error" class="text-center py-12 text-red-500">
 			<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
-           line (round-445 audit). -->
+           line. -->
 			<p class="mb-4">{{ t("admin.postsList.loadFailed") }}</p>
 			<button
 				type="button"
@@ -436,7 +436,7 @@ function displayDate(post: AdminPost): string {
 									>
 										<Icon icon="lucide:pencil" class="h-4 w-4" />
 									</NuxtLink>
-									<!-- Duplicate (round 349): seed a sibling draft from this post
+									<!-- Duplicate: seed a sibling draft from this post
                        (same content/taxonomy, fresh slug, metadata cleared) and
                        jump straight into its editor. -->
 									<button

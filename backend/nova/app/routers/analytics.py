@@ -1,11 +1,11 @@
-"""Admin reading-trend analytics (DEC-086, TASK-155).
+"""Admin reading-trend analytics.
 
 The public /api/stats endpoint exposes aggregate totals; this endpoint serves
 the per-day trend the dashboard charts — the last N days of total views plus
 the top posts by in-period views. Admin-scoped (superuser or editor), because
 readership signals are operationally useful to whoever moderates the blog.
 The series advances on the write-on-read ``post_views_daily`` table from
-DEC-086 and tracks forward only (no backfill of historic counters).
+ and tracks forward only (no backfill of historic counters).
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ async def post_views_trend(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Per-post daily reading series for the post editor (DEC-287/TASK-372).
+    """Per-post daily reading series for the post editor.
 
     The dashboard shows the aggregate trend; this endpoint narrows it to one
     post so the editor can render a per-post sparkline + period total. Same
@@ -72,7 +72,7 @@ async def follows_stats(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Per-series + per-category reader follow counts and totals (DEC-144/TASK-184)."""
+    """Per-series + per-category reader follow counts and totals."""
     return await analytics_service.get_follow_stats(db, limit=limit)
 
 
@@ -84,7 +84,7 @@ async def top_searches(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Top public search terms by aggregate count (DEC-152/TASK-188)."""
+    """Top public search terms by aggregate count."""
     return await analytics_service.get_top_searches(db, limit=limit)
 
 
@@ -96,5 +96,5 @@ async def comments_stats(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Comment-activity series + top commented posts (DEC-154/TASK-189)."""
+    """Comment-activity series + top commented posts."""
     return await analytics_service.get_comment_activity_stats(db, days=days)

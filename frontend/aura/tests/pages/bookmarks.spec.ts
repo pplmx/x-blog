@@ -30,7 +30,7 @@ vi.mock("../../composables/useBookmarks", () => ({
 }));
 
 // Mock useBookmarkSync: the page's "Clear all" now goes through clearAll
-// (local wipe + cloud clear, TASK-233), not a bare clearBookmarks. `add` backs
+// (local wipe + cloud clear), not a bare clearBookmarks. `add` backs
 // the single-removal Undo; `setDone` backs the To-read/Done queue toggle.
 const mockSyncing = ref(false);
 const mockSyncIssue = ref<"auth" | null>(null);
@@ -81,7 +81,7 @@ vi.mock("../../composables/useReaderAuth", () => ({
 }));
 
 // Folder API: create/rename failures return false and must surface an alert;
-// assign is hoisted so the undo-restores-folder regression (ISS-388) can assert
+// assign is hoisted so the undo-restores-folder regression can assert
 // the re-created cloud row is re-filed. Mirrors bookmarks-folders.spec.ts.
 const mockFolders = ref<{ id: number; name: string; count: number }[]>([]);
 const mockCreateFolder = vi.fn(async () => false);
@@ -170,7 +170,7 @@ describe("Bookmarks page", () => {
 		});
 
 		it("warns (with a re-login link) when the cloud sync hits a dead session and dismisses on X", async () => {
-			// ISS-222: a stored-but-expired reader token silently drops mirror
+			// a stored-but-expired reader token silently drops mirror
 			// writes. The page must surface it instead of pretending "saved".
 			mockBookmarks.value = [];
 			mockSyncIssue.value = "auth";
@@ -260,7 +260,7 @@ describe("Bookmarks page", () => {
 			// Folder chip counts go stale after remove/undo/clear-all: the sync
 			// add/remove is fire-and-forget and only loadFolders recomputes each
 			// folder's count, so the page schedules a delayed refresh after the
-			// removal lands (round 299).
+			// removal lands.
 			mockBookmarks.value = [sampleBookmark];
 			mockIsAuthenticated.value = true;
 			mockRemoveBookmark.mockClear();
@@ -343,7 +343,7 @@ describe("Bookmarks page", () => {
 			vi.useRealTimers();
 		});
 
-		it("restores a removed bookmark's folder assignment on undo (ISS-388)", async () => {
+		it("restores a removed bookmark's folder assignment on undo ", async () => {
 			// A bookmark inside a folder that gets removed + undone: the undo's
 			// add() re-PUTs only the post id, so without an explicit folder
 			// re-assign the cloud row loses its folder and the next merge pull
@@ -366,7 +366,7 @@ describe("Bookmarks page", () => {
 			expect(mockAssignFolder).toHaveBeenCalledWith(1, 3);
 		});
 
-		it("surfaces a failed folder re-assign on undo instead of silently dropping the folder (ISS-428)", async () => {
+		it("surfaces a failed folder re-assign on undo instead of silently dropping the folder ", async () => {
 			// The undo's re-assign can fail (offline, dead session): the bookmark
 			// comes back locally with its folder chip, but the cloud row has no
 			// folder and the next merge silently un-files it. The page must tell
@@ -430,7 +430,7 @@ describe("Bookmarks page", () => {
 			vi.unstubAllGlobals();
 		});
 
-		it("warns when the cloud copy survives an offline clear-all (ISS-387)", async () => {
+		it("warns when the cloud copy survives an offline clear-all ", async () => {
 			// The local mirror is wiped, but the server copy is still there and
 			// the next merge resurrects it — the page must not present the wipe
 			// as a done deal.
@@ -461,7 +461,7 @@ describe("Bookmarks page", () => {
 		});
 	});
 
-	describe("search (TASK-174)", () => {
+	describe("search ", () => {
 		const vueBookmark = { ...sampleBookmark, id: 1, title: "Vue Guide", slug: "vue-guide" };
 		const goBookmark = {
 			...sampleBookmark,
@@ -561,7 +561,7 @@ describe("Bookmarks page", () => {
 		});
 	});
 
-	describe("queue state (round 361, DEC-395)", () => {
+	describe("queue state ", () => {
 		const todo = { ...sampleBookmark, id: 1 };
 		const done = { ...sampleBookmark, id: 2, title: "Read Post", done: true };
 

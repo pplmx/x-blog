@@ -23,7 +23,7 @@ def _has_cjk(query: str) -> bool:
     full-text search cannot match partial/prefix Chinese terms ('评' vs content
     '评论系统') — while SQLite's ILIKE substring path handles them fine. Detect
     CJK in Python (not by dialect) so the fallback to substring matching is
-    identical on SQLite and Postgres. (DEC-070, TASK-143)
+    identical on SQLite and Postgres.
     """
     return any(
         ("㐀" <= ch <= "䶿")  # CJK Extension A
@@ -42,7 +42,7 @@ def _has_searchable_token(query: str) -> bool:
     #20). Treating such queries as tsvector on Postgres silently returns zero
     hits for a query that finds literal matches on SQLite, so route them down
     the same dialect-agnostic substring path for consistent cross-backend
-    results. (PG-harness finding, TASK-246)
+    results. (PG-harness finding)
     """
     return any(ch.isalnum() for ch in query)
 
@@ -70,10 +70,10 @@ async def search_posts(
     # Scheduled posts are not searchable before their publish_at (same rule as list)
     scheduled_filter = or_(models.Post.publish_at.is_(None), models.Post.publish_at <= now)
 
-    # Narrowing filters (DEC-084, TASK-154): category/tag by NAME, plus a
+    # Narrowing filters: category/tag by NAME, plus a
     # date range over the EFFECTIVE publish time — a scheduled post is
     # findable in the window it actually went live, matching the feed/archive
-    # (RIL ISS-266). Applied identically on both dialect paths. The columns
+    # Applied identically on both dialect paths. The columns
     # are naive UTC (see utc_now_naive); coerce whatever the client sent
     # (naive or aware, ISO or date) to naive UTC before comparing.
     filters = []
@@ -88,20 +88,20 @@ async def search_posts(
 
     # Sort applied below per dialect branch (tsvector relevance is a real
     # metric; the CJK substring path has none, so "relevance" degrades to
-    # newest there — documented in DEC-084). newest/oldest also key off
+    # newest there — documented). newest/oldest also key off
     # effective publish time so search order matches the feed order.
     def _sort_order(ts_vector=None, ts_query=None):
         # Every branch ends with a Post.id tiebreak: equal keys (two posts
         # batch-scheduled to the same whole-second publish_at, equal view
         # counts) would otherwise resolve by query plan, making pages unstable
         # (a post appearing on page 1 and again on page 2) — the same
-        # deterministic ordering get_posts already enforces (RIL ISS-284).
+        # deterministic ordering get_posts already enforces.
         if sort == "newest":
             return (_effective_publish_col().desc(), models.Post.id.desc())
         if sort == "oldest":
             return (_effective_publish_col().asc(), models.Post.id.asc())
         if sort == "views":
-            # COALESCE NULL views (TASK-535) — same PG/SQLite parity as the
+            # COALESCE NULL views — same PG/SQLite parity as the
             # popular-posts ranking; a raw/legacy NULL row must rank as 0.
             return (func.coalesce(models.Post.views, 0).desc(), models.Post.id.desc())
         if sort == "relevance" and ts_vector is not None:
@@ -191,7 +191,7 @@ async def search_posts(
 def _term_substring_clauses(terms: list[str], *fields) -> list:
     """Per-term substring-AND clauses over ``fields`` (the combined-search path).
 
-    Mirrors search_posts's dialect-agnostic branch (DEC-084): every
+    Mirrors search_posts's dialect-agnostic branch: every
     whitespace-separated term must appear as a substring in at least one of the
     given columns, with LIKE metacharacters escaped so a literal ``%``/``_`` is
     matched, never treated as a wildcard. ILIKE is inherently CJK-aware and
@@ -294,7 +294,7 @@ async def search_authors(
 
 
 async def log_search_query(db: AsyncSession, query: str | None) -> None:
-    """Best-effort aggregate of a public search term (DEC-152/TASK-188).
+    """Best-effort aggregate of a public search term.
 
     Normalizes to lowercased, trimmed (≤200 chars) and upserts a counter on the
     matching row. Never tied to a reader. A logging failure is swallowed — it
@@ -303,7 +303,7 @@ async def log_search_query(db: AsyncSession, query: str | None) -> None:
     The counter increment is an atomic UPDATE expression (``count = count + 1``),
     never a read-modify-write: two concurrent searches for the same term each
     issuing SELECT-then-assign would both read N and both write N+1, silently
-    dropping one increment (round 278 — the same lost-update class the
+    dropping one increment (the same lost-update class the
     daily-views counter was hardened against). The first-seen path inserts with
     count=1 and keeps the IntegrityError retry for the racing-first-insert case.
     """

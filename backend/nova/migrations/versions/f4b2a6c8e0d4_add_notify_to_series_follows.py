@@ -1,10 +1,10 @@
-"""add notify column to series_follows (DEC-138, TASK-181)
+"""add notify column to series_follows
 
 Per-series follow now decouples *tracking* from *push*: a follow with
 notify=false still shows in the reader's "Your series" row and followed-series
 list but is not fanned out in new-part push dispatch. Adds an additive,
 non-null column defaulting to true (existing rows keep notifications on).
-No existing DDL is touched (DEC-009).
+No existing DDL is touched.
 
 Revision ID: f4b2a6c8e0d4
 Revises: f2a4c6e8d0b2

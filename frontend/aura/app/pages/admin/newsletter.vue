@@ -1,7 +1,7 @@
 <!--
-  Admin newsletter subscribers page (DEC-354, TASK-402).
+  Admin newsletter subscribers page.
 
-  The operator surface for the guest email newsletter (DEC-351): lists every
+  The operator surface for the guest email newsletter: lists every
   subscribed address with its double opt-in state (confirmed / pending) and
   the subscription date, lets the admin filter by state and search by email,
   and removes an address entirely (row + token). A newsletter with no
@@ -33,7 +33,7 @@ const currentPage = ref(1);
 const pageSize = 20;
 const statusFilter = ref<AdminNewsletterStatus>("all");
 // Debounced search: the input ref updates instantly, the query ref drives the
-// useFetch path so a pause in typing triggers a refetch (DEC-189 pattern).
+// useFetch path so a pause in typing triggers a refetch pattern.
 const searchInput = ref("");
 const searchQ = ref("");
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -89,7 +89,7 @@ function formatDate(value: string | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// Weekly digest overview + preview panel (DEC-423, TASK-436)
+// Weekly digest overview + preview panel
 // ---------------------------------------------------------------------------
 // The digest's backend machinery has no operator reading surface: an admin
 // cannot see who opted into the weekly cadence, when the last one went out,
@@ -123,7 +123,7 @@ async function runDigest(dryRun: boolean) {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — the backend
-		// envelope when readable, else the localized fallback (round-445 audit).
+		// envelope when readable, else the localized fallback.
 		digestError.value = apiErrorMessage(e, t("admin.newsletter.digestPanel.error"));
 	} finally {
 		digestBusy.value = false;
@@ -176,7 +176,7 @@ async function removeSubscriber(id: number, email: string) {
 			</p>
 		</header>
 
-		<!-- Weekly digest panel (DEC-423, TASK-436): the operator reading surface
+		<!-- Weekly digest panel: the operator reading surface
          for the digest job — who is on the weekly cadence, when the last one
          went out, what the next window would carry, and live preview/send
          controls wired to the existing send-weekly endpoint. -->
@@ -416,7 +416,7 @@ async function removeSubscriber(id: number, email: string) {
 									)
 								}}
 							</span>
-							<!-- Weekly-digest cadence marker (DEC-355): a confirmed address
+							<!-- Weekly-digest cadence marker: a confirmed address
                    with this flag is served by the weekly digest, not the
                    per-post fan-out — the operator can see the split at a glance. -->
 							<span

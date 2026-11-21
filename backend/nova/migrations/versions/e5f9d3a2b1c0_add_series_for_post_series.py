@@ -1,11 +1,11 @@
-"""add series table and post series link for post series (DEC-056)
+"""add series table and post series link for post series
 
 Adds a ``series`` table (title/slug/description) plus ``posts.series_id`` and
 ``posts.series_order`` so posts can be grouped into an author-ordered sequence
 exposed as a public series page with in-series prev/next navigation.
 
 Entirely additive: a new table plus two new nullable/defaulted columns on the
-existing ``posts`` table — no existing DDL is touched (DEC-009 preserved).
+existing ``posts`` table — no existing DDL is touched preserved.
 
 Defensive like the push-subscriptions and role-tier migrations: if any piece
 already exists (a dev DB whose create_all safety net created it first), it is

@@ -1,5 +1,5 @@
 /**
- * Reading-insights journey (DEC-417, TASK-434).
+ * Reading-insights journey.
  *
  * A signed-in reader who has viewed a post opens /history: beside the
  * streak/heatmap, the reading-insights panel shows "read in the last 30 days"
@@ -36,7 +36,7 @@ async function registerAndLoginReader(
 	return (await login.json()).access_token as string;
 }
 
-test.describe("Reading insights (DEC-417)", () => {
+test.describe("Reading insights ", () => {
 	test("a signed-in reader sees their 30-day volume and categories on /history", async ({
 		page,
 		request,

@@ -1,4 +1,4 @@
-"""Bookmark folder/collection API contract tests (DEC-120, TASK-172).
+"""Bookmark folder/collection API contract tests.
 
 A signed-in reader can organize saved posts into named folders: create (with
 counts), rename, delete (bookmarks become uncategorized), file bookmarks into a
@@ -70,7 +70,7 @@ class TestAuthRequired:
 class TestFolderIdOverflowCaps:
     """Folder/subscription ids are bounded by IdInt, so a >bigint id in a path
     or query param is a 422 on every backend — not a Postgres-only DataError
-    500 (backend deep-dive, ISS-448)."""
+    500 (backend deep-dive)."""
 
     BIG_ID = "99999999999999999999999999"
 
@@ -109,14 +109,14 @@ class TestCreateFolder:
 
     async def test_create_folder_name_with_nul_is_422(self, client):
         """A NUL in a folder name would crash psycopg at bind -> 500; the
-        FolderCreate schema must gate it with 422 (ISS-454, TASK-351)."""
+        FolderCreate schema must gate it with 422."""
         token = await _token(client)
         resp = await _make_folder(client, token, "na\x00me")
         assert resp.status_code == 422, resp.text
 
     async def test_create_folder_whitespace_only_name_is_422(self, client):
         """'   ' passed min_length=1 and was stored as "" by crud's strip — a
-        blank folder in the reader's list. Strip at the boundary (ISS-456)."""
+        blank folder in the reader's list. Strip at the boundary."""
         token = await _token(client)
         resp = await _make_folder(client, token, "   ")
         assert resp.status_code == 422, resp.text

@@ -126,7 +126,7 @@ async def test_security_headers(client):
     assert response.headers.get("X-Frame-Options") == "DENY"
     assert response.headers.get("X-XSS-Protection") == "1; mode=block"
     assert "max-age=31536000" in response.headers.get("Strict-Transport-Security", "")
-    # DEC-057 / TASK-125: the baseline hardening set beyond the legacy four.
+    # the baseline hardening set beyond the legacy four.
     assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
     assert response.headers.get("Permissions-Policy") == "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
     assert response.headers.get("Cross-Origin-Opener-Policy") == "same-origin"

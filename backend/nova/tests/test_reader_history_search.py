@@ -1,4 +1,4 @@
-"""Reader history recall-search tests (DEC-148, TASK-186).
+"""Reader history recall-search tests.
 
 A signed-in reader can filter their past-read posts on /me/history by a term
 matching title or excerpt (case-insensitive), publicly-visible only.
@@ -96,7 +96,7 @@ class TestHistorySearch:
         # /me/history is not rate-limited and its q reached the ILIKE bind with
         # no length cap; bound it to the public search's MAX_QUERY_LENGTH so an
         # oversized term is a clean 422 instead of a large %..% pattern on the
-        # reader's history rows (round-296 deep-dive).
+        # reader's history rows.
         token = await _token(client)
         response = await client.get("/api/reader/me/history", params={"q": "x" * 201}, headers=_auth(token))
         assert response.status_code == 422

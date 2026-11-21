@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * Public reader profile page (DEC-294, TASK-376; liked-posts tab round 360).
+ * Public reader profile page (liked-posts tab).
  *
  * A commenter's verified display name links here: display name, join date, and
  * the approved comments they've left on publicly-visible posts, paginated. A
  * reader who opted in (public_likes, /account) gets a second "Liked posts" tab
- * (DEC-393) — the first reader-to-reader taste-discovery surface — fed by the
+ * — the first reader-to-reader taste-discovery surface — fed by the
  * public GET /api/readers/{id}/likes and browseable by anyone, no sign-in.
  * Public — no auth gate (unlike the account settings at /account). A 404
  * (unknown/deleted reader) renders a "reader not found" state instead of an
@@ -36,7 +36,7 @@ useSeo(() => ({
 	locale: locale.value,
 }));
 
-// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// clamp an invalid ?page= (non-numeric, zero, negative) to
 // page 1 at the computed — the profile fetch must never carry NaN/0
 // (guaranteed 422), and the out-of-range clamp watcher below short-circuits
 // NaN/<2, so without this an invalid deep link would brick the profile with a
@@ -61,20 +61,20 @@ const loadFailed = ref(false);
 const notFound = ref(false);
 const data = ref<Awaited<ReturnType<typeof getReaderProfile>> | null>(null);
 
-// Liked-posts tab state (round 360): the public likes list is fetched only
+// Liked-posts tab state: the public likes list is fetched only
 // when the tab is active, so a profile that never opted in makes no request.
 const likedLoading = ref(false);
 const likedFailed = ref(false);
 const likedPosts = ref<PostList[]>([]);
 const likedPagination = ref<PaginationInfo | null>(null);
 
-// Monotonic guards for the discovery-tab fetchers (round-422 audit, MEDIUM):
+// Monotonic guards for the discovery-tab fetchers:
 // load() is seq-guarded against profile races, but a fast page-click on the
 // likes tab fires a second loadLikes() while the first is still in flight (the
 // profile seq passes for BOTH, since each awaits its own profile first) — the
 // last-resolver then wins with no check, painting page N under page N+1's
 // pagination. Each tab fetcher takes its own generation so a slow earlier page
-// cannot overwrite a newer one (the exact ISS-572 symptom, on the tab data).
+// cannot overwrite a newer one (the exact symptom, on the tab data).
 let likedSeq = 0;
 
 async function loadLikes() {
@@ -100,7 +100,7 @@ async function loadLikes() {
 	}
 }
 
-// Saved-posts tab state (round 363, DEC-399): same lazy pattern as likes —
+// Saved-posts tab state: same lazy pattern as likes —
 // the curated bookmark list is fetched only when the tab is active.
 const savedLoading = ref(false);
 const savedFailed = ref(false);
@@ -136,11 +136,11 @@ async function loadSaved() {
 }
 
 // Monotonic request sequence so a slow earlier response cannot overwrite a
-// newer one after a quick page-click + tab switch (ISS-572, the home/reader
+// newer one after a quick page-click + tab switch (the home/reader
 // pagination race): without it a stale getReaderProfile resolving last could
 // swap in old tabs/content, and whichever request finished first dropped the
 // spinner while the newer one was still in flight. Same guard as the like
-// button and useReadingHistory.load (ISS-128).
+// button and useReadingHistory.load.
 let loadSeq = 0;
 
 async function load() {
@@ -187,7 +187,7 @@ watch([readerId, page, () => route.query.view], () => {
 
 // Page-clamp: an out-of-range deep link (e.g. ?page=99) has an empty page but
 // real total_pages — send the reader back to the last real page (home/search/
-// archive pattern, deep-dive finding ISS-308).
+// archive pattern, deep-dive finding).
 const activePagination = computed(() =>
 	view.value === "likes"
 		? likedPagination.value
@@ -200,7 +200,7 @@ watch(activePagination, (p) => {
 	if (!p || Number.isNaN(requested) || requested < 2) return;
 	const last = p.total_pages ?? 1;
 	// Keep the active tab in the URL while clamping; an empty profile
-	// (total_pages 0) drops the page param entirely (ISS-308 pattern).
+	// (total_pages 0) drops the page param entirely pattern.
 	if (requested > last) {
 		const query: Record<string, string> = {};
 		if (last >= 1) query.page = String(last);
@@ -210,7 +210,7 @@ watch(activePagination, (p) => {
 	}
 });
 
-// ARIA tabs roving (audit, round 428): the profile tablist must cycle on
+// ARIA tabs roving (audit): the profile tablist must cycle on
 // ArrowLeft/Right/Home/End, not just click — the same idiomatic role="tab"
 // keyboard contract the search page and CommentForm tablists follow (which
 // the reader-profile page previously lacked; a keyboard user could only ever
@@ -273,7 +273,7 @@ const paginationTokens = computed(() =>
 	paginationPages(activePagination.value?.total_pages ?? 0, page.value),
 );
 
-// Screen-reader page announcement (round 398, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the active tab's list in place, which is invisible to assistive tech —
 // announce the landed page when it changes.
 const pageAnnouncement = computed(() =>
@@ -327,10 +327,10 @@ const pageAnnouncement = computed(() =>
 			<div
 				class="flex items-center gap-4 mb-6 rounded-2xl border border-gray-100 dark:border-gray-800 p-6"
 			>
-				<!-- Avatar (DEC-299/TASK-378): the reader's uploaded picture when
+				<!-- Avatar: the reader's uploaded picture when
 					 set, else the initial-letter placeholder (text-only identity).
 					 ReaderAvatar also replaces a file that vanished server-side with
-					 the letter (round-446) instead of a broken-image icon. -->
+					 the letter instead of a broken-image icon. -->
 				<ReaderAvatar
 					:url="data.profile.avatar_url"
 					:name="data.profile.display_name"
@@ -353,7 +353,7 @@ const pageAnnouncement = computed(() =>
 							t("readerProfile.joined", { date: formatPostDate(data.profile.created_at, locale) })
 						}}
 					</p>
-					<!-- Reader-written "about me" (round 352): plain text under the
+					<!-- Reader-written "about me": plain text under the
 						 name when the reader wrote one. -->
 					<p
 						v-if="data.profile.bio"
@@ -362,7 +362,7 @@ const pageAnnouncement = computed(() =>
 						{{ data.profile.bio }}
 					</p>
 				</div>
-				<!-- Reader-to-reader follow (round 365, DEC-403): the follower
+				<!-- Reader-to-reader follow: the follower
 					 count is public; a signed-in reader who isn't viewing their own
 					 profile gets a Follow/Following toggle that subscribes them to
 					 this commenter's approved-comment fan-out. -->
@@ -372,7 +372,7 @@ const pageAnnouncement = computed(() =>
 					:initial-following="data.profile.is_following"
 					:initial-follower-count="data.profile.follower_count"
 				/>
-				<!-- Reader block (round 379, DEC-425): the harassment-control
+				<!-- Reader block: the harassment-control
 					 cousin — a signed-in reader can block this reader so their
 					 mentions / replies / thread-comments / follow-activity stop
 					 landing. One-way and invisible; the follower count and follow
@@ -386,7 +386,7 @@ const pageAnnouncement = computed(() =>
 			</div>
 
 			<!-- Tabs: comments always; "Liked posts" only when the reader opted in
-				 (round 360, DEC-393). The opt-in flag on the profile drives this —
+				 . The opt-in flag on the profile drives this —
 				 no Likes tab at all for readers who chose to keep their likes
 				 private (a tablist of one is still a valid tablist). -->
 			<div
@@ -444,7 +444,7 @@ const pageAnnouncement = computed(() =>
 				</button>
 			</div>
 
-			<!-- Screen-reader page announcement (round 398, same pattern as
+			<!-- Screen-reader page announcement (same pattern as
 			     home): any tab's pagination swaps its list in place. -->
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 
@@ -490,7 +490,7 @@ const pageAnnouncement = computed(() =>
 				</div>
 			</template>
 
-			<!-- Liked-posts tab (round 360, DEC-393) -->
+			<!-- Liked-posts tab -->
 			<template v-else-if="view === 'likes'">
 				<div v-if="likedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<div
@@ -537,7 +537,7 @@ const pageAnnouncement = computed(() =>
 				</template>
 			</template>
 
-			<!-- Saved-posts tab (round 363, DEC-399) -->
+			<!-- Saved-posts tab -->
 			<template v-else>
 				<div v-if="savedLoading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<div

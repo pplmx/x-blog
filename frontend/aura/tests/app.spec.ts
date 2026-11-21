@@ -13,7 +13,7 @@ import App from "../app/app.vue";
 beforeEach(() => {
 	vi.stubGlobal("useHead", vi.fn());
 	// app.vue resolves the site-default og/WebSite tags from the runtime site
-	// URL (TASK-557) — pin a deterministic value for the assertion below.
+	// URL — pin a deterministic value for the assertion below.
 	vi.stubGlobal("useRuntimeConfig", () => ({ public: { siteUrl: "https://share.test" } }));
 });
 
@@ -74,7 +74,7 @@ describe("App Root", () => {
 		});
 	});
 
-	describe("Site-default URL-dependent head (TASK-557)", () => {
+	describe("Site-default URL-dependent head ", () => {
 		it("resolves og:url / og:image / twitter:image and WebSite JSON-LD from the runtime site URL", () => {
 			mountApp();
 			// The site-default head is built from a siteUrl resolved EAGERLY in

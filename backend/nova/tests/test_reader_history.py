@@ -1,4 +1,4 @@
-"""Server-backed reading-history API contract tests (DEC-116, TASK-170).
+"""Server-backed reading-history API contract tests.
 
 A signed-in reader's view history is persisted server-side one row per
 (reader, post) with a ``viewed_at`` stamp — idempotent upsert on record, a
@@ -330,7 +330,7 @@ class TestReadingStats:
         assert (await client.get(self.STATS, headers=_auth(t2))).json()["total_posts"] == 0
 
     async def test_stats_sums_stored_minutes_not_live_content(self, client, db_session):
-        """ISS-451 regression: total_reading_minutes is a SQL aggregate of the
+        """regression: total_reading_minutes is a SQL aggregate of the
         denormalized reading_history.reading_minutes column (the estimate as of
         the last read), NOT a live scan of post content — so editing a post
         after it was read leaves the reader's aggregate unchanged, and the
@@ -355,7 +355,7 @@ class TestReadingStats:
 
 
 class TestScrollPosition:
-    """Per-post resume position (DEC-167, TASK-200).
+    """Per-post resume position.
 
     ``scroll_position`` is an optional pixel offset saved with a view so a
     signed-in reader can resume where they left off inside a post. The record
@@ -445,7 +445,7 @@ class TestScrollPosition:
 
 
 class TestScrollFraction:
-    """Cross-viewport resume fraction (DEC-346, TASK-399).
+    """Cross-viewport resume fraction.
 
     ``scroll_fraction`` (0..1, nullable) is the reader's resume position as a
     fraction of the scrollable document height, saved alongside the pixel
@@ -534,7 +534,7 @@ class TestScrollFraction:
 
 
 class TestInProgress:
-    """Server-trail continue reading (DEC-348, TASK-400).
+    """Server-trail continue reading.
 
     The home page's "Continue reading" row is localStorage-only today, so a
     signed-in reader on a new device sees nothing even though the server trail
@@ -664,7 +664,7 @@ class TestInProgress:
 
 
 class TestActivityStreak:
-    """Reading-streak + daily-activity stats (DEC-169, TASK-201).
+    """Reading-streak + daily-activity stats.
 
     ``ReadingStatsResponse`` gains ``current_streak`` / ``longest_streak`` and an
     ``activity`` list of per-day read counts covering the last 52 weeks (UTC
@@ -779,7 +779,7 @@ class TestActivityStreak:
         assert body["current_streak"] == 0
         assert body["activity"][-1]["count"] == 0
 
-    # --- timezone-aware bucketing (round 319, DEC-316/TASK-386) ---------------
+    # --- timezone-aware bucketing ---------------
     # The pre-fix endpoint bucketed every day in UTC while the face the reader
     # sees renders those buckets in local time, so for every non-UTC reader the
     # streak and heatmap disagreed with their own calendar. The stats endpoint
@@ -863,5 +863,5 @@ class TestActivityStreak:
         assert _current_streak(dates, today=date(2026, 9, 14)) == 2
         # Neither today nor yesterday active under the *supplied* anchor → 0,
         # even if another wall-clock yearns for "today" (the tz anchor is
-        # authoritative, DEC-316).
+        # authoritative).
         assert _current_streak(dates, today=date(2026, 9, 15)) == 0

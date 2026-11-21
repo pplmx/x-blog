@@ -1,14 +1,14 @@
-"""add reader_accounts.public_bookmarks (opt-in public saved-posts tab, round 363)
+"""add reader_accounts.public_bookmarks (opt-in public saved-posts tab)
 
 A reader's bookmarks are what they deliberately chose to save (an intentional
 signal, unlike passively auto-recorded reading history); this additive column
 is their opt-in switch to publish a public "Saved posts" tab on their profile
-for anyone to browse (DEC-399). DEC-009-clean: a flat additive boolean on an
+for anyone to browse. clean: a flat additive boolean on an
 existing table, no DB-level FK, guarded by table/column probes so it is
 idempotent on both SQLite and Postgres. Defaults OFF (sa.false(), THE dialect-
 safe form — never the literal "false", which on SQLite would store TEXT that
 bool() reads back as True) so existing readers — and anyone who never touches
-the setting — stay perfectly private. Mirrors the round-360 public_likes
+the setting — stay perfectly private. Mirrors the public_likes
 column byte for byte.
 """
 

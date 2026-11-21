@@ -1,4 +1,4 @@
-"""Static pages: admin-curated content served publicly at /pages/{slug} (round 347).
+"""Static pages: admin-curated content served publicly at /pages/{slug}.
 
 A self-hosted blog is expected to speak for itself — privacy policy, terms,
 contact, changelog — but the only static page was a hardcoded ``/about``, so a
@@ -52,8 +52,8 @@ async def get_page(request: Request, slug: str, db: AsyncSession = Depends(get_d
     result = await db.execute(select(models.Page).where(models.Page.slug == slug, models.Page.published.is_(True)))
     page = result.scalar_one_or_none()
     if not page:
-        # Slug-change redirect (round 350): a re-slugged page's old URL points
-        # at the canonical target (round 347 lets an operator swap a page slug).
+        # Slug-change redirect: a re-slugged page's old URL points
+        # at the canonical target.
         redirect_target = await series_service.resolve_slug_redirect(db, "page", slug)
         if redirect_target:
             raise HTTPException(
@@ -99,7 +99,7 @@ async def admin_create_page(
     db.add(page)
     await db.commit()
     await db.refresh(page)
-    # A page write changes what the sitemap must list (round 348): the cached
+    # A page write changes what the sitemap must list: the cached
     # sitemap derives from the published page set, so bust just the feed cache.
     clear_feeds_cache()
     return page
@@ -124,14 +124,14 @@ async def admin_update_page(
         clash = clash_result.scalar_one_or_none()
         if clash:
             raise HTTPException(status_code=409, detail="Slug already in use")
-        # Slug-change redirect (round 350): the old page URL that was shared/
+        # Slug-change redirect: the old page URL that was shared/
         # linked keeps pointing at this page after the rename.
         await series_service.record_slug_redirect(db, "page", page.slug, data["slug"])
     for field, value in data.items():
         setattr(page, field, value)
     await db.commit()
     await db.refresh(page)
-    # A page write changes what the sitemap must list (round 348): the cached
+    # A page write changes what the sitemap must list: the cached
     # sitemap derives from the published page set, so bust just the feed cache.
     clear_feeds_cache()
     return page
@@ -151,5 +151,5 @@ async def admin_delete_page(
         raise HTTPException(status_code=404, detail="Page not found")
     await db.delete(page)
     await db.commit()
-    # A page delete removes a sitemap URL (round 348) — bust the feed cache.
+    # A page delete removes a sitemap URL — bust the feed cache.
     clear_feeds_cache()

@@ -1,5 +1,5 @@
 <!--
-  Admin Editorial Calendar Page (DEC-162, TASK-194).
+  Admin Editorial Calendar Page.
 
   A Monday-first month grid that places every post on the day it is live
   (published), goes live (scheduled) or is planned for (draft with an intended
@@ -170,7 +170,7 @@ function typeSpec(tp: CalendarPost["type"]): { cls: string; labelKey: string } {
 // Keep the unscheduled list out of the primary "bottom navigation" test focus.
 const unscheduledPosts = computed(() => data.value?.unscheduled ?? []);
 
-// Screen-reader label wiring (ISS-212): the month grid is a data table, not an
+// Screen-reader label wiring: the month grid is a data table, not an
 // interactive widget — declaring role=grid here would falsely promise arrow-key
 // navigation and wouldn't coexist with the post chips' Tab-traversal (ARIA
 // authoring practice: use table for non-widget structured content). role=table
@@ -290,7 +290,7 @@ function cellLabel(date: Date, key: string): string {
 						</button>
 					</div>
 
-					<!-- A labelled data table (ISS-212), not a grid widget: role=table keeps
+					<!-- A labelled data table, not a grid widget: role=table keeps
                the weekday columnheaders and per-day cells meaningful to screen
                readers without falsely promising arrow-key navigation (the post
                chips stay plain Tab-traversable links). -->
@@ -339,7 +339,7 @@ function cellLabel(date: Date, key: string): string {
 								<div class="mt-1.5 space-y-1">
 									<!-- NuxtLink, not <a>: the grid chip navigates within the SPA
                        (full reload dropped the calendar month state on every tap,
-                       round-445 audit). -->
+                        audit). -->
 									<NuxtLink
 										v-for="p in postsOnDay(cell.key)"
 										:key="p.id"

@@ -1,5 +1,5 @@
 /**
- * Liked-posts recall-search journey (DEC-413, TASK-432).
+ * Liked-posts recall-search journey.
  *
  * A signed-in reader with several liked posts opens /liked and types a term
  * into the search box: the grid narrows to the liked posts whose title or
@@ -60,7 +60,7 @@ async function registerAndLoginReader(
 	return (await login.json()).access_token as string;
 }
 
-test.describe("Liked posts search (DEC-413)", () => {
+test.describe("Liked posts search ", () => {
 	test("keyword search narrows the liked grid and a clear-search reset restores it", async ({
 		page,
 		request,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Reader reading-history page (DEC-114, TASK-169; DEC-116, TASK-170).
+ * Reader reading-history page.
  *
  * Lists the reader's recently-viewed posts newest-first with continue-reading
  * links, viewed timestamps, a single clear-history action, and an empty state.
@@ -32,11 +32,11 @@ const {
 	clear,
 } = useReadingHistory();
 
-// Recall search (DEC-148/TASK-186): filter history to viewed posts matching
+// Recall search: filter history to viewed posts matching
 // the term (server for signed-in readers, in-place for guests).
 const searchQuery = ref("");
 // Debounce recall-search so fast typing doesn't fire a server call per
-// keystroke (the seq guard in load() drops out-of-order responses, ISS-128).
+// keystroke (the seq guard in load() drops out-of-order responses).
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 function onSearch() {
 	if (searchTimer) clearTimeout(searchTimer);
@@ -60,14 +60,14 @@ onUnmounted(() => {
 });
 
 // Getter form: an in-app language switch re-evaluates the title/og tags
-// (static object froze them in the initial language — deep-dive, ISS-372).
+// (static object froze them in the initial language — deep-dive).
 useSeo(() => ({
 	title: t("history.seoTitle"),
 	description: t("history.seoDesc"),
 	path: "/history",
 }));
 
-// Reading insights (DEC-417/TASK-434): the "what/how much" aggregate —
+// Reading insights: the "what/how much" aggregate —
 // distinct posts all-time + trailing 30 days, and the most-read categories —
 // beside the calendar shape (streak/heatmap). Best-effort parallel fetch:
 // never blocks or errors the page, and on any failure (incl. a dead session)
@@ -94,12 +94,12 @@ const confirmClear = ref(false);
 // (deep-dive finding; the clearDone key existed but was never rendered).
 const cleared = ref(false);
 let clearedTimer: ReturnType<typeof setTimeout> | null = null;
-// Clear-failure warning (ISS-387): offline, the local trail is wiped but the
+// Clear-failure warning: offline, the local trail is wiped but the
 // server copy survives and re-appears on the next signed-in load — show that
 // instead of the green "cleared" claim. Dismissed with the same timer.
 const clearFailed = ref(false);
 
-// Device-trail import offer (TASK-303/ISS-386): guests record reads to the
+// Device-trail import offer: guests record reads to the
 // localStorage trail, and after sign-in the page reads the server trail, so
 // those records silently disappear. When the signed-in history does not yet
 // cover the device trail, offer a one-time merge. Dismissal is per-page-view
@@ -177,7 +177,7 @@ function viewedLabel(item: HistoryEntry): string {
 	return fmt.format(d);
 }
 
-// Latest-activity card (DEC-165/TASK-197): the server summary carries
+// Latest-activity card: the server summary carries
 // lastViewedAt, which was loaded into stats but never rendered — surface it
 // as an absolute localized date-time (same shape as viewedLabel).
 function lastActivityLabel(): string {
@@ -194,11 +194,11 @@ function lastActivityLabel(): string {
 	return fmt.format(d);
 }
 
-// Reading gamification (DEC-169/TASK-201): a GitHub-style activity heatmap of
+// Reading gamification: a GitHub-style activity heatmap of
 // the last 52 weeks plus the current/longest reading streak. The server sends
 // ascending per-day counts (zeros included) whose dates are the reader's LOCAL
 // calendar days — the stats fetch declares the browser's timezone so the
-// backend anchors the window to the reader's own calendar (DEC-316/TASK-386).
+// backend anchors the window to the reader's own calendar.
 // We align the first column to a Monday and render week columns of 7 day-cells,
 // shaded by read-count intensity (relative to the busiest day in the window).
 
@@ -220,7 +220,7 @@ const heatmapWeeks = computed<(ActivityCell | null)[][]>(() => {
 	if (!acts.length) return [];
 	// The server's first entry may not fall on a Monday; pad the front so
 	// columns align and today sits at the end (acts are ascending, end local
-	// today). Cell dates are the reader's local calendar days (DEC-316), so the
+	// today). Cell dates are the reader's local calendar days, so the
 	// weekday is taken in local time — a UTC parse would mix calendar systems.
 	// acts.length > 0 is checked above; the optional read keeps
 	// noUncheckedIndexedAccess quiet without a non-null assertion.
@@ -248,10 +248,10 @@ function heatCellClass(cell: ActivityCell | null): string {
 /** Count label shown in a heatmap cell tooltip. */
 function heatCellLabel(cell: ActivityCell | null): string {
 	if (!cell) return "";
-	// cell.date is already the reader's local calendar date (DEC-316) — parse
+	// cell.date is already the reader's local calendar date — parse
 	// it as LOCAL midnight so the label shows that date as-is. Parsing with a
 	// "Z" and formatting local would re-shift it by the browser offset and
-	// display the prior local day in every negative-offset zone (round 319).
+	// display the prior local day in every negative-offset zone.
 	const d = new Date(`${cell.date}T00:00:00`);
 	const fmt = new Intl.DateTimeFormat(locale.value === "zh" ? "zh-CN" : "en-US", {
 		year: "numeric",
@@ -259,13 +259,13 @@ function heatCellLabel(cell: ActivityCell | null): string {
 		day: "numeric",
 	});
 	const posts = t("history.activityPosts", { count: cell.count });
-	// Locale-appropriate separator (no hardcoded full-width colon in English, ISS-136).
+	// Locale-appropriate separator (no hardcoded full-width colon in English).
 	const sep = locale.value === "zh" ? "：" : " — ";
 	return `${fmt.format(d)}${sep}${posts}`;
 }
 
 /** Accessible summary for the whole heatmap; the individual cells are
- * aria-hidden/presentational because 364 per-day labels would be noise (ISS-136). */
+ * aria-hidden/presentational because 364 per-day labels would be noise. */
 function heatMapSummary(): string {
 	const activeDays = heatmapWeeks.value.flat().filter((c) => c !== null && c.count > 0).length;
 	return t("history.activitySummary", { count: activeDays });
@@ -297,7 +297,7 @@ function heatMapSummary(): string {
 			</button>
 		</div>
 
-		<!-- Device-trail import offer (TASK-303/ISS-386): signed-in history is
+		<!-- Device-trail import offer: signed-in history is
          server-backed, so the guest's local reads need a one-time merge. -->
 		<div
 			v-if="
@@ -352,7 +352,7 @@ function heatMapSummary(): string {
 			{{ importMessage }}
 		</div>
 
-		<!-- Recall search (DEC-148/TASK-186): find a past read -->
+		<!-- Recall search: find a past read -->
 		<div class="mb-8">
 			<div class="relative max-w-md">
 				<Icon
@@ -435,7 +435,7 @@ function heatMapSummary(): string {
 				</div>
 			</div>
 
-			<!-- 52-week activity heatmap (DEC-169/TASK-201) -->
+			<!-- 52-week activity heatmap -->
 			<div
 				v-if="heatmapWeeks.length"
 				class="p-5 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-900/15"
@@ -475,7 +475,7 @@ function heatMapSummary(): string {
 				</div>
 			</div>
 
-			<!-- Reading insights (DEC-417/TASK-434): the "what/how much" shape
+			<!-- Reading insights: the "what/how much" shape
            beyond the calendar heatmap — recent volume + most-read categories.
            Best-effort; hidden for guests and when the fetch fails. -->
 			<div v-if="insights" class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -556,7 +556,7 @@ function heatMapSummary(): string {
 		<!-- Clear-done confirmation (deep-dive finding): give the destructive,
          non-undoable clear an explicit success signal instead of silently
          swapping to the ambiguous empty state. Only when the cloud copy (if
-         any) actually cleared — see the clearOffline warning below (ISS-387). -->
+         any) actually cleared — see the clearOffline warning below. -->
 		<div
 			v-if="cleared"
 			aria-live="polite"
@@ -568,7 +568,7 @@ function heatMapSummary(): string {
 			</p>
 		</div>
 
-		<!-- Clear-all could not reach the server (ISS-387): the on-device trail is
+		<!-- Clear-all could not reach the server: the on-device trail is
          gone, but the server copy survives and returns on the next signed-in
          load — a green "cleared" here would be a lie, so warn instead. -->
 		<div
@@ -675,7 +675,7 @@ function heatMapSummary(): string {
 				/>
 			</NuxtLink>
 
-			<!-- Load-more (bounded reachability, ISS-303): the server returns at most
+			<!-- Load-more (bounded reachability): the server returns at most
            100 rows per page, so older history must not be trapped behind the
            first page. A failure keeps the rows and offers retry. -->
 			<div v-if="hasMore" class="mt-6 flex flex-col items-center gap-2">

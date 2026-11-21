@@ -93,7 +93,7 @@ describe("BookmarkButton", () => {
 			expect(wrapper.find("button").attributes("title")).toBe("收藏文章");
 		});
 
-		it("hints that the sign-in expired when the shared sync warning is set (ISS-222)", async () => {
+		it("hints that the sign-in expired when the shared sync warning is set ", async () => {
 			// Dead-session flag is module-scoped: a 401 mirror failure anywhere
 			// (another button, the bookmarks page) updates this button's hint.
 			syncIssue.value = "auth";
@@ -124,7 +124,7 @@ describe("BookmarkButton", () => {
 			await button.trigger("click");
 			await wrapper.vm.$nextTick();
 			expect(wrapper.find(".icon-stub").attributes("data-icon")).toBe("lucide:bookmark-check");
-			// Second click AFTER the double-click guard window (round-298): a
+			// Second click AFTER the double-click guard window: a
 			// deliberate later click toggles back.
 			vi.advanceTimersByTime(201);
 			await button.trigger("click");
@@ -133,7 +133,7 @@ describe("BookmarkButton", () => {
 			vi.useRealTimers();
 		});
 
-		it("swallows the second click of a rapid double-click (round-298 toggle race)", async () => {
+		it("swallows the second click of a rapid double-click ", async () => {
 			// The local list mutates synchronously, so a fast double-click used to
 			// read the just-changed state and reverse the toggle — the post ended
 			// up unsaved with the icon blinking on then off. The second rapid click
@@ -164,7 +164,7 @@ describe("BookmarkButton", () => {
 			expect(stopPropagation).toHaveBeenCalled();
 		});
 
-		it("does not toggle when disabled (mid-refetch guard, ISS-416)", async () => {
+		it("does not toggle when disabled (mid-refetch guard)", async () => {
 			wrapper = mount(BookmarkButton, {
 				props: { postId: 1, post: mockBookmark, disabled: true },
 				global: { stubs },

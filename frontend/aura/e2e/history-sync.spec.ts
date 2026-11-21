@@ -1,5 +1,5 @@
 /**
- * Server-backed reading-history sync journey (DEC-116, TASK-170).
+ * Server-backed reading-history sync journey.
  *
  * A signed-in reader's viewed posts persist server-side (keyed to their
  * account), so the Continue-reading trail on /history reflects what they read
@@ -31,7 +31,7 @@ async function registerReader(
 	return ((await resp.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Server-backed reading history (TASK-170)", () => {
+test.describe("Server-backed reading history ", () => {
 	test("signed-in reader's viewed post is served from the API on /history and clears", async ({
 		page,
 		request,
@@ -50,7 +50,7 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 		const postLink = page.locator("main a[href*='/posts/']").first();
 		await postLink.waitFor({ state: "visible" });
 		const href = (await postLink.getAttribute("href")) ?? "";
-		// Same needle strategy as history.spec (ISS-119): the server trail row
+		// Same needle strategy as history.spec: the server trail row
 		// renders only the bare post title, so match the card heading minus the
 		// pinned badge span — the whole-card text (date/stats/excerpt, incl. the
 		// live view count that other suite runs keep bumping) can never match.
@@ -70,7 +70,7 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 		// resolves when the SSR URL commits — often before hydration runs
 		// onMounted, so a fast goto("/history") could abort the mount and the
 		// recordReaderHistory fetch would never be created (keepalive can't
-		// rescue a request that was never sent — ISS-121 flake). Resolving on
+		// rescue a request that was never sent flake). Resolving on
 		// the dispatched POST makes the record-follows-read determinisitic.
 		const historyPosted = page.waitForRequest(
 			(req) => req.method() === "POST" && req.url().includes("/api/reader/me/history/"),
@@ -102,8 +102,7 @@ test.describe("Server-backed reading history (TASK-170)", () => {
 			});
 		}
 
-		// The reading-summary cards reflect the server-backed stats (TASK-171 /
-		// DEC-165, TASK-197): posts read, reading minutes, latest activity.
+		// The reading-summary cards reflect the server-backed stats: posts read, reading minutes, latest activity.
 		await expect(page.locator("body")).toContainText("已读文章", { timeout: 10000 });
 		await expect(page.locator("body")).toContainText("阅读时长（分钟）");
 		await expect(page.locator("body")).toContainText("最近阅读活动");

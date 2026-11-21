@@ -13,7 +13,7 @@ from ._base import utc_now_naive
 
 
 async def get_daily_views_stats(db: AsyncSession, days: int = 30) -> dict:
-    """Reading-trend series + in-period top posts for the admin dashboard (DEC-086).
+    """Reading-trend series + in-period top posts for the admin dashboard.
 
     ``series`` is every calendar day in [today-days+1, today] with its total
     views (zero-filled so the chart is a continuous axis). ``top_posts`` is the
@@ -63,7 +63,7 @@ async def get_daily_views_stats(db: AsyncSession, days: int = 30) -> dict:
 
 
 async def get_post_views_trend(db: AsyncSession, post_id: int, days: int = 30) -> dict:
-    """Per-post daily reading series for the admin post editor (DEC-287/TASK-372).
+    """Per-post daily reading series for the admin post editor.
 
     Same zero-filled calendar axis as :func:`get_daily_views_stats`, but scoped
     to a single post, so the operator sees whether that post is gaining or
@@ -98,7 +98,7 @@ async def get_post_views_trend(db: AsyncSession, post_id: int, days: int = 30) -
 
 
 async def get_comment_activity_stats(db: AsyncSession, days: int = 30) -> dict:
-    """Comment-activity series + in-period top posts for the admin dashboard (DEC-154/TASK-189).
+    """Comment-activity series + in-period top posts for the admin dashboard.
 
     The engagement axis (distinct from views/searches/follows): per-day counts of
     approved, publicly visible comments plus the posts that draw the most
@@ -147,11 +147,10 @@ async def get_comment_activity_stats(db: AsyncSession, days: int = 30) -> dict:
         )
     ).all()
 
-    # Authoritative pending-queue count for the dashboard (DEC-154/TASK-189,
-    # round 276): this admin-scoped endpoint is where the moderation backlog
+    # Authoritative pending-queue count for the dashboard: this admin-scoped endpoint is where the moderation backlog
     # belongs, mirroring the non-leak posture everywhere else. The public
     # /api/stats previously exposed the same count to anonymous visitors (a
-    # moderation-state oracle) so the public field was dropped (ISS-396/404).
+    # moderation-state oracle) so the public field was dropped.
     pending_count = (
         await db.execute(
             select(func.count(models.Comment.id)).where(

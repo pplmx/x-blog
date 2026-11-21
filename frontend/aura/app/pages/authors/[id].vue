@@ -12,7 +12,7 @@ const route = useRoute();
 
 // The author id comes from the path (/authors/{id}). Keep it reactive so SPA
 // navigation between authors refetches (mirrors the posts/[slug] getter
-// pattern, TASK-090); an id that is not a number is never a public author.
+// pattern); an id that is not a number is never a public author.
 const authorId = computed(() => {
 	const id = Number.parseInt(String(route.params.id), 10);
 	return Number.isFinite(id) ? id : undefined;
@@ -41,7 +41,7 @@ function retry() {
 	void refreshArchive();
 }
 
-// The archive envelope (DEC-359/TASK-405) identifies the author by pen name —
+// The archive envelope identifies the author by pen name —
 // available even when the writer has no published posts yet, so the page can
 // title itself correctly for an empty-but-public author.
 const authorName = computed(() => archive.value?.author?.display_name ?? "");
@@ -54,8 +54,8 @@ useSeo(() => ({
 	path: `/authors/${authorId.value ?? ""}`,
 }));
 
-// Scoped RSS feed (round 345): subscribe to just this writer's published
-// posts — the same autodiscovery pattern series/tags pages use (DEC-130). The
+// Scoped RSS feed: subscribe to just this writer's published
+// posts — the same autodiscovery pattern series/tags pages use. The
 // backend answers 404 for unknown/never-public authors, mirroring the archive.
 const feedUrl = computed(() => (authorName.value ? `/rss/authors/${authorId.value}.xml` : ""));
 useHead(() => ({
@@ -87,7 +87,7 @@ function goToPage(pg: number | string) {
 
 // A stale/out-of-range page deep link would otherwise render "No posts yet"
 // with no way back — clamp to the last real page once pagination is known
-// (same guard home/search/archive/tags use, deep-dive finding ISS-308).
+// (same guard home/search/archive/tags use, deep-dive finding).
 watch(
 	() => archive.value?.pagination,
 	(p) => {
@@ -156,7 +156,7 @@ watch(
 		</div>
 
 		<div v-else class="space-y-6">
-			<!-- Author header (DEC-359/TASK-405): "Posts by {pen name}". The name
+			<!-- Author header: "Posts by {pen name}". The name
            comes from the archive envelope, so it renders even when the writer
            has published nothing yet. -->
 			<div class="mb-4">
@@ -179,7 +179,7 @@ watch(
 					<Icon v-else icon="lucide:user" class="w-8 h-8 text-gray-400" />
 					{{ t("authors.title", { name: authorName }) }}
 				</h1>
-				<!-- Public "about this writer" (round 357): the bio a superuser sets
+				<!-- Public "about this writer": the bio a superuser sets
              in admin/users, rendering under the name — the writer now speaks
              for themselves on the page where a reader decides about them. -->
 				<p
@@ -192,7 +192,7 @@ watch(
 					<p class="text-gray-500 dark:text-gray-400">
 						{{ t("authors.desc", { name: authorName }) }}
 					</p>
-					<!-- In-app author follow (round 355): the archive is the
+					<!-- In-app author follow: the archive is the
                person-shaped discovery surface — and for a writer with no
                published posts yet it is the ONLY place that follow exists
                (no byline buttons anywhere). Reuses the byline control's
@@ -220,7 +220,7 @@ watch(
 			<div v-if="archive?.items?.length" class="space-y-5">
 				<PostCard v-for="post in archive.items" :key="post.id" :post="post" />
 
-				<!-- Pagination (windowed with ellipsis, RIL TASK-083) -->
+				<!-- Pagination (windowed with ellipsis) -->
 				<div
 					v-if="archive.pagination.total_pages > 1"
 					class="flex items-center justify-center gap-2 mt-8"

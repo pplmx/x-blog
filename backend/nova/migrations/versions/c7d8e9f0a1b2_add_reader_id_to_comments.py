@@ -1,10 +1,10 @@
-"""add comments.reader_id for reader-attributed comments (DEC-062)
+"""add comments.reader_id for reader-attributed comments
 
 Adds a nullable ``reader_id`` column to ``comments`` linking a comment to the
 reader account that authored it (None = anonymous free-text commenter).
 
 No DB-level FOREIGN KEY: SQLite's alembic dialect cannot add an FK-carrying
-column to an existing table without batch-mode table recreation (DEC-009).
+column to an existing table without batch-mode table recreation.
 Referential integrity is enforced at the ORM layer and by the create-time
 guard (identity comes from the reader JWT, never client input). Entirely
 additive — no existing DDL is touched. Defensive: if the column is already

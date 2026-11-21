@@ -1,5 +1,5 @@
 /**
- * Follow analytics journey (DEC-144, TASK-184).
+ * Follow analytics journey.
  *
  * The operator (admin) sees how many readers follow each series and category on
  * the dashboard. We seed a reader follow and assert the dashboard surface shows
@@ -19,7 +19,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Admin follow analytics (TASK-184)", () => {
+test.describe("Admin follow analytics ", () => {
 	test("dashboard shows followed series/categories to the operator", async ({ page, request }) => {
 		// Log in as admin first.
 		await page.goto("/admin/login");

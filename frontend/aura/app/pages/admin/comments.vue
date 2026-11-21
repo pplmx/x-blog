@@ -44,7 +44,7 @@ onMounted(async () => {
 });
 
 const PAGE_SIZE = 20;
-// Moderation filters (RIL TASK-078, ISS-047): status, full-text search and
+// Moderation filters: status, full-text search and
 // created-date range. Applied server-side; the list refetches on change.
 const statusFilter = ref<"all" | "pending" | "approved">("all");
 const flaggedOnly = ref(false);
@@ -86,8 +86,8 @@ function listFilters(): ReturnType<typeof activeFilters> {
 // The list is our OWN ref, written only through the sequenced loader below.
 // Binding it to the setup-top-level useFetch's live data ref let the initial
 // (slower) request clobber a later applied filter — clicking 待审核 then
-// reverted to the full mixed list once the first fetch landed (RIL ISS-097:
-// e2e "filter by status" intermittently flaky). Latest-wins sequencing makes
+// reverted to the full mixed list once the first fetch landed (e2e "filter by
+// status" intermittently flaky). Latest-wins sequencing makes
 // every writer — initial load, filter, paging, post-approve refresh — safe.
 const comments = ref<AdminCommentListResponse | null>(null);
 const loading = ref(true);
@@ -97,7 +97,7 @@ const isProcessing = ref(false);
 const selectedIds = ref<Set<number>>(new Set());
 const actionError = ref<string | null>(null);
 // Success feedback for approve/reject/delete — the queue just silently
-// reloads on success otherwise (ISS-311).
+// reloads on success otherwise.
 const actionSuccess = ref<string | null>(null);
 const deletedMessage = ref<string>("");
 
@@ -179,7 +179,7 @@ function clearFilters() {
 }
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): backend envelope human message,
+	// Shared admin error surfacing: backend envelope human message,
 	// else a local non-HTTP error's message, else the localized fallback.
 	return apiErrorMessage(e, t("admin.comments.operationFailed"));
 }
@@ -244,7 +244,7 @@ async function batchApprove(approved: boolean) {
 		await batchApproveAdminComments(ids, approved);
 		selectedIds.value = new Set();
 		// The queue just reloads on success — a silent reload reads as "nothing
-		// happened" (ISS-311), so confirm the outcome explicitly.
+		// happened", so confirm the outcome explicitly.
 		actionSuccess.value = approved
 			? t("admin.comments.batchApprovedFeedback", { n: ids.length })
 			: t("admin.comments.batchRejectedFeedback", { n: ids.length });
@@ -295,7 +295,7 @@ async function handleDelete(id: number) {
 	}
 }
 
-/** Dismiss all reader flags on a comment, then reload the queue. (DEC-108) */
+/** Dismiss all reader flags on a comment, then reload the queue. */
 async function handleDismissFlags(id: number) {
 	if (isProcessing.value) return; // single-flight
 	isProcessing.value = true;
@@ -329,7 +329,7 @@ async function handleApprove(id: number, approved: boolean) {
 	}
 }
 
-// Author reply (DEC-192, TASK-212): one inline reply box at a time, targeting
+// Author reply: one inline reply box at a time, targeting
 // an approved comment (the public thread only shows public comments; replying
 // to a pending one would leave an approved reply under a hidden parent).
 const replyOpenId = ref<number | null>(null);
@@ -476,7 +476,7 @@ async function submitReply(id: number) {
 			{{ actionSuccess }}
 		</div>
 
-		<!-- Moderation filters (RIL TASK-078, ISS-047) -->
+		<!-- Moderation filters -->
 		<div
 			class="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4 mb-6 flex flex-wrap items-end gap-3"
 		>
@@ -716,7 +716,7 @@ async function submitReply(id: number) {
 							{{ comment.content }}
 						</p>
 
-						<!-- Author reply box (DEC-192): open per comment, submits as the
+						<!-- Author reply box: open per comment, submits as the
                  blog owner, then reloads the queue to show the created reply. -->
 						<div v-if="replyOpenId === comment.id" class="mb-2">
 							<textarea

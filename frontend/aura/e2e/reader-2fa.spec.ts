@@ -1,5 +1,5 @@
 /**
- * Reader TOTP two-factor authentication journey (round 364, DEC-401).
+ * Reader TOTP two-factor authentication journey.
  *
  * A reader enables 2FA from /account, and from then on every login stops at a
  * second "enter your 6-digit code" step: a wrong code is rejected and stays on
@@ -96,7 +96,7 @@ async function enableViaApi(
 	const enable = await request.post("/api/reader/me/2fa/enable", {
 		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
 		// Enrollment requires the password too (a session alone must not be
-		// able to register a factor — security review, DEC-401).
+		// able to register a factor — security review).
 		data: { current_password: PASSWORD, code: currentTotp(body.secret) },
 	});
 	expect(enable.status()).toBe(200);
@@ -120,7 +120,7 @@ async function loginWithPassword(
 	return codeInput;
 }
 
-test.describe("TOTP two-factor authentication (DEC-401)", () => {
+test.describe("TOTP two-factor authentication ", () => {
 	test("enable via the /account UI → login needs a code; wrong rejected, right logs in; disable restores one step", async ({
 		page,
 		request,

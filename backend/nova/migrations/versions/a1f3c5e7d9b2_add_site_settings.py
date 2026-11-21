@@ -1,9 +1,9 @@
-"""add site_settings table for runtime admin settings (DEC-100)
+"""add site_settings table for runtime admin settings
 
-The verified-reader auto-approve trust tier (DEC-098) currently ships as an env
+The verified-reader auto-approve trust tier currently ships as an env
 toggle; this additive table lets an admin flip it at runtime (persisted value
 wins, env is the fallback when no row exists). Only the table is added — no
-existing DDL is touched (DEC-009). Rows are written lazily via the admin
+existing DDL is touched. Rows are written lazily via the admin
 PUT /api/admin/settings/{key} endpoint, so opting not to use the feature leaves
 the env default in effect.
 

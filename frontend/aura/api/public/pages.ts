@@ -3,13 +3,13 @@ import { query } from "../transport";
 
 type Getter<T> = () => T;
 
-/** Public page list row (footer links): identity only, no body (round 347). */
+/** Public page list row (footer links): identity only, no body. */
 export interface PageLink {
 	slug: string;
 	title: string;
 }
 
-/** Public page detail: full markdown body, rendered like a post (round 347). */
+/** Public page detail: full markdown body, rendered like a post. */
 export interface PagePublic extends PageLink {
 	content: string;
 	updated_at: string | null;

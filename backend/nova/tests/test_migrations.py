@@ -1,4 +1,4 @@
-"""Tests for the Alembic-based startup schema path (DEC-011).
+"""Tests for the Alembic-based startup schema path.
 
 The app now migrates to head via ``app.migrations.run_migrations`` instead of
 ``Base.metadata.create_all``. The baseline migration is self-adopting, so it
@@ -386,7 +386,7 @@ async def test_posts_tsvector_index_downgrade_drops_on_postgres(monkeypatch):
 def stale_bookmark_sqlite_url(tmp_path: Path) -> str:
     """A create_all-era SQLite DB whose reader_bookmarks lacks the done column.
 
-    The reader_bookmarks table is created by the app's pre-round-361 schema
+    The reader_bookmarks table is created by the app's pre schema
     (reader_id/post_id/folder_id/created_at, no done) and already holds rows —
     the migration must add done defaulting existing rows to To-read.
     """
@@ -413,12 +413,11 @@ def stale_bookmark_sqlite_url(tmp_path: Path) -> str:
 
 
 async def test_bookmark_done_migration_defaults_existing_rows_to_toread(stale_bookmark_sqlite_url: str) -> None:
-    """Round 361, DEC-395: existing bookmarks must read back To-read after upgrade.
+    """Round 361: existing bookmarks must read back To-read after upgrade.
 
     Guards the dialect-safe default: SQLite must store a real false (DEFAULT 0),
     NOT the TEXT literal 'false' — the string form is read back as True by bool()
-    and is invisible to the integer-bound .is_() filter (round-361 review
-    finding; the round-360 public_likes column shared the same defect).
+    and is invisible to the integer-bound.is_ filter.
     """
     run_migrations(db_url=stale_bookmark_sqlite_url)
 
@@ -458,7 +457,7 @@ def stale_account_public_likes_url(tmp_path: Path) -> str:
 
 
 async def test_public_likes_migration_defaults_existing_readers_private(stale_account_public_likes_url: str) -> None:
-    """Round 360, DEC-393: existing readers must read back private after upgrade.
+    """Round 360: existing readers must read back private after upgrade.
 
     Same dialect-guard as the done column above: sa.false() stores DEFAULT 0 on
     SQLite so an opted-out reader never accidentally reads public_likes=True.

@@ -1,5 +1,5 @@
 /**
- * Admin posts-list navigation state (ISS-311 part 1).
+ * Admin posts-list navigation state (part 1).
  *
  * The editor (posts/[id].vue) returns to "/admin/posts" via a hardcoded URL
  * with no query, and the list page kept its search / status filter / page in

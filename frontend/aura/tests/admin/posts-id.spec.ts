@@ -21,7 +21,7 @@ import { mountWithSuspense as baseMountWithSuspense } from "./helpers.ts";
  * (a REAL timer in the non-fake-timer describes). A leaked timer firing
  * ~800ms of real time later — naturally within a full-dir run — calls
  * createAdminPost/updateAdminPost through the shared module mocks and makes
- * the fake-timer auto-save tests see 2 calls instead of 1 (RIL ISS-410).
+ * the fake-timer auto-save tests see 2 calls instead of 1.
  * Register every wrapper here and unmount them in the top-level afterEach so
  * onBeforeUnmount clears each debounce before it can misfire into later tests.
  */
@@ -75,7 +75,7 @@ vi.mock("~~/api/admin/posts", () => ({
 vi.mock("~~/api/admin/series", () => ({
 	useAdminSeries: mockFetchAdminSeries,
 }));
-// Author attribution picker (DEC-359/TASK-406): the editor reads the pen-named
+// Author attribution picker: the editor reads the pen-named
 // admins + the current admin from /api/admin/users, mock both flat.
 vi.mock("~~/api/admin/users", () => ({
 	useAdminAuthors: mockAdminAuthors,
@@ -118,7 +118,7 @@ const mockExistingPost = {
 	cover_image: null,
 	category_id: 1,
 	tag_ids: [1],
-	// series fields (DEC-056/TASK-123)
+	// series fields
 	series_id: 2,
 	series_order: 3,
 	series_title: "Deep Dive",
@@ -170,7 +170,7 @@ function setupMocks() {
 		error: ref(null),
 		refresh: vi.fn(),
 	});
-	// Author attribution (DEC-359/TASK-406): the writing admin (no pen name →
+	// Author attribution: the writing admin (no pen name →
 	// the picker labels them "me") and one other pen-named admin.
 	mockCurrentAdmin.mockReturnValue({
 		data: ref({
@@ -202,7 +202,7 @@ async function loadPage() {
 describe("Admin Post Editor Page", () => {
 	afterEach(() => {
 		// Unmount any editor wrappers a test left live so their per-instance
-		// real debounce timers are cleared (RIL ISS-410) — this runs after the
+		// real debounce timers are cleared — this runs after the
 		// Draft auto-save describe's own fake-timer-aware unmount, so already-
 		// unmounted wrappers here are safe no-ops.
 		for (const wrapper of mountedWrappers.splice(0)) wrapper.unmount();
@@ -289,7 +289,7 @@ describe("Admin Post Editor Page", () => {
 			expect(mockCreateAdminPost).toHaveBeenCalled();
 		});
 
-		it("navigates to the NEW post's editor after a manual create, not list page 1 (ISS-391)", async () => {
+		it("navigates to the NEW post's editor after a manual create, not list page 1 ", async () => {
 			// The old save dropped a newly-created draft on list page 1 where it
 			// wasn't even visible (created_at-desc ordering) with no context.
 			// Manual-save of a new post now lands on its editor so the author can
@@ -329,7 +329,7 @@ describe("Admin Post Editor Page", () => {
 			expect(wrapper.text()).toContain("Slug");
 		});
 
-		it("auto-generates a VALID ASCII slug for a Chinese-only title on submit (RIL TASK-106, ISS-086)", async () => {
+		it("auto-generates a VALID ASCII slug for a Chinese-only title on submit ", async () => {
 			// ASCII-only \w strips CJK, so a Chinese-only title previously
 			// produced "" or "-" -> backend 422 -> new post could not be saved.
 			const PostEditor = await loadPage();
@@ -466,7 +466,7 @@ describe("Admin Post Editor Page", () => {
 			expect(mockUpdateAdminPost).toHaveBeenCalledWith(1, expect.any(Object));
 		});
 
-		it("stays in the editor and shows an inline success flash on manual save of an existing post (ISS-391)", async () => {
+		it("stays in the editor and shows an inline success flash on manual save of an existing post ", async () => {
 			// The old flow navigated to list page 1 on every save with no
 			// confirmation — an older post (created_at-desc) vanished from view
 			// and there was no signal the save landed. Saving an existing post
@@ -489,7 +489,7 @@ describe("Admin Post Editor Page", () => {
 			// useHead stubs that later tests depend on (they re-stub navigateTo).
 		});
 
-		it("auto-clears the 'Saved' flash ~3s after a successful save (ISS-445 regression)", async () => {
+		it("auto-clears the 'Saved' flash ~3s after a successful save regression", async () => {
 			// The success flash is a transient confirmation, not a sticky banner:
 			// it must fade on its own so it doesn't keep claiming "just saved"
 			// over subsequent edits. The handler's finally used to clear the
@@ -561,13 +561,13 @@ describe("Admin Post Editor Page", () => {
 			} finally {
 				// Drop the instance so its onBeforeUnmount clears the autosave
 				// debounce and window beforeunload listener before real timers
-				// return (TASK-280 isolation).
+				// return isolation.
 				wrapper?.unmount();
 				vi.useRealTimers();
 			}
 		});
 
-		it("does not lose keystrokes typed while a MANUAL save is in flight (round 278)", async () => {
+		it("does not lose keystrokes typed while a MANUAL save is in flight ", async () => {
 			// handleSubmit used to blanket-clear isDirty on success, so edits made
 			// while the manual save was in flight were dropped (the debounced
 			// autosave early-returns on a clean flag) and the unflush guards were
@@ -724,7 +724,7 @@ describe("Admin Post Editor Page", () => {
 		});
 
 		it("shows the scheduled no-notify hint only when the post is published AND scheduled", async () => {
-			// DEC-076/TASK-235: no background scheduler, so a published+scheduled
+			// no background scheduler, so a published+scheduled
 			// post goes live silently — the editor must tell the operator to
 			// notify manually instead of leaving them to discover the gap later.
 			const PostEditor = await loadPage();
@@ -765,7 +765,7 @@ describe("Admin Post Editor Page", () => {
 				},
 			});
 			// The cover row has its own media-library button (distinct title from
-			// the content toolbar's insert button, DEC-187).
+			// the content toolbar's insert button).
 			const coverPickers = wrapper.findAll('button[title="从媒体库选择封面"]');
 			expect(coverPickers.length).toBeGreaterThan(0);
 			await coverPickers[0].trigger("click");
@@ -785,7 +785,7 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Web Push notify (DEC-055)", () => {
+	describe("Web Push notify ", () => {
 		beforeEach(() => {
 			setupRoute("1"); // existing post — published=true shows the notify button
 			setupMocks();
@@ -864,7 +864,7 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Series assignment (DEC-056, TASK-123)", () => {
+	describe("Series assignment ", () => {
 		beforeEach(() => {
 			setupMocks();
 		});
@@ -954,13 +954,13 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Deep-dive payload normalization (round 257)", () => {
+	describe("Deep-dive payload normalization ", () => {
 		beforeEach(() => {
 			setupRoute("new");
 			setupMocks();
 		});
 
-		it("clears an assigned category with an explicit null on save (round 257)", async () => {
+		it("clears an assigned category with an explicit null on save ", async () => {
 			// Edit-mode: mockExistingPost has category_id 1 (Tech). Clearing it
 			// to "无分类" used to serialize to `undefined` → JSON.stringify drops
 			// the key → the backend's exclude_unset treated it as "unchanged" and
@@ -970,7 +970,7 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
 
-			// The author select (DEC-359/TASK-406) comes before category in the
+			// The author select comes before category in the
 			// form, so target the category picker by id — positional selects[0]
 			// now points at the author.
 			const categorySelect = wrapper.find("#post-category");
@@ -987,7 +987,7 @@ describe("Admin Post Editor Page", () => {
 			expect(payload.category_id).toBe(null);
 		});
 
-		it("sends the selected tags as NAMES on create (round 257)", async () => {
+		it("sends the selected tags as NAMES on create ", async () => {
 			// The backend create schema takes `tags: list[str]` (names); update
 			// takes `tag_ids`. The picker edits ids — the editor must translate
 			// them into names for a create, or a fast Save silently drops them.
@@ -1028,7 +1028,7 @@ describe("Admin Post Editor Page", () => {
 			// onBeforeUnmount clears its pending autosave debounce against the
 			// CURRENT (fake) timer pool and removes the window beforeunload
 			// listener, so no timers/listeners leak into the next test's pool
-			// (TASK-280: coverage-timing flakes in this file).
+			// (coverage-timing flakes in this file).
 			currentWrapper?.unmount();
 			currentWrapper = null;
 			vi.useRealTimers();
@@ -1063,7 +1063,7 @@ describe("Admin Post Editor Page", () => {
 			return { wrapper, mockNavigateTo };
 		}
 
-		it("points the address bar at the created draft even when publish_at is set (round 257)", async () => {
+		it("points the address bar at the created draft even when publish_at is set ", async () => {
 			// The old bridge compared snapshot() (raw form, local publish_at
 			// string) against savedSnapshot (UTC-naive serialized) — unequal once
 			// a publish_at was set, so the redirect never fired and a hard refresh
@@ -1082,7 +1082,7 @@ describe("Admin Post Editor Page", () => {
 			expect(mockNavigateTo).toHaveBeenCalledWith("/admin/posts/7", { replace: true });
 		});
 
-		it("manual Save waits for an in-flight autosave-create instead of racing a second create (round 257)", async () => {
+		it("manual Save waits for an in-flight autosave-create instead of racing a second create ", async () => {
 			const { wrapper } = await autosaveNewPage();
 
 			// The first autosave-create stays in flight until we resolve it:
@@ -1122,7 +1122,7 @@ describe("Admin Post Editor Page", () => {
 			expect(targetId).toBe(7);
 		});
 
-		it("manual Save that beats the first autosave stamps the draft so later edits update it, never a second create (round 278)", async () => {
+		it("manual Save that beats the first autosave stamps the draft so later edits update it, never a second create ", async () => {
 			// A manual Save firing BEFORE the 800ms autosave debounce creates the
 			// post, but pre-fix never stamped autosavedId — so the next keystroke's
 			// autosave re-created with the identical slug (backend 422) or, if the
@@ -1154,7 +1154,7 @@ describe("Admin Post Editor Page", () => {
 			expect(targetId).toBe(7);
 		});
 
-		it("guards a second manual Save during the autosave wait window (round 257 review)", async () => {
+		it("guards a second manual Save during the autosave wait window ", async () => {
 			// The re-entry guard flips isSubmitting BEFORE awaiting the autosave
 			// drain — a top-only guard left a wait window where a double-click /
 			// Enter re-entered handleSubmit, parked a second waiter, and both
@@ -1194,7 +1194,7 @@ describe("Admin Post Editor Page", () => {
 			expect(mockUpdateAdminPost).toHaveBeenCalledTimes(1);
 		});
 
-		it("Cancel during an in-flight autosave-create does NOT redirect back to the editor (round 257)", async () => {
+		it("Cancel during an in-flight autosave-create does NOT redirect back to the editor ", async () => {
 			const { wrapper, mockNavigateTo } = await autosaveNewPage();
 
 			let resolveCreate!: (v: { id: number }) => void;
@@ -1275,7 +1275,7 @@ describe("Admin Post Editor Page", () => {
 			}
 		});
 
-		it("preview renders CONVERTED markdown, not raw source (RIL TASK-043, ISS-030)", async () => {
+		it("preview renders CONVERTED markdown, not raw source ", async () => {
 			const PostEditor = await loadPage();
 			// Register the REAL MarkdownContent (the same component the public
 			// /posts/[slug] page uses) so the preview is exercised for real.
@@ -1389,7 +1389,7 @@ describe("Admin Post Editor Page", () => {
 			expect(allowed).toBe(true);
 		});
 
-		it("flushes an auto-save instead of blocking when leaving with edits (TASK-190)", async () => {
+		it("flushes an auto-save instead of blocking when leaving with edits ", async () => {
 			const wrapper = await freshGuard();
 			// Make an edit to a dirty field
 			const titleInput = wrapper.find('input[type="text"]');
@@ -1462,7 +1462,7 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Draft auto-save (TASK-190)", () => {
+	describe("Draft auto-save ", () => {
 		let currentWrapper: VueWrapper | null = null;
 		beforeEach(() => {
 			vi.useFakeTimers();
@@ -1475,7 +1475,7 @@ describe("Admin Post Editor Page", () => {
 			// Unmount before restoring real timers (same reason as the Round 257
 			// autosave describe): the editor's onBeforeUnmount clears its pending
 			// debounce against the current fake pool and drops the window
-			// beforeunload listener, isolating each test from the last (TASK-280).
+			// beforeunload listener, isolating each test from the last.
 			currentWrapper?.unmount();
 			currentWrapper = null;
 			vi.useRealTimers();
@@ -1639,7 +1639,7 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Version history (TASK-191)", () => {
+	describe("Version history ", () => {
 		beforeEach(() => {
 			setupRoute("1");
 			setupMocks();
@@ -2150,7 +2150,7 @@ describe("Admin Post Editor Page", () => {
 		});
 	});
 
-	describe("Author attribution (DEC-359, TASK-406)", () => {
+	describe("Author attribution ", () => {
 		const authorSelect = (wrapper: VueWrapper) => wrapper.find("#post-author");
 
 		function fillRequired(wrapper: VueWrapper) {

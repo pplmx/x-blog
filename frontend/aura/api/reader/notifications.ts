@@ -48,7 +48,7 @@ export function markAllReaderNotificationsRead(): Promise<{ updated: number }> {
 	});
 }
 
-/** Delete one inbox row (204; 404 if it isn't the reader's). DEC-312/TASK-384. */
+/** Delete one inbox row (204; 404 if it isn't the reader's).. */
 export function deleteReaderNotification(notificationId: number): Promise<void> {
 	return command<void>(`/api/reader/me/notifications/${notificationId}`, {
 		method: "DELETE",
@@ -61,18 +61,18 @@ export interface ReaderNotificationPrefs {
 	new_post: boolean;
 	reply: boolean;
 	thread_comment: boolean;
-	/** In-app at-mention fan-out (DEC-322/TASK-389): opt-out per-kind, on by default. */
+	/** In-app at-mention fan-out: opt-out per-kind, on by default. */
 	mention: boolean;
-	/** In-app reader-follow fan-out (round 365, DEC-403): an inbox row when a
+	/** In-app reader-follow fan-out: an inbox row when a
 	 *  reader you follow gets a comment approved; opt-out per-kind, on by default. */
 	reader_comment: boolean;
-	/** Email channel (DEC-197, TASK-217): per-kind opt-in SMTP copy of the fan-out. */
+	/** Email channel: per-kind opt-in SMTP copy of the fan-out. */
 	email_new_post: boolean;
 	email_reply: boolean;
 	email_thread_comment: boolean;
-	/** Email copy of @-mentions (DEC-326/TASK-391): opt-in like the other email_* kinds. */
+	/** Email copy of @-mentions: opt-in like the other email_* kinds. */
 	email_mention: boolean;
-	/** Recurring weekly-digest email opt-in (DEC-201, TASK-222). */
+	/** Recurring weekly-digest email opt-in. */
 	email_weekly_digest: boolean;
 }
 
@@ -127,7 +127,7 @@ export function revokeMyPushSubscription(subscriptionId: number): Promise<void> 
 
 /**
  * Update the new-post notification prefs on one of the reader's devices
- * (DEC-076/TASK-147). `new_post_category_id` null = all new posts.
+ *. `new_post_category_id` null = all new posts.
  */
 export function updateMyPushSubscriptionPrefs(
 	subscriptionId: number,

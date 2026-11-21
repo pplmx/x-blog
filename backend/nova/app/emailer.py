@@ -1,7 +1,6 @@
-"""SMTP notification email delivery (DEC-197, TASK-217).
+"""SMTP notification email delivery.
 
-The reader notification stack (Web Push DEC-055 + durable inbox DEC-160 +
-per-kind opt-outs DEC-171, tag-follow DEC-195) only reaches a reader while the
+The reader notification stack (Web Push + durable inbox + per-kind opt-outs tag-follow) only reaches a reader while the
 site is open or the browser grants push. Email is the off-site channel: a
 reader who opts in for a kind gets a plain-text + HTML email to their
 registered address whenever that event fires (new post in a followed
@@ -41,7 +40,7 @@ from app.auth import ReaderAccount
 logger = logging.getLogger(__name__)
 
 # Event kind -> email-pref column. series_new_part is a label refinement of
-# new_post (ISS-114/DEC-181) and shares its email pref, mirroring how the
+# new_post and shares its email pref, mirroring how the
 # push/inbox side gates both under the new_post opt-out.
 _EMAIL_PREF_FOR_KIND: dict[str, str] = {
     "new_post": "email_new_post",
@@ -73,7 +72,7 @@ def _is_en_site() -> bool:
     """True when the site is configured for English (SITE_LANGUAGE starts with
     "en"). The default zh-CN (or any non-en value) keeps today's Chinese copy.
     Lazy per-call like the other site config reads, so tests can vary it
-    (DEC-342/TASK-397)."""
+    ."""
     return os.getenv("SITE_LANGUAGE", "").strip().lower().startswith("en")
 
 
@@ -137,8 +136,7 @@ async def dispatch_notification_emails(db: AsyncSession, items: Iterable[EmailIt
                         ReaderAccount.id.in_(by_reader.keys()),
                         # A deactivated reader is a moderation action: they keep their
                         # follow rows and prefs, but every notification channel must go
-                        # silent (the weekly digest already filters is_active — RIL
-                        # ISS-278, DEC-194). Without this, disabling an account still
+                        # silent (the weekly digest already filters is_active). Without this, disabling an account still
                         # left them receiving per-event mail.
                         ReaderAccount.is_active.is_(True),
                     )
@@ -173,7 +171,7 @@ def send_messages(messages: Iterable[EmailMessage]) -> int:
     """Deliver prebuilt EmailMessages over one SMTP session (STARTTLS when configured).
 
     Shared by the per-event fan-out (`_send_via_smtp`) and the weekly digest
-    (DEC-201, TASK-222) so both send through the single configured SMTP path.
+     so both send through the single configured SMTP path.
     Returns how many messages the server accepted; a broken/missing config
     raises for the caller to swallow (the fan-out and digest both treat mail as
     best-effort).
@@ -182,7 +180,7 @@ def send_messages(messages: Iterable[EmailMessage]) -> int:
     or a single message fails mid-session: that failure is skipped and the
     remaining recipients still get their mail, instead of one bad address
     aborting the whole batch — previously every recipient after the failure
-    was silently dropped (RIL ISS-280). Connection-level errors still raise.
+    was silently dropped. Connection-level errors still raise.
     """
     delivered = send_messages_flags(messages)
     return sum(delivered)
@@ -194,7 +192,7 @@ def send_messages_flags(messages: Iterable[EmailMessage]) -> list[bool]:
     Used by the weekly digest to stamp ``digest_sent_at`` per reader only after
     *that* message was accepted: with an all-or-nothing batch, messages sent
     before a mid-loop failure were delivered but no reader was stamped, so the
-    next cron re-mailed everyone (duplicates, RIL ISS-280).
+    next cron re-mailed everyone (duplicates).
     """
     host = _env("SMTP_HOST")
     port = int(_env("SMTP_PORT") or 587)
@@ -261,14 +259,14 @@ def send_guest_reply_email(
     best-effort (a mail failure must never break the comment approval that
     triggered it). The message carries the same deep link the reader push/inbox
     paths use plus a per-comment unsubscribe link so the guest's consent
-    (DEC-332) stays revocable without an account. Returns whether SMTP accepted
+     stays revocable without an account. Returns whether SMTP accepted
     it; connection-level errors raise for the caller to swallow (best effort).
     """
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     base_url = _env("SITE_URL") or "http://localhost:3000"
     link = f"{base_url.rstrip('/')}{reply_url}"
     unsubscribe = f"{base_url.rstrip('/')}{unsubscribe_url}"
-    # Sender-side copy follows the site's configured language (DEC-342/TASK-397):
+    # Sender-side copy follows the site's configured language:
     # a guest has no account/locale, so SITE_LANGUAGE is the only signal; the
     # default zh copy is byte-for-byte today's text. The post title is
     # user-controlled, so escape it in the HTML part (already done via html.escape).
@@ -316,11 +314,11 @@ def send_guest_comment_manage_email(
     """Tell an ANONYMOUS commenter their comment is live and how to manage it.
 
     Fired at APPROVAL time for an anonymous comment that consented to email
-    (round 385, DEC-435/TASK-444). A guest has no account, so after the comment
+    . A guest has no account, so after the comment
     is approved there is no UI that knows it is theirs — this is the only
     on-ramp to the token-gated manage page (GET/PATCH/DELETE
     /api/comments/manage, keyed by the same per-comment ``reply_notify_token``
-    that already rides the guest reply email from DEC-332). Mirrors
+    that already rides the guest reply email). Mirrors
     ``send_guest_reply_email`` exactly: direct SMTP (no reader account to key
     dispatch on), gated on ``is_email_configured()``, best-effort (a mail
     failure must never break the approval that fired it), sender-side copy in
@@ -377,14 +375,14 @@ def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
     the request never silently appears to succeed. Returns whether SMTP accepted
     the message (RFC errors -> False); connection-level errors raise, which the
     caller treats as a 503 (send failed) — in both cases the failure is an
-    infrastructure condition, never account existence. (DEC-286, TASK-371)
+    infrastructure condition, never account existence.
     """
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     base_url = _env("SITE_URL") or "http://localhost:3000"
     site_title = _env("SITE_TITLE") or "X-Blog"
     link = f"{base_url.rstrip('/')}/reset-password?token={reset_token}"
     # Recovery email follows the site's configured language + identity
-    # (DEC-342/TASK-397): en sites get English copy, zh keeps today's copy, and
+    # en sites get English copy, zh keeps today's copy, and
     # both use the configured SITE_TITLE instead of a hardcoded name.
     if _is_en_site():
         subject = f"Reset your {site_title} password"
@@ -427,11 +425,11 @@ def send_password_reset_email(to_addr: str, reset_token: str) -> bool:
 def send_email_change_email(new_addr: str, token: str) -> bool:
     """Mail the verification link for a reader email change to the NEW address.
 
-    Same delivery contract as the password-reset mail (DEC-357, TASK-404): a
+    Same delivery contract as the password-reset mail: a
     security-recovery delivery the reader explicitly requested, built here and
     delivered via the single configured SMTP path; requires SMTP (the request
     endpoint 503s on a missing config), follows the site's configured language
-    + SITE_TITLE (DEC-342). The link is single-use and 60-minute-bound; the
+    + SITE_TITLE. The link is single-use and 60-minute-bound; the
     reader's OWN email is never mailed (the change is about leaving it).
     """
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
@@ -476,7 +474,7 @@ def send_email_change_email(new_addr: str, token: str) -> bool:
 
 
 def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
-    """Double opt-in confirmation for a guest newsletter subscription (DEC-351).
+    """Double opt-in confirmation for a guest newsletter subscription.
 
     ``subscribe`` only records the address and emails this confirm link — the
     address receives nothing (not even the confirmation's target) until the
@@ -487,7 +485,7 @@ def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
     ``is_email_configured()`` (a missing config fails closed — separate from
     the endpoint's own error handling, which keeps subscribe a 202 no-oracle
     response). Site-language sender-side copy like the other guest emails
-    (DEC-342). Returns whether SMTP accepted it; connection-level errors raise
+    . Returns whether SMTP accepted it; connection-level errors raise
     for the caller to swallow (best effort).
     """
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
@@ -531,13 +529,13 @@ def send_newsletter_confirm_email(to_addr: str, token: str) -> bool:
 
 
 def send_guest_thread_confirm_email(to_addr: str, token: str, post_title: str) -> bool:
-    """Double opt-in confirmation for a guest thread-follow (DEC-427, TASK-438).
+    """Double opt-in confirmation for a guest thread-follow.
 
     ``subscribe`` only records the (email, post) row and emails this confirm
     link — the address receives no thread mail until the token link is
     clicked. Direct SMTP send mirroring ``send_newsletter_confirm_email``
     (the guest has no reader account, so the reader-keyed notifier does not
-    apply). Site-language copy like the other guest emails (DEC-342); the post
+    apply). Site-language copy like the other guest emails; the post
     title is user-controlled, so it is escaped in the HTML part. Returns
     whether SMTP accepted it; connection errors raise for the caller to
     swallow (best effort).
@@ -588,7 +586,7 @@ def _build_guest_thread_message(
     comment_url: str,
     unsubscribe_url: str,
 ) -> EmailMessage:
-    """Compose one anonymous thread-follow notice (site-language copy, DEC-342)."""
+    """Compose one anonymous thread-follow notice (site-language copy)."""
     from_addr = _env("SMTP_FROM") or "no-reply@localhost"
     base_url = _env("SITE_URL") or "http://localhost:3000"
     link = f"{base_url.rstrip('/')}{comment_url}"
@@ -634,13 +632,13 @@ def send_guest_thread_emails(
 ) -> list[bool]:
     """Fan out thread-follow notices to many confirmed guest subscribers.
 
-    The anonymous counterpart of the reader thread-comment fan-out (DEC-427) —
+    The anonymous counterpart of the reader thread-comment fan-out —
     one email per APPROVED comment (moderation gate — only visible comments are
     mailed, same rule as the reader push), deep-linking to the comment and
     carrying a one-click unsubscribe token per recipient so each consent stays
     revocable without an account (mirrors ``send_guest_reply_email``).
 
-    Delivers EVERY recipient over a SINGLE SMTP session (round-433 capacity
+    Delivers EVERY recipient over a SINGLE SMTP session (capacity
     fix): the previous per-subscriber ``send_guest_thread_email`` opened a fresh
     SMTP connection per recipient in a serial loop, so a thread with N confirmed
     guest subscribers blocked the request for N connects — unbounded by any cap
@@ -674,7 +672,7 @@ def _header_safe_title(title: str | None) -> str:
 
 
 async def dispatch_newsletter_new_post(db: AsyncSession, post: models.Post, logger) -> int:
-    """Email every confirmed newsletter subscriber once about a new post (DEC-351).
+    """Email every confirmed newsletter subscriber once about a new post.
 
     Called at the same fan-out points that fire the new-post push/reader emails:
     after a write makes a post immediately visible and when a scheduled post
@@ -682,14 +680,14 @@ async def dispatch_newsletter_new_post(db: AsyncSession, post: models.Post, logg
     completed) are emailed; pending rows stay silent. One SMTP session for all
     recipients, each message deep-linking to the post and carrying that
     subscriber's own unsubscribe link (``/newsletter/unsubscribe?token=...``)
-    so consent stays revocable without an account (mirrors DEC-332). Returns
+    so consent stays revocable without an account (mirrors). Returns
     how many messages SMTP accepted; never raises — a mail failure (or a
     title that a header can't carry) must never break the publish/fan-out that
     triggered it, so the whole build + send sits inside the catch.
 
     Only PER-POST subscribers are emailed here: a confirmed ``digest_weekly``
     address is served by the weekly digest job instead, so a subscriber gets the
-    cadence they chose and never both (DEC-355, TASK-403).
+    cadence they chose and never both.
     """
     if not is_email_configured():
         return 0

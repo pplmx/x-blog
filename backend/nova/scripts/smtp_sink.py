@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tiny SMTP sink for local/e2e development (DEC-286, TASK-371).
+"""Tiny SMTP sink for local/e2e development.
 
 The `just e2e` harness and local dev have no real mail server; a password-reset
 journey (and any future email flow) needs somewhere to *send*. This is a

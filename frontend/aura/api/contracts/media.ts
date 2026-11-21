@@ -1,6 +1,6 @@
 import type { PaginationInfo } from "./shared";
 
-/** One uploaded image in the admin media library (DEC-183). */
+/** One uploaded image in the admin media library. */
 export interface UploadFileInfo {
 	url: string;
 	year: number;

@@ -154,7 +154,7 @@ describe("reader bookmark commands", () => {
 		expect(commandCalls[0].options.method).toBe("DELETE");
 	});
 
-	it("moves a bookmark between To-read and Done with a PATCH body (DEC-395)", async () => {
+	it("moves a bookmark between To-read and Done with a PATCH body ", async () => {
 		await setBookmarkDone(9, true);
 
 		expect(commandCalls[0].path).toBe("/api/reader/me/bookmarks/9/done");

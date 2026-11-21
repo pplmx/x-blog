@@ -1,5 +1,5 @@
 /**
- * Series reading-progress journey (DEC-122, TASK-173).
+ * Series reading-progress journey.
  *
  * A signed-in reader sees a per-series progress card on the series page,
  * derived from their reading history: once they read one episode, the read
@@ -16,7 +16,7 @@ function freshEmail(): string {
 	return `reader-${Date.now()}-${emailCounter}@example.com`;
 }
 
-test.describe("Series reading progress (TASK-173)", () => {
+test.describe("Series reading progress ", () => {
 	test("signed-in reader sees progress after reading an episode", async ({ page, request }) => {
 		// Pick a series with at least one published post.
 		const seriesResp = await request.get("/api/series");

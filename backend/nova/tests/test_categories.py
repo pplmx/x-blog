@@ -170,7 +170,7 @@ async def test_update_category_duplicate_name_returns_400(client, auth_headers, 
 async def test_category_post_count_excludes_drafts_and_scheduled(client, auth_headers, db_session):
     """Public /api/categories post_count must count only publicly visible posts
     (published + effective publish time passed) — drafts/scheduled must neither
-    leak existence nor inflate the count (ISS-362)."""
+    leak existence nor inflate the count."""
     from app import models
 
     response = await client.post("/api/categories", json={"name": "VisCat"}, headers=auth_headers)
@@ -217,7 +217,7 @@ async def test_category_post_count_excludes_drafts_and_scheduled(client, auth_he
 
 async def test_get_category_post_count_present(client, auth_headers, db_session):
     """Single-item GET /api/categories/{id} must report the real visible count,
-    not the schema default 0 (ISS-363)."""
+    not the schema default 0."""
     from app import models
 
     response = await client.post("/api/categories", json={"name": "ItemCat"}, headers=auth_headers)
@@ -240,7 +240,7 @@ async def test_get_category_post_count_present(client, auth_headers, db_session)
 async def test_rename_category_invalidates_posts_list_cache(client, auth_headers, db_session):
     """Renaming a category must drop the cached posts list + feed payloads that
     embed the old name, so /api/posts and /sitemap.xml stop serving the old
-    name immediately instead of holding it for the 5-min TTL (ISS-364)."""
+    name immediately instead of holding it for the 5-min TTL."""
     from app import models
 
     cat = models.Category(name="OldName")

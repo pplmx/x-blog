@@ -32,7 +32,7 @@ def admin_token_expire_days() -> float:
     whole-day integer cannot express a sub-day session like the "30 minutes"
     the operator asked for; otherwise ``JWT_EXPIRE_DAYS`` is the whole-day
     knob, default 1 day. Expiry itself lives in the JWT ``exp`` claim and is
-    enforced by the backend (RIL ISS-273).
+    enforced by the backend.
     """
     minutes = os.getenv("JWT_EXPIRE_MINUTES")
     if minutes:
@@ -51,7 +51,7 @@ READER_TOKEN_EXPIRE_DAYS = int(os.getenv("READER_TOKEN_EXPIRE_DAYS", "30"))
 # signed with the same SECRET_KEY, so audience separation is the *discriminator*
 # that stops a leaked reader token from ever authenticating as an admin. A
 # reader JWT carries aud=x-blog-reader and the admin guard rejects it explicitly
-# (see get_current_user). (DEC-059, TASK-131)
+# (see get_current_user).
 READER_AUDIENCE = "x-blog-reader"
 
 
@@ -86,8 +86,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/admin/login")
 # Admin role tiers (authoritative discriminator for admin authorization). A
 # superuser can manage users/export/batch; an editor can only moderate content
 # (posts/comments/categories/tags). `is_superuser` below is kept as a stored
-# boolean (DDL preserved, DEC-009) and stays consistent with role. (DEC-054,
-# TASK-114)
+# boolean (DDL preserved) and stays consistent with role.
 ROLE_SUPERUSER = "superuser"
 ROLE_EDITOR = "editor"
 ADMIN_ROLES = (ROLE_SUPERUSER, ROLE_EDITOR)
@@ -101,7 +100,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_EDITOR)
     is_superuser: Mapped[bool | None] = mapped_column(Boolean, default=False)
-    # Public pen name (DEC-359, TASK-405): the byline shown on published posts
+    # Public pen name: the byline shown on published posts
     # and the author archive. Deliberately NOT the login username — admin login
     # is no-oracle (login.py timing-equalizes unknown usernames), so publishing
     # the username would hand out the first half of a credential. NULL means
@@ -109,20 +108,20 @@ class User(Base):
     # /authors/{id} answers 404, keeping the username fully private until the
     # operator chooses a pen name.
     display_name: Mapped[str | None] = mapped_column(String(50))
-    # Short public "about this writer" (round 357): plain-text bio a superuser
+    # Short public "about this writer": plain-text bio a superuser
     # sets next to the pen name in admin/users, rendered under the writer's
     # name on their public /authors/{id} archive header. Mirrors ReaderAccount
-    # bio (round 352): Text column, 500-char cap enforced at the schema
+    # bio: Text column, 500-char cap enforced at the schema
     # boundary. NULL = no bio yet.
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Public profile picture (round 358): a small image a superuser uploads
+    # Public profile picture: a small image a superuser uploads
     # next to the pen name/bio in admin/users, rendered on every public
     # rendering of the writer (post bylines, /authors index card, archive
-    # header). Mirrors ReaderAccount.avatar_url (DEC-299): a /static URL
+    # header). Mirrors ReaderAccount.avatar_url: a /static URL
     # string, stored file in the static/avatars namespace. NULL = no avatar.
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Bumped on password change so previously-issued JWTs are invalidated
-    # immediately (checked in get_current_user). (RIL round 16 security audit)
+    # immediately (checked in get_current_user).
     token_version: Mapped[int | None] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
@@ -134,8 +133,8 @@ class ReaderAccount(Base):
 
     Deliberately separate from the admin ``User`` table: readers self-register
     publicly, so they must never share a table or row range with privileged
-    admin accounts (a JWT ``sub`` collision could otherwise cross-authenticate,
-    DEC-059/TASK-131). ``token_version`` mirrors ``User`` so a credential
+    admin accounts (a JWT ``sub`` collision could otherwise cross-authenticate).
+    ``token_version`` mirrors ``User`` so a credential
     rotation invalidates previously-issued reader tokens immediately.
     """
 
@@ -145,34 +144,34 @@ class ReaderAccount(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(50))
-    # Short self-written "about me" (round 352): a one-paragraph bio the
+    # Short self-written "about me": a one-paragraph bio the
     # reader writes on /account and is shown on their public profile page —
     # completes the identity surface (name + avatar + bio) next to the streak
     # and approved comments. NULL = no bio; plain text, never markup.
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Profile picture (DEC-299, TASK-378): a small image the reader uploads,
+    # Profile picture: a small image the reader uploads,
     # served from /static/avatars and rendered beside their identity on the
     # public profile page and comments. Nullable — an avatar is optional, and
     # existing readers start without one (rendered as a placeholder/initial).
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # Public liked-posts opt-in (round 360, DEC-393): when true, the reader's
+    # Public liked-posts opt-in: when true, the reader's
     # public profile gains a "Liked posts" tab listing their publicly-visible
     # liked posts (reader_post_likes), browseable by anyone. Defaults OFF —
     # liking something is private taste; publishing it is an explicit choice.
     public_likes: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
-    # Public bookmarked-posts opt-in (round 363, DEC-399): when true, the
+    # Public bookmarked-posts opt-in: when true, the
     # reader's public profile gains a "Saved posts" tab listing their
     # publicly-visible bookmarks, browseable by anyone. Like public_likes this
     # defaults OFF and publishes only an INTENTIONAL signal (a deliberate save),
     # never the passively auto-recorded reading history.
     public_bookmarks: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), nullable=False)
-    # Reader UI language (DEC-338, TASK-395): selects the language of the
+    # Reader UI language: selects the language of the
     # reader's durable inbox notification titles and email copy. NULL means
     # "not chosen" and reads as the site default (zh), preserving existing
     # behavior for readers who never touch the language switcher while signed
     # in. Values are the frontend locale codes ("en", "zh").
     locale: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    # Email-change verification (DEC-357, TASK-404): an email change is proven
+    # Email-change verification: an email change is proven
     # by the emailed one-time link, so the pending NEW address + its opaque
     # token + the request time live on the account (all cleared on confirm or
     # expiry). The token is unique so two accounts can never share a pending
@@ -180,7 +179,7 @@ class ReaderAccount(Base):
     email_change_pending: Mapped[str | None] = mapped_column(String(254), nullable=True)
     email_change_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
     email_change_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # Second factor (round 364, DEC-401): a reader with two_factor_enabled must
+    # Second factor: a reader with two_factor_enabled must
     # present a TOTP code (RFC 6238, any authenticator app) at login — with
     # 2FA on, POST /login returns a short-lived mfa_token instead of an access
     # token, and the code is exchanged for the real session on /login/2fa.
@@ -230,7 +229,7 @@ def create_reader_token(data: dict, token_version: int = 0) -> str:
     Same signing key as admin tokens, but the ``aud`` claim marks the token as
     reader-scoped: the admin guard (get_current_user) rejects tokens carrying
     this audience, so a reader credential can never be replayed against admin
-    endpoints even if ``sub`` happens to equal a users.id (DEC-059, TASK-131).
+    endpoints even if ``sub`` happens to equal a users.id.
     Readers log in from many sessions/clients, so their tokens live longer than
     admin tokens by default.
     """
@@ -248,7 +247,7 @@ def create_reader_token(data: dict, token_version: int = 0) -> str:
 # so a reset token can never be replayed as either credential kind (the same
 # audience-separation invariant that keeps reader tokens off admin endpoints).
 # A reset token is short-lived and single-purpose: it only unlocks
-# /api/reader/password-reset/confirm. (DEC-286, TASK-371)
+# /api/reader/password-reset/confirm.
 READER_PASSWORD_RESET_AUDIENCE = "x-blog-password-reset"
 # Lifetime of a password-reset token. Shorter than reader/login tokens: a reset
 # link is usually opened within minutes, and a long-lived token widens the
@@ -263,7 +262,7 @@ def create_password_reset_token(reader_id: int, token_version: int = 0) -> str:
     and the reader's current ``token_version``. The ``ver`` claim ties the token
     to the password epoch: any password change (initiated or self-service) bumps
     ``token_version``, which invalidates not just live reader JWTs but also this
-    reset token — a used reset link cannot be replayed. (DEC-286, TASK-371)
+    reset token — a used reset link cannot be replayed.
     """
     to_encode: dict = {"sub": str(reader_id), "ver": token_version, "aud": READER_PASSWORD_RESET_AUDIENCE}
     expire = datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
@@ -280,7 +279,7 @@ async def get_reader_for_password_reset(token: str, db: AsyncSession) -> ReaderA
     password change — including a previous successful reset — is dead), and the
     account must still be active. A deactivated reader is deliberately not
     recoverable through this flow: the operator disabled the account, so
-    granting a password reset would let them back in. (DEC-286, TASK-371)
+    granting a password reset would let them back in.
     """
     payload = _decode_payload(token, audience=READER_PASSWORD_RESET_AUDIENCE)
     if payload is None or payload.get("aud") != READER_PASSWORD_RESET_AUDIENCE:
@@ -298,7 +297,7 @@ async def get_reader_for_password_reset(token: str, db: AsyncSession) -> ReaderA
 # 2FA challenge-token audience: a further audience apart from admin/reader/
 # password-reset so a challenge token can never act as any other credential.
 # It only unlocks /login/2fa for the reader it names, and only while it is
-# fresh — see TWO_FACTOR_EXPIRE_MINUTES below. (round 364, DEC-401)
+# fresh — see TWO_FACTOR_EXPIRE_MINUTES below.
 READER_2FA_AUDIENCE = "x-blog-reader-2fa"
 # Lifetime of a reader 2FA challenge token. Short: it is carried implicitly by
 # the browser through the second login step, and a long-lived token would widen
@@ -313,7 +312,7 @@ def create_reader_2fa_token(reader_id: int, token_version: int = 0) -> str:
     access token. It carries its own audience (x-blog-reader-2fa), the reader
     ``sub`` and the reader's current ``token_version``, so a reader/admin/
     password-reset token can never open the second step, and any password change
-    (a ``ver`` bump) kills outstanding challenges immediately. (DEC-401)
+    (a ``ver`` bump) kills outstanding challenges immediately.
     """
     to_encode: dict = {"sub": str(reader_id), "ver": token_version, "aud": READER_2FA_AUDIENCE}
     to_encode["exp"] = datetime.now(UTC) + timedelta(minutes=TWO_FACTOR_EXPIRE_MINUTES)
@@ -339,7 +338,7 @@ async def get_reader_for_2fa(token: str, db: AsyncSession) -> ReaderAccount | No
     # `two_factor_enabled` is re-checked as defense-in-depth: a challenge issued
     # while the reader had 2FA on must not resolve for a reader who has since
     # turned it off (the secret transition also fails closed, but the flag makes
-    # the invariant explicit). (security review, DEC-401)
+    # the invariant explicit). (security review)
     if (
         reader is None
         or reader.two_factor_enabled is False
@@ -381,7 +380,7 @@ def _decode_payload(token: str, audience: str | None = None) -> dict | None:
     The ``sub`` claim is coerced to ``int`` *here* (inside the error handling)
     rather than in the guards, so a malformed non-numeric ``sub`` is a clean 401
     instead of a 500-class ValueError escaping from ``int(...)``. (security
-    review, TASK-131)
+    review)
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], audience=audience)
@@ -406,7 +405,7 @@ async def get_current_user(
     payload = _decode_payload(token)
     if payload is None:
         raise credentials_exception
-    # Audience separation (DEC-059, TASK-131): a reader-scoped token (carrying
+    # Audience separation: a reader-scoped token (carrying
     # aud=x-blog-reader) must never authenticate as an admin. Without this check
     # a leaked reader token whose sub happens to match a users.id would grant
     # admin access. Legacy admin tokens (issued before this change) carry no aud
@@ -484,7 +483,7 @@ async def get_current_reader(
     payload = _decode_payload(token, audience=READER_AUDIENCE)
     if payload is None:
         raise credentials_exception
-    # This guard only ever accepts reader-scoped tokens (DEC-059, TASK-131).
+    # This guard only ever accepts reader-scoped tokens.
     # Admin tokens carry no aud=x-blog-reader, so they can't authenticate here.
     if payload.get("aud") != READER_AUDIENCE:
         raise credentials_exception
@@ -496,7 +495,7 @@ async def get_current_reader(
     reader = (await db.execute(select(ReaderAccount).where(ReaderAccount.id == reader_id))).scalar_one_or_none()
     if reader is None or token_version != (reader.token_version or 0):
         raise credentials_exception
-    # Account moderation (DEC-194, TASK-214, ISS-116): a deactivated reader is
+    # Account moderation: a deactivated reader is
     # rejected even with a valid token. 403 (not 401) so a client can tell the
     # credential was valid but the account was disabled. Every live JWT is
     # additionally killed at deactivation time via token_version bump.
@@ -518,7 +517,7 @@ async def get_optional_reader(
     creation): a missing/invalid reader token just yields no reader identity
     rather than a 401. The token is strictly reader-scoped (aud=x-blog-reader,
     enforced by get_current_reader), so an admin token never resolves here
-    either. (DEC-062, TASK-135)
+    either.
     """
     if not token:
         return None

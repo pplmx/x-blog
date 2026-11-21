@@ -1,9 +1,9 @@
-"""Reader tag-follow contract tests (DEC-195, TASK-215).
+"""Reader tag-follow contract tests.
 
 Tags are the fine-grained subscription axis categories are too coarse for: a
 signed-in reader can follow a tag (durable, cross-device) and be pushed a
 notification when a new public post carries it. Mirrors the category-follow
-contract (DEC-140/TASK-182) — auth scoping, follow/unfollow/list semantics,
+contract — auth scoping, follow/unfollow/list semantics,
 reader isolation, per-follow notify control, and the dispatch integration
 (tag followers fanned out + deduped against the per-device push).
 """

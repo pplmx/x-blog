@@ -32,7 +32,7 @@ const setLocale = vi.fn((l: string) => {
 });
 
 // Reader auth state is a shared ref so tests can flip it (guest vs signed-in)
-// and assert the locale-sync branch of onSelect (DEC-338/TASK-395).
+// and assert the locale-sync branch of onSelect.
 vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: authState }),
 }));
@@ -129,7 +129,7 @@ describe("LanguageSwitcher", () => {
 		await wrapper.get('button[aria-haspopup="menu"]').trigger("click");
 		await flushPromises();
 		// A guest has no stored locale to persist; the switch must not fire any
-		// authenticated API call (DEC-338/TASK-395).
+		// authenticated API call.
 		await wrapper.get('[role="menuitem"]:nth-child(4)').trigger("click");
 		await flushPromises();
 		expect(setReaderLocale).not.toHaveBeenCalled();

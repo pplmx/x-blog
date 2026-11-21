@@ -1,5 +1,5 @@
 /**
- * AdminPushToggle component tests (DEC-080, TASK-152).
+ * AdminPushToggle component tests.
  *
  * Verifies the admin moderation-alert toggle's rendering per status (always
  * present in the admin sidebar, disabled with an explanatory hint when
@@ -123,7 +123,7 @@ describe("AdminPushToggle", () => {
 		expect(subscribe).not.toHaveBeenCalled();
 	});
 
-	it("flashes a transient error line when the subscribe rejects (ISS-215)", async () => {
+	it("flashes a transient error line when the subscribe rejects ", async () => {
 		status.value = "idle";
 		subscribe.mockRejectedValue(new Error("network"));
 		const wrapper = mountToggle();

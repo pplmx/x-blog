@@ -1,5 +1,5 @@
 /**
- * /highlights page tests (round 466, DEC-511 / TASK-583).
+ * /highlights page tests.
  *
  * The page lists the signed-in reader's saved passages with pagination
  * (deep-linkable ?page=, windowed buttons) plus inline note edit/delete.

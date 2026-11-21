@@ -1,5 +1,5 @@
 /**
- * Reading-history search journey (DEC-148, TASK-186).
+ * Reading-history search journey.
  *
  * A signed-in reader can search their past-read posts on /history by a term
  * matching the title; a non-matching term yields the empty search state.
@@ -14,7 +14,7 @@ function freshEmail(): string {
 	return `hist-search-${Date.now()}-${emailCounter}@example.com`;
 }
 
-test.describe("History search (TASK-186)", () => {
+test.describe("History search ", () => {
 	test("a signed-in reader searches their history", async ({ page, request }) => {
 		// Pick a published post to record as viewed.
 		const posts = await request.get("/api/posts?limit=1");

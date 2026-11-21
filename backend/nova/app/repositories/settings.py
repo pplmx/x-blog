@@ -31,7 +31,7 @@ async def boolean_setting(db: AsyncSession, key: str, env_fallback: bool) -> boo
 
     ``env_fallback`` is the operator's env default (e.g. the
     AUTO_APPROVE_READER_COMMENTS flag); a persisted row overrides it so the admin
-    can flip policy at runtime (DEC-100, TASK-162)."""
+    can flip policy at runtime."""
     raw = await get_site_setting(db, key)
     if raw is None:
         return env_fallback

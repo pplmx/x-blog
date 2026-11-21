@@ -1,7 +1,7 @@
 import { readerAuthHeaders } from "../auth";
 import { command, query } from "../transport";
 
-/** A bookmarked post as serialized by GET /api/reader/me/bookmarks (TASK-132).
+/** A bookmarked post as serialized by GET /api/reader/me/bookmarks.
  * Mirrors the localStorage `Bookmark` shape (useBookmarks.ts) so both
  * serializations merge transparently on the client. */
 export interface ReaderBookmarkItem {
@@ -13,7 +13,7 @@ export interface ReaderBookmarkItem {
 	created_at: string | null;
 	folder_id?: number | null;
 	folder_name?: string | null;
-	/** Queue state (round 361, DEC-395): false = To-read, true = Done. */
+	/** Queue state: false = To-read, true = Done. */
 	done?: boolean;
 	category: { id: number; name: string } | null;
 	tags: { id: number; name: string }[];
@@ -27,7 +27,7 @@ export interface ReaderBookmarkListResponse {
 	total_pages?: number;
 }
 
-/** A reader's bookmark folder/collection (DEC-120, TASK-172). */
+/** A reader's bookmark folder/collection. */
 export interface BookmarkFolder {
 	id: number;
 	name: string;
@@ -50,7 +50,7 @@ export function useReaderBookmarks(options?: { folderId?: number | null; done?: 
 }
 
 /** Imperative bookmarks list for merge/sync handlers that need the data directly.
- *  Bounded paging: pass ``page``/``limit`` to walk total_pages (ISS-142). */
+ * Bounded paging: pass ``page``/``limit`` to walk total_pages. */
 export function getReaderBookmarks(
 	folderId?: number | null,
 	page?: number,
@@ -130,7 +130,7 @@ export function addReaderBookmark(postId: number): Promise<{ post_id: number }> 
 	});
 }
 
-/** Move a bookmark between To-read and Done (round 361, DEC-395). Idempotent;
+/** Move a bookmark between To-read and Done. Idempotent;
  *  404 if the post isn't bookmarked by this reader. */
 export function setBookmarkDone(
 	postId: number,
@@ -153,7 +153,7 @@ export function removeReaderBookmark(postId: number): Promise<null> {
 
 /** Delete every bookmark the reader has saved (204, idempotent). Called by the
  *  /bookmarks "Clear all" action so a signed-in clear sticks to the cloud too,
- *  not just the localStorage mirror (TASK-233). */
+ * not just the localStorage mirror. */
 export function clearReaderBookmarks(): Promise<null> {
 	return command<null>("/api/reader/me/bookmarks", {
 		method: "DELETE",

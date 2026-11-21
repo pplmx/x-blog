@@ -50,7 +50,7 @@ Base = declarative_base()
 
 
 class NaiveUTCDateTime(TypeDecorator):
-    """``DateTime`` that stores the naive-UTC wall clock (DEC-213).
+    """``DateTime`` that stores the naive-UTC wall clock.
 
     Every timestamp column in the schema is "timestamp without time zone"
     holding a naive-UTC value. SQLite is lenient and stores whatever it's

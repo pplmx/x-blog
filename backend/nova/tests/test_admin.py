@@ -39,7 +39,7 @@ class TestAdminLogin:
 
     async def test_login_nul_username_is_422_not_500(self, client, admin_user):
         """A NUL in the login form username used to crash psycopg at bind ->
-        uncaught 500 on a public endpoint (ISS-454, TASK-351)."""
+        uncaught 500 on a public endpoint."""
         response = await client.post(
             "/api/admin/login",
             data={"username": "tes\x00tadmin", "password": "testpass123"},
@@ -126,11 +126,11 @@ class TestAdminPosts:
     async def test_admin_list_and_detail_coalesce_raw_import_nulls(self, client, auth_headers, db_session):
         """Admin rows for a raw-import NULL pinned/views must read false/0, not null.
 
-        Review follow-up to TASK-548/ISS-627: the public API coalesces a NULL
+        Review follow-up to the public API coalesces a NULL
         to false/0, so the admin list and detail must not show null for the
         same rows (the editor would misread a pinned state that the site
         treats as unpinned). The NULL is planted via Core update — an ORM
-        pinned=None stores 0, never a real NULL (the TASK-535 trigger).
+        pinned=None stores 0, never a real NULL (the trigger).
         """
         post = models.Post(
             title="Null Import",
@@ -178,8 +178,8 @@ class TestAdminPosts:
     async def test_create_post_rejects_oversized_tag_inputs(self, client, auth_headers):
         # PostCreate.tags was an unbounded list[str]; a single admin request
         # could create arbitrary rows and an over-length name would hit the
-        # PostgreSQL VARCHAR(50) overflow -> uncaught DataError 500 (round-297
-        # deep-dive). Both are clean 422s at the schema boundary now.
+        # PostgreSQL VARCHAR(50) overflow -> uncaught DataError 500 (deep-dive).
+        # Both are clean 422s at the schema boundary now.
         base = {
             "title": "Tagged",
             "slug": "tagged-caps",
@@ -205,8 +205,7 @@ class TestAdminPosts:
         # ID, so the post's canonical /posts/1 URL (RSS/Atom/sitemap emit it)
         # would serve whichever post owns that numeric id — and deleting that
         # row silently flips the article at that URL. The schema rejects
-        # numeric slugs at create/update so this can never be reachable
-        # (TASK-534, ISS-613).
+        # numeric slugs at create/update so this can never be reachable.
         response = await client.post(
             "/api/admin/posts",
             headers={**auth_headers, "Content-Type": "application/json"},
@@ -263,8 +262,7 @@ class TestAdminPosts:
         assert response.json()["title"] == "Test"
 
     async def test_get_post_exposes_series_assignment(self, client, auth_headers, db_session):
-        """Admin post detail must surface series_id/order + identity (DEC-056,
-        TASK-123) so the post editor can render and reassign the membership."""
+        """Admin post detail must surface series_id/order + identity so the post editor can render and reassign the membership."""
         series = models.Series(title="Deep Dive", slug="deep-dive", description=None)
         db_session.add(series)
         await db_session.commit()
@@ -327,7 +325,7 @@ class TestAdminPosts:
         """A whitespace-only title passed the old update schema (no strip /
         min_length on PostUpdate) and would store a blank title rendering as
         a blank card/feed row — stripped at the boundary like PostBase.create
-        (ISS-456 class)."""
+        class."""
         post = models.Post(title="Test", slug="test-ws", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -369,7 +367,7 @@ class TestAdminPosts:
         assert updated.json()["category_id"] == category.id
 
     async def test_update_post_assigns_and_clears_series(self, client, auth_headers, db_session):
-        """The admin editor's PUT must persist series membership (RIL ISS-279).
+        """The admin editor's PUT must persist series membership.
 
         Previously series_id/series_order were accepted by the schema but never
         applied — assigning an existing post to a series from the editor was a
@@ -417,7 +415,7 @@ class TestAdminPosts:
         """An unknown tag id must 400, not silently drop the tag from the save.
         The same handler 400s on unknown category_id/series_id; tag_ids used to
         be silently filtered to the found subset, so a deleted tag vanished from
-        an editor's save without a peep (round-292 deep-dive)."""
+        an editor's save without a peep."""
         post = models.Post(title="Test", slug="tag-contract", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -449,7 +447,7 @@ class TestAdminPosts:
         Every other FK field (category/series/tags) 400s on an unknown id;
         author_id was the one silent assignment path — a stale/deleted writer
         produced a post serialized author: null, a 404 writer archive/RSS, and
-        a silently-missed author-follow fan-out (TASK-479, ISS-555)."""
+        a silently-missed author-follow fan-out."""
         post = models.Post(title="Test", slug="author-contract", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -498,7 +496,7 @@ class TestAdminPosts:
 
     async def test_update_post_rejects_negative_series_order(self, client, auth_headers, db_session):
         """A negative series_order would sort an episode ahead of its peers in
-        the public series detail — reject it at the boundary (RIL ISS-294)."""
+        the public series detail — reject it at the boundary."""
         post = models.Post(title="Test", slug="neg-order", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -523,7 +521,7 @@ class TestAdminPosts:
         response = await client.get("/api/admin/posts")
         assert response.status_code == 401
 
-    # --- Clone (round 349) -----------------------------------------------------
+    # --- Clone -----------------------------------------------------
 
     async def _seeded_post(self, db_session, slug):
         tag = models.Tag(name=f"tag-{slug}")
@@ -857,7 +855,7 @@ class TestAdminIdOverflowCaps:
     """Admin path/query ids are bounded by IdInt so a >bigint id parses to a
     422 on EVERY backend, not a Postgres-only 500 (the SQLite dev/e2e backend
     returned a clean 404 while PG raised DataError -> generic 500 — backend
-    deep-dive, ISS-448)."""
+    deep-dive)."""
 
     BIG_ID = "99999999999999999999999999"  # 26 digits > int32 and > PG bigint
 
@@ -999,10 +997,10 @@ class TestAdminComments:
     async def test_list_comments_exposes_reader_account_email_admin_only(self, client, auth_headers, db_session):
         """A reader-attributed comment's ACCOUNT email is moderation identity:
         the admin queue must expose it via the explicit reader_email field
-        (it used to ride the nickname fallback, which round-427 removed from
+        (it used to ride the nickname fallback, which removed from
         PUBLIC surfaces — the moderator still needs to identify the account).
         An anonymous comment keeps reader_email null (comment.email stays its
-        own). Same admin-only trust tier as ip_address. (ISS-606/TASK-532)"""
+        own). Same admin-only trust tier as ip_address."""
         post = models.Post(title="Reader Post", slug="reader-post", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -1051,7 +1049,7 @@ class TestAdminComments:
         assert comments[0]["post_title"] == "Post One"
 
     async def test_list_comments_filtered_by_approval_status(self, client, auth_headers, db_session):
-        """Filter comments by moderation status (RIL TASK-078, ISS-047)."""
+        """Filter comments by moderation status."""
         post = models.Post(title="Status Post", slug="status-post", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -1094,7 +1092,7 @@ class TestAdminComments:
         assert body["pending_count"] == 3
 
     async def test_list_comments_filtered_by_search(self, client, auth_headers, db_session):
-        """Search comments by nickname/email/content (RIL TASK-078, ISS-047)."""
+        """Search comments by nickname/email/content."""
         post = models.Post(title="Search Post", slug="search-post", content="Content", published=True)
         db_session.add(post)
         await db_session.commit()
@@ -1114,7 +1112,7 @@ class TestAdminComments:
         assert no_hit == []
 
     async def test_list_comments_filtered_by_date_range(self, client, auth_headers, db_session):
-        """Filter comments by created date range (RIL TASK-078, ISS-047)."""
+        """Filter comments by created date range."""
         from datetime import UTC, datetime
 
         post = models.Post(title="Date Post", slug="date-post", content="Content", published=True)
@@ -1201,7 +1199,7 @@ class TestAdminComments:
         Regression for the backend deep-dive finding: the old bare delete
         returned 400 on Postgres (FK) and silently orphaned replies on SQLite,
         so an admin could never remove a spam thread with replies. The current
-        path mirrors bulk_delete_comments' reparenting (DEC-110).
+        path mirrors bulk_delete_comments' reparenting.
         """
         comment, post = await self._create_comment(db_session)
         reply = models.Comment(
@@ -1246,7 +1244,7 @@ class TestAdminComments:
 
 
 class TestAdminCommentReply:
-    """Author replies from the moderation queue (DEC-192, TASK-212)."""
+    """Author replies from the moderation queue."""
 
     async def _create_comment(self, db_session, post=None, **kwargs):
         if post is None:
@@ -1333,7 +1331,7 @@ class TestAdminCommentReply:
         )
         assert n is not None, "reply notification must land in the replied-to reader's inbox"
         # title is the fixed reply notice; the post title rides in the body and
-        # the deep-link targets the new reply (DEC-072's acceptance: tapping a
+        # the deep-link targets the new reply ('s acceptance: tapping a
         # reply notification opens the post scrolled to the reply it mentions —
         # not the reader's own parent comment and not the top of the post).
         assert post.title in (n.body or "")
@@ -1401,7 +1399,7 @@ class TestAdminUserManagement:
     async def test_delete_user_cleans_author_follows(self, client, auth_headers, db_session):
         """Admin user deletion purges writer-follow rows.
 
-        AuthorFollow is an additive DEC-009 table with no ORM cascade from
+        AuthorFollow is an additive table with no ORM cascade from
         User — deleting a pen-named author left orphaned follow rows that, on
         SQLite autoincrement id reuse, re-pointed at an unrelated later user
         (deep-dive finding, same class as category/tag/series follows).
@@ -1879,7 +1877,7 @@ class TestAdminPostCategoryClear:
 class TestAdminPostPublishAtPreservation:
     """The admin post editor must not wipe a scheduled publish_at on save.
 
-    Regresses the data-loss bug (RIL TASK-072, ISS-040): admin_get_post did not
+    Regresses the data-loss bug: admin_get_post did not
     return publish_at, the editor then always sent publish_at back, and the
     update handler's exclude_unset logic nulled the schedule even when the user
     changed nothing. The get endpoint must return publish_at so the editor can
@@ -2007,7 +2005,7 @@ class TestAdminPostStatusFilters:
     async def test_admin_list_posts_rejects_unknown_status(self, client, auth_headers, db_session):
         """An invalid status value must not silently return EVERY post (drafts +
         scheduled) with 200 — a typo'd `status=live` used to bypass the filter
-        entirely and read like the truth (round-292 deep-dive)."""
+        entirely and read like the truth."""
         db_session.add_all(
             [
                 models.Post(title="Draft", slug="draft-post", content="C", published=False),

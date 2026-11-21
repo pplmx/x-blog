@@ -50,7 +50,7 @@ async function loadPage() {
 	return TagsPage;
 }
 
-/** Page text inputs EXCLUDING the taxonomy search box (added ISS-311 part 3):
+/** Page text inputs EXCLUDING the taxonomy search box (added part 3):
  * the create form (index 0) and the per-chip inline edit input stay in the
  * same relative order the older tests were written against. */
 function textInputs(wrapper: ReturnType<typeof mountWithSuspense>) {
@@ -341,7 +341,7 @@ describe("Admin Tags Page", () => {
 			expect(wrapper.find('svg[data-icon="lucide:check"]').exists()).toBe(false);
 		});
 
-		it("filters the tag list with the taxonomy search box (ISS-311 part 3)", async () => {
+		it("filters the tag list with the taxonomy search box (part 3)", async () => {
 			const TagsPage = await loadPage();
 			const wrapper = await mountWithSuspense(TagsPage);
 			expect(wrapper.text()).toContain("#javascript");

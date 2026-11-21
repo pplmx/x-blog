@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Comment-thread follow toggle (DEC-078, TASK-150).
+ * Comment-thread follow toggle.
  *
  * A signed-in reader clicks "订阅讨论" to follow a post's discussion and get a
  * Web Push every time a new comment is approved. Requires a reader account
@@ -31,7 +31,7 @@ const blocked = ref(false);
 const error = ref(false);
 
 // Follow-state gets the same stale-response guard the sibling pages use
-// (categories/series/tags, deep-dive ISS-374): without it a slow in-flight
+// (categories/series/tags, deep-dive): without it a slow in-flight
 // GET can overwrite a follow toggle the reader just made — the PUT commits
 // and flips the button to "following", then the stale pre-follow GET
 // resolver flips it back to "Follow" even though the server has the follow.
@@ -66,7 +66,7 @@ const pushBlocked = computed(() =>
 	["unsupported", "unconfigured", "denied"].includes(pushStatus.value),
 );
 
-// Persistent inline explanation for a pre-blocked browser (ISS-382): the
+// Persistent inline explanation for a pre-blocked browser: the
 // disabled button's :title tooltip is unreliable on disabled controls and
 // absent on touch, so a reader who once dismissed the permission prompt gets a
 // visible "blocked in browser settings" line instead of a greyed mystery
@@ -78,7 +78,7 @@ const deniedHint = computed(() =>
 		: t("components.threadSubscribe.pushNeeded"),
 );
 
-// Guest branch (ISS-382): the follow feature is reader-scoped, but instead of
+// Guest branch: the follow feature is reader-scoped, but instead of
 // hiding it entirely point sign-in back at the current page so a guest
 // discovers a discussion can be followed and returns here after signing in.
 // Same-origin relative path only (no open redirect via an absolute URL).
@@ -145,7 +145,7 @@ async function toggle() {
 	</button>
 	<!-- Pre-denied push state: the disabled button's :title tooltip is the ONLY
        explanation, and tooltips don't reliably appear on disabled buttons and
-       never on touch — surface a persistent inline line instead (ISS-382). -->
+       never on touch — surface a persistent inline line instead. -->
 	<p
 		v-if="isAuthenticated && pushBlocked"
 		role="status"
@@ -169,7 +169,7 @@ async function toggle() {
 	</p>
 	<!-- Guest: the feature needs an account (follows are not anonymous) — instead
        of hiding the affordance entirely, point sign-in at the current page so a
-       guest discovers the discussion can be followed (ISS-382). -->
+       guest discovers the discussion can be followed. -->
 	<NuxtLink
 		v-else
 		:to="signInTarget"

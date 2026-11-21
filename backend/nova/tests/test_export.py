@@ -25,7 +25,7 @@ class TestExportPostsCsv:
     async def test_export_posts_csv_is_deterministically_ordered(self, client, auth_headers, db_session):
         """The LIMIT-bound subset must be deterministic (id desc), not chosen by
         the query plan — past the cap the exported rows would otherwise be
-        unreproducible and the remainder unreachable (round-292 deep-dive #5)."""
+        unreproducible and the remainder unreachable."""
         from app import models
 
         for i in range(5):
@@ -54,7 +54,7 @@ class TestExportPostsCsv:
         assert response.status_code == 401
 
     async def test_export_posts_csv_uses_admin_style_filters(self, client, auth_headers, db_session):
-        """status/date filters shape the exported row set (RIL TASK-079)."""
+        """status/date filters shape the exported row set."""
         from app import models
 
         published = models.Post(
@@ -86,7 +86,7 @@ class TestExportPostsCsv:
         assert not any("draft-export" in r for r in published_rows)
 
     async def test_export_posts_csv_includes_status_columns(self, client, auth_headers):
-        """Posts CSV carries Status/Pinned/Publish At columns (RIL TASK-079)."""
+        """Posts CSV carries Status/Pinned/Publish At columns."""
         response = await client.get("/api/export/posts.csv", headers=auth_headers)
         headers = response.text.strip().split("\n")[0].split(",")
         assert "Status" in headers and "Pinned" in headers and "Publish At" in headers
@@ -97,7 +97,7 @@ class TestExportPostsCsv:
         """A published post whose publish_at is still in the future reads
         "scheduled" in the Status column (it is not live yet), and only such
         posts — never future-publish_at drafts — appear under status=scheduled
-        (RIL ISS-290)."""
+        ."""
         from datetime import timedelta
 
         from app import models
@@ -178,8 +178,8 @@ class TestExportCommentsCsv:
             f"/api/comments/post/{post_id}",
             json={
                 "nickname": "=cmd|' /C calc'!A0",
-                # A formula-triggering address that still validates (ISS-145
-                # rejects garbage shapes, so use a valid-but-hostile one).
+                # A formula-triggering address that still validates (rejects
+                # garbage shapes, so use a valid-but-hostile one).
                 "email": "=cmd@evil.example",
                 "content": '=HYPERLINK("https://evil.example","click")',
             },
@@ -193,7 +193,7 @@ class TestExportCommentsCsv:
         assert "'=HYPERLINK(" in body
 
     async def test_export_comments_csv_filters_by_status_and_has_status_column(self, client, auth_headers, db_session):
-        """comments.csv supports is_approved filter + a Status column (RIL TASK-079)."""
+        """comments.csv supports is_approved filter + a Status column."""
         from datetime import UTC, datetime
 
         from app import models
@@ -286,7 +286,7 @@ class TestExportDateOnlyInclusive:
         assert resp.status_code == 422
 
     async def test_export_posts_csv_streams_across_pages(self, client, auth_headers, db_session):
-        """round 439 (ISS-637): the id-keyset paging must cross the page
+        """the id-keyset paging must cross the page
         boundary (EXPORT_PAGE_SIZE=500) and still return EVERY row in id-desc
         order — the streaming refactor must not drop or duplicate rows."""
         from app import models
@@ -305,7 +305,7 @@ class TestExportDateOnlyInclusive:
         assert data[-1].split(",")[1] == "Page Post 1"
 
     async def test_export_comments_csv_streams_via_yield_per(self, client, auth_headers, db_session):
-        """round 439 (ISS-637): the scalar comments query must stream via
+        """the scalar comments query must stream via
         yield_per without missing rows across batches."""
         from app import models
 

@@ -11,13 +11,13 @@ export interface AdminComment {
 	content: string;
 	ip_address: string;
 	is_approved: boolean;
-	/** Author reply from the moderation queue (DEC-192) — badges the badge. */
+	/** Author reply from the moderation queue — badges the badge. */
 	is_author_reply?: boolean;
 	created_at: string;
-	/** Distinct reader flags (DEC-108, TASK-166). */
+	/** Distinct reader flags. */
 	flag_count?: number;
 	/**
-	 * Admin-only moderation identity (ISS-606/TASK-532): the comment author's
+	 * Admin-only moderation identity: the comment author's
 	 * READER ACCOUNT email when the comment is reader-attributed. The public
 	 * nickname for a nameless reader is a non-PII handle (never the email), but
 	 * the trusted admin queue still surfaces the account email explicitly.
@@ -56,7 +56,7 @@ export interface AdminCommentFilters {
  * Comments for the admin panel (auth required; paginated envelope).
  * Imperative on purpose: the page reloads from event handlers (filters,
  * paging, approve), and `await useFetch` outside setup resolves before the
- * data ref arrives (flaky empty list under load — RIL ISS-097).
+ * data ref arrives (flaky empty list under load).
  */
 export function getAdminComments(
 	opts: AdminCommentFilters = {},
@@ -78,7 +78,7 @@ export function getAdminComments(
 	});
 }
 
-/** Dismiss all reader flags on a comment (auth required). (DEC-108, TASK-166) */
+/** Dismiss all reader flags on a comment (auth required). */
 export function dismissAdminCommentFlags(commentId: number): Promise<{
 	comment_id: number;
 	removed: number;
@@ -128,7 +128,7 @@ export function approveAdminComment(commentId: number, approved: boolean): Promi
 }
 
 /**
- * Reply to a comment as the blog author (DEC-192, TASK-212). The reply is an
+ * Reply to a comment as the blog author. The reply is an
  * immediately-approved, author-flagged comment that notifies the replied-to
  * reader + thread followers; returns the created comment.
  */

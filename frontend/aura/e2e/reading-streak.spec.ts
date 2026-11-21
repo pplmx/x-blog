@@ -1,5 +1,5 @@
 /**
- * Reading streak + activity heatmap journey (DEC-169, TASK-201).
+ * Reading streak + activity heatmap journey.
  *
  * After a signed-in reader views a post today, /history shows the
  * gamification surface fed by the server summary: a current/longest streak
@@ -30,7 +30,7 @@ async function registerReader(
 	return ((await resp.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Reading streak + activity (TASK-201)", () => {
+test.describe("Reading streak + activity ", () => {
 	test("a read today lights the streak card and the heatmap on /history", async ({
 		page,
 		request,
@@ -65,7 +65,7 @@ test.describe("Reading streak + activity (TASK-201)", () => {
 	});
 });
 
-// Timezone-pinned journey (DEC-316/TASK-386): the streak and 52-week heatmap
+// Timezone-pinned journey: the streak and 52-week heatmap
 // previously bucketed reads in UTC while the page rendered them in local time,
 // so every non-UTC reader's "today" and tooltip dates disagreed with their own
 // calendar. Now the stats fetch declares the browser's timezone and the backend
@@ -85,7 +85,7 @@ const utcDate = now.toISOString().slice(0, 10);
 const utcHourFraction = (now.getTime() / 3_600_000) % 24;
 const pinnedZone = utcHourFraction >= 1 ? "Etc/GMT+1" : null;
 
-test.describe("Reading streak + activity, timezone-pinned (DEC-316/TASK-386)", () => {
+test.describe("Reading streak + activity, timezone-pinned ", () => {
 	test.use({ timezoneId: pinnedZone ?? "UTC" });
 	if (!pinnedZone) {
 		test.skip("inside the 00:00–01:00 UTC window where no offset discriminates");

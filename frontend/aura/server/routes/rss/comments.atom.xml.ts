@@ -1,5 +1,5 @@
 /**
- * Discussion Atom route (round 368, DEC-409).
+ * Discussion Atom route.
  * Proxies to the backend's `/rss/comments.atom.xml` endpoint which streams the
  * latest approved comments as Atom, forwarding ETag / Cache-Control and
  * honoring If-None-Match (304) for reader revalidation.

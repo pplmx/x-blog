@@ -1,5 +1,5 @@
 /**
- * Admin Settings journey (DEC-100, TASK-162).
+ * Admin Settings journey.
  *
  * An admin opens /admin/settings, sees the verified-reader auto-approve toggle,
  * flips it, saves, and the updated value persists (a "saved" confirmation

@@ -1,5 +1,5 @@
 /**
- * "My comments" reader journey (DEC-066, TASK-140).
+ * "My comments" reader journey.
  *
  * A signed-in reader: comments on a post, opens /comments, sees their comment
  * flagged "pending review"; an admin approves it and the badge flips to
@@ -49,7 +49,7 @@ test.describe("Reader my-comments journey", () => {
 		await registerReader(request, email);
 
 		// Make the moderation state deterministic: verified-reader auto-approve
-		// (DEC-098/101) is a runtime setting that admin-settings e2e runs leave
+		// is a runtime setting that admin-settings e2e runs leave
 		// toggled either way in the shared DB — force it off so THIS reader's
 		// comment always lands in the pending queue (pending badge is asserted).
 		const autoApproveOff = await request.put("/api/admin/settings/auto_approve_reader_comments", {
@@ -83,7 +83,7 @@ test.describe("Reader my-comments journey", () => {
 		// instead of relying on network ordering — capture the pending comment's
 		// server id via the admin list after approval below.
 
-		// Open /comments from the "My" avatar menu (round 382: personal links
+		// Open /comments from the "My" avatar menu (personal links
 		// live in the avatar dropdown, not as flat header links): pending status
 		// is author-visible.
 		await page.getByRole("button", { name: "我的" }).click();

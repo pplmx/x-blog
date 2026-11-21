@@ -9,7 +9,7 @@ const rootDir = fileURLToPath(new URL(".", import.meta.url));
 // Site-wide constant used in the global head. NOTE: siteDescription is a
 // build-time constant (fine in a head), but the URL-dependent tags
 // (og:url / og:image / twitter:image / WebSite JSON-LD url) are applied at
-// RUNTIME in app.vue via useSiteUrl() (TASK-557): this config is evaluated at
+// RUNTIME in app.vue via useSiteUrl(): this config is evaluated at
 // image BUILD time, where NUXT_SITE_URL is unset (docker-compose sets it at
 // runtime only) — baking the fallback here baked "http://localhost:3000" into
 // every deployed page's share metadata. Keep the default for
@@ -81,7 +81,7 @@ export default defineNuxtConfig({
 				// og:url / og:image / twitter:image must NOT be baked here — they
 				// carry the site URL, which is only known at runtime
 				// (runtimeConfig.public.siteUrl). app.vue applies them per request
-				// so a deployed image honors the runtime NUXT_SITE_URL (TASK-557).
+				// so a deployed image honors the runtime NUXT_SITE_URL.
 				{ property: "og:locale", content: "zh_CN" },
 				{ name: "twitter:card", content: "summary_large_image" },
 				{ name: "twitter:title", content: "X-Blog — 一个现代化的技术博客系统" },

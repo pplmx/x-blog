@@ -267,7 +267,7 @@ describe("Archive Page", () => {
 			expect(wrapper.text()).toContain("该时间段暂无文章");
 		});
 
-		it("renders previous/next month navigation with an interior month (ISS-376)", async () => {
+		it("renders previous/next month navigation with an interior month ", async () => {
 			// 2024-03 sits between 2024-01 (older, has posts) and 2025-11
 			// (newer, has posts) in the populated-month ordering.
 			const wrapper = await mountArchivePage({ routeQuery: { year: "2024", month: "3" } });
@@ -278,7 +278,7 @@ describe("Archive Page", () => {
 			expect(wrapper.text()).toContain("2025年11月");
 		});
 
-		it("omits the previous-month link at the oldest archive month (ISS-376)", async () => {
+		it("omits the previous-month link at the oldest archive month ", async () => {
 			// 2024-01 is the earliest populated month — no older month exists,
 			// so only the next-month link renders.
 			const wrapper = await mountArchivePage({ routeQuery: { year: "2024", month: "1" } });
@@ -288,7 +288,7 @@ describe("Archive Page", () => {
 			expect(chevrons.length).toBe(0);
 		});
 
-		it("omits the next-month link at the newest archive month (ISS-376)", async () => {
+		it("omits the next-month link at the newest archive month ", async () => {
 			// 2025-11 is the newest populated month — no newer month exists.
 			const wrapper = await mountArchivePage({ routeQuery: { year: "2025", month: "11" } });
 			expect(wrapper.text()).toContain("2024年3月"); // prev (older)
@@ -304,7 +304,7 @@ describe("Archive Page", () => {
 			expect(wrapper.findAll('[data-icon="lucide:chevron-right"]').length).toBe(0);
 		});
 
-		it("dates a scheduled post by its publish month, not its draft month (RIL ISS-265)", async () => {
+		it("dates a scheduled post by its publish month, not its draft month ", async () => {
 			// Drafted in January, scheduled for June: the archive card shows the
 			// June date that matches its June bucket (feed filters/orders and
 			// archive buckets all key off effective publish time now).
@@ -323,7 +323,7 @@ describe("Archive Page", () => {
 				routeQuery: { year: "2024", month: "6" },
 			});
 			// Archive card dates use the site-wide long format (2024年6月1日),
-			// matching PostCard and the article page (round 417, ISS-573).
+			// matching PostCard and the article page.
 			expect(wrapper.text()).toContain("2024年6月1日");
 			expect(wrapper.text()).not.toContain("2024年1月15日");
 		});

@@ -1,5 +1,5 @@
 /**
- * Comment edit/delete by author journey (DEC-096, TASK-160).
+ * Comment edit/delete by author journey.
  *
  * A signed-in reader sees Edit/Delete controls on their own approved comment,
  * can edit its text (an "edited" marker appears), and can delete it after a
@@ -75,7 +75,7 @@ async function logReaderIn(page: import("@playwright/test").Page, email: string)
 	await page.waitForURL("**/bookmarks");
 }
 
-test.describe("Comment edit/delete by author (DEC-096)", () => {
+test.describe("Comment edit/delete by author ", () => {
 	test("a reader can edit and delete their own comment", async ({ page, request }) => {
 		const post = await firstPost(request);
 		const email = freshEmail();

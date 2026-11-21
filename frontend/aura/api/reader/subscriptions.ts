@@ -34,7 +34,7 @@ export function usePostSubscription(postId: number) {
 
 /** Follow status for one post, read imperatively (component lifecycle/handler
  * code — useFetch is only valid in setup/suspense scope and silently no-ops
- * there; see ISS-111/DEC-165). Reactive callers use usePostSubscription. */
+ * there; see). Reactive callers use usePostSubscription. */
 export function getPostSubscription(postId: number): Promise<PostSubscriptionStatus> {
 	return command<PostSubscriptionStatus>(`/api/posts/${postId}/subscription`, {
 		headers: readerAuthHeaders(),

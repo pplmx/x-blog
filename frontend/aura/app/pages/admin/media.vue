@@ -1,8 +1,8 @@
 <!--
-  Admin Media Library (DEC-183) — grid of every uploaded image.
-  Browse (newest first), search by filename (DEC-189), copy URL to paste into a
+  Admin Media Library — grid of every uploaded image.
+  Browse (newest first), search by filename, copy URL to paste into a
   post, and delete images that are not referenced by any post — singly or in a
-  multi-select batch (DEC-191). Filesystem-backed: the listing comes from the
+  multi-select batch. Filesystem-backed: the listing comes from the
   backend media API which walks static/uploads/ and reports reference status
   from one scan of post content + cover_image.
 -->
@@ -21,7 +21,7 @@ definePageMeta({ layout: "admin" });
 
 const { t, locale } = useLang();
 
-// Compact date for the grid cell (TASK-480/ISS-558): honor the selected site
+// Compact date for the grid cell: honor the selected site
 // language, not the browser's — every other admin grid passes the app locale
 // (readers.vue/newsletter.vue pattern).
 function formatDate(value: string): string {
@@ -40,12 +40,12 @@ const currentPage = ref(1);
 const pageSize = 60;
 // Debounced filename search: the input ref updates instantly, the query ref
 // settles 300ms after the last keystroke so each keystroke doesn't fire a
-// request. Both refs feed the computed listing path (DEC-189).
+// request. Both refs feed the computed listing path.
 const searchInput = ref("");
 const searchQ = ref("");
 const q = computed(() => searchQ.value);
 // Debounce + copied-flash timers are tracked here so onUnmounted can clear them
-// (round-418 audit): a 300ms search debounce armed right before an SPA
+//: a 300ms search debounce armed right before an SPA
 // navigation away would otherwise fire on the unmounted instance, mutate
 // searchQ/currentPage and issue a stray refetch. The copyUrl flashes are
 // one-shots but clearing them is free and avoids late setState warnings.
@@ -64,7 +64,7 @@ const items = computed(() => data.value?.items ?? []);
 const total = computed(() => data.value?.pagination?.total ?? 0);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
-// Tear down the debounce + copied-flash timers with the page (round-418 audit):
+// Tear down the debounce + copied-flash timers with the page:
 // an in-flight timer firing after SPA navigation mutates refs on a dead
 // instance and issues a stray request.
 onUnmounted(() => {
@@ -77,12 +77,12 @@ onUnmounted(() => {
 // (not one global `isDeleting` that disables the whole grid) means one card's
 // in-flight delete doesn't freeze the others — and the frozen-grid variant
 // made the re-entry guard untestable, since happy-dom swallows clicks on
-// disabled buttons (deep-dive, round 259).
+// disabled buttons (deep-dive).
 const deletingUrls = ref(new Set<string>());
 const actionError = ref<string | null>(null);
 const copiedUrl = ref<string | null>(null);
 
-// Bulk-delete selection (DEC-191): the URLs of the deletable cards the admin
+// Bulk-delete selection: the URLs of the deletable cards the admin
 // has ticked. Only unreferenced images get a checkbox (referenced ones are
 // undeletable, so they are never selectable); the selection resets on page or
 // search change so a ticked card can't be silently swept into a later batch.
@@ -104,7 +104,7 @@ const batchDeleting = ref(false);
 async function handleBatchDelete() {
 	// A batch delete and a single-row delete must not run concurrently: their
 	// refreshes interleave, and a file in both batches would double-delete
-	// (404 on the second). Single-flight both paths (deep-dive, round 259).
+	// (404 on the second). Single-flight both paths (deep-dive).
 	if (selectedCount.value === 0 || batchDeleting.value || deletingUrls.value.size > 0) return;
 	if (!confirm(t("admin.media.confirmBatchDelete", { n: selectedCount.value }))) return;
 	batchDeleting.value = true;
@@ -122,7 +122,7 @@ async function handleBatchDelete() {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit).
+		// when readable, else the localized fallback.
 		actionError.value = apiErrorMessage(e, t("admin.media.deleteFailed"));
 	} finally {
 		batchDeleting.value = false;
@@ -173,7 +173,7 @@ async function handleDelete(item: UploadFileInfo) {
 	// tick still reaches the handler (and happy-dom suppresses clicks on the
 	// disabled button, making the guard the only real protection) — and a
 	// single delete never runs concurrently with a batch delete. (deep-dive,
-	// round 259; same class as the editor Save.)
+	//; same class as the editor Save.)
 	if (deletingUrls.value.has(item.url) || batchDeleting.value) return;
 	if (!confirm(t("admin.media.confirmDelete"))) return;
 	deletingUrls.value.add(item.url);
@@ -182,7 +182,7 @@ async function handleDelete(item: UploadFileInfo) {
 		await deleteAdminMediaFile(item);
 		// A card that was BOTH ticked for the bulk selection and single-deleted
 		// must leave the selection — otherwise "已选 N 张" counts a deleted file
-		// and 删除选中 operates on a phantom (review finding on round 259; the
+		// and 删除选中 operates on a phantom (review finding on the
 		// batch path already resets selection on success).
 		if (selected.value.includes(item.url)) {
 			selected.value = selected.value.filter((u) => u !== item.url);
@@ -196,7 +196,7 @@ async function handleDelete(item: UploadFileInfo) {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit).
+		// when readable, else the localized fallback.
 		actionError.value = apiErrorMessage(e, t("admin.media.deleteFailed"));
 	} finally {
 		deletingUrls.value.delete(item.url);
@@ -204,7 +204,7 @@ async function handleDelete(item: UploadFileInfo) {
 }
 
 function goToPage(page: number) {
-	// Re-entry guard during the in-flight refetch (round-418 audit): currentPage
+	// Re-entry guard during the in-flight refetch: currentPage
 	// drives useAdminMedia's reactive path, but useFetch's pending flag updates
 	// on the NEXT render — a rapid double-click on Next could otherwise advance
 	// two pages before the button disabled (the grid flashing "Loading"
@@ -330,7 +330,7 @@ function goToPage(page: number) {
 					>
 						{{ item.referenced ? t("admin.media.referenced") : t("admin.media.unreferenced") }}
 					</span>
-					<!-- Bulk-delete selection (DEC-191): only unreferenced cards are
+					<!-- Bulk-delete selection: only unreferenced cards are
                selectable — referenced images cannot be deleted anyway. -->
 					<button
 						v-if="!item.referenced"

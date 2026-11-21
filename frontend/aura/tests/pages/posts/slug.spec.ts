@@ -19,7 +19,7 @@ import CommentForm from "~~/components/CommentForm.vue";
 import SeriesFollowButton from "~~/components/SeriesFollowButton.vue";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
-// Round 362, DEC-397: the post page loads personalized recommendations iff the
+// Round 362: the post page loads personalized recommendations iff the
 // reader is signed in. The real getReaderRecommendations resolves through the
 // spec's global $fetch stub, which returns a single post object (not the array
 // the page's .slice(0,6) expects), so override just that call — recordReaderHistory
@@ -128,7 +128,7 @@ async function mountPostPage({
 	relatedPosts?: typeof mockRelatedPosts | null;
 	adjacentPosts?: typeof mockAdjacentPosts | null;
 	seriesDetail?: Record<string, unknown> | null;
-	/** Author archive payload for the round-356 "More from this author" strip. */
+	/** Author archive payload for the "More from this author" strip. */
 	authorArchive?: Record<string, unknown> | null;
 	/** Override the global $fetch mock (e.g. to serve a saved resume position). */
 	$fetchImpl?: (url: string, opts?: Record<string, unknown>) => Promise<unknown>;
@@ -529,7 +529,7 @@ describe("Post Detail Page", () => {
 				post: null,
 			});
 			expect(wrapper.text()).toContain("加载失败");
-			// ISS-135: never leak the raw backend/exception message to readers.
+			// never leak the raw backend/exception message to readers.
 			expect(wrapper.text()).not.toContain("Network error");
 		});
 	});
@@ -544,8 +544,8 @@ describe("Post Detail Page", () => {
 			expect(wrapper.text()).toContain("文章不存在");
 		});
 
-		it("shows the friendly not-found state for a real 404 (deleted post), not 'load failed' + Retry (round 295)", async () => {
-			// A useFetch 404 sets `error` with statusCode 404; before the round-295
+		it("shows the friendly not-found state for a real 404 (deleted post), not 'load failed' + Retry ", async () => {
+			// A useFetch 404 sets `error` with statusCode 404; before the
 			// fix the `v-else-if="error"` branch won and a reader opening a stale
 			// share/bookmark link saw "load failed" + a Retry that can never
 			// succeed — the post.notFound message was unreachable for real 404s.
@@ -711,7 +711,7 @@ describe("Post Detail Page", () => {
 			expect(button.text()).toContain("56");
 		});
 
-		it("exposes the like toggle state via aria-pressed (RIL TASK-084)", async () => {
+		it("exposes the like toggle state via aria-pressed ", async () => {
 			const wrapper = await mountPostPage();
 			const button = wrapper.find("[aria-pressed]");
 			expect(button.exists()).toBe(true);
@@ -798,7 +798,7 @@ describe("Post Detail Page", () => {
 
 			expect(wrapper.text()).toContain("点赞失败，请稍后重试。");
 
-			// TASK-234 regression: a failed like must roll the optimistic marker
+			// regression: a failed like must roll the optimistic marker
 			// back so the button is re-enabled (not permanently disabled/pre-filled)
 			// and retry works.
 			const likeBtn = wrapper.find('button[type="button"]');
@@ -807,7 +807,7 @@ describe("Post Detail Page", () => {
 			expect(localStorage.getItem("x_blog_liked_posts") || "[]").not.toContain(`"${mockPost.id}"`);
 		});
 
-		it("auto-dismisses the like-failure banner after a few seconds (round 295)", async () => {
+		it("auto-dismisses the like-failure banner after a few seconds ", async () => {
 			// A transient like failure used to leave a red banner under the action
 			// bar for the whole article visit (only cleared on the next like or an
 			// SPA nav to another post). Mirroring the resume-chip timer, it now
@@ -883,10 +883,10 @@ describe("Post Detail Page", () => {
 			wrapper.unmount();
 		});
 
-		it("clears the like-failure auto-dismiss timer on unmount (round 422)", async () => {
-			// round-422 audit (LOW): likeErrorTimer was armed in the like catch
+		it("clears the like-failure auto-dismiss timer on unmount ", async () => {
+			// audit (LOW): likeErrorTimer was armed in the like catch
 			// but never cleared on unmount — the repo's every-timer-on-unmount
-			// pattern (ISS-564) applies to it too. A leaked timer only nulls a
+			// pattern applies to it too. A leaked timer only nulls a
 			// detached ref, but the hygiene rule is uniform. Prove it by arming
 			// the timer, unmounting before it fires, and asserting the exact
 			// 5s handle is clearTimeout'd during teardown.
@@ -985,7 +985,7 @@ describe("Post Detail Page", () => {
 				// Tear the page down BEFORE the timer fires.
 				clearTimeoutSpy.mockClear();
 				wrapper.unmount();
-				// With the round-422 fix, unmount clears the like-failure timer
+				// With the fix, unmount clears the like-failure timer
 				// handle (through clearLikeError()). A leaked timer would NOT be
 				// in this list — clearTimeout for the 5s handle is the proof.
 				const clearedHandles = clearTimeoutSpy.mock.calls.map((c) => c[0]);
@@ -1082,7 +1082,7 @@ describe("Post Detail Page", () => {
 			expect(wrapper.text()).toContain("15");
 		});
 
-		it("renders the publish date for a scheduled post, not the draft date (RIL ISS-264)", async () => {
+		it("renders the publish date for a scheduled post, not the draft date ", async () => {
 			// A post scheduled for a release date (publish_at) must show the date
 			// readers actually got it, not the draft's created_at — the admin
 			// preview page already does publish_at ?? created_at; the reader page
@@ -1174,7 +1174,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("Recommended for you (round 362, DEC-397)", () => {
+	describe("Recommended for you ", () => {
 		const recPosts = [
 			{
 				id: 20,
@@ -1441,7 +1441,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("In-series navigation (DEC-056)", () => {
+	describe("In-series navigation ", () => {
 		// A post that belongs to a series, with the series detail loaded so the
 		// chip and prev/next-in-series nav can resolve the position.
 		const seriesPost = {
@@ -1544,7 +1544,7 @@ describe("Post Detail Page", () => {
 			expect(first.findAll('a[href="/posts/test-article-post"]').length).toBeGreaterThanOrEqual(1);
 		});
 
-		it("shows no in-place series-follow control for guests (DEC-290/TASK-374)", async () => {
+		it("shows no in-place series-follow control for guests ", async () => {
 			localStorage.removeItem("reader_token");
 			const wrapper = await mountPostPage({
 				post: seriesPost,
@@ -1558,7 +1558,7 @@ describe("Post Detail Page", () => {
 			expect(nav.text()).not.toContain("已关注新篇");
 		});
 
-		it("shows the in-place series-follow control to signed-in readers (DEC-290/TASK-374)", async () => {
+		it("shows the in-place series-follow control to signed-in readers ", async () => {
 			localStorage.setItem("reader_token", "test-token-for-series-follow");
 			// $fetch is stubbed globally; getReaderSeriesFollows rides the same
 			// seam. A resolution without `items` is treated as "not following" by
@@ -1596,7 +1596,7 @@ describe("Post Detail Page", () => {
 			expect(headingLinks.length).toBe(4);
 		});
 
-		it("renders TOC from Markdown content (RIL TASK-104, ISS-084 regression)", async () => {
+		it("renders TOC from Markdown content ", async () => {
 			// Real posts store Markdown (`# Heading`), not HTML. Prior to the
 			// fix extractToc was fed raw Markdown -> always empty TOC on real
 			// posts; the HTML-based tests above masked this.
@@ -1644,7 +1644,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("Mobile/tablet TOC sheet (TASK-223)", () => {
+	describe("Mobile/tablet TOC sheet ", () => {
 		const multiHeadingContent =
 			'<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n' +
 			'<h2 id="getting-started">Getting Started</h2>\n<p>More text.</p>\n' +
@@ -1767,7 +1767,7 @@ describe("Post Detail Page", () => {
 			// A TOC anchor is a real <a href="#id">: a modified click must
 			// open-in-new-tab rather than smooth-scroll the current page (the old
 			// @click.prevent swallowed it entirely). We assert the browser
-			// default is NOT prevented and no smooth scroll fires (TASK-324).
+			// default is NOT prevented and no smooth scroll fires.
 			window.scrollTo = vi.fn();
 			Element.prototype.scrollIntoView = vi.fn();
 			// A previous test's TOC click replaceState'd a #hash that persists
@@ -1800,7 +1800,7 @@ describe("Post Detail Page", () => {
 		it("mounts with a heading hash and scrolls to that section (deep-link landing)", async () => {
 			// A shared #getting-started URL (opened in a new tab via a TOC
 			// anchor, or pasted) used to land at the article top with a dead
-			// hash — nothing scrolled to the heading (TASK-324).
+			// hash — nothing scrolled to the heading.
 			window.scrollTo = vi.fn();
 			Element.prototype.scrollIntoView = vi.fn();
 			const postWithHeadings = { ...mockPost, content: multiHeadingContent };
@@ -1866,7 +1866,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("TOC observer setup timer hygiene (ISS-564)", () => {
+	describe("TOC observer setup timer hygiene ", () => {
 		const multiHeadingContent =
 			'<h1 id="introduction">Introduction</h1>\n<p>Text here.</p>\n' +
 			'<h2 id="getting-started">Getting Started</h2>\n<p>More text.</p>\n' +
@@ -1878,7 +1878,7 @@ describe("Post Detail Page", () => {
 			// torn down (SPA navigation / unmount) — otherwise it fires against a
 			// dismantled page and scans the CURRENT document's headings (the next
 			// post after an SPA nav, or nothing meaningful after full unmount),
-			// leaking a stale observer (ISS-564, same hygiene as
+			// leaking a stale observer (same hygiene as
 			// likeErrorTimer/resumeChipTimer which are both tracked and cleared).
 			// The only document.querySelectorAll on the page is this timer's
 			// heading scan, so spying on it isolates the leak exactly.
@@ -1941,7 +1941,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("Resume-reading chip (DEC-167, TASK-200)", () => {
+	describe("Resume-reading chip ", () => {
 		afterEach(() => {
 			// Do not leak the signed-in state into later tests in this file.
 			localStorage.removeItem("reader_token");
@@ -2176,7 +2176,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("Comments closed (round 351)", () => {
+	describe("Comments closed ", () => {
 		it("shows the closed notice and hides the comment form when disabled", async () => {
 			const wrapper = await mountPostPage({
 				post: { ...mockPost, comments_enabled: false },
@@ -2194,7 +2194,7 @@ describe("Post Detail Page", () => {
 		});
 	});
 
-	describe("More from this author (round 356)", () => {
+	describe("More from this author ", () => {
 		const authored = { ...mockPost, id: 1, author: { id: 7, display_name: "Riki" } };
 		const archiveItems = [
 			{

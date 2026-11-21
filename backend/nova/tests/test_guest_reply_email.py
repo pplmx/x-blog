@@ -1,7 +1,7 @@
-"""Guest commenter reply-email contract tests (DEC-332, TASK-392).
+"""Guest commenter reply-email contract tests.
 
 The comment form REQUIRES a guest to leave an email and `create_comment`
-persists it on the comment row, but until DEC-332 no dispatch path ever used
+persists it on the comment row, but until then no dispatch path ever used
 it: the reply-notify guard was `parent.reader_id is not None`, so a reply to an
 anonymous comment notified nobody — the one contact channel the system
 collects from guests was dead in every channel.
@@ -19,9 +19,9 @@ Key properties:
   address (the reply deep-link + the unsubscribe link);
 - a guest who did not opt in is never emailed;
 - a reply to a READER-attributed parent still uses the reader fan-out only
-  (no stray guest email; DEC-062');
+  (no stray guest email');
 - reply_notify_email is never honored for signed-in readers (their reply email
-  is the account-level DEC-197 pref, not a comment-row field);
+  is the account-level pref, not a comment-row field);
 - POST /api/comments/reply-notify/unsubscribe flips consent off idempotently;
   an unknown token is 404; after unsubscribing, later approvals send nothing;
 - SMTP unconfigured: approve still succeeds, no email is attempted (fails
@@ -176,7 +176,7 @@ class TestGuestReplyEmail:
         # The unsubscribe link carries the per-comment token. The flat
         # /comment-reply-unsubscribe route is deliberate: a child under the
         # /comments page would nest and never mount (Nuxt page-nesting
-        # gotcha, DEC-332).
+        # gotcha).
         assert f"/comment-reply-unsubscribe?token={row.reply_notify_token}" in record["text"]
 
     async def test_guest_who_did_not_opt_in_never_emailed(self, client, db_session, auth_headers, smtp_sink):
@@ -223,7 +223,7 @@ class TestGuestReplyEmail:
         (the reader's address comes from the account, not the comment row)."""
         post = await _create_post(db_session)
         # A signed-in reader comments; reply_notify_email is ignored (their
-        # reply email is the DEC-197 account pref, never a comment-row field).
+        # reply email is the account pref, never a comment-row field).
         reg = await client.post(
             "/api/reader/register",
             json={"email": "reader-owner@example.com", "password": "readerpass123", "display_name": "Owner"},
@@ -245,7 +245,7 @@ class TestGuestReplyEmail:
         reply = await _reply(client, post.id, reader_comment["id"])
         assert (await _approve(client, reply["id"], auth_headers)).status_code == 200
         # No email to the (nonexistent) comment-row address — the reader row
-        # stores no free-text email (DEC-062).
+        # stores no free-text email.
         assert FakeSMTP.sent == []
 
     async def test_unsubscribe_flips_consent_and_stops_later_mail(self, client, db_session, auth_headers, smtp_sink):
@@ -265,7 +265,7 @@ class TestGuestReplyEmail:
         assert fresh_row.reply_notify_email is False
 
         # Snapshot the sink: the guest's own approval may already have fired an
-        # unrelated mail (the round-385 approval-time manage link to the same
+        # unrelated mail (the approval-time manage link to the same
         # address), so "no reply email after unsubscribe" is asserted by delta,
         # not by the latest-record proxy (which would match that manage mail).
         sent_before = len(FakeSMTP.sent)
@@ -290,7 +290,7 @@ class TestGuestReplyEmail:
 
     async def test_comment_public_list_omits_token_and_consent(self, client, db_session, auth_headers, smtp_sink):
         """The token and consent flag are private row data: the public thread
-        list must not expose them (PII-adjacent machinery, DEC-062 bar)."""
+        list must not expose them (PII-adjacent machinery bar)."""
         post = await _create_post(db_session)
         guest = await _guest_comment(client, post.id)
         await _approve(client, guest["id"], auth_headers)

@@ -1,5 +1,5 @@
 /**
- * useReadingDensity composable tests (DEC-288, TASK-373).
+ * useReadingDensity composable tests.
  *
  * The reader's body-text density preference on the post page: three steps
  * (sm/md/lg), increase/decrease bounded at the ends, and persisted to

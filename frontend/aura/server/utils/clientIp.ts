@@ -5,7 +5,7 @@
  * and OG image endpoints are public, unauthenticated and CPU-heavy, so their
  * per-IP rate limit must key on the REAL client — not the socket peer.
  *
- * Problem (RIL TASK-101, ISS-081): `getRequestIP(event)` with no configured
+ * Problem: `getRequestIP(event)` with no configured
  * trustProxy returns the immediate TCP peer. In the nginx deployment
  * (deploy/nginx.conf proxies `location /` → frontend) that peer is nginx for
  * every request, so every client collapsed into ONE shared rate-limit bucket —
@@ -22,7 +22,7 @@
  *   well-formed IP literal (see ``xffClient`` below).
  *
  * The IP-literal validation is the same hardening the backend applies
- * (TASK-351/ISS-081, round-17 review): X-Forwarded-For is client-supplied
+ * review: X-Forwarded-For is client-supplied
  * even when the proxy is trusted, so a forged entry (an arbitrary string, a
  * long line, or a ``client:port`` variant) must not become a fresh
  * rate-limit bucket. Without it, a caller behind the trusted proxy could

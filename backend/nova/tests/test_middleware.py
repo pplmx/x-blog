@@ -115,7 +115,7 @@ class TestRequestLoggingMiddleware:
     async def test_slow_request_log_keeps_request_context(self, monkeypatch):
         """Slow (>1000ms) requests must keep request_id/method/path context.
 
-        Regression for RIL TASK-103, ISS-083: the slow branch used a bare
+        Regression for the slow branch used a bare
         ``logger.warning`` with only {status, duration_ms}, dropping
         request_id — exactly the requests you'd correlate against the
         X-Request-ID header. It now routes through StructuredLogAdapter.

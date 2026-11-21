@@ -1,4 +1,4 @@
-"""Reader notification-inbox contract tests (DEC-160, TASK-192).
+"""Reader notification-inbox contract tests.
 
 The blog persists one durable notification row per reader-facing notification
 event (new post in a followed series/category, a reply to the reader's comment,
@@ -168,16 +168,16 @@ class TestListAndMarkRead:
     async def test_mark_read_oversized_id_is_422_not_500(self, client):
         # A 20+ digit id used to bind an out-of-range Python int and 500 on both
         # dialects (sqlite OverflowError / psycopg out-of-range); the shared IdInt
-        # alias bounds it to 32-bit so this is a clean 422 (round-296 deep-dive).
+        # alias bounds it to 32-bit so this is a clean 422.
         token = (await _register(client, email="bigid@example.com")).json()["access_token"]
         response = await client.post(f"{NOTIFS}/99999999999999999999/read", headers=_auth(token))
         assert response.status_code == 422
 
 
 class TestDeleteNotification:
-    """Deleting a single inbox row (DEC-312, TASK-384).
+    """Deleting a single inbox row.
 
-    The inbox is durable (DEC-160) but the reader could never prune it — mark
+    The inbox is durable but the reader could never prune it — mark
     read/read-all only clears the badge, rows accumulate forever. DELETE removes
     exactly one of the reader's own rows (404 for unknown or another reader's).
     """
@@ -245,8 +245,7 @@ class TestDeleteNotification:
 class TestPersistenceHooks:
     async def test_deactivated_follower_gets_no_inbox_row(self, client, db_session, auth_headers):
         """Deactivation is a moderation action: a deactivated reader keeps their
-        follow rows but must not receive the durable inbox row (RIL ISS-278,
-        DEC-194) — all notification channels go silent."""
+        follow rows but must not receive the durable inbox row — all notification channels go silent."""
         token = await _token(client, email="deact@example.com")
         headers = _auth(token)
 
@@ -329,7 +328,7 @@ class TestPersistenceHooks:
         # restore makes the post publicly visible again, so the new-post fan-out
         # must fire exactly like any other publish transition (create/update/
         # admin-update all do). Restore was the silent miss — followers got no
-        # inbox row on a legitimate republish (RIL ISS-291).
+        # inbox row on a legitimate republish.
         token = await _token(client, email="rst@example.com")
         headers = _auth(token)
 
@@ -408,15 +407,14 @@ class TestPersistenceHooks:
         data = (await client.get(NOTIFS, headers=headers)).json()
         assert data["total"] == 1
         assert data["items"][0]["url"] == "/posts/part-1"
-        # A series follow surfaces the distinct series_new_part kind (ISS-114,
-        # DEC-181): the frontend icons/labels it as 系列更新, never as 新文章发布.
+        # A series follow surfaces the distinct series_new_part kind: the frontend icons/labels it as 系列更新, never as 新文章发布.
         assert data["items"][0]["kind"] == "series_new_part"
         assert data["items"][0]["title"] == "系列更新"
 
     async def test_series_and_category_dedup_to_one_series_row(self, client, db_session, auth_headers):
         """A reader following BOTH the series and the category of a post gets ONE
         new-part row, preferring series_new_part — not one row per follow
-        (DEC-181 dedup)."""
+        dedup."""
         token = await _token(client, email="both@example.com")
         headers = _auth(token)
 
@@ -457,7 +455,7 @@ class TestPersistenceHooks:
         assert data["items"][0]["url"] == "/posts/both-part"
 
     async def test_series_new_part_respects_new_post_opt_out(self, client, db_session, auth_headers):
-        """Under DEC-181 a series part is a new_post announcement (a series update
+        """Under a series part is a new_post announcement (a series update
         IS a new post), so the existing new_post kill-switch silences it too —
         no separate toggle, no surprise wake-ups for opted-out readers."""
         token = await _token(client, email="ser-off@example.com")
@@ -498,7 +496,7 @@ class TestPersistenceHooks:
 
     async def test_new_post_in_followed_tag_persists(self, client, db_session, auth_headers):
         """A reader following a tag gets a durable new_post inbox row when the
-        author publishes a post carrying that tag (DEC-195, TASK-215). Tags are
+        author publishes a post carrying that tag. Tags are
         the fine-grained axis — the kind stays ``new_post`` (new article), not
         series_new_part."""
         token = await _token(client, email="tag@example.com")
@@ -534,7 +532,7 @@ class TestPersistenceHooks:
         assert data["items"][0]["url"] == "/posts/tag-notif-post"
 
     async def test_tag_follow_respects_new_post_opt_out(self, client, db_session, auth_headers):
-        """Tag follow joins the same new_post umbrella (DEC-171/181): a reader
+        """Tag follow joins the same new_post umbrella: a reader
         who silenced new_post gets no inbox row for a followed tag's new post."""
         token = await _token(client, email="tag-off@example.com")
         headers = _auth(token)
@@ -692,7 +690,7 @@ class TestPersistenceHooks:
     async def test_reapproving_an_approved_comment_does_not_re_fan_out(self, client, db_session, auth_headers):
         """Approval is idempotent: re-approving an already-approved comment
         (double click / retry) is a no-op and must not duplicate the
-        thread-follower inbox row (round-296 deep-dive)."""
+        thread-follower inbox row."""
         token = await _token(client, email="idem@example.com")
         headers = _auth(token)
         post = await _create_post(db_session)
@@ -730,7 +728,7 @@ class TestPersistenceHooks:
 
 
 class TestFanOutPrune:
-    """Batch new-post fan-out prune (ISS-113, DEC-193, TASK-213).
+    """Batch new-post fan-out prune.
 
     record_new_post_notifications used to run record_reader_notification's
     per-reader "SELECT recent-N + DELETE + commit" inside its follower loop —
@@ -842,7 +840,7 @@ class TestFanOutPrune:
         assert crud.MAX_NOTIFICATIONS_PER_READER == 200  # keep the constant honest
 
     async def test_record_thread_comment_notifications_batches_all_readers(self, db_session):
-        """The batched thread-comment fan-out (ISS-427) persists a row for every
+        """The batched thread-comment fan-out persists a row for every
         target and prunes each reader's cap back in one pass — the batched
         counterpart of the per-follower record_reader_notification loop it
         replaced. One pre-existing reader below the cap stays untouched."""
@@ -886,13 +884,13 @@ class TestFanOutPrune:
 
 
 class TestMentionNotifications:
-    """@-mention fan-out (DEC-322, TASK-389).
+    """@-mention fan-out.
 
     When an APPROVED comment contains a reader's exact display name as
     ``@<name>``, that reader gets a durable ``kind=mention`` inbox row
     deep-linking to the comment — never the commenter themselves, never a
     deactivated reader, and never someone who switched the 'mention' pref off
-    (DEC-171). Resolution is boundary-exact: ``@Ri`` inside ``@Riki`` must not
+    . Resolution is boundary-exact: ``@Ri`` inside ``@Riki`` must not
     notify reader "Ri". Mentions fire at approval (moderation gate), so a
     comment still pending notifies nobody.
     """

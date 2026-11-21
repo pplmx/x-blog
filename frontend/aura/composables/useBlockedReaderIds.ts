@@ -4,11 +4,11 @@ import { getBlockedReaders } from "~~/api/reader/blocks";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 /**
- * The reader ids this signed-in viewer has blocked (round 386, DEC-437).
+ * The reader ids this signed-in viewer has blocked.
  *
- * Round 379 shipped reader-as-receiver blocking (DEC-425): it suppresses the
+ * Round 379 shipped reader-as-receiver blocking: it suppresses the
  * notification fan-outs, but a blocked reader's comments still rendered in the
- * thread, the discussion feed and comment search — the DEC-425 rationale even
+ * thread, the discussion feed and comment search — the rationale even
  * promises "a blocked commenter is invisible to them even mid-thread", which
  * was only true of the notification path. Blocking is a RECEIVER-side opt-out,
  * so the suppression belongs on this viewer's client: surfaces that render

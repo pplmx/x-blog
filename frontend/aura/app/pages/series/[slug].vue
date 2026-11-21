@@ -17,14 +17,14 @@ import { useSeo } from "~~/composables/useSeo";
 const { t, locale } = useLang();
 const route = useRoute();
 // Reactive getter so useFetch refetches when the slug changes via SPA
-// navigation between series (mirrors the posts/[slug] pattern, TASK-090).
+// navigation between series (mirrors the posts/[slug] pattern).
 const {
 	data: series,
 	pending,
 	error,
 	refresh: refreshSeries,
 } = await useSeriesBySlug(() => route.params.slug as string);
-// Slug-change redirect (round 350): a re-slugged series' old URL must 301.
+// Slug-change redirect: a re-slugged series' old URL must 301.
 useSlugRedirect(error.value);
 function retryLoad() {
 	void refreshSeries();
@@ -37,7 +37,7 @@ useSeo(() => ({
 	locale: locale.value,
 }));
 
-// Series reading progress (DEC-122, TASK-173): a signed-in reader sees how far
+// Series reading progress: a signed-in reader sees how far
 // through the series they are (derived from their reading history) and can
 // continue from the first unread episode. Guests see no progress.
 const signedIn = computed(
@@ -51,11 +51,11 @@ const progress = ref<SeriesProgress | null>(null);
 // Guard against stale responses across /series/a -> /series/b SPA navigation:
 // a slow response for the previous series must not overwrite the new series'
 // progress once its own (faster) response lands. Same monotonic-seq pattern as
-// comments.vue loadSeq / admin comments listRequestSeq (deep-dive, ISS-367).
+// comments.vue loadSeq / admin comments listRequestSeq (deep-dive).
 // Declared above the keyed watch so the immediate callback (which calls
 // loadProgress) never touches a TDZ binding.
 let progressSeq = 0;
-// Follow-state gets the same guard (deep-dive, ISS-374): without it, a slow
+// Follow-state gets the same guard (deep-dive): without it, a slow
 // in-flight GET can overwrite a follow toggle the reader just made — the PUT
 // commits and flips the button to "following", then the stale pre-follow GET
 // resolver flips it back to not-following and resets the notify flag.
@@ -70,7 +70,7 @@ const progressPercent = computed(() => {
 });
 
 // Map the reader's progress onto the ordered episode list (deep-dive finding,
-// ISS-379): the progress box said "3/10 read → continue" but the list itself
+//): the progress box said "3/10 read → continue" but the list itself
 // marked nothing — a mid-series reader scrolling the episodes couldn't tell
 // where they left off. read_post_ids is authoritative (server records each
 // read post), so an episode's number badge gets a ✓ once read, and the post
@@ -86,7 +86,7 @@ function isEpisodeNext(post: { slug: string }): boolean {
 	return nextUpSlug.value != null && post.slug === nextUpSlug.value;
 }
 
-// Scoped RSS feed (DEC-130/TASK-177): subscribe to just this series.
+// Scoped RSS feed: subscribe to just this series.
 const feedUrl = computed(() => (series.value?.slug ? `/rss/series/${series.value.slug}.xml` : ""));
 useHead(() => ({
 	link: feedUrl.value
@@ -101,7 +101,7 @@ useHead(() => ({
 		: [],
 }));
 
-// Follow series for 'new part' push (DEC-132/TASK-178): shown to signed-in readers.
+// Follow series for 'new part' push: shown to signed-in readers.
 const followsSeries = ref(false);
 const followNotify = ref(true);
 const followBusy = ref(false);
@@ -141,8 +141,7 @@ async function loadFollowState() {
 	try {
 		// Imperative $fetch seam: the old useReaderSeriesFollows (useFetch query)
 		// silently never sent its request from onMounted, so the follow state was
-		// always reset to "not following" on every full load/reload (ISS-119,
-		// TASK-220 — same class as the account/tag GETs, getReaderTagFollows).
+		// always reset to "not following" on every full load/reload (same class as the account/tag GETs, getReaderTagFollows).
 		const res = await getReaderSeriesFollows();
 		if (seq !== followSeq) return; // stale — a newer series is in flight
 		const item = res.items.find((f) => f.id === series.value?.id) ?? null;
@@ -161,7 +160,7 @@ async function loadFollowState() {
 	}
 }
 
-/** Load the reader's progress through this series ($fetch seam, TASK-220). */
+/** Load the reader's progress through this series ($fetch seam). */
 async function loadProgress() {
 	if (!signedIn.value || !series.value?.slug) return;
 	const seq = ++progressSeq; // invalidate any in-flight older series' request
@@ -216,7 +215,7 @@ async function toggleFollow() {
 	}
 }
 
-/** Toggle new-part push on/off for a followed series (TASK-181). */
+/** Toggle new-part push on/off for a followed series. */
 async function toggleNotify() {
 	if (followBusy.value || !series.value?.id || !followsSeries.value) return;
 	followBusy.value = true;
@@ -429,7 +428,7 @@ onUnmounted(() => {
 						<div class="flex items-center gap-3">
 							<!-- Episode number badge: a ✓ marks an already-read episode so a
                    mid-series reader can see where they left off from the list
-                   alone (ISS-379); the "up next" episode gets an explicit
+                   alone; the "up next" episode gets an explicit
                    highlight instead of just the badge colour change. Guests
                    (no progress) keep the plain numbered badge. -->
 							<span

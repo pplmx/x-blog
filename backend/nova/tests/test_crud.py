@@ -14,7 +14,7 @@ from app import repositories as crud
 class TestEffectivePublishTs:
     """effective_publish_ts: the timestamp that puts a post on the
     "published when" line (scheduled publish_at when set, else created_at)
-    so scheduled posts are never mis-dated by their draft time (RIL ISS-264)."""
+    so scheduled posts are never mis-dated by their draft time."""
 
     async def test_uses_publish_at_when_set(self):
         post = models.Post(
@@ -73,7 +73,7 @@ class TestGetPosts:
     async def test_get_posts_orders_scheduled_posts_by_effective_publish_time(self, db_session):
         """A post drafted in January but scheduled for June sorts by June —
         it must surface at the top of the feed when it actually goes live,
-        not stay buried in its draft position (RIL ISS-265)."""
+        not stay buried in its draft position."""
         db_session.add_all(
             [
                 models.Post(
@@ -112,7 +112,7 @@ class TestGetPosts:
         whole second) must order deterministically by id desc — otherwise the
         feed query (with joinedload JOINs) and the adjacent-posts bare-column
         scan can resolve a tie in different physical orders, so prev/next would
-        disagree with the feed the reader is looking at (round-234 review)."""
+        disagree with the feed the reader is looking at."""
         db_session.add_all(
             [
                 # Same publish_at on purpose: an exact effective-time tie.
@@ -174,7 +174,7 @@ class TestGetPosts:
     async def test_get_archive_groups_by_effective_publish_time(self, db_session):
         """The archive buckets a scheduled post in the month it went live —
         before this it landed under its draft month and was unfindable in the
-        archive (RIL ISS-265)."""
+        archive."""
         db_session.add_all(
             [
                 models.Post(
@@ -794,7 +794,7 @@ class TestComments:
     async def test_delete_comment_cleans_likes_and_flags(self, db_session):
         """A like/flag row must never outliven its comment: deleting the
         comment (or, transitively, its post) removes them with it (ORM
-        delete-orphan cascade, TASK-352). Previously these additive tables
+        delete-orphan cascade). Previously these additive tables
         orphaned rows pointing at a deleted comment_id forever."""
         post = models.Post(title="Orphan Test Post", slug="orphan-test-post", content="Content")
         db_session.add(post)
@@ -851,7 +851,7 @@ class TestComments:
     async def test_delete_post_cleans_reader_post_likes(self, db_session):
         """Post deletion purges the reader-like rows too (deep-dive finding).
 
-        ReaderPostLike is an additive DEC-009 table with no ORM cascade — the
+        ReaderPostLike is an additive table with no ORM cascade — the
         same class as bookmarks/history/subscriptions, which _POST_CHILD_TABLES
         already covers. Without it, a deleted post left orphaned like rows that
         drifted the reader's like count and, on SQLite autoincrement id reuse,
@@ -879,7 +879,7 @@ class TestComments:
     async def test_delete_post_cleans_guest_comment_subscriptions(self, db_session):
         """Post deletion purges anonymous thread subscriptions too.
 
-        GuestCommentSubscription is an additive DEC-009 table with no ORM
+        GuestCommentSubscription is an additive table with no ORM
         cascade from Post (the same class _POST_CHILD_TABLES covers). Without
         it, a deleted post left orphaned (email, post_id) rows that, on SQLite
         autoincrement id reuse, could deliver another post's comment emails to
@@ -912,7 +912,7 @@ class TestComments:
     async def test_delete_category_cleans_reader_follows(self, db_session):
         """Category deletion purges follow rows when no posts reference it.
 
-        CategoryFollow is an additive DEC-009 table with no ORM cascade from
+        CategoryFollow is an additive table with no ORM cascade from
         Category — delete_category only refuses when posts reference the
         category, so a follower with zero posts left an orphaned row that, on
         SQLite autoincrement id reuse, re-pointed at an unrelated later
@@ -944,7 +944,7 @@ class TestComments:
     async def test_delete_tag_cleans_reader_follows(self, db_session):
         """Tag deletion purges follow rows when no posts reference it.
 
-        Mirrors the CategoryFollow case: TagFollow is an additive DEC-009 table
+        Mirrors the CategoryFollow case: TagFollow is an additive table
         with no ORM cascade from Tag, so deleting a tag with followers but no
         posts left orphaned rows (deep-dive finding).
         """
@@ -972,7 +972,7 @@ class TestComments:
     async def test_delete_series_cleans_reader_follows(self, db_session):
         """Series deletion purges follow rows too.
 
-        SeriesFollow is an additive DEC-009 table with no ORM cascade from
+        SeriesFollow is an additive table with no ORM cascade from
         Series — deleting a series left orphaned follows that, on SQLite
         autoincrement id reuse, re-pointed at an unrelated later series
         (deep-dive finding, same class as category/tag follows).
@@ -1003,7 +1003,7 @@ class TestComments:
 
 
 class TestLikeCommentAtomicity:
-    """like_comment must persist row + counter in ONE transaction (ISS-560)."""
+    """like_comment must persist row + counter in ONE transaction."""
 
     async def _comment(self, db_session) -> models.Comment:
         post = models.Post(title="Like", slug="like-atomic", content="Content")
@@ -1114,7 +1114,7 @@ class TestSearchPosts:
         input to an empty tsquery matching nothing, while the ILIKE substring
         path escapes and matches those literals — so punctuation-only queries
         must stay on the substring path for consistent cross-backend results
-        (TASK-246, PG-harness finding).
+        (PG-harness finding).
         """
         from app.repositories import _has_searchable_token
 
@@ -1393,7 +1393,7 @@ class TestIncrementViewsAndLikes:
         mock_db.rollback.assert_called_once()
 
     async def test_increment_views_recovers_from_daily_row_race(self):
-        """Two concurrent first-view pageviews on a day resolve, not 500 (ISS-138).
+        """Two concurrent first-view pageviews on a day resolve, not 500.
 
         The loser's commit hits the unique uq_post_views_daily_post_day row and
         must roll back, then re-apply the increments as atomic UPDATEs so the
@@ -1420,7 +1420,7 @@ class TestIncrementViewsAndLikes:
         mock_db.rollback.assert_called_once()
 
     async def test_increment_views_invalidates_posts_list_cache(self, db_session):
-        """A pageview must drop the cached list payloads (they embed views, ISS-141)."""
+        """A pageview must drop the cached list payloads (they embed views)."""
         post = models.Post(title="Cache Views", slug="cache-views", content="Content")
         db_session.add(post)
         await db_session.commit()
@@ -1435,7 +1435,7 @@ class TestIncrementViewsAndLikes:
 
 class TestReaderUpsertIdempotency:
     """Concurrent duplicate-key writes on reader follows/bookmarks/subscriptions
-    must resolve as idempotent (re-fetch the winner) instead of 500 (ISS-143)."""
+    must resolve as idempotent (re-fetch the winner) instead of 500."""
 
     async def test_add_reader_bookmark_recovers_from_duplicate_key_race(self):
         mock_db = AsyncMock()
@@ -1467,7 +1467,7 @@ class TestReaderUpsertIdempotency:
         existing = MagicMock()
         mock_db.execute.return_value = MagicMock()
         mock_db.execute.return_value.scalars.return_value.first.side_effect = [None, existing]
-        # The denormalized reading_minutes estimate (ISS-451) reads the post's
+        # The denormalized reading_minutes estimate reads the post's
         # content via db.get; a short post keeps minutes == 1.
         mock_db.get.return_value = models.Post(content="# Hello")
 
@@ -1479,7 +1479,7 @@ class TestReaderUpsertIdempotency:
         mock_db.rollback.assert_called_once()
 
     async def test_record_reading_history_writes_naive_utc(self):
-        """ISS-452: viewed_at written by the history upsert (and the ORM
+        """viewed_at written by the history upsert (and the ORM
         column default) is naive UTC — never an aware datetime — so no
         tzoffset can leak into a cache/serialization layer above the DB."""
         default = models.ReadingHistory.viewed_at.default.arg
@@ -1508,7 +1508,7 @@ class TestReaderUpsertIdempotency:
 
     async def test_import_reader_history_recovers_from_duplicate_key_race(self):
         """Concurrent imports of the same previously-unseen post slug must not
-        500 on the unique (reader_id, post_id) row (RIL ISS-419/TASK-321).
+        500 on the unique (reader_id, post_id) row.
 
         Both race through the existing_by_post check, both add a fresh row, and
         the loser's commit raises IntegrityError. The retry re-runs the merge:
@@ -1585,9 +1585,9 @@ class TestDeletePostForeignKey:
         assert result is False
 
     async def test_delete_post_purges_orphan_child_rows(self, db_session):
-        """delete_post must purge rows in the DEC-009 child tables (no DB-level
+        """delete_post must purge rows in the child tables (no DB-level
         FK, no ORM cascade) or every post delete leaves permanent orphan rows
-        behind (RIL ISS-296)."""
+        behind."""
         post = models.Post(title="Orphan Purge Post", slug="orphan-purge-post", content="Content")
         db_session.add(post)
         await db_session.flush()
@@ -1778,7 +1778,7 @@ class TestUpdatePostTagIds:
 
 
 class TestUpdatePostValidation:
-    """update_post FK/reference validation (TASK-479, ISS-555/ISS-556).
+    """update_post FK/reference validation.
 
     category_id/series_id already raise ValueError on an unknown id; until this
     round author_id was assigned blindly (serializing author: null, 404ing the

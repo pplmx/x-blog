@@ -1,8 +1,8 @@
 /**
- * Guest comment management journey (round 385, DEC-435/TASK-444).
+ * Guest comment management journey.
  *
  * An anonymous commenter who consents to the reply email gets a per-comment
- * secret token (DEC-332) that flows through the SMTP sink as an approval-time
+ * secret token that flows through the SMTP sink as an approval-time
  * "your comment is live — manage it" email. That email deep-links to the flat
  * /comment-manage page, where the guest can edit the comment's text (it
  * re-enters moderation, exactly like a signed-in reader's edit) or delete the
@@ -55,7 +55,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Guest comment management (DEC-435/TASK-444)", () => {
+test.describe("Guest comment management ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("guest edits then deletes their own comment via the emailed manage link", async ({

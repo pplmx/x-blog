@@ -1,5 +1,5 @@
 /**
- * Admin Newsletter subscribers page tests (DEC-354, TASK-402).
+ * Admin Newsletter subscribers page tests.
  *
  * Renders the subscriber table from the admin newsletter API (email, status
  * chip, subscribed date), shows empty/error states and status filters, and
@@ -20,7 +20,7 @@ vi.mock("../../api/admin/newsletter", () => ({
 	// destructures as { data, pending, error, refresh }.
 	useAdminNewsletterSubscribers: (...args: unknown[]) => listMock(...args),
 	deleteNewsletterSubscriber: deleteMock,
-	// useAdminDigestOverview likewise (DEC-423, TASK-436). The digest panel
+	// useAdminDigestOverview likewise. The digest panel
 	// calls it unconditionally in setup; each describe's beforeEach seeds a
 	// default return and individual tests override via overviewMock.
 	useAdminDigestOverview: () => overviewMock(),
@@ -90,7 +90,7 @@ describe("Admin Newsletter page", () => {
 		expect(wrapper.text()).toContain("bob@example.com");
 		expect(wrapper.text()).toContain("已确认"); // confirmed chip (zh default locale)
 		expect(wrapper.text()).toContain("待确认"); // pending chip
-		// Weekly-digest cadence marker (DEC-355).
+		// Weekly-digest cadence marker.
 		expect(wrapper.text()).toContain("每周摘要");
 		// The subscribed date renders (parseApiDate feeds a locale date).
 		expect(wrapper.text()).toContain("2026");
@@ -291,7 +291,7 @@ describe("Admin Newsletter page", () => {
 	});
 });
 
-describe("Admin Newsletter digest panel (DEC-423, TASK-436)", () => {
+describe("Admin Newsletter digest panel ", () => {
 	beforeEach(() => {
 		vi.stubGlobal("definePageMeta", vi.fn());
 		stubNuxtGlobals();

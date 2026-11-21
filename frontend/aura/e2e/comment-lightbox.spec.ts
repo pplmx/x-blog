@@ -1,7 +1,7 @@
 /**
- * Comment-image lightbox journey (DEC-308, TASK-382).
+ * Comment-image lightbox journey.
  *
- * The post body opens MarkdownLightbox for its images (DEC-302) but the
+ * The post body opens MarkdownLightbox for its images but the
  * comment body — same marked+sanitizer pipeline — previously rendered pasted
  * images as plain, column-width, un-scrutinizable <img>. This spec pins the
  * completion: clicking an image inside a comment opens the same fullscreen
@@ -57,7 +57,7 @@ async function postAndApprove(
 	return commentId;
 }
 
-test.describe("Comment image lightbox (DEC-308)", () => {
+test.describe("Comment image lightbox ", () => {
 	test("clicking a comment image opens the fullscreen viewer scoped to that comment", async ({
 		page,
 		request,

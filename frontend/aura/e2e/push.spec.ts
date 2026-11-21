@@ -1,9 +1,9 @@
 /**
- * Web Push e2e (DEC-055, TASK-119).
+ * Web Push e2e.
  *
  * Headless Chromium cannot receive real push messages (the browser must reach
  * a live push service and show native notifications — same reason CSP/SRI is
- * deferred in DEC-051), so these journeys stub the browser push stack via
+ * deferred), so these journeys stub the browser push stack via
  * addInitScript and verify OUR slice: the header opt-in button, the
  * subscribe/unsubscribe state machine, the VAPID public-key round-trip, the
  * backend subscription API contract, and the admin notify-subscribers action.
@@ -155,11 +155,11 @@ test.describe("Web Push reader opt-in", () => {
 		// persisting e2e DB a test that subscribes and never unsubscribes leaks
 		// one ::1 row per run until the cap 429s every later anonymous subscribe
 		// (the push-cluster 503 class this spec was written to keep green,
-		// round-458). The UI unsubscribe POST deletes the row — same path the
+		//). The UI unsubscribe POST deletes the row — same path the
 		// real user takes. The composable's syncBackend(unsubscribe) is
 		// best-effort (swallows errors, usePushSubscription.ts), so ALSO assert
 		// the backend 204 — a swallowed DELETE would flip the button while the
-		// row leaks, the exact round-458 failure class (code-review round-460).
+		// row leaks, the exact failure class (code-review).
 		const unsubscribe204 = page
 			.waitForResponse((r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204, {
 				timeout: 10000,
@@ -195,7 +195,7 @@ test.describe("Web Push reader opt-in", () => {
 		// the subscribe test above — never leave an anonymous ::1 row behind),
 		// and assert the backend 204 like the subscribe test's cleanup: the
 		// composable swallows unsubscribe errors, so the UI flip alone must not
-		// be trusted to mean the row is deleted (round-458 / review round-460).
+		// be trusted to mean the row is deleted.
 		const unsubscribe204 = page
 			.waitForResponse((r) => r.url().includes("/api/push/unsubscribe") && r.status() === 204, {
 				timeout: 10000,
@@ -206,7 +206,7 @@ test.describe("Web Push reader opt-in", () => {
 		expect(await unsubscribe204).toBeTruthy();
 	});
 
-	test("signed-in reader's subscription is bound via the reader JWT (DEC-064)", async ({
+	test("signed-in reader's subscription is bound via the reader JWT ", async ({
 		page,
 		request,
 	}) => {
@@ -241,13 +241,13 @@ test.describe("Web Push reader opt-in", () => {
 		expect(authz).toBe(`Bearer ${token}`);
 	});
 
-	test("re-binds a subscription taken while anonymous when a signed-in reader loads a page (ISS-112)", async ({
+	test("re-binds a subscription taken while anonymous when a signed-in reader loads a page ", async ({
 		page,
 		request,
 	}) => {
 		// A browser that subscribed BEFORE the reader had an account holds that
 		// subscription as reader_id NULL. Unless it is re-stamped with the
-		// reader's JWT, the new_post opt-out (DEC-171) can never attribute it —
+		// reader's JWT, the new_post opt-out can never attribute it —
 		// the inbox row is suppressed but the push still lands. Regress that:
 		// subscribing anonymously, then signing in, then loading a fresh page
 		// (already authenticated, no false->true transition) must bind the

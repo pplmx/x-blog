@@ -1,5 +1,5 @@
 /**
- * Admin post editor draft auto-save (RIL TASK-190, DEC-156).
+ * Admin post editor draft auto-save.
  *
  * An author's edits are persisted to a draft automatically after a debounce,
  * with a visible "saved" state and without an explicit save:
@@ -22,7 +22,7 @@ async function login(page: import("@playwright/test").Page) {
 	return { token, headers: { Authorization: `Bearer ${token}` } };
 }
 
-test.describe("Admin post draft auto-save (TASK-190)", () => {
+test.describe("Admin post draft auto-save ", () => {
 	test("editing an existing draft auto-persists and shows the saved state", async ({
 		page,
 		request,

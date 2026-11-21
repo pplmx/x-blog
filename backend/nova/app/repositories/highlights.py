@@ -1,4 +1,4 @@
-"""Reader passage highlights (round 466, DEC-511 / TASK-583).
+"""Reader passage highlights.
 
 A signed-in reader saves an exact passage from a post, optionally with a short
 private note. Responses include the post's current title/slug for deep-linking;

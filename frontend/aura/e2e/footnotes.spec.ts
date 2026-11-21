@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * GFM inline footnotes render on the post page (DEC-441, TASK-451).
+ * GFM inline footnotes render on the post page.
  *
  * Journey: publish a post whose content carries a `[^1]` / `[^1]: ...` citation
  * marker, visit its page, and confirm the raw marker is gone — replaced by a
  * backlinked <sup> reference and a definition list, exactly as the frontend
- * marked extension emits. Before DEC-441 this same content rendered the
+ * marked extension emits. Before that, this same content rendered the
  * literal `[^1]` text (the author's citation leaked into the article).
  */
 test("publish a footnoted post and see the citation render, not leak", async ({

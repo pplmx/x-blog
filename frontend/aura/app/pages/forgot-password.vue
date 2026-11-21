@@ -1,5 +1,5 @@
 <!--
-  Forgot-password request (DEC-286, TASK-371).
+  Forgot-password request.
 
   The entry to reader password recovery: enter the registered email, get a
   reset link by mail. Deliberately shows a generic success message whether or
@@ -15,7 +15,7 @@ useSeo(() => ({
 	title: t("reader.forgotPassword.seoTitle"),
 	description: t("reader.forgotPassword.seoDesc"),
 	path: "/forgot-password",
-	// Reader auth flows are private surfaces — never index them (round 437).
+	// Reader auth flows are private surfaces — never index them.
 	noindex: true,
 }));
 

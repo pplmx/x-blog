@@ -1,5 +1,5 @@
 /**
- * Comment Markdown rendering journey (DEC-088, TASK-156).
+ * Comment Markdown rendering journey.
  *
  * Comment content renders through the same sanitized markdown pipeline as post
  * content (marked with breaks:true, then sanitizeHtml): a fenced code block,
@@ -63,7 +63,7 @@ async function postAndApprove(
 	return commentId;
 }
 
-test.describe("Comment Markdown rendering (DEC-088)", () => {
+test.describe("Comment Markdown rendering ", () => {
 	test("code block + emphasis render; script/event-handler/javascript: payloads are neutralized", async ({
 		page,
 		request,
@@ -89,7 +89,7 @@ test.describe("Comment Markdown rendering (DEC-088)", () => {
 		// zero-height element — count it rather than asserting visibility).
 		expect(await mdBody.locator("br").count()).toBeGreaterThan(0);
 
-		// Syntax highlighting (DEC-090): the lazy highlight.js pass tokenizes
+		// Syntax highlighting: the lazy highlight.js pass tokenizes
 		// the fence after mount; `const` becomes an .hljs-keyword span. This is
 		// the acceptance — a code block in a comment shows token colors.
 		const highlighted = mdBody.locator("pre code.language-ts .hljs-keyword");

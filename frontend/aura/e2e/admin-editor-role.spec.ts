@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Role-tier admin e2e (DEC-054, TASK-116): a non-superuser editor can log in and
+ * Role-tier admin e2e: a non-superuser editor can log in and
  * moderate content (posts) but does NOT see superuser-only sections (Users in
  * the sidebar, Data Export on the dashboard).
  *

@@ -16,7 +16,7 @@ export interface AdminPost {
 	category_id: number | null;
 	comment_count: number;
 	tags: string[];
-	/** Series membership (DEC-056/TASK-123) — null when the post is standalone. */
+	/** Series membership — null when the post is standalone. */
 	series_id: number | null;
 	series_order: number;
 	series_title: string | null;
@@ -42,18 +42,18 @@ export interface AdminPostDetail {
 	excerpt: string;
 	published: boolean;
 	pinned: boolean;
-	/** Per-post comments toggle (round 351): false closes a post's comments
+	/** Per-post comments toggle: false closes a post's comments
 	 *  without removing existing ones or disabling comments site-wide. */
 	comments_enabled: boolean;
 	publish_at: string | null;
 	cover_image: string | null;
 	category_id: number | null;
-	/** Series membership (DEC-056/TASK-123) — null when the post is standalone. */
+	/** Series membership — null when the post is standalone. */
 	series_id: number | null;
 	series_order: number;
 	series_title: string | null;
 	series_slug: string | null;
-	/** Author attribution (DEC-359/TASK-406): current author for the picker's
+	/** Author attribution: current author for the picker's
 	 *  pre-selection; null on pre-attribution posts. */
 	author_id?: number | null;
 	tag_ids: number[];
@@ -109,7 +109,7 @@ export interface PostCreate {
 	 *  from the series, same exclude_unset distinction as category_id. */
 	series_id?: number | null;
 	series_order?: number;
-	/** Author attribution (DEC-359/TASK-406): the admin the post is attributed
+	/** Author attribution: the admin the post is attributed
 	 *  to. Omitted/absent on update means "don't change"; the editor always
 	 *  sends an explicit id (the backend defaults create to the writing admin
 	 *  and never clears an author). */
@@ -179,7 +179,7 @@ export function getPostRevisions(id: number): Promise<PostRevisionSummary[]> {
 	});
 }
 
-/** Per-post daily reading series for the editor sparkline (DEC-287/TASK-372). */
+/** Per-post daily reading series for the editor sparkline. */
 export interface PostViewsTrend {
 	post_id: number;
 	days: number;
@@ -228,7 +228,7 @@ export function deleteAdminPost(id: number): Promise<void> {
 	});
 }
 
-/** Duplicate a post into a fresh draft (round 349): same content + taxonomy,
+/** Duplicate a post into a fresh draft: same content + taxonomy,
  *  a new unique slug, publication metadata cleared. Returns the new draft's
  *  id so the list can jump straight into the editor. */
 export function cloneAdminPost(id: number): Promise<{ id: number }> {

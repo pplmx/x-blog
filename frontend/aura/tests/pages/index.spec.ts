@@ -40,7 +40,7 @@ const { mockState } = vi.hoisted(() => ({
 		}>,
 		categories: [] as Array<{ id: number; name: string }>,
 		tags: [] as Array<{ id: number; name: string }>,
-		// Failure states for the taxonomy/stats mocks (round 414): when an error
+		// Failure states for the taxonomy/stats mocks: when an error
 		// is set the page must not masquerade as "no categories/tags/0 posts".
 		categoriesError: null as null | { message: string },
 		tagsError: null as null | { message: string },
@@ -83,7 +83,7 @@ const { mockState } = vi.hoisted(() => ({
 		// resolves-in-one-microtask real default makes it unobservable).
 		followsPending: false,
 		seriesPending: false,
-		// Server-trail continue reading (DEC-348, TASK-400): the in-progress
+		// Server-trail continue reading: the in-progress
 		// posts the signed-in reader left partway on any device.
 		inProgress: [] as Array<{
 			id: number;
@@ -176,7 +176,7 @@ vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
 
-// ------- Mock useRecentlyViewed (DEC-104, TASK-164) so tests control the
+// ------- Mock useRecentlyViewed so tests control the
 // continue-reading trail (the real composable reads localStorage at module load).
 vi.mock("../../composables/useRecentlyViewed", async () => {
 	const { ref } = await import("vue");
@@ -310,7 +310,7 @@ const mockPopularPosts = [
 	{ id: 3, title: "Popular Post Three", slug: "popular-three", views: 300 },
 ];
 
-// Round 387 (DEC-438): in-window top posts carry views_window for the
+// Round 387: in-window top posts carry views_window for the
 // "N reads this week" caption, distinct from the all-time views counter.
 const mockTrendingPosts = [
 	{ id: 1, title: "Trending Post One", slug: "trending-one", views_window: 42 },
@@ -371,7 +371,7 @@ describe("Index Page", () => {
 			mockState.error = { message: "Failed to fetch posts" };
 			const wrapper = await mountIndexPage();
 			expect(wrapper.text()).toContain("加载失败");
-			// ISS-135: never leak the raw backend/exception message to readers.
+			// never leak the raw backend/exception message to readers.
 			expect(wrapper.text()).not.toContain("Failed to fetch posts");
 		});
 	});
@@ -496,7 +496,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Trending this week (round 387, DEC-438)", () => {
+	describe("Trending this week ", () => {
 		it("renders the trending section with the in-window read count", async () => {
 			mockState.posts = mockPostsData;
 			mockState.trendingPosts = mockTrendingPosts;
@@ -649,7 +649,7 @@ describe("Index Page", () => {
 			expect(lastFetchUrl).not.toContain("tag_id=");
 		});
 
-		it("clamps a negative ?page= to page 1 at the request (ISS-571)", async () => {
+		it("clamps a negative ?page= to page 1 at the request ", async () => {
 			// `Number("-3") || 1` is -3, so the home feed previously sent page=-3
 			// → FastAPI 422 → dead Retry that could never recover (a failed
 			// fetch has no pagination for the out-of-range watcher to clamp).
@@ -658,19 +658,19 @@ describe("Index Page", () => {
 			expect(lastFetchUrl).not.toContain("page=-3");
 		});
 
-		it("clamps an invalid ?page=abc to page 1 at the request (ISS-571)", async () => {
+		it("clamps an invalid ?page=abc to page 1 at the request ", async () => {
 			await mountIndexPage({ query: { page: "abc" } });
 			expect(lastFetchUrl).toContain("page=1");
 		});
 
-		it("drops a negative ?category_id from the request (ISS-571)", async () => {
+		it("drops a negative ?category_id from the request ", async () => {
 			// Number("-1") is truthy, so ?category_id=-1 previously slithered
 			// into the URL and 422'd the feed; it must be treated as absent.
 			await mountIndexPage({ query: { category_id: "-1" } });
 			expect(lastFetchUrl).not.toContain("category_id=");
 		});
 
-		it("sidebar category/tag chips navigate to page 1, not a stale page (ISS-446)", async () => {
+		it("sidebar category/tag chips navigate to page 1, not a stale page ", async () => {
 			// From /?page=3 a category chip used to MERGE its query into the
 			// current one, producing ?category_id=1&page=3 while the watcher reset
 			// the rendered feed to page 1 — the URL stayed on page 3, so a deep
@@ -686,7 +686,7 @@ describe("Index Page", () => {
 			expect(catLink).toBeDefined();
 			// A filter change must write page=1 into the chip's query so the URL
 			// never keeps a stale ?page=3 whose content disagrees with the
-			// address bar (ISS-446) — the same contract search filters use.
+			// address bar — the same contract search filters use.
 			expect(catLink).not.toBeUndefined();
 			const to = (catLink?.props("to") ?? {}) as { query?: Record<string, string> };
 			expect(to.query?.category_id).toBe("1");
@@ -766,7 +766,7 @@ describe("Index Page", () => {
 			};
 			// The highlight tracks the route-derived page (the URL is the fetch
 			// contract) — mount on ?page=2 so ref and served payload agree, as
-			// they always do in production (usability deep-dive round 393).
+			// they always do in production (usability deep-dive).
 			const wrapper = await mountIndexPage({ query: { page: "2" } });
 			const activeBtn = wrapper
 				.findAll("button")
@@ -855,7 +855,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Continue reading (DEC-104, TASK-164)", () => {
+	describe("Continue reading ", () => {
 		it("hides the section when nothing was recently viewed", async () => {
 			mockState.posts = mockPostsData;
 			const wrapper = await mountIndexPage();
@@ -875,7 +875,7 @@ describe("Index Page", () => {
 			expect(wrapper.text()).toContain("Made Post");
 		});
 
-		it("signed-in reader sees the SERVER resume trail, not the device-local row (DEC-348, TASK-400)", async () => {
+		it("signed-in reader sees the SERVER resume trail, not the device-local row ", async () => {
 			// A signed-in reader on a NEW device has no local trail (localStorage
 			// is empty / contains a different device's reads) — the server
 			// in-progress list is authoritative and cross-device.
@@ -909,7 +909,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Recommended for you (TASK-176)", () => {
+	describe("Recommended for you ", () => {
 		it("shows recommended posts for a signed-in reader", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			mockState.recommended = [
@@ -928,7 +928,7 @@ describe("Index Page", () => {
 			expect(wrapper.text()).not.toContain("为你推荐");
 		});
 
-		it("does not render an orphaned heading for a signed-in reader with no recs (ISS-134)", async () => {
+		it("does not render an orphaned heading for a signed-in reader with no recs ", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			mockState.recommended = [];
 			const wrapper = await mountIndexPage();
@@ -936,7 +936,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Your series (TASK-180)", () => {
+	describe("Your series ", () => {
 		it("shows followed series with progress + a continue deep link for a signed-in follower", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			mockState.followedSeries = [{ id: 3, title: "Tutorial", slug: "tutorial" }];
@@ -971,7 +971,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Latest from your follows (TASK-183)", () => {
+	describe("Latest from your follows ", () => {
 		it("shows followed-content posts for a signed-in follower", async () => {
 			window.localStorage.setItem("reader_token", "token");
 			mockState.followsFeed = [
@@ -1010,7 +1010,7 @@ describe("Index Page", () => {
 		});
 	});
 
-	describe("Taxonomy/stats fetch failure (round 414)", () => {
+	describe("Taxonomy/stats fetch failure ", () => {
 		it("shows a retry button in the hero stats strip instead of 0s on stats failure", async () => {
 			// A failed /api/stats fetch must not read as "this blog has 0 posts":
 			// the hero strip swaps to a failure message with a retry affordance.
@@ -1025,7 +1025,7 @@ describe("Index Page", () => {
 		it("shows the categories load-failure message instead of 'no categories'", async () => {
 			// A transient taxonomy failure used to masquerade as "暂无分类";
 			// now it offers a retry so the reader knows it's a network issue,
-			// not that the blog genuinely has no categories (round 414).
+			// not that the blog genuinely has no categories.
 			mockState.posts = mockPostsData;
 			mockState.categoriesError = { message: "boom" };
 			mockState.tagsError = null;

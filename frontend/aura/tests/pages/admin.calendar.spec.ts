@@ -1,5 +1,5 @@
 /**
- * Admin editorial calendar page tests (DEC-162, TASK-194).
+ * Admin editorial calendar page tests.
  *
  * Verifies the Monday-first month grid: title/header, 42 day cells, a post
  * chip landing on its local date cell with the right status color + editor
@@ -26,7 +26,7 @@ vi.mock("../../api/admin/calendar", () => ({
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },
-	// The page navigates with NuxtLink (round-445: plain <a> caused a full
+	// The page navigates with NuxtLink (plain <a> caused a full
 	// reload on every chip tap); the stub renders `to` as href so the editor
 	// deep-link contract stays assertable.
 	NuxtLink: { props: ["to"], template: '<a :href="to"><slot /></a>' },
@@ -56,7 +56,7 @@ afterEach(() => {
 	vi.stubGlobal("useRoute", () => reactive({ query: routeQuery }));
 });
 
-describe("Admin calendar page (TASK-194)", () => {
+describe("Admin calendar page ", () => {
 	beforeEach(() => {
 		routeQuery.month = "2026-06";
 		mockFetch.mockReset();
@@ -154,7 +154,7 @@ describe("Admin calendar page (TASK-194)", () => {
 		);
 	});
 
-	it("exposes the month grid as a labelled table, not an unlabeled wall of numbers (ISS-212)", async () => {
+	it("exposes the month grid as a labelled table, not an unlabeled wall of numbers ", async () => {
 		const wrapper = await mountPage();
 		const table = wrapper.find('[role="table"]');
 		expect(table.exists()).toBe(true);
@@ -174,7 +174,7 @@ describe("Admin calendar page (TASK-194)", () => {
 		expect(first.attributes("aria-label") ?? "").toContain("2026");
 	});
 
-	it("announces the post count inside a day cell label (ISS-212)", async () => {
+	it("announces the post count inside a day cell label ", async () => {
 		const date = noonLocalIso(2026, 6, 15);
 		mockFetch.mockResolvedValue({
 			month: "2026-06",

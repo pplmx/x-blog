@@ -13,9 +13,9 @@ RATE_LIMIT_READ = os.getenv("RATE_LIMIT_READ_PER_MINUTE", "120")
 RATE_LIMIT_WRITE = os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "30")
 RATE_LIMIT_AUTH = os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "10")
 # Stricter than login: open reader signup is the classic spam/abuse surface, so
-# account creation gets a tight per-IP bucket. (DEC-059, TASK-131)
+# account creation gets a tight per-IP bucket.
 RATE_LIMIT_REGISTER = os.getenv("RATE_LIMIT_REGISTER_PER_MINUTE", "5")
-# Newsletter subscribe (DEC-351, TASK-401) is an UNAUTHENTICATED open entry that
+# Newsletter subscribe is an UNAUTHENTICATED open entry that
 # fires an outbound email on a fresh address — the same spam/abuse class as
 # register, so it gets the same tight per-IP bucket instead of the looser
 # RATE_LIMIT_WRITE. confirm/unsubscribe carry a secret token, so they are not
@@ -33,7 +33,7 @@ def _xff_client(xff: str) -> str | None:
     client-supplied, so a forged entry can be any string — a 5000-char line
     (VARCHAR overflow -> DataError -> 500 on the ``ip_address``/``ip_key``
     columns *and* a malformed rate-limit key) or a chosen literal that spoofs
-    someone else's bucket (round-17 security review, TASK-351).
+    someone else's bucket.
 
     Only trust the entry when it is a genuinely well-formed IP literal:
     ``ipaddress`` canonicalizes it (bounded, always ≤ 45 chars — comfortably
@@ -78,7 +78,7 @@ def client_rate_key(request: Request) -> str:
     Slowapi's default ``get_remote_address`` returns only ``request.client.host``
     — the immediate TCP peer. Behind a single proxy (the Nuxt same-origin API
     proxy, or nginx) every client then collapses into one shared 429 bucket,
-    and per-client abuse protection is lost (round-16 security audit).
+    and per-client abuse protection is lost.
 
     This resolver:
 
@@ -90,7 +90,7 @@ def client_rate_key(request: Request) -> str:
       leftmost X-Forwarded-For entry — which is the original client per RFC 7239
       — but only when it is a well-formed IP literal (see ``_xff_client``); a
       non-IP entry is forged, so it falls back to the peer instead of being
-      stored/spoofed (round-17 security review, TASK-351).
+      stored/spoofed.
     """
     peer = request.client.host if request.client else "unknown"
     xff = request.headers.get("x-forwarded-for", "").strip()

@@ -1,5 +1,5 @@
 /**
- * My Comments filter journey (DEC-102, TASK-163).
+ * My Comments filter journey.
  *
  * A signed-in reader opens /comments; the page shows status filter tabs. After
  * an approved comment is seeded via the API, filtering by "Approved" surfaces
@@ -57,7 +57,7 @@ async function postAndApprove(
 	// which publishes a verified reader's comment immediately — the explicit
 	// moderator approve would then 422 ("already approved"). Only approve the
 	// still-pending path, so the helper is robust to either moderation mode
-	// (pre-existing dev-stack break, ISS-121).
+	// (pre-existing dev-stack break).
 	if (createdBody.is_approved) return;
 	const login = await request.post("/api/admin/login", {
 		form: { username: "admin", password: "admin123" },
@@ -70,7 +70,7 @@ async function postAndApprove(
 	expect(approved.status()).toBe(200);
 }
 
-test.describe("My Comments filter (DEC-102)", () => {
+test.describe("My Comments filter ", () => {
 	test("filtering by Approved shows only the published comment", async ({ page, request }) => {
 		const postId = await firstPost(request);
 		const email = freshEmail();

@@ -1,7 +1,7 @@
-"""add posts.comments_enabled (round 351)
+"""add posts.comments_enabled
 
 A simple additive BOOLEAN column on the posts table — one new flag, no touch
-to existing columns, so the SQLite-can't-add-FK constraint of DEC-009 does not
+to existing columns, so the SQLite-can't-add-FK constraint of does not
 apply. ``server_default true()`` backfills every existing post as
 comments-open, matching the ORM default, so no data rewrite is needed.
 """

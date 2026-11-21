@@ -1,8 +1,8 @@
-"""Comment-thread subscription contract tests (DEC-078, TASK-150).
+"""Comment-thread subscription contract tests.
 
 A signed-in reader can follow a post's comment thread (``comment_subscriptions``)
 and receive a Web Push each time a *new* comment is approved — distinct from
-reply notifications (DEC-064), which only target the author of the replied-to
+reply notifications, which only target the author of the replied-to
 comment. This suite pins the reader-scoped API and the approval fan-out:
 
 - anonymous readers see ``subscribed: false``; only a reader can subscribe;
@@ -110,7 +110,7 @@ class TestSubscribeToggleStatus:
         r1 = await _follow(client, post.id, token)
         r2 = await _follow(client, post.id, token)
         # First subscribe is 201; a re-subscribe is 200 (idempotent, matching
-        # the bookmark PUT contract — ISS-146).
+        # the bookmark PUT contract).
         assert r1.status_code == 201, r1.text
         assert r2.status_code == 200, r2.text
         assert (
@@ -225,7 +225,7 @@ class TestThreadFanout:
         ONCE. The comment was already public, so re-approving it (content
         unchanged) must not re-send a push the subscriber already got — the
         routers' `before` guard only knows the immediately-prior state, so this
-        regression is what Comment.notified_at pins down (round 393)."""
+        regression is what Comment.notified_at pins down."""
         from app import models
 
         post = await self._post(client, db_session)
@@ -276,7 +276,7 @@ class TestThreadFanout:
             assert mock_send.called
             by_endpoint = {call.kwargs["endpoint"] for call in mock_send.call_args_list}
             # A: exactly one push (the reply notification, deep-linked to the
-            # new reply per DEC-072's acceptance "tapped the notification opens
+            # new reply per's acceptance "tapped the notification opens
             # scrolled to the reply it mentions") — no duplicate thread push.
             # C: one thread push, also deep-linked to the new reply.
             assert by_endpoint == {a_endpoint, c_endpoint}

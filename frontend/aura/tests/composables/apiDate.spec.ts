@@ -1,5 +1,5 @@
 /**
- * parseApiDate tests (DEC-213).
+ * parseApiDate tests.
  *
  * The backend stores/serializes naive-UTC timestamps without a zone marker;
  * a bare `new Date(str)` parses them as local wall-clock, shifting the

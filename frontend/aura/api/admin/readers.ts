@@ -8,8 +8,8 @@ import { command, query, withQuery } from "../transport";
  *
  * `page` and `q` accept refs: the path is computed from their values so either
  * edit (pagination click, debounced search box) auto-refetches via useFetch's
- * path watching — the same pattern as the media library (DEC-189). `q` narrows
- * by email/display-name substring (case-insensitive, backend DEC-194); an
+ * path watching — the same pattern as the media library. `q` narrows
+ * by email/display-name substring (case-insensitive, backend); an
  * empty query is omitted so an unfiltered call stays q-free.
  */
 export function useAdminReaders(page: Ref<number> | number = 1, pageSize = 20, q?: Ref<string>) {

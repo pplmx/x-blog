@@ -1,10 +1,10 @@
 <!--
   Admin readers page — the operator surface for registered reader accounts
-  (DEC-194, TASK-214, ISS-116). Lists every self-registered reader with their
+  . Lists every self-registered reader with their
   moderation-relevant context (join date, last login, comment/bookmark counts)
   and lets the admin deactivate or reactivate an account. Deactivation blocks
   sign-in and revokes every live reader JWT, so a spam reader stops getting
-  trust-tier auto-approved comments (DEC-098) immediately.
+  trust-tier auto-approved comments immediately.
 -->
 <script setup lang="ts">
 import { activateReader, deactivateReader, useAdminReaders } from "~~/api/admin/readers";
@@ -21,7 +21,7 @@ useHead({ title: computed(() => t("admin.readers.seoTitle")) });
 const currentPage = ref(1);
 const pageSize = 20;
 // Debounced search: the input ref updates instantly, the query ref drives the
-// useFetch path so a pause in typing triggers a refetch (DEC-189 pattern).
+// useFetch path so a pause in typing triggers a refetch pattern.
 const searchInput = ref("");
 const searchQ = ref("");
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -48,7 +48,7 @@ const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 // past totalPages (a rapid double-click or a list that shrank between loads
 // stranded the operator on a blank out-of-range page with no recovery: the
 // backend returns empty items and only Prev was responsive). Same guard as the
-// posts list / media page goToPage (round 278).
+// posts list / media page goToPage.
 function goToPage(page: number) {
 	if (page < 1 || page > totalPages.value) return;
 	currentPage.value = page;
@@ -91,7 +91,7 @@ async function toggleActive(reader: AdminReader) {
 		// apiErrorMessage: on an HTTP failure e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — the helper returns
 		// the backend envelope when readable, else the localized fallback
-		// (round-445 audit).
+		//.
 		actionError.value = apiErrorMessage(e, t("admin.readers.toggleFailed"));
 	} finally {
 		busyIds.value.delete(reader.id);

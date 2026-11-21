@@ -1,4 +1,4 @@
-"""Search filters + sort contract tests (DEC-084, TASK-154).
+"""Search filters + sort contract tests.
 
 Adds category/tag/date-range narrowing and sort (relevance/newest/oldest/
 views) to /api/search. Key properties:
@@ -7,7 +7,7 @@ views) to /api/search. Key properties:
 - date_from/date_to bound the effective publish time (publish_at ??
   created_at; naive-UTC coercion: an aware ISO datetime works and never
   hits a PG tz-mismatch) so a scheduled post is searchable in the window it
-  went live, matching the feed/archive (RIL ISS-266).
+  went live, matching the feed/archive.
 - sort=newest/oldest/views reorder deterministically on the dialect-agnostic
   substring path; newest/oldest key off effective publish time. sort=relevance
   on a non-tsvector (SQLite / CJK) query degrades to newest. Invalid sort is a 422.
@@ -77,7 +77,7 @@ class TestEffectivePublishDateBounds:
 
     A post drafted a month ago but scheduled/live today must be findable in
     today's date window (it is a "today" post to readers, matching the feed and
-    archive which already use publish_at ?? created_at — RIL ISS-266). The old
+    archive which already use publish_at ?? created_at). The old
     code bound created_at, so a scheduled post appeared in the archive month it
     went live but escaped the equivalent search window.
     """
@@ -190,7 +190,7 @@ class TestSearchSort:
         # PostgreSQL DOES rank with ts_rank over the seeded content — but the
         # two "python" posts tie (each has exactly two "python" tokens: one in
         # the title, one in the content), so the deterministic Post.id.desc()
-        # tiebreak (ISS-271/DEC-239) resolves the tie to py-viz (newer,
+        # tiebreak resolves the tie to py-viz (newer,
         # higher id) — the same newest-first order as the fallback. The result
         # is dialect-consistent. (PG-harness finding: the old per-dialect
         # expectation ["py-async", "py-viz"] encoded pre-tiebreak query-plan

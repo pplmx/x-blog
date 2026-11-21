@@ -1,9 +1,9 @@
-"""Guest email newsletter contract tests (DEC-351, TASK-401).
+"""Guest email newsletter contract tests.
 
 The blog's entire email surface (weekly digest, per-event emails, guest reply
 emails) is gated behind either a reader account or a comment — an anonymous
 visitor who just wants "email me new posts" has no on-ramp other than RSS
-(a tool for technical readers). DEC-351 adds a guest newsletter: an email
+(a tool for technical readers). adds a guest newsletter: an email
 address subscribes (double opt-in — a confirmation link must be clicked before
 the address receives anything), and every confirmed subscriber is emailed once,
 per new published post, with a working per-subscriber unsubscribe link.
@@ -410,7 +410,7 @@ async def test_unsubscribe_before_confirm_is_a_real_revocation(client, db_sessio
     rows: a fresh address that clicked unsubscribe in its confirmation email
     BEFORE confirming got 200 {"unsubscribed": True} but no state change, and
     the same email's confirm link then flipped it to subscribed — the exact
-    opposite of the message the user saw. The round-393 confirm gate is what
+    opposite of the message the user saw. The confirm gate is what
     makes a stamped revocation permanent, so the stamp must apply to both
     states.
     """
@@ -431,7 +431,7 @@ async def test_unsubscribe_before_confirm_is_a_real_revocation(client, db_sessio
     assert sub.is_confirmed is False
     assert sub.unsubscribed_at is not None
 
-    # The SAME confirmation link must be gated by the round-393 revocation.
+    # The SAME confirmation link must be gated by the revocation.
     r = await client.post("/api/newsletter/confirm", json={"token": token})
     assert r.status_code == 400
     # And no new-post mail may ever go to the address.

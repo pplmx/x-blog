@@ -1,5 +1,5 @@
 /**
- * Author post-preview page tests (DEC-150, TASK-187).
+ * Author post-preview page tests.
  *
  * Renders a not-yet-published post's full reader view from the admin detail
  * when an admin token is present.
@@ -72,7 +72,7 @@ function stubRoute(id = "5") {
 	vi.stubGlobal("useRoute", () => ({ params: { id } }));
 }
 
-describe("Author preview page (TASK-187)", () => {
+describe("Author preview page ", () => {
 	it("renders a draft post's title, excerpt and content for an admin", async () => {
 		window.localStorage.setItem("admin_token", "admin");
 		stubRoute("5");

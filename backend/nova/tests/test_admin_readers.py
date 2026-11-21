@@ -1,7 +1,7 @@
-"""Admin reader management contract tests (DEC-194, TASK-214, ISS-116).
+"""Admin reader management contract tests.
 
 Reader accounts shipped as a fully reader-facing arc — self-registration,
-bookmarks, comment history, trust-tier auto-approve (DEC-098) and self-service
+bookmarks, comment history, trust-tier auto-approve and self-service
 account deletion — but no operator surface exists: there is no admin list of
 registered readers and no mechanism to deactivate an account. Because the trust
 tier auto-approves every verified reader's comment, a script-registered account
@@ -66,7 +66,7 @@ class TestListReaders:
         assert r.status_code == 201
         # A reader-scoped token (aud=x-blog-reader) is rejected by the admin
         # guard as invalid credentials (401) — the audience separation of
-        # DEC-059 means it is never even recognized as a valid-but-forbidden
+        # means it is never even recognized as a valid-but-forbidden
         # identity, so the reader token cannot reach the readers list.
         assert (await client.get(ADMIN_READERS, headers=_reader_headers(r))).status_code == 401
 

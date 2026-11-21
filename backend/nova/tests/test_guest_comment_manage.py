@@ -1,7 +1,7 @@
-"""Guest comment management via emailed token (round 385, DEC-435/TASK-444).
+"""Guest comment management via emailed token.
 
 An anonymous commenter who accepts the reply email consent gets a per-comment
-secret token (DEC-332) that is only ever delivered by mail. Before this round
+secret token that is only ever delivered by mail. Before this round
 it existed solely to flip ``reply_notify_email`` off; now the same token gates
 comment edit/delete (GET/PATCH/DELETE /api/comments/manage) so a guest can fix
 a typo or withdraw a comment without an account. These tests cover the router
@@ -203,8 +203,8 @@ async def test_approval_emails_consenting_guest_a_manage_link(client, post, db_s
     text = _text_part(msg)
     assert "manage" in text
     assert token in text  # the deep link carries the secret the guest owns
-    # Flat top-level route (DEC-435/TASK-444): a child under /comments would
-    # nest and never mount (Nuxt page-nesting gotcha, per DEC-332).
+    # Flat top-level route: a child under /comments would
+    # nest and never mount (Nuxt page-nesting gotcha, per).
     assert f"/comment-manage?token={token}" in text
 
 

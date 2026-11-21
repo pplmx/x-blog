@@ -1,4 +1,4 @@
-"""Reader notification-preference contract tests (DEC-171, TASK-202).
+"""Reader notification-preference contract tests.
 
 The blog fans out three notification kinds to a signed-in reader — new_post in a
 followed series/category, a reply to their comment, a new comment on a followed
@@ -261,7 +261,7 @@ class TestDispatchGating:
 
 
 class TestEmailChannel:
-    """Email channel (DEC-197, TASK-217): opt-in per-kind SMTP copy of the fan-out."""
+    """Email channel: opt-in per-kind SMTP copy of the fan-out."""
 
     _class_smtp_sent: list = []
 
@@ -385,8 +385,8 @@ class TestEmailChannel:
         assert any(i["kind"] == "mention" for i in rows["items"])
 
     async def test_mention_email_independent_of_inbox_opt_out(self, client, auth_headers, db_session):
-        # Turning the in-app 'mention' kind OFF silences inbox + push (DEC-322)
-        # but must NOT silence the separately-opted email copy (DEC-326): the
+        # Turning the in-app 'mention' kind OFF silences inbox + push
+        # but must NOT silence the separately-opted email copy: the
         # two channels are gated by different prefs.
         token = await _register_named(client, "MailMentionSplit", "mail-mention-split@example.com")
         await _opt_out(client, token, "mention")

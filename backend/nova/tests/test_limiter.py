@@ -54,7 +54,7 @@ async def test_trusted_peer_forged_xff_not_an_ip_falls_back_to_peer(monkeypatch)
     supplies the header; only the proxy's presence is trusted): it must not
     become the rate-limit key -- it would be a spoofable fresh bucket and an
     unbounded string that overflows the VARCHAR(50) ip_address/ip_key columns
-    (round-17 security review, TASK-351)."""
+    ."""
     monkeypatch.setenv("TRUSTED_PROXIES", "*")
     assert client_rate_key(_req("10.0.0.5", "not-an-ip")) == "10.0.0.5"
     assert client_rate_key(_req("10.0.0.5", "garbage" * 100)) == "10.0.0.5"

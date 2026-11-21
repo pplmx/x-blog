@@ -10,7 +10,7 @@ scheduled-passthrough gate (no draft/scheduled leak), pages are ``published``
 only, series are all public (they have no draft state), and authors are
 pen-named admins only — a username-only admin's login username is never
 indexed. Matching is the same CJK-aware, dialect-parity substring AND the post
-search uses (DEC-084), so partial Chinese terms match on SQLite and Postgres
+search uses, so partial Chinese terms match on SQLite and Postgres
 alike.
 """
 
@@ -167,7 +167,7 @@ class TestCombinedSearch:
 
     async def test_blank_query_is_422(self, client):
         # Same non-blank guard as /api/search: a whitespace-only q must never
-        # degrade into an ILIKE '% %' full scan (round-296).
+        # degrade into an ILIKE '% %' full scan.
         assert (await client.get("/api/search/all", params={"q": "   "})).status_code == 422
 
     async def test_pagination_across_pages(self, client, auth_headers):

@@ -25,17 +25,17 @@ export interface ReaderHistoryStats {
 	last_viewed_at?: string | null;
 	recent: ReaderHistoryItem[];
 	/**
-	 * Consecutive active days ending today (or yesterday) — DEC-169. Counted in
+	 * Consecutive active days ending today (or yesterday). Counted in
 	 * the reader's local calendar when a timezone was sent, UTC otherwise
-	 * (DEC-316).
+	 *.
 	 */
 	current_streak?: number;
-	/** Longest run of consecutive active days anywhere (DEC-169). */
+	/** Longest run of consecutive active days anywhere. */
 	longest_streak?: number;
 	/**
 	 * Last 52 weeks of per-day read counts (ascending, zeros included) — the
 	 * dates are the reader's LOCAL calendar days when a timezone was sent, UTC
-	 * otherwise (DEC-316/TASK-386).
+	 * otherwise.
 	 */
 	activity?: { date: string; count: number }[];
 }
@@ -69,12 +69,12 @@ export function getReaderHistory(
  * Fire-and-forget client POST from the post page's onMounted — must run through
  * the imperative `command` seam, never `useFetch`: `useFetch` requires a
  * setup/suspense context to trigger execution and its request silently never
- * leaves the browser when called from a lifecycle hook. (ISS-110/111)
+ * leaves the browser when called from a lifecycle hook.
  *
- * ``scrollPosition`` (optional, DEC-167/TASK-200) saves the reader's resume
+ * ``scrollPosition`` (optional) saves the reader's resume
  * offset in one write with the same endpoint. Omit it for a plain view that
  * preserves an already-saved position; ``0`` clears it. ``scrollFraction``
- * (optional, DEC-346/TASK-399) is the same position as a 0..1 fraction of the
+ * (optional) is the same position as a 0..1 fraction of the
  * scrollable document height, so a cross-device continuation restores at the
  * right place on a differently-sized viewport.
  */
@@ -104,8 +104,8 @@ export function recordReaderHistory(
 	);
 }
 
-/** The reader's saved resume offset for a post, if any (DEC-167/TASK-200);
- * ``scroll_fraction`` (DEC-346/TASK-399) is the cross-viewport fraction, null
+/** The reader's saved resume offset for a post, if any;
+ * ``scroll_fraction`` is the cross-viewport fraction, null
  * for pre-feature rows. */
 export function getReaderReadingPosition(
 	postId: number,
@@ -118,12 +118,11 @@ export function getReaderReadingPosition(
 }
 
 /**
- * The reader's posts with a saved resume position, newest-first (DEC-348,
- * TASK-400) — the cross-device "Continue reading" trail for the home page. The
- * home row was localStorage-only (DEC-104), invisible to a signed-in reader on
- * a NEW device; this surfaces the server trail (DEC-167/DEC-346) outside
+ * The reader's posts with a saved resume position, newest-first — the cross-device "Continue reading" trail for the home page. The
+ * home row was localStorage-only, invisible to a signed-in reader on
+ * a NEW device; this surfaces the server trail outside
  * /history. Imperative seam — a lifecycle-hook loader must never run a useFetch
- * query (ISS-110/111/117/118).
+ * query.
  */
 export function getReaderInProgress(limit = 6): Promise<ReaderHistoryListResponse> {
 	return command<ReaderHistoryListResponse>("/api/reader/me/history/in-progress", {
@@ -135,7 +134,7 @@ export function getReaderInProgress(limit = 6): Promise<ReaderHistoryListRespons
 /**
  * Reader reading-summary stats derived from their history (requires reader token).
  *
- * ``tz`` (optional, DEC-316/TASK-386) is the browser's IANA timezone id, e.g.
+ * ``tz`` (optional) is the browser's IANA timezone id, e.g.
  * ``Asia/Shanghai``. The backend buckets the streak and 52-week heatmap to the
  * reader's own calendar when it is sent — without it the two aggregate in UTC
  * and silently disagree with a non-UTC reader's wall clock.
@@ -148,7 +147,7 @@ export function getReaderHistoryStats(tz?: string): Promise<ReaderHistoryStats> 
 }
 
 /** A category name plus how many distinct posts of it the reader has read
- *  (DEC-417/TASK-434). */
+ *. */
 export interface CategoryReadCount {
 	name: string;
 	count: number;
@@ -164,7 +163,7 @@ export interface ReaderHistoryInsights {
 }
 
 /** Aggregated reading insights — what and how much the reader has read
- *  (DEC-417/TASK-434): distinct publicly-visible posts all-time and in the
+ * distinct publicly-visible posts all-time and in the
  *  trailing 30 days, plus the most-read categories. Complements the
  *  streak/heatmap stats with the content shape. Requires reader token. */
 export function getReaderHistoryInsights(): Promise<ReaderHistoryInsights> {
@@ -181,7 +180,7 @@ export function clearReaderHistory(): Promise<null> {
 	});
 }
 
-/** One device-local read to merge into the server history (TASK-303). */
+/** One device-local read to merge into the server history. */
 export interface HistoryImportItem {
 	slug: string;
 	/** The guest's original read instant as naive-UTC ISO; legacy rows omit it. */
@@ -194,7 +193,7 @@ export interface HistoryImportResult {
 }
 
 /**
- * Merge the on-device reading trail into the server history (TASK-303, ISS-386).
+ * Merge the on-device reading trail into the server history.
  *
  * Guests record reads to localStorage; after sign-in the history source is the
  * server trail, so the device records silently vanish unless migrated. The
@@ -211,7 +210,7 @@ export function importReaderHistory(items: HistoryImportItem[]): Promise<History
 }
 
 /**
- * Personalized "Recommended for you" list (DEC-128, TASK-176).
+ * Personalized "Recommended for you" list.
  * Returns posts scored from the signed-in reader's history/bookmark affinity.
  */
 export function useReaderRecommendations(limit = 6) {
@@ -225,7 +224,7 @@ export function useReaderRecommendations(limit = 6) {
 /**
  * Imperative "Recommended for you" list (home page onMounted loader) — the
  * imperative seam; see getReaderSeriesProgress for why lifecycle-hook loaders
- * must never run a useFetch query (ISS-110/111/117/118/119, TASK-220).
+ * must never run a useFetch query.
  */
 export function getReaderRecommendations(limit = 6): Promise<PostList[]> {
 	return command<PostList[]>("/api/reader/me/recommendations", {
@@ -245,7 +244,7 @@ export function useReaderSeriesProgress(slug: string) {
 /**
  * Imperative per-series progress ($fetch seam, see getReaderSeriesFollows): a
  * lifecycle-hook loader must never run a useFetch query, which silently never
- * sends outside an async-setup context (ISS-110/111/117/118, TASK-220).
+ * sends outside an async-setup context.
  */
 export function getReaderSeriesProgress(slug: string): Promise<SeriesProgress> {
 	return command<SeriesProgress>(`/api/reader/me/series/${slug}/progress`, {

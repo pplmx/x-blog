@@ -1,5 +1,5 @@
 /**
- * Comment-thread subscription journey (DEC-078, TASK-150).
+ * Comment-thread subscription journey.
  *
  * A signed-in reader sees the "Follow discussion" toggle on a post's comments
  * header and manages those follows on the account page. This spec pins the

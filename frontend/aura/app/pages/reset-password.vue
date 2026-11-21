@@ -1,5 +1,5 @@
 <!--
-  Password-reset redemption (DEC-286, TASK-371).
+  Password-reset redemption.
 
   Landed on via the emailed ?token= link. Validates a matching password pair,
   redeems the token (auto-login on the backend), adopts the fresh session and
@@ -18,7 +18,7 @@ useSeo(() => ({
 	title: t("reader.resetPassword.seoTitle"),
 	description: t("reader.resetPassword.seoDesc"),
 	path: "/reset-password",
-	// Reader auth flows are private surfaces — never index them (round 437).
+	// Reader auth flows are private surfaces — never index them.
 	noindex: true,
 }));
 
@@ -60,7 +60,7 @@ async function handleSubmit() {
 	// Route only after a truthful success is fixed — a rejecting navigateTo
 	// (e.g. middleware error, tests) must not be caught as a network failure
 	// while the reader is in fact signed in under the fresh session; the
-	// `done` success block below carries them (round-342 pattern). The
+	// `done` success block below carries them. The
 	// rejection is swallowed (nothing depends on the nav) so a redirect hiccup
 	// can't leave an unhandled rejection in the console.
 	done.value = true;
@@ -91,9 +91,9 @@ async function handleSubmit() {
 				</p>
 			</div>
 
-			<!-- Success state (TASK-486/round-408): the reader is now signed in; if
+			<!-- Success state: the reader is now signed in; if
            navigation to /account were interrupted, this is what they see
-           instead of a blank page (round-342 pattern). -->
+           instead of a blank page. -->
 			<div
 				v-if="done"
 				role="status"

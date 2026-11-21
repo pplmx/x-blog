@@ -1,9 +1,9 @@
-"""add reading_history table for server-backed reader view history (DEC-116)
+"""add reading_history table for server-backed reader view history
 
 Signed-in readers' Continue-reading trail is now persisted server-side so it
-follows them across devices (TASK-170). One row per (reader, post) pair with a
+follows them across devices. One row per (reader, post) pair with a
 ``viewed_at`` stamp — an upsert updates the timestamp in place (no duplicates).
-Only the new additive table is created; no existing DDL is touched (DEC-009).
+Only the new additive table is created; no existing DDL is touched.
 
 Revision ID: c3d5e7f9a0b1
 Revises: b2d4f6a8c0e2

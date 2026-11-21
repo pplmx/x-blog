@@ -1,7 +1,7 @@
-"""add reader_follows table (reader-to-reader follow, round 365)
+"""add reader_follows table (reader-to-reader follow)
 
 A brand-new additive table — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Holds a reader's
+SQLite-can't-add-FK constraint of does not apply. Holds a reader's
 follow subscriptions to OTHER READERS (reader_id, followed_id), the last
 un-followable identity once authors/tags/series/categories had follow. A
 DB-level unique on (reader_id, followed_id) stops a reader following the same

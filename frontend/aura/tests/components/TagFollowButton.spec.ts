@@ -1,5 +1,5 @@
 /**
- * TagFollowButton component tests (DEC-196, TASK-216).
+ * TagFollowButton component tests.
  *
  * The inline tag-follow control attached to the post-page footer chips: only
  * signed-in readers see it; follow state is loaded through the shared
@@ -156,7 +156,7 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
 	});
 
-	it("shows an in-flight spinner and grows the hit target (ISS-380)", async () => {
+	it("shows an in-flight spinner and grows the hit target ", async () => {
 		localStorage.setItem("reader_token", "tok-1");
 		mockGet.mockResolvedValue({ items: [], total: 0 });
 		// Leave the follow request pending so the busy state is observable.
@@ -199,7 +199,7 @@ describe("TagFollowButton", () => {
 		expect(w.find('button[aria-label="rust tags.followTitle"]').exists()).toBe(true);
 	});
 
-	it("anchors the failure bubble below the chip so it cannot occlude the row above (ISS-230)", async () => {
+	it("anchors the failure bubble below the chip so it cannot occlude the row above ", async () => {
 		localStorage.setItem("reader_token", "tok-1");
 		mockGet.mockResolvedValue({ items: [], total: 0 });
 		mockFollow.mockRejectedValue(new Error("network"));

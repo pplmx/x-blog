@@ -16,7 +16,7 @@ const route = useRoute();
 // The whole /admin/* tree (incl. the login page) must never be indexed: admin
 // sessions and the editor are private surfaces that crawlers have no business
 // ranking, and a stale indexed login shell just attracts credential probes.
-// One robots meta here covers every admin page (round 437).
+// One robots meta here covers every admin page.
 useHead({
 	meta: [{ name: "robots", content: "noindex, follow" }],
 });
@@ -32,7 +32,7 @@ const isLoginPage = computed(() => route.path === "/admin/login");
 const sidebarOpen = ref(false);
 // Mobile drawer closed ⇒ the off-canvas aside is translated out of view but
 // its links stay in the keyboard tab order — Tab lands on invisible
-// Dashboard/Posts/... and Enter navigates blindly (a11y audit, round 428).
+// Dashboard/Posts/... and Enter navigates blindly (a11y audit).
 // Mark it inert on mobile while closed so those links drop out of the tab
 // order; on lg+ the aside is a permanent static column, so inert never binds.
 // Draggable resize handles are not React-compatible with a ref, so a change
@@ -151,7 +151,7 @@ const passwordForm = ref({ current_password: "", new_password: "", confirm: "" }
 const passwordError = ref<string | null>(null);
 const passwordSuccess = ref(false);
 const passwordBusy = ref(false);
-// The 1.5s success auto-close, tracked so unmount cancels it (round-420 sweep).
+// The 1.5s success auto-close, tracked so unmount cancels it.
 let passwordFlashTimer: ReturnType<typeof setTimeout> | undefined;
 const passwordCurrentInput = ref<HTMLInputElement | null>(null);
 const passwordPanelRef = ref<HTMLElement | null>(null);
@@ -249,7 +249,7 @@ async function handleChangePassword() {
 		}
 		passwordSuccess.value = true;
 		passwordForm.value = { current_password: "", new_password: "", confirm: "" };
-		// Tracked + cleared on unmount (round-420 sweep, same class as every
+		// Tracked + cleared on unmount (sweep, same class as every
 		// other flash one-shot): the layout is long-lived so the window is
 		// small, but a captured timer firing after teardown (or a second change
 		// within 1.5s) should not double-close the modal.
@@ -274,12 +274,12 @@ watch(
 );
 
 // Navigation items matching the Next.js admin layout. The Users section
-// (manage admins) is superuser-only — hidden for editors (DEC-054, TASK-116).
+// (manage admins) is superuser-only — hidden for editors.
 /** True when a sidebar item is the reader's current section. Dashboard is
  * EXACTLY /admin (its "/admin/" children are the other sections); every other
  * item also stays lit on its sub-pages — the post editor (/admin/posts/[id])
  * and /admin/posts/new are the most-used admin surface and previously lost
- * all nav highlight (deep-dive, ISS-417). */
+ * all nav highlight (deep-dive). */
 function isNavActive(href: string, path: string): boolean {
 	if (href === "/admin") return path === "/admin";
 	return path === href || path.startsWith(`${href}/`);
@@ -296,13 +296,13 @@ const navItems = computed(() => {
 		{ href: "/admin/series", labelKey: "admin.nav.series", icon: "lucide:layers" },
 		{ href: "/admin/settings", labelKey: "admin.nav.settings", icon: "lucide:settings" },
 		{ href: "/admin/media", labelKey: "admin.nav.media", icon: "lucide:images" },
-		// Reader accounts (DEC-194): a moderation surface, so available to every
+		// Reader accounts: a moderation surface, so available to every
 		// admin role — unlike /admin/users provisioning (superuser-only).
 		{ href: "/admin/readers", labelKey: "admin.nav.readers", icon: "lucide:user-check" },
-		// Newsletter subscribers (DEC-354): the guest newsletter's operator
+		// Newsletter subscribers: the guest newsletter's operator
 		// management loop — also a moderation surface, available to every role.
 		{ href: "/admin/newsletter", labelKey: "admin.nav.newsletter", icon: "lucide:mail" },
-		// Static pages CMS (round 347): content curation, available to every role.
+		// Static pages CMS: content curation, available to every role.
 		{ href: "/admin/pages", labelKey: "admin.nav.pages", icon: "lucide:scroll-text" },
 	];
 	if (currentRole.value === "superuser") {
@@ -402,7 +402,7 @@ onBeforeUnmount(() => {
 						{{ isDark ? t("common.theme.light") : t("common.theme.dark") }}
 					</button>
 
-					<!-- Comment-moderation alerts (DEC-080): opt this browser into a push
+					<!-- Comment-moderation alerts: opt this browser into a push
                when a new comment awaits approval. Admin-context only. -->
 					<AdminPushToggle />
 

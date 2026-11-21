@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Inline tag-follow control (DEC-196/TASK-216).
+ * Inline tag-follow control.
  *
  * Attaches to a tag chip on the reading surface so a signed-in reader can
  * follow/unfollow the tag and toggle its new-post notifications in place,
@@ -28,7 +28,7 @@ const store = useTagFollowStore();
 // every tap on this post-page chip 401 into a generic "follow failed" bubble
 // with no path back to sign-in. On a stale-session 401 the guard drops the
 // dead token — the signed-in gate below is localStorage presence, so the chip
-// flips to guest — and the sign-in prompt renders instead (round-300).
+// flips to guest — and the sign-in prompt renders instead.
 const { sessionExpired, guardFollowFailure } = useFollowSessionGuard();
 
 // Reactive reader-auth singleton (NOT an ad-hoc localStorage read): after
@@ -128,7 +128,7 @@ onUnmounted(() => {
 		     follow/notify call rejects. Anchored absolutely so it never shifts the
 		     tag row. Anchored BELOW the chip (top-full): the tags row is a wrapping
 		     flex, so an above-anchored bubble (bottom-full) painted over the chip in
-		     the row above (ISS-230); dropping it downward lands it in the whitespace
+		     the row above; dropping it downward lands it in the whitespace
 		     below the footer for the common single-row / last-row cases. -->
 		<span
 			v-if="error"
@@ -138,7 +138,7 @@ onUnmounted(() => {
 		>
 			{{ t("tags.followFailed") }}
 		</span>
-		<!-- Hit-target + in-flight feedback (deep-dive ISS-380): p-1 padding made
+		<!-- Hit-target + in-flight feedback (deep-dive): p-1 padding made
 		     ~22px touch targets well under the 44px guideline, and while busy the
 		     only feedback was disabled:opacity-40 — a follow tap on a slow network
 		     looked like a silent no-op. p-2 grows the target; the icon swaps to a

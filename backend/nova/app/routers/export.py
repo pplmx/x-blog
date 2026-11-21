@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 # CSV in one StringIO before streaming a single chunk — O(n) memory on an
 # admin-only endpoint (a 100k-post export ≈ tens of MB of models + a buffer)
 # and no bytes until every row is serialized. Now the row sources page the
-# query and yield chunk-by-chunk (ISS-637). Chunks are byte-identical to one
+# query and yield chunk-by-chunk. Chunks are byte-identical to one
 # csv.writer pass: concatenating them reproduces the old single CSV exactly.
 # The response generators run while FastAPI's get_db teardown is deferred
 # (dependency cleanup happens after a StreamingResponse finishes), so
@@ -68,7 +68,7 @@ def _csv_safe(value: object) -> object:
 def _csv_status(post: models.Post, now: datetime) -> str:
     """CSV Status cell, aligned with the read-path semantics: a published post
     whose ``publish_at`` is still in the future reads "scheduled" — it is not
-    live yet — not "published" (RIL ISS-290)."""
+    live yet — not "published"."""
     if not post.published:
         return "draft"
     return "scheduled" if post.publish_at and post.publish_at > now else "published"
@@ -92,7 +92,7 @@ async def export_posts_csv(
     Previously only published posts were exported (hard-capped at 10000 with
     no status/date control) — drafts and scheduled posts were silently omitted.
     Now status defaults to "all"; add the status/date columns so an admin can
-    see each row's moderation state (RIL TASK-079, ISS-048).
+    see each row's moderation state.
     """
     stmt = select(models.Post)
     if status == "published":
@@ -102,7 +102,7 @@ async def export_posts_csv(
     elif status == "scheduled":
         # "Scheduled" means actually going live: published AND not yet its
         # publish time. A future-publish_at DRAFT never goes live, so it does
-        # not belong under this filter (RIL ISS-290).
+        # not belong under this filter.
         stmt = stmt.where(models.Post.published.is_(True), models.Post.publish_at > utc_now_naive())
     # status None/"all" → every post regardless of state. A bare-date date_to
     # is widened to end-of-day so the picked day is included in the export.
@@ -114,15 +114,15 @@ async def export_posts_csv(
         stmt = stmt.where(models.Post.created_at <= end)
 
     # category/tags are read per row below; eager-load so a page of posts stays
-    # a handful of queries instead of ~2 lazy loads per row (RIL ISS-289).
+    # a handful of queries instead of ~2 lazy loads per row.
     # Deterministic order: without an ORDER BY, the LIMIT-selected subset above
     # the cap is chosen by the query plan — unreproducible, and the remainder is
-    # unreachable. Post.id desc is cheap (PK index) and matches the DEC-239
+    # unreachable. Post.id desc is cheap (PK index) and matches the
     # tiebreak idiom (the sibling comments export already orders by created_at).
     async def _post_rows() -> AsyncIterator[list[int | object | str]]:
         # Keyset page by id because the tags eager-load is a joined collection,
         # which yield_per refuses; id-desc keyset keeps the same
-        # deterministic order and one bounded query per page (ISS-637).
+        # deterministic order and one bounded query per page.
         now = utc_now_naive()
         remaining = limit
         last_id: int | None = None
@@ -200,7 +200,7 @@ async def export_comments_csv(
 
     Previously every comment (including unapproved) was dumped with no filter.
     Now supports is_approved + date filters and surfaces the moderation state
-    in a dedicated column (RIL TASK-079, ISS-048).
+    in a dedicated column.
     """
     stmt = select(models.Comment)
     if is_approved is not None:

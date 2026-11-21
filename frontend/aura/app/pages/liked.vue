@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Reader liked-posts page (round 359, DEC-391/TASK-421).
+ * Reader liked-posts page.
  *
  * The "posts I appreciated" surface that joins bookmarks (saved to read) and
  * history (read): every post the signed-in reader liked, newest-like-first,
@@ -25,7 +25,7 @@ const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 const { likeSyncIssue, clearLikeSyncIssue, mergeLocalToCloud, unlike } = useLikeSync();
 
 // Guests and stale sessions land on /login with the return path back to this
-// page (ISS-563): sign in once and come straight back to the likes instead of
+// page: sign in once and come straight back to the likes instead of
 // dumping onto the default /bookmarks landing (comments/account parity — the
 // login page only honors same-origin relative redirect values).
 const loginTarget = { path: "/login", query: { redirect: "/liked" } } as const;
@@ -53,9 +53,9 @@ const pagination = ref<PaginationInfo | null>(null);
 // Monotonic request sequence (see load() — the stale-response guard).
 let loadSeq = 0;
 
-// Recall search over the reader's liked posts (DEC-413, TASK-432): the last
-// reader-owned surface without keyword search — bookmarks (DEC-124), history
-// (DEC-148) and my-comments (round 369) all let a reader find a specific item.
+// Recall search over the reader's liked posts: the last
+// reader-owned surface without keyword search — bookmarks, history
+// and my-comments all let a reader find a specific item.
 // Server-side `q` (title/excerpt) is debounced like history's recall-search so
 // fast typing doesn't fire a request per keystroke.
 const searchQuery = ref("");
@@ -93,12 +93,12 @@ const paginationTokens = computed(() =>
 	paginationPages(pagination.value?.total_pages ?? 0, page.value),
 );
 
-// Screen-reader page announcement (round 398, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the grid in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
 
-// Stale deep-link clamp (home/search/archive pattern, ISS-308).
+// Stale deep-link clamp (home/search/archive pattern).
 watch(
 	() => pagination.value,
 	(p) => {
@@ -184,7 +184,7 @@ function retry() {
 	void load();
 }
 
-// Per-card unlike (DEC-415, TASK-433): the page is the "posts I appreciated"
+// Per-card unlike: the page is the "posts I appreciated"
 // list, so taking a like back should happen in place, not by visiting the post.
 // useLikeSync.unlike() clears the local marker + persists + mirrors the DELETE
 // (idempotent 204, decrements the public counter); offline-safe (the next
@@ -249,7 +249,7 @@ async function handleUnlike(post: PostList) {
 					{{ t("liked.subtitle") }}
 				</p>
 			</div>
-			<!-- Dead-session warning (bookmarks-parity, ISS-222): the likes mirror
+			<!-- Dead-session warning (bookmarks-parity): the likes mirror
 			     surfaced a stored token the backend no longer accepts, so likes are
 			     kept locally but silently dropped by the cloud until sign-in again. -->
 			<div
@@ -299,7 +299,7 @@ async function handleUnlike(post: PostList) {
 
 		<template v-else>
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
-			<!-- Recall search over the liked posts (DEC-413, TASK-432): debounced,
+			<!-- Recall search over the liked posts: debounced,
 			     server-side, matches title/excerpt. -->
 			<div class="relative mb-4 max-w-sm">
 				<Icon
@@ -364,7 +364,7 @@ async function handleUnlike(post: PostList) {
 						</div>
 					</NuxtLink>
 
-					<!-- Unlike in place (DEC-415, TASK-433): the page's one management
+					<!-- Unlike in place: the page's one management
 					     control — taking a like back without visiting the post. -->
 					<button
 						type="button"

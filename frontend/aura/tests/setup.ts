@@ -13,7 +13,7 @@ Object.defineProperty(window.navigator, "language", {
 // happy-dom (vitest 4.x) has historically differed on localStorage: some
 // versions expose the object but leave getItem/setItem/clear unimplemented,
 // newer 20.x builds do not define it at all (undefined on both globalThis and
-// window — RIL TASK-120). Install one in-memory mock unconditionally so every
+// window). Install one in-memory mock unconditionally so every
 // test sees the same deterministic storage regardless of the happy-dom
 // version the lockfile resolves to.
 const store: Record<string, string> = {};

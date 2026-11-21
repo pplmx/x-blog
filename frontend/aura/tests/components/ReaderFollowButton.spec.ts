@@ -1,13 +1,12 @@
 /**
- * ReaderFollowButton component tests (reader-to-reader follow, round 365 /
- * DEC-403).
+ * ReaderFollowButton component tests (reader-to-reader follow).
  *
  * The profile-header follow control: shows every visitor the public follower
  * count, renders a Follow/Following toggle only for a signed-in reader who is
  * not viewing their own profile, and seeds its state from the profile payload
  * (no follow-state GET — the profile already returns is_following). Click toggles
  * the follow and bumps the count off the server-confirmed result. Dead-session
- * 401s drop the expired token and show the sign-in prompt (round-300 guard,
+ * 401s drop the expired token and show the sign-in prompt (guard,
  * mirrors AuthorFollowButton).
  */
 

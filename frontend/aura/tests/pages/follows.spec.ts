@@ -1,5 +1,5 @@
 /**
- * /follows page tests (DEC-292, TASK-375).
+ * /follows page tests.
  *
  * The page is the full paginated feed of the reader's followed posts. Covers:
  * guest redirect to /login, empty-follows state, listing items, pagination
@@ -120,7 +120,7 @@ describe("Follows page", () => {
 		expect(wrapper.text()).not.toContain("follows.empty");
 	});
 
-	it("renders the author byline on authored follow cards (round 354)", async () => {
+	it("renders the author byline on authored follow cards ", async () => {
 		feedPayload = {
 			items: [{ ...samplePost, author: { id: 9, display_name: "Pen Writer 354" } }],
 			pagination: { total: 1, page: 1, limit: 12, total_pages: 1 },
@@ -148,7 +148,7 @@ describe("Follows page", () => {
 		expect(buttons.length).toBeGreaterThan(0);
 	});
 
-	it("highlights the ROUTE page, not the stale server payload (TASK-481, ISS-559)", async () => {
+	it("highlights the ROUTE page, not the stale server payload ", async () => {
 		// The URL says page 2 while the last server payload still reports
 		// page 1 (the in-flight window between clicking and the response). The
 		// current-page marker must follow the route (sibling pages' pattern),

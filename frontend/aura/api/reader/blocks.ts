@@ -1,7 +1,7 @@
 import { readerAuthHeaders } from "../auth";
 import { command } from "../transport";
 
-/** One reader the signed-in reader has blocked (round 379, DEC-425). */
+/** One reader the signed-in reader has blocked. */
 export interface BlockedReaderItem {
 	reader_id: number;
 	/** Public identity only — never the email; may be null when unset. */

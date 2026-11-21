@@ -176,7 +176,7 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("这位作者还没有发布任何文章");
 	});
 
-	it("renders the writer's public bio under the header when set (round 357)", async () => {
+	it("renders the writer's public bio under the header when set ", async () => {
 		const wrapper = await mountAuthorsPage({
 			archive: {
 				...archiveWithPosts,
@@ -190,7 +190,7 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("Writes about type systems and long-form essays.");
 	});
 
-	it("renders the writer's avatar in the header when set (round 358)", async () => {
+	it("renders the writer's avatar in the header when set ", async () => {
 		const wrapper = await mountAuthorsPage({
 			archive: {
 				...archiveWithPosts,
@@ -202,7 +202,7 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(img.attributes("alt")).toBe("Riki");
 	});
 
-	it("omits the bio block when the writer has none (round 357)", async () => {
+	it("omits the bio block when the writer has none ", async () => {
 		const wrapper = await mountAuthorsPage({ archive: archiveWithPosts });
 		expect(wrapper.text()).not.toContain("Writes about");
 		// The bio paragraph only exists when there is text to show.
@@ -232,7 +232,7 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("加载失败");
 	});
 
-	// Author follow on the archive header (round 355): the person-shaped
+	// Author follow on the archive header: the person-shaped
 	// discovery surface — and for a writer with no published posts it is the
 	// only follow path, so the button must render on an empty-but-public
 	// author and flip through the follow API.

@@ -1,5 +1,5 @@
 <!--
-  Guest newsletter unsubscribe (DEC-351, TASK-401).
+  Guest newsletter unsubscribe.
 
   Landed on via the `?token=` link inside every newsletter email (the
   per-subscriber token only those emails carry). Fires the backend unsubscribe

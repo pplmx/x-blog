@@ -1,7 +1,7 @@
 import { adminAuthHeaders } from "../auth";
 import { command, query } from "../transport";
 
-/** One static page as the admin manager lists it (round 347). */
+/** One static page as the admin manager lists it. */
 export interface AdminPageRow {
 	id: number;
 	slug: string;

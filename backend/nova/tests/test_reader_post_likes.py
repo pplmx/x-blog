@@ -1,8 +1,8 @@
-"""Reader cloud-synced post likes contract tests (round 359, DEC-391/TASK-421).
+"""Reader cloud-synced post likes contract tests.
 
 Signed-in readers get a durable, cross-device "posts I liked" surface — the
-missing third pillar beside bookmarks (DEC-059) and the reading-history trail
-(DEC-116). A reader like persists in reader_post_likes (unique reader+post), a
+missing third pillar beside bookmarks and the reading-history trail
+. A reader like persists in reader_post_likes (unique reader+post), a
 re-like is idempotent (count bumps exactly once), an unlike removes the row
 and decrements the public counter (floored), and the list only ever shows
 *publicly visible* posts — liking a draft/scheduled post fails (no draft leak

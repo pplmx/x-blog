@@ -339,7 +339,7 @@ describe("Admin Series Page", () => {
 		});
 	});
 
-	describe("Episode management (TASK-185)", () => {
+	describe("Episode management ", () => {
 		it("expands a series to list its episodes in order", async () => {
 			mockFetchAdminSeriesEpisodes.mockResolvedValue([
 				{ id: 1, title: "Part One", slug: "part-one", series_order: 1, published: true },

@@ -1,4 +1,4 @@
-/** Reader /comment-manage page tests (round 385, DEC-435/TASK-444). */
+/** Reader /comment-manage page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
@@ -100,7 +100,7 @@ describe("comment-manage page", () => {
 		expect(wrapper.text()).not.toContain("这个链接无效，或已经被使用过。");
 	});
 
-	it("offers an in-place retry after a network error (round 396)", async () => {
+	it("offers an in-place retry after a network error ", async () => {
 		// The token-only link is clickable once; a transient failure must not
 		// strand the visitor on a dead-end error card with no way to re-fetch.
 		getGuestCommentManage.mockRejectedValueOnce(new Error("no response")).mockResolvedValueOnce({

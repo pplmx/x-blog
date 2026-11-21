@@ -1,5 +1,5 @@
 /**
- * PWA "installable + offline bookmarks" journey (round 465 slice).
+ * PWA "installable + offline bookmarks" journey.
  *
  * Two acceptance behaviours in one headless proof:
  *  1. The page is a valid PWA shell — a manifest is linked and resolveable

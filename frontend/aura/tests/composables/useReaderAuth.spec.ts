@@ -1,4 +1,4 @@
-/** useReaderAuth composable tests (DEC-059, TASK-133). */
+/** useReaderAuth composable tests. */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -154,7 +154,7 @@ describe("useReaderAuth", () => {
 		);
 	});
 
-	it("updateToken stores token + profile and flips auth (DEC-067/TASK-141)", () => {
+	it("updateToken stores token + profile and flips auth ", () => {
 		const { updateToken, isAuthenticated, reader } = useReaderAuth();
 		expect(isAuthenticated.value).toBe(false);
 
@@ -286,7 +286,7 @@ describe("useReaderAuth", () => {
 		// page uses to pick the localized line, so it must ride the thrown Error.
 		it("login carries the human message AND the business 401 status", async () => {
 			// Wrong email/password is a single indistinguishable 401 on the backend
-			// (anti-oracle, DEC-401) — the status is what the page localizes on.
+			// (anti-oracle) — the status is what the page localizes on.
 			readerLoginMock.mockResolvedValue(
 				backendErr(
 					'[POST] "http://x/api/reader/login": 401 Unauthorized',
@@ -316,7 +316,7 @@ describe("useReaderAuth", () => {
 
 		it("login2FA carries the human message AND the business 401 status", async () => {
 			// A bad code and a bogus/expired challenge are one indistinguishable 401
-			// (anti-oracle, DEC-401) — the status is what the page localizes on.
+			// (anti-oracle) — the status is what the page localizes on.
 			readerLogin2FAMock.mockResolvedValue(
 				backendErr(
 					'[POST] "http://x/api/reader/login/2fa": 401 Unauthorized',
@@ -331,7 +331,7 @@ describe("useReaderAuth", () => {
 		});
 	});
 
-	describe("resetPassword (DEC-286, TASK-371)", () => {
+	describe("resetPassword ", () => {
 		it("redeems the token and adopts the rotated session via updateToken", async () => {
 			confirmPasswordResetMock.mockResolvedValue(ok(session)).mockClear();
 			const { isAuthenticated, reader, resetPassword } = useReaderAuth();
@@ -360,7 +360,7 @@ describe("useReaderAuth", () => {
 		});
 	});
 
-	describe("confirmEmailChange (DEC-357, TASK-404)", () => {
+	describe("confirmEmailChange ", () => {
 		const rotated = {
 			access_token: "rotated.jwt.token",
 			token_type: "bearer",
@@ -386,7 +386,7 @@ describe("useReaderAuth", () => {
 		it("preserves the business-level status on a spent/invalid link", async () => {
 			// 400 = invalid / already-used / expired link — NOT a network
 			// failure. The status must ride the rethrown error so the confirm
-			// page can tell "spent link" from "outage" (round-342 review).
+			// page can tell "spent link" from "outage".
 			const spent = Object.assign(new Error("Invalid or expired verification link"), {
 				statusCode: 400,
 			});
@@ -415,7 +415,7 @@ describe("useReaderAuth", () => {
 
 		it("is true for an expired/revoked token 401 (credentials envelope message)", () => {
 			// The REAL backend shape: the {"error":{"message":...}} envelope has
-			// NO top-level `detail` (round-393 fix — the old test's
+			// NO top-level `detail` (fix — the old test's
 			// `_data: { detail }` shape never occurs).
 			expect(
 				isStaleSession({
@@ -457,7 +457,7 @@ describe("useReaderAuth", () => {
 	});
 });
 
-describe("two-factor login (round 364, DEC-401)", () => {
+describe("two-factor login ", () => {
 	const challenge = {
 		access_token: null,
 		token_type: null,

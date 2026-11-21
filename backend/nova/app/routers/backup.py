@@ -1,4 +1,4 @@
-"""Full-blog backup & restore (DEC-082, TASK-153).
+"""Full-blog backup & restore.
 
 The admin CSV export is reporting-oriented (one filtered table per request).
 This module exposes the whole blog as ONE portable JSON snapshot — categories,
@@ -8,7 +8,7 @@ snapshot into a fresh or existing instance via natural-key upserts.
 Both endpoints are superuser-only (restore is a bulk write and export carries
 commenter PII), rate-limited like the CSV export, and deliberately never touch
 auth data: reader accounts / admin users / password hashes / browser push
-subscriptions do not round-trip (DEC-082).
+subscriptions do not round-trip.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/admin/backup", tags=["export"])
 MAX_RESTORE_POSTS = 20_000
 # A post's ``comments`` array is otherwise unbounded — one crafted post could
 # sneak an arbitrary number of comment rows into a single import. Cap at the
-# same order as the CSV export cap (ISS-626); real blogs never get close.
+# same order as the CSV export cap; real blogs never get close.
 MAX_RESTORE_COMMENTS = 100_000
 
 

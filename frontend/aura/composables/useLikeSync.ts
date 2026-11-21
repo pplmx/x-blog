@@ -1,6 +1,6 @@
 /**
- * Bridges the localStorage-only liked-post markers (useLikes, RIL ISS-038) to
- * the reader cloud-likes API (round 359, DEC-391/TASK-421).
+ * Bridges the localStorage-only liked-post markers (useLikes) to
+ * the reader cloud-likes API.
  *
  * Like, a guest's like dedup was purely a client-side Set; a signed-in
  * reader's like now needs to survive the device and be reversible. This

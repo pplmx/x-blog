@@ -164,7 +164,7 @@ describe("rate-limit notice wiring", () => {
 	});
 });
 
-describe("admin session-expiry 401 handling (ISS-277)", () => {
+describe("admin session-expiry 401 handling ", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks(); // a prior test's replace spy must not leak its call count
 		localStorage.clear();

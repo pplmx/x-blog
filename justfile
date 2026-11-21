@@ -142,13 +142,13 @@ e2e:
     # RATE_LIMIT_AUTH/REGISTER relaxed: the suite logs in and registers a fresh
     # reader in most spec files (~15+ logins/min, ~100+ registrations/suite),
     # exhausting the production 10/min login and 5/min register budgets (the
-    # register 429 after 5/min was a full-suite cascade, EV-154)
+    # register 429 after 5/min was a full-suite cascade)
     #
     # Throwaway VAPID keypair so the Web Push reader/admin e2e journeys run
     # locally too (CI parity, .github/workflows/test.yml) — without it the
     # /api/push/vapid-public-key endpoint 503s and every push-gated test fails.
     #
-    # A local SMTP sink lets the reader password-reset journey (DEC-286) really
+    # A local SMTP sink lets the reader password-reset journey really
     # send mail: the backend gets SMTP_HOST=127.0.0.1:2525 and the sink dumps
     # every message to a JSONL file the password-reset spec reads to extract
     # the single-use token (scripts/smtp_sink.py, dev-only).

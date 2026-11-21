@@ -1,10 +1,10 @@
-"""add reader `locale` to reader_accounts (DEC-338, TASK-395).
+"""add reader `locale` to reader_accounts.
 
 Notification copy was hardcoded Chinese for every reader (inbox titles,
 per-event emails, weekly digest) regardless of UI language or site_language.
 The `locale` column stores the reader's chosen language (frontend codes "en"/
 "zh"); NULL reads as the site default (zh), so existing readers keep today's
-copy. Additive (DEC-009); no existing column is touched and existing rows stay
+copy. Additive; no existing column is touched and existing rows stay
 NULL.
 """
 

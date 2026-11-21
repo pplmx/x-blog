@@ -1,10 +1,9 @@
-"""Reader series-follow ('new part' push) contract tests (DEC-132, TASK-178;
-per-follow notification control DEC-138, TASK-181).
+"""Reader series-follow ('new part' push) contract tests (per-follow notification control).
 
 A signed-in reader can follow a series and be pushed a notification when a new
 public post is published in it. Covers auth scoping, follow/unfollow/list
 semantics, reader isolation, and the dispatch integration (series followers are
-fanned out and deduped against the standard new-post push). TASK-181 adds a
+fanned out and deduped against the standard new-post push). adds a
 per-follow ``notify`` toggle that decouples tracking from push: a follow with
 notify=false is still listed but is not fanned out on new-part dispatch.
 """

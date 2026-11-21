@@ -1,14 +1,14 @@
-"""add reader_accounts.is_active + last_login_at for admin reader moderation (DEC-194, TASK-214, ISS-116)
+"""add reader_accounts.is_active + last_login_at for admin reader moderation
 
-The reader-accounts arc (DEC-059 onward) shipped reader-facing self-service
+The reader-accounts arc onward shipped reader-facing self-service
 (register, login, profile, bookmarks, comment history, self-deletion) but no
 operator surface: the blog owner cannot see registered readers nor stop one.
 ``is_active`` is the moderation switch — a deactivated reader is blocked at
 login (reader.py), rejected by get_current_reader, and resolved to anonymous
-by get_optional_reader, so the trust-tier auto-approve (DEC-098) path cannot be
+by get_optional_reader, so the trust-tier auto-approve path cannot be
 gamed through a deactivated account. ``last_login_at`` gives the admin readers
 list a usable activity signal. Both columns are additive, existing rows default
-to active (server_default true / NULL), no existing DDL is touched (DEC-009).
+to active (server_default true / NULL), no existing DDL is touched.
 
 Revision ID: p7d2e4f6a8b0
 Revises: o4a1b2c3d4e5

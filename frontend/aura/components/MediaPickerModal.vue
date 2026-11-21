@@ -1,5 +1,5 @@
 <!--
-  Media library picker (DEC-183) — lets an author pick a previously uploaded
+  Media library picker — lets an author pick a previously uploaded
   image to insert into their post. Used by the post editor toolbar as an
   alternative to uploading a new file. Emits the relative /static/uploads/...
   URL on selection.
@@ -17,12 +17,12 @@ const { t } = useLang();
 // path is computed from a 1-based page, so the pager ref is translated. Passing
 // the computed ref (not a literal) is the point: useAdminMedia's `path`
 // computed watches it and re-fetches on pagination, same as the admin media
-// page (DEC-189) — the previous literal 1 left Next/Prev re-fetching page 1.
+// page — the previous literal 1 left Next/Prev re-fetching page 1.
 const currentPage = ref(0);
 const apiPage = computed(() => currentPage.value + 1);
 // Fetch lazily ONLY when opened: immediate:false suppresses the mount-time
 // request, and the open-watcher below (immediate:true so a picker that mounts
-// already open still requests) calls refresh() on every open. round 263 —
+// already open still requests) calls refresh() on every open.
 // the modal is always-mounted twice in the post editor (media + cover), so a
 // plain eager useFetch fired two duplicate /api/upload/files?page_size=60
 // calls on EVERY editor page load before the picker was ever opened, despite
@@ -33,13 +33,13 @@ const { data, pending, error, refresh } = await useAdminMedia(apiPage, props.pag
 const items = computed(() => data.value?.items ?? []);
 const totalPages = computed(() => data.value?.pagination?.total_pages ?? 0);
 
-// Dialog keyboard semantics (ISS-132, TASK-231): Escape closes, initial focus
+// Dialog keyboard semantics: Escape closes, initial focus
 // lands on the close button, Tab is trapped inside the panel, and focus
 // returns to whatever opened the picker when it closes.
 const closeButtonRef = ref<HTMLButtonElement | null>(null);
 const panelRef = ref<HTMLDivElement | null>(null);
 const previouslyFocused = ref<HTMLElement | null>(null);
-// Body-scroll lock while the picker is open (a11y audit, round 428): the
+// Body-scroll lock while the picker is open (a11y audit): the
 // modal is aria-modal and page-sized (max-h-[80vh] inner scroller), so the
 // page behind must not wheel/PageUp-Down while it is up — MarkdownLightbox
 // treats this as a hard contract (and its spec asserts it), but the picker
@@ -53,7 +53,7 @@ watch(
 			previouslyFocused.value = document.activeElement as HTMLElement | null;
 			prevOverflow = document.body.style.overflow;
 			document.body.style.overflow = "hidden";
-			// Reset to page 1 on every open (round-418 audit): currentPage is a
+			// Reset to page 1 on every open: currentPage is a
 			// module-persistent ref, so a picker reopened after the library
 			// shrank (uploads/deletes between opens) used to re-fetch a
 			// remembered out-of-range page — the backend returns items:[] for

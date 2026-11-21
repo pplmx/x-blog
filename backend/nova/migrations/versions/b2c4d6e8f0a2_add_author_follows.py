@@ -1,7 +1,7 @@
-"""add author_follows table (round 353)
+"""add author_follows table
 
 A brand-new additive table — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Holds the writer
+SQLite-can't-add-FK constraint of does not apply. Holds the writer
 follow subscriptions (reader_id, author_id) that fan out new-post
 notifications for a specific pen-named author, with a DB-level unique on
 (reader_id, author_id) so a reader can never follow the same writer twice.

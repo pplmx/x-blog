@@ -1,8 +1,8 @@
-"""Reader password-reset contract tests (DEC-286, TASK-371).
+"""Reader password-reset contract tests.
 
 The last reader self-service gap: a reader who forgot their password had no
-recovery path (in-account change requires an existing session, DEC-067), and
-password-reset was repeatedly deferred for "needs SMTP infra" — which DEC-197
+recovery path (in-account change requires an existing session), and
+password-reset was repeatedly deferred for "needs SMTP infra" — which
 built. This flow ships it as a stateless signed reset token + reset email.
 
 Critical properties:

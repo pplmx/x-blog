@@ -1,9 +1,9 @@
-"""add unique index on newsletter_subscribers.token (DEC-351, TASK-401).
+"""add unique index on newsletter_subscribers.token.
 
 The confirm/unsubscribe endpoints look subscribers up by their opaque token;
 a full-table scan per link click is avoidable with a unique index (tokens must
 be unique — two subscribers can never share one unsubscribe secret). Pure
-additive index on an existing column; no data change (DEC-009 style, though
+additive index on an existing column; no data change (style, though
 this adds no column).
 """
 

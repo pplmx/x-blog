@@ -1,11 +1,11 @@
-"""add push_subscriptions.reader_id for targeted reader notifications (DEC-064)
+"""add push_subscriptions.reader_id for targeted reader notifications
 
 Adds a nullable ``reader_id`` column to ``push_subscriptions`` binding a
 subscription to the reader account that created it, so notifications can be
 targeted to a specific reader (e.g. "someone replied to your comment").
 
 No DB-level FOREIGN KEY (SQLite alembic can't add an FK-carrying column to an
-existing table, DEC-009); integrity is enforced at the ORM layer. Entirely
+existing table); integrity is enforced at the ORM layer. Entirely
 additive — no existing DDL touched. Defensive: if the column already exists
 (create_all-era dev DB), each missing piece is created only if absent.
 

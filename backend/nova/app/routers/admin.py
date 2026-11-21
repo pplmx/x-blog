@@ -52,13 +52,13 @@ class UserCreate(BaseModel):
         description="3-50 chars: letters, digits, underscore, dot, hyphen",
     )
     password: str = Field(min_length=8, description="Password must be at least 8 characters")
-    # Public pen name (DEC-359/TASK-405): the byline shown on published posts.
+    # Public pen name: the byline shown on published posts.
     # NULL means no public identity — the username stays private (admin login
     # is no-oracle) but the author gets no byline/archive until one is chosen.
     display_name: Annotated[NonNulStr | None, Field(default=None, min_length=1, max_length=50)] = None
-    # Public "about this writer" (round 357): short plain-text bio rendered on
+    # Public "about this writer": short plain-text bio rendered on
     # the writer's /authors/{id} archive header. Same 500-char cap as the
-    # reader bio (round 352) so one request cannot bloat the row unbounded.
+    # reader bio so one request cannot bloat the row unbounded.
     bio: Annotated[NonNulStr | None, Field(default=None, max_length=500)] = None
 
     @field_validator("display_name", mode="before")
@@ -67,7 +67,7 @@ class UserCreate(BaseModel):
         # Whitespace-only display_name passes min_length=1 (Pydantic counts raw
         # chars) and would become a blank public byline — strip before length
         # validation so "   " becomes None (no public identity), the same
-        # boundary discipline as the reader profile name fields (ISS-456).
+        # boundary discipline as the reader profile name fields.
         return (value.strip() or None) if isinstance(value, str) else value
 
     @field_validator("bio", mode="before")
@@ -116,7 +116,7 @@ async def login(
 ):
     # Reject NUL before it reaches the SQL bind: psycopg cannot bind a string
     # containing \x00 and raises (uncaught) -> 500 on a public login endpoint
-    # (ISS-454). The JSON bodies get this via NonNulStr; OAuth2PasswordRequestForm
+    # The JSON bodies get this via NonNulStr; OAuth2PasswordRequestForm
     # is not a Pydantic model, so guard the form fields by hand. Rejecting the
     # *pair* keeps the "unknown vs wrong password" timing equalized once we're
     # past this cheap shape check (a NUL username can never be a real user).
@@ -145,7 +145,7 @@ def get_current_user_profile(
     """Return the current admin's profile (id, username, role).
 
     Lets the frontend adapt the admin UI: editors (non-superuser role) must not
-    see superuser-only sections (users/export). (DEC-054, TASK-116)
+    see superuser-only sections (users/export).
     """
     return _current_user
 
@@ -173,7 +173,7 @@ async def create_user(
 
 
 class UserUpdate(BaseModel):
-    """Editable admin-user fields (DEC-359, TASK-405; bio round 357).
+    """Editable admin-user fields (bio).
 
     Currently the public pen name plus the public "about this writer" bio; the
     login username, role and password all have their own gates. ``display_name``
@@ -230,7 +230,7 @@ async def upload_user_avatar(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_superuser),
 ):
-    """Set an admin user's public profile picture (superuser, round 358).
+    """Set an admin user's public profile picture (superuser).
 
     The face half of the writer identity surface (pen name + bio + avatar):
     whoever sets the pen name and bio (superuser-only PATCH /users/{id}) also
@@ -284,7 +284,7 @@ async def list_pennamed_authors(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    """The post editor's author picker (DEC-359, TASK-406).
+    """The post editor's author picker.
 
     Every admin with a public pen name, so any editor can attribute a post
     they wrote to another public writer — deliberately NOT superuser-only like
@@ -339,7 +339,7 @@ async def admin_calendar(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    """Month-bucketed posts for the editorial calendar (DEC-162, TASK-194).
+    """Month-bucketed posts for the editorial calendar.
 
     All calendar logic lives in admin_service.calendar_posts (classify + grid
     slicing + draft boundary handling); this route is the thin HTTP shell.
@@ -380,7 +380,7 @@ async def admin_get_post(
         "content": post.content,
         "excerpt": post.excerpt,
         "published": post.published,
-        # Coalesce raw-import NULLs (TASK-535/ISS-627 parity): a pinned/views
+        # Coalesce raw-import NULLs parity: a pinned/views
         # NULL row is a real edge on import; the editor must see false/0 like
         # the public page, not null.
         "pinned": bool(post.pinned or False),
@@ -392,7 +392,7 @@ async def admin_get_post(
         "series_order": post.series_order,
         "series_title": post.series.title if post.series else None,
         "series_slug": post.series.slug if post.series else None,
-        # Author attribution (DEC-359/TASK-406): the editor loads the current
+        # Author attribution: the editor loads the current
         # author of a post from the admin detail so it can pre-select the
         # author picker (admin-only surface, so no no-oracle concern).
         "author_id": post.author_id,
@@ -411,7 +411,7 @@ async def admin_create_post(
     _current_user: auth.User = Depends(get_current_admin),
 ):
     try:
-        # Author attribution (DEC-359/TASK-405): default to the writing admin;
+        # Author attribution: default to the writing admin;
         # an editor may explicitly attribute the post to another admin.
         post = await admin_service.create_post(db, post_data, author_id=post_data.author_id or _current_user.id)
     except ValueError as e:
@@ -427,14 +427,14 @@ async def admin_clone_post(
     _current_user: auth.User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Duplicate a post into a fresh draft (round 349): same content +
+    """Duplicate a post into a fresh draft: same content +
     taxonomy + attribution, a new unique slug, and every publication-
     metadata field cleared (unpublished, unscheduled, unpinned, zeroed
     views/likes) — so an editor can seed a sibling post from a template
     without the copy-paste dance and without leaking a live post."""
     # Eager-load the source's relationships: clone_post copies source.tags
     # (and reads category/series), and a bare select leaves them as lazy
-    # attrs that fire an async lazy-load -> MissingGreenlet 500 (round 349).
+    # attrs that fire an async lazy-load -> MissingGreenlet 500.
     source = (
         (
             await db.execute(
@@ -484,9 +484,9 @@ async def admin_delete_post(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    # admin_service.delete_post purges the DEC-009 child tables (bookmarks/history/
+    # admin_service.delete_post purges the child tables (bookmarks/history/
     # subscriptions/daily views) along with the post and its cascaded comments
-    # and revisions — keep the admin route on the same code path (RIL ISS-296).
+    # and revisions — keep the admin route on the same code path.
     try:
         success = await admin_service.delete_post(db, post_id)
     except ValueError as e:
@@ -720,7 +720,7 @@ async def admin_batch_delete_comments(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    """Bulk-delete selected comments (own-user, spam cleanup). DEC-110.
+    """Bulk-delete selected comments (own-user, spam cleanup)..
 
     Surviving replies are reparented consistently (admin_service.bulk_delete_comments)
     so the thread is never orphaned. Returns the number deleted.
@@ -785,7 +785,7 @@ async def admin_delete_comment(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# Author-reply identity (DEC-192, TASK-212): the blog owner's replies to
+# Author-reply identity: the blog owner's replies to
 # commenters carry this nickname — brand it per deployment via env, default to
 # the site's product name. It is server-set, never client-supplied, so a
 # commenter cannot spoof the author banner.
@@ -793,7 +793,7 @@ AUTHOR_REPLY_NICKNAME = os.getenv("AUTHOR_REPLY_NICKNAME", "X-Blog")
 
 
 class AdminReplyRequest(BaseModel):
-    """Body for POST /api/admin/comments/{id}/reply (DEC-192)."""
+    """Body for POST /api/admin/comments/{id}/reply."""
 
     content: str = Field(min_length=1, max_length=5000)
 
@@ -807,7 +807,7 @@ async def admin_reply_comment(
     db: AsyncSession = Depends(get_db),
     _current_user: auth.User = Depends(get_current_admin),
 ):
-    """Reply to a comment as the blog author (DEC-192, TASK-212).
+    """Reply to a comment as the blog author.
 
     Lets the owner answer a commenter right from the moderation queue instead
     of publishing a whole post reply. The reply is an immediately-approved
@@ -816,7 +816,7 @@ async def admin_reply_comment(
     notifications as an approved comment — the replied-to reader plus the
     thread's followers (``_notify_comment_approved``). Content width matches
     CommentBase; rendering sanitization stays where it is for every comment
-    (render-time, DEC-088).
+    (render-time).
     """
     try:
         return await admin_service.reply_comment(
@@ -828,7 +828,7 @@ async def admin_reply_comment(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# Runtime site settings (DEC-100, TASK-162): operator-controlled key/values.
+# Runtime site settings: operator-controlled key/values.
 # A persisted value wins over the env fallback read by the comment-create path;
 # GET returns the effective value for display. Keys are whitelisted so clients
 # can't enumerate or write arbitrary rows (404 for unknown keys).
@@ -882,7 +882,7 @@ async def put_site_setting_ep(
 
 
 # ---------------------------------------------------------------------------
-# Reader account moderation (DEC-194, TASK-214, ISS-116)
+# Reader account moderation
 # ---------------------------------------------------------------------------
 
 
@@ -944,7 +944,7 @@ async def admin_deactivate_reader(
     Sets is_active=False and bumps token_version so every previously issued
     JWT dies immediately; the account can no longer sign in. Old tokens are
     rejected by get_current_reader and resolve to anonymous in optional-reader
-    endpoints, so the trust-tier auto-approve path (DEC-098) cannot be gamed
+    endpoints, so the trust-tier auto-approve path cannot be gamed
     through a deactivated account. Idempotent: an already-inactive reader is
     not re-bumped.
     """
@@ -994,7 +994,7 @@ async def admin_send_weekly_digest(
     _current_user: auth.User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger the weekly email digest job on demand (DEC-201, TASK-222).
+    """Trigger the weekly email digest job on demand.
 
     Emails every reader who opted into the weekly digest; superuser-only
     because it is a broadcast. ``?dry_run=true`` reports exactly who/what would

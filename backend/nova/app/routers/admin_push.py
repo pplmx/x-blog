@@ -1,14 +1,14 @@
-"""Admin Web Push subscriptions for moderation alerts (DEC-080).
+"""Admin Web Push subscriptions for moderation alerts.
 
 The blog moderates every comment (no auto-approve), so an admin — superuser or
-editor, DEC-054 role tiers — only learns a comment is waiting by re-opening the
+editor role tiers — only learns a comment is waiting by re-opening the
 moderation queue. These endpoints let an admin opt this browser into a push
 when a new comment is created (pending), deep-linking to /admin/comments.
 
 Deliberately admin-scoped: guarded by ``get_current_admin`` and stored in
 ``AdminPushSubscription`` — a table separate from the reader
 ``PushSubscription`` so a moderation push can never leak into the reader
-fan-outs, mirroring the User/ReaderAccount audience separation (DEC-059).
+fan-outs, mirroring the User/ReaderAccount audience separation.
 """
 
 from __future__ import annotations
@@ -89,7 +89,7 @@ async def admin_list_subscriptions(
     "subscribed" from the browser's push subscription alone — a browser can
     hold one push subscription (shared with the reader opt-in, same /sw.js
     registration), so the moderation opt-in lives in its own table and its
-    state is queried here (DEC-080).
+    state is queried here.
     """
     rows = (
         (
@@ -170,11 +170,11 @@ async def admin_unsubscribe(
 
     Scoped to ``user_id`` so one admin cannot delete another's subscription
     (endpoints are opaque, but ownership is still enforced at the API layer,
-    mirroring DEC-080's "separate store, integrity at the API layer").
+    mirroring's "separate store, integrity at the API layer").
 
     Deliberately POST, not DELETE: the backend client and several browser fetch
     stacks do not serialize bodies on DELETE, and the request carries the
-    endpoint the way subscribe does (DEC-055, TASK-117 convention).
+    endpoint the way subscribe does convention.
     """
     await db.execute(
         delete(models.AdminPushSubscription).where(

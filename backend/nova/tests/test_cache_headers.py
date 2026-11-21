@@ -1,8 +1,8 @@
-"""Cache-policy middleware (RIL DEC-058 / TASK-129).
+"""Cache-policy middleware.
 
 Every API response defaults to ``Cache-Control: no-store`` unless the route
 explicitly set its own ``Cache-Control`` (the cacheable public list/feed
-endpoints opt in via routers/conditional.py in TASK-128). Private admin data,
+endpoints opt in via routers/conditional.py). Private admin data,
 write-on-read view/like counters, the live-counters post detail, search and
 comments must never reach a shared cache.
 """

@@ -1,5 +1,5 @@
 /**
- * Public reader profile journey (DEC-294, TASK-376).
+ * Public reader profile journey.
  *
  * A commenter's verified display name is now a linkable identity: from an
  * approved comment on a post, the display name links to /readers/{id}, which
@@ -57,7 +57,7 @@ async function pickPost(
 	return data.items?.[0] ?? null;
 }
 
-test.describe("Public reader profile (DEC-294)", () => {
+test.describe("Public reader profile ", () => {
 	test("a reader's display name on a comment links to their public profile", async ({
 		page,
 		request,

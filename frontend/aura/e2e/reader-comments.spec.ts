@@ -1,5 +1,5 @@
 /**
- * Reader-attributed comments journey (DEC-062, TASK-135/136).
+ * Reader-attributed comments journey.
  *
  * A signed-in reader posting a comment does so under their verified account
  * identity: the form shows the identity (no nickname/email inputs) and the
@@ -67,7 +67,7 @@ test.describe("Reader-attributed comments", () => {
 		await expect(page.locator("text=评论提交成功，等待审核中！")).toBeVisible({ timeout: 5000 });
 	});
 
-	test("reply deep-link lands the reader on the comment (DEC-072)", async ({ page, request }) => {
+	test("reply deep-link lands the reader on the comment ", async ({ page, request }) => {
 		// Plant an approved comment so it appears on the public list.
 		const posts = await request.get("/api/posts?limit=1");
 		const postLink = ((await posts.json()) as { items: Array<{ id: number; slug: string }> })
@@ -115,7 +115,7 @@ test.describe("Reader-attributed comments", () => {
 			.toBe(true);
 	});
 
-	test("a jump from /comments deep-links to the exact comment (DEC-321)", async ({
+	test("a jump from /comments deep-links to the exact comment ", async ({
 		page,
 		request,
 	}) => {

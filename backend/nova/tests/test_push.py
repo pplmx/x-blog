@@ -1,4 +1,4 @@
-"""Contract tests for the Web Push slice (DEC-055, TASK-117).
+"""Contract tests for the Web Push slice.
 
 Covers:
 - GET /api/push/vapid-public-key returns the VAPID public key (503 unconfigured).
@@ -82,7 +82,7 @@ class TestSubscribe:
         """A concurrent subscribe that loses the unique-key insert race must
         still refresh the winner row with THIS request's rotated keys/prefs.
 
-        Regression (ISS-449 / backend deep-dive): the IntegrityError branch
+        Regression (backend deep-dive): the IntegrityError branch
         returned the winner row verbatim, so a browser that re-signed fresh
         p256dh/auth during the race kept a row with stale keys — every later
         dispatch to that endpoint failed http-ece decryption (counted as

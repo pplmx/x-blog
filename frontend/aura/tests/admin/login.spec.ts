@@ -40,7 +40,7 @@ vi.stubGlobal("navigateTo", vi.fn());
 vi.stubGlobal("useHead", vi.fn());
 vi.stubGlobal("definePageMeta", vi.fn());
 // The page reads route.query.next for the session-expiry return landing
-// (ISS-390); default to an empty query so its presence decides the behavior.
+//; default to an empty query so its presence decides the behavior.
 vi.stubGlobal("useRoute", () => ({
 	params: {},
 	query: {},
@@ -349,7 +349,7 @@ describe("Admin Login Page", () => {
 			await flushPromises();
 		});
 
-		it("navigates back to the editor path carried by ?next= (ISS-390)", async () => {
+		it("navigates back to the editor path carried by ?next= ", async () => {
 			// The admin-401 handler bounces an operator whose session died
 			// mid-edit to /admin/login?next=/admin/posts/42 — after login they
 			// must land back in the editor, not the bare posts list.

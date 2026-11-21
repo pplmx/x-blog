@@ -1,5 +1,5 @@
 /**
- * Admin Readers page tests (DEC-194, TASK-214, ISS-116).
+ * Admin Readers page tests.
  *
  * Renders the registered-reader table from the readers API (email, status
  * chip, comment/bookmark counts), shows empty/error states, and deactivates /
@@ -87,7 +87,7 @@ describe("Admin Readers page", () => {
 		expect(wrapper.text()).toContain("没有匹配的读者");
 	});
 
-	it("gives the reader search box an accessible name (round 264 a11y)", async () => {
+	it("gives the reader search box an accessible name ", async () => {
 		listMock.mockReturnValue(fakeListing([]));
 		const wrapper = await mountPage();
 		const search = wrapper.find('input[type="search"]');
@@ -104,7 +104,7 @@ describe("Admin Readers page", () => {
 		expect(wrapper.text()).toContain("加载读者列表失败");
 	});
 
-	it("clamps pagination so the page indicator never overshoots the last page (round 278)", async () => {
+	it("clamps pagination so the page indicator never overshoots the last page ", async () => {
 		// The prev/next buttons used to mutate currentPage directly, unlike the
 		// posts list and media page which route every step through a clamped
 		// goToPage(); this page is the odd one out. The clamp makes the page

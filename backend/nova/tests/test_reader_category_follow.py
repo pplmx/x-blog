@@ -1,7 +1,7 @@
-"""Reader category-follow contract tests (DEC-140, TASK-182).
+"""Reader category-follow contract tests.
 
 A signed-in reader can follow a category as a durable, cross-device intent
-(distinct from the per-device new-post category pin, DEC-076) and be pushed
+(distinct from the per-device new-post category pin) and be pushed
 a notification when a new public post is published in it. Covers auth scoping,
 follow/unfollow/list semantics, reader isolation, per-follow notify control,
 and the dispatch integration (category followers are fanned out and deduped

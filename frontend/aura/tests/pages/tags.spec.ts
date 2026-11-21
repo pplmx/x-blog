@@ -44,7 +44,7 @@ const mockTagPosts = {
 	},
 };
 
-// Captured by the useFetch mock for the /api/posts URL — assert the ISS-368
+// Captured by the useFetch mock for the /api/posts URL — assert the
 // enabled-gate (no posts fetch on the all-tags view; fire once a tag is picked).
 let lastPostsEnabled: unknown;
 
@@ -164,7 +164,7 @@ describe("Tags Page", () => {
 		lastPostsEnabled = undefined;
 	});
 
-	describe("Posts fetch gating (ISS-368)", () => {
+	describe("Posts fetch gating ", () => {
 		it("does not enable the /api/posts fetch on the all-tags view", async () => {
 			await mountTagsPage({ routeQuery: {} });
 			expect(lastPostsEnabled).toBe(false);
@@ -200,7 +200,7 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("#TypeScript");
 		});
 
-		it("narrows the cloud via the filter box (ISS-381)", async () => {
+		it("narrows the cloud via the filter box ", async () => {
 			const wrapper = await mountTagsPage();
 			// Filter input present on the all-tags view.
 			const input = wrapper.find('input[type="search"]');
@@ -213,7 +213,7 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).not.toContain("#Vue");
 		});
 
-		it("shows all tags again when the filter is cleared (ISS-381)", async () => {
+		it("shows all tags again when the filter is cleared ", async () => {
 			const wrapper = await mountTagsPage();
 			const input = wrapper.find('input[type="search"]');
 			await input.setValue("typescript");
@@ -226,7 +226,7 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("#Vue");
 		});
 
-		it("shows a no-results message when the filter matches nothing (round 414)", async () => {
+		it("shows a no-results message when the filter matches nothing ", async () => {
 			// A non-matching filter must say "no results for this filter", not the
 			// genuinely-empty "暂无标签" (which implies the blog has no tags at all).
 			const wrapper = await mountTagsPage();
@@ -248,7 +248,7 @@ describe("Tags Page", () => {
 			// Posts pending must NOT unmount the cloud into a whole-page
 			// skeleton — on the all-tags view the posts fetch is disabled and
 			// a /posts refetch (e.g. a tag switch elsewhere) no longer gates
-			// this branch (ISS-368 pattern, search.vue gating).
+			// this branch (pattern, search.vue gating).
 			const wrapper = await mountTagsPage({ pending: true });
 			expect(wrapper.text()).toContain("所有标签");
 			expect(wrapper.findAll(".animate-pulse").length).toBe(0);
@@ -311,7 +311,7 @@ describe("Tags Page", () => {
 		});
 	});
 
-	describe("Scoped RSS feed (DEC-074, TASK-146)", () => {
+	describe("Scoped RSS feed ", () => {
 		function alternateLinksFromHead(): Array<{ rel: string; href?: string; type?: string }> {
 			const useHeadMock = (
 				globalThis as unknown as { useHead: { mock: { calls: Array<[unknown]> } } }
@@ -473,7 +473,7 @@ describe("Tags Page", () => {
 		});
 	});
 
-	describe("Tag follow (DEC-195, TASK-215)", () => {
+	describe("Tag follow ", () => {
 		afterEach(() => {
 			window.localStorage.removeItem("reader_token");
 			vi.unstubAllGlobals();
@@ -554,7 +554,7 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("关注标签");
 		});
 
-		it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-378)", async () => {
+		it("drops a stale follow-state response so it can't clobber a newer toggle ", async () => {
 			window.localStorage.setItem("reader_token", "reader-jwt");
 			// The initial follow-state GET stays in flight (slow).
 			let resolveStale!: (v: unknown) => void;
@@ -698,7 +698,7 @@ describe("Tags Page", () => {
 			expect(ellipsis?.attributes("disabled")).toBeDefined();
 		});
 
-		it("clamps a stale page=999 deep link back to the last real page (ISS-308)", async () => {
+		it("clamps a stale page=999 deep link back to the last real page ", async () => {
 			const navMock = vi.fn();
 			vi.stubGlobal("useRuntimeConfig", () => ({
 				public: { apiUrl: "http://localhost:18888" },
@@ -785,7 +785,7 @@ describe("Tags Page", () => {
 			});
 		}
 
-		it("follows then toggles the notify bell off (TASK-215)", async () => {
+		it("follows then toggles the notify bell off ", async () => {
 			window.localStorage.setItem("reader_token", "reader-jwt");
 			vi.stubGlobal(
 				"$fetch",

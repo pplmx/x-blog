@@ -1,5 +1,5 @@
 /**
- * Bookmark folders journey (DEC-120, TASK-172).
+ * Bookmark folders journey.
  *
  * A signed-in reader can create a folder, file a bookmarked post into it, and
  * filter the bookmarks page by that folder. Cover flows through the prompt
@@ -27,7 +27,7 @@ async function registerReader(
 	return ((await resp.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Bookmark folders (TASK-172)", () => {
+test.describe("Bookmark folders ", () => {
 	test("create folder → file a bookmark → filter by folder", async ({ page, request }) => {
 		const email = freshEmail();
 		const token = await registerReader(request, email);

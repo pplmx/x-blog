@@ -1,4 +1,4 @@
-"""Search-term suggestions ("did you mean") contract + unit tests (DEC-443).
+"""Search-term suggestions ("did you mean") contract + unit tests.
 
 The post search is exact substring / tsvector — no fuzzy layer — so a
 misspelled or half-remembered term dead-ends on a zero-hit page. The

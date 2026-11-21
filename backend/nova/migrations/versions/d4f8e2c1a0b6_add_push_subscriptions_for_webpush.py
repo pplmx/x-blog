@@ -1,11 +1,11 @@
-"""add push_subscriptions table for Web Push (DEC-055)
+"""add push_subscriptions table for Web Push
 
 Adds the ``push_subscriptions`` table storing reader browser subscriptions
 (endpoint + p256dh/auth keys) so the backend can deliver Web Push
 notifications on publish. Entirely additive (new table, no existing DDL
-touched, DEC-009 preserved).
+touched preserved).
 
-Defensive like the round-13 baseline and the role-tier migration: if the
+Defensive like the baseline and the role-tier migration: if the
 table already exists (a dev DB whose create_all safety net already created it
 before this migration ran), it is left as-is and only the version is stamped —
 no duplicate-table error on adoption.

@@ -29,7 +29,7 @@ const route = useRoute();
 // /search?q=a → /search?q=b or page=2) must refetch. The computed URL below
 // is passed to useFetch, which re-runs when its URL changes.
 const query = computed(() => (route.query.q as string) || "");
-// TASK-478/ISS-554: clamp an invalid ?page= (non-numeric, zero, negative) to
+// clamp an invalid ?page= (non-numeric, zero, negative) to
 // page 1 at the computed — the search request must never carry NaN/0
 // (guaranteed 422), and the out-of-range clamp watcher below short-circuits
 // NaN/<2, so without this an invalid deep link would brick the results region
@@ -39,7 +39,7 @@ const page = computed(() => {
 	return Number.isNaN(raw) || raw < 1 ? 1 : raw;
 });
 
-// Search MODE (round 366, DEC-405): ?type=comments searches the DISCUSSION
+// Search MODE: ?type=comments searches the DISCUSSION
 // (approved comments on public posts) instead of posts — the blog's thread is
 // its second content asset and used to be unsearchable. ?type=all searches
 // posts + series + published static pages + author archives together (combined
@@ -51,7 +51,7 @@ const mode = computed<SearchMode>(() =>
 );
 
 // Filter state lives in the URL query so a filtered search is shareable and
-// survives reload (DEC-084): category/tag by name, sort, and an effective
+// survives reload: category/tag by name, sort, and an effective
 // publish-time date range (publish_at ?? created_at, matching the feed).
 // Each is bound to the route; changing one resets to page 1.
 const filterCategory = computed(() => (route.query.category as string) || "");
@@ -141,7 +141,7 @@ function setMode(next: SearchMode): void {
 // ArrowLeft/Right/Home/End, matching the idiomatic role="tab" contract the
 // CommentForm preview tabs follow. Focus rides the active tab.
 function onTablistKeydown(e: KeyboardEvent): void {
-	// Scope to THIS tablist (CommentForm audit finding, round 428): a
+	// Scope to THIS tablist (CommentForm audit finding): a
 	// document-wide `[role="tablist"] [role="tab"]` query would capture tabs
 	// from any other tablist mounted on the page (e.g. a CommentForm in the
 	// results), so ArrowKey roving could click/focus the other instance's tab
@@ -189,7 +189,7 @@ const searchParams = computed(() => ({
 // empty URL fired a guaranteed-422 request per bare /search visit (the backend
 // requires q with min_length=1), burning a rate-limit slot on every hit. The
 // trim() also treats a whitespace-only ?q=%20 the same as a bare /search —
-// the backend rejects blank terms with 422 (round-296 deep-dive), so a
+// the backend rejects blank terms with 422, so a
 // space-only share link should show the idle prompt, not an error.
 const {
 	data: searchResult,
@@ -205,14 +205,14 @@ const {
 	// `enabled` watcher only aborts when it flips to false; flipping it back to
 	// true does NOT re-run the fetch, and the URL getter is mode-independent,
 	// so without this watch the mode switch leaves the previous result set
-	// frozen (round 366).
+	// frozen.
 	watch: [mode],
 });
 function retrySearch() {
 	void refreshSearch();
 }
 
-// Comment search (round 366, DEC-405): the reactive URL pattern is identical
+// Comment search: the reactive URL pattern is identical
 // to usePostSearch — a computed params object refetches on q/page/mode change.
 const commentSearchParams = computed(() => ({
 	q: query.value,
@@ -280,7 +280,7 @@ const activeError = computed(() =>
 			: error.value,
 );
 
-// "Did you mean" suggestions (round 390, DEC-443): the post search is exact
+// "Did you mean" suggestions: the post search is exact
 // substring + tsvector, so a zero-hit page is a dead end with no recovery path.
 // The suggest endpoint scores a bounded vocabulary (tag/category names +
 // recent public post titles) with client-agnostic edit distance; it shares the
@@ -290,7 +290,7 @@ const activeError = computed(() =>
 // routes through `activeResult` so a comments-mode zero-hit gets the same
 // "Did you mean" recovery the posts mode always had — the suggestion corpus
 // is mode-agnostic, so a dead-end comment search is no longer special-cased
-// into a bare "No results" (ISS-612/TASK-533).
+// into a bare "No results".
 //
 // The fetch is deliberately an IMPERATIVE $fetch driven by the watch, not a
 // `useSearchSuggest` composable: Nuxt refuses to re-fire useFetch when its
@@ -302,7 +302,7 @@ const shouldSuggest = computed(
 	() =>
 		!!query.value.trim() &&
 		// `!error` not `=== null`: Nuxt's useFetch `error` ref is `undefined`
-		// until a failure happens (round-390 debug: the SSR-rendered empty
+		// until a failure happens (debug: the SSR-rendered empty
 		// state had total=0 but error=undefined, so a strict null check made
 		// shouldSuggest stay false and the suggestion request never fired).
 		!activeError.value &&
@@ -361,8 +361,8 @@ function applySuggestion(term: string) {
 const activePosts = computed<PostList[]>(() =>
 	mode.value === "posts" ? (searchResult.value?.items ?? []) : [],
 );
-// Blocked-reader suppression (round 386, DEC-437): a signed-in viewer's block
-// list (receiver-side opt-out, DEC-425) filters blocked authors' hits out of
+// Blocked-reader suppression: a signed-in viewer's block
+// list (receiver-side opt-out) filters blocked authors' hits out of
 // comment search results, exactly like the thread and the discussion feed.
 const { blockedReaderIds, loadBlockedReaderIds } = useBlockedReaderIds();
 onMounted(() => {
@@ -396,7 +396,7 @@ function typeIcon(type: AllSearchItem["type"]): string {
 	return map[type];
 }
 
-// Windowed, ellipsis-aware pagination buttons (RIL TASK-083, ISS-052).
+// Windowed, ellipsis-aware pagination buttons.
 const paginationTokens = computed(() =>
 	paginationPages(
 		activeResult.value?.pagination?.total_pages ?? 0,
@@ -404,7 +404,7 @@ const paginationTokens = computed(() =>
 	),
 );
 
-// Screen-reader announcement (round 397, same pattern as home): pagination
+// Screen-reader announcement: pagination
 // swaps the results in place, which is invisible to assistive tech, and the
 // visible "<p>" summary is not live — so the region below announces the
 // settled result count the moment a query lands, the empty state, and the
@@ -452,7 +452,7 @@ watch(
 
 // Upgrade snippet sanitization to DOMPurify as soon as it loads (results that
 // arrive later re-render through the stronger sanitizer), and preload the
-// category/tag lists for the filter selects (DEC-084).
+// category/tag lists for the filter selects.
 const categories = ref<{ id: number; name: string }[]>([]);
 const tags = ref<{ id: number; name: string }[]>([]);
 // A taxonomy fetch failure must not look like "there are no categories/tags":
@@ -484,8 +484,7 @@ onMounted(() => {
 });
 
 // SEO: set dynamic head metadata based on search query. Passed as a getter so
-// SPA navigation between ?q= values updates the <title>/canonical (RIL
-// TASK-080; useSeo accepts () => SeoOptions).
+// SPA navigation between ?q= values updates the <title>/canonical => SeoOptions).
 useSeo(() => ({
 	title: query.value
 		? t("search.seo.titleWithQuery", { query: query.value })
@@ -619,7 +618,7 @@ function goToPage(pg: number | string) {
 				</div>
 			</div>
 
-			<!-- Search mode (round 366, DEC-405): posts (default) or comments.
+			<!-- Search mode: posts (default) or comments.
            ?type=comments lives in the URL, so a shared comment-search link
            lands straight on the discussion mode. -->
 			<div
@@ -704,7 +703,7 @@ function goToPage(pg: number | string) {
 				</p>
 			</div>
 
-			<!-- Filters (DEC-084): category/tag/date-range narrowing + sort. Values
+			<!-- Filters: category/tag/date-range narrowing + sort. Values
            live in the URL so a filtered search is shareable. Posts-only — a
            comment search has no taxonomy/sort/date dimensions. -->
 			<div v-if="mode === 'posts'" class="flex flex-wrap items-end gap-3 mb-6">
@@ -826,7 +825,7 @@ function goToPage(pg: number | string) {
            server totals: in comments mode that is the blocked-filtered
            activeComments, so a page whose every hit is by a blocked reader
            shows the empty state instead of a blank area under a misleading
-           "N results" header (round 386, DEC-437). -->
+           "N results" header. -->
 			<div
 				v-else-if="!activePosts.length && !activeComments.length && !activeAll.length"
 				class="flex flex-col items-center justify-center py-16 bg-gradient-to-br from-gray-50 dark:from-gray-800/50 to-white dark:to-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800"
@@ -842,7 +841,7 @@ function goToPage(pg: number | string) {
 				<!-- A negative result caused by a category/tag/date filter must not be
              blamed on the keywords — narrow a filter far enough and "try
              different keywords" misleads the reader away from the actual cause
-             (round 278). Name the filter and offer the one-click reset. -->
+             . Name the filter and offer the one-click reset. -->
 				<p class="text-sm text-gray-500 dark:text-gray-400">
 					{{
 						hasActiveFilters ? t("search.noResults.tryAdjustFilters") : t("search.noResults.hint")
@@ -858,7 +857,7 @@ function goToPage(pg: number | string) {
 					{{ t("search.filters.clearAll") }}
 				</button>
 
-				<!-- "Did you mean" recovery (round 390, DEC-443): the exact-substring
+				<!-- "Did you mean" recovery: the exact-substring
              post search has no fuzzy layer, so a typo'd or half-remembered
              term dead-ends here. Offer edit-distance neighbors from the
              backend; tapping one re-runs the search with the corrected term. -->
@@ -887,7 +886,7 @@ function goToPage(pg: number | string) {
 					</div>
 				</div>
 
-				<!-- Comments-mode recovery (ISS-612/TASK-533): a zero-hit COMMENT
+				<!-- Comments-mode recovery: a zero-hit COMMENT
              search had no route out — the term still might match article
              titles/bodies, and the sibling Posts mode is one click away. Offer
              that hop even when there are no suggestions to correct to (they
@@ -936,8 +935,8 @@ function goToPage(pg: number | string) {
 					</div>
 				</template>
 
-				<!-- COMMENT results (round 366, DEC-405): a hit carries the post brief
-             and deep-links ONTO the comment (DEC-321), never just the post. -->
+				<!-- COMMENT results: a hit carries the post brief
+             and deep-links ONTO the comment, never just the post. -->
 				<template v-else-if="mode === 'comments'">
 					<div
 						v-for="comment in activeComments"
@@ -1005,7 +1004,7 @@ function goToPage(pg: number | string) {
 					</div>
 				</template>
 
-				<!-- Pagination (windowed with ellipsis, RIL TASK-083) — shared by both
+				<!-- Pagination (windowed with ellipsis) — shared by both
              modes; the active result set decides the page count. -->
 				<div v-if="activeResult!.pagination.total_pages > 1" class="flex justify-center gap-2 mt-8">
 					<button

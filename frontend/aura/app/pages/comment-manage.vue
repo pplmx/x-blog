@@ -1,9 +1,9 @@
 <!--
-  Guest comment management (round 385, DEC-435/TASK-444).
+  Guest comment management.
 
   Landed on via the `?token=` link inside the approval email a consenting
   anonymous commenter receives when their comment goes live. The token is the
-  per-comment secret only that email carries (DEC-332), so holding it proves
+  per-comment secret only that email carries, so holding it proves
   the comment is theirs — the same ownership argument as the reply-email
   unsubscribe page. Lets the guest edit their comment text (the edit re-enters
   moderation, exactly like a signed-in reader's edit) or delete it entirely,
@@ -12,7 +12,7 @@
   Route lives at /comment-manage (flat, NOT under /comments/): a child under
   the existing /comments page nests under it, and without a <NuxtPage> in that
   parent the child route never mounts (Nuxt page-nesting gotcha, per the
-  DEC-332 /comment-reply-unsubscribe precedent).
+  comment-reply-unsubscribe precedent).
 -->
 <script setup lang="ts">
 import { ref } from "vue";
@@ -45,8 +45,8 @@ const saving = ref(false);
 const deleting = ref(false);
 const savedFlash = ref(false);
 const errorMsg = ref(false);
-// The 2.5s saved-flash auto-clear, tracked so unmount cancels it (round-420
-// sweep, same one-shot pattern the media/copyUrl + bookmarks fix tracked).
+// The 2.5s saved-flash auto-clear, tracked so unmount cancels it (sweep, same
+// one-shot pattern the media/copyUrl + bookmarks fix tracked).
 // Client-side component: window.setTimeout returns a plain number.
 let savedFlashTimer: number | undefined;
 
@@ -84,7 +84,7 @@ async function load() {
 	}
 }
 
-/** Retry the token fetch after a transient network error (round 396). */
+/** Retry the token fetch after a transient network error. */
 function retry() {
 	fired = false;
 	void load();
@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
 				</p>
 				<!-- A network error is not a dead end: the token may still be valid, and
              the email link is only clickable once. Offer an in-place retry
-             (round 396) so a flaky connection doesn't strand the visitor. -->
+              so a flaky connection doesn't strand the visitor. -->
 				<button
 					type="button"
 					class="mt-3 px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

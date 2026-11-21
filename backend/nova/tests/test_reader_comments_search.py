@@ -1,10 +1,10 @@
-"""Reader my-comments keyword search tests (DEC-411, TASK-431).
+"""Reader my-comments keyword search tests.
 
 A signed-in reader can filter their own comment history on /me/comments by a
 term (case-insensitive) matching the comment content, so a reader with a long
 history can recall a specific comment. The filter composes with the status
 filter and stays scoped to the caller's own comments; LIKE metacharacters are
-escaped so % and _ match literally (round-366 precedent).
+escaped so % and _ match literally.
 """
 
 

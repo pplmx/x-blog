@@ -1,5 +1,5 @@
 /**
- * Comment sorting journey (DEC-094, TASK-159).
+ * Comment sorting journey.
  *
  * An approved comment thread exposes a sort dropdown (Newest / Oldest / Most
  * helpful). Switching to "Most helpful" reorders the thread so the comment
@@ -66,7 +66,7 @@ async function likeTimes(
 	}
 }
 
-test.describe("Comment sorting (DEC-094)", () => {
+test.describe("Comment sorting ", () => {
 	test("Most helpful reorders the thread by like count", async ({ page, request }) => {
 		const post = await firstPost(request);
 		const stamp = Date.now();

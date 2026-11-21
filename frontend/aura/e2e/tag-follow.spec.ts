@@ -1,5 +1,5 @@
 /**
- * Tag follow journey (DEC-195, TASK-215).
+ * Tag follow journey.
  *
  * Tags are the fine-grained subscription axis categories are too coarse for: a
  * signed-in reader can follow a tag from the tag page (durable, cross-device),
@@ -20,7 +20,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Tag follow (TASK-215)", () => {
+test.describe("Tag follow ", () => {
 	test("guests see no reader-level follow control on the tag page", async ({ page, request }) => {
 		const tags = await request.get("/api/tags");
 		expect(tags.status()).toBe(200);

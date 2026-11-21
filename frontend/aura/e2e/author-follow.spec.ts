@@ -1,5 +1,5 @@
 /**
- * Author follow (round 353): a reader who loves one writer's posts subscribes
+ * Author follow: a reader who loves one writer's posts subscribes
  * to just that person — where topic-shaped follows can't express it.
  *
  * Seeds a pen-named editor + a published post, signs a reader in on the post
@@ -28,7 +28,7 @@ function freshEmail(): string {
 	return `af-${Date.now()}@example.com`;
 }
 
-test.describe("Author follow (round 353)", () => {
+test.describe("Author follow ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin editor save on the live backend",
@@ -142,7 +142,7 @@ test.describe("Author follow (round 353)", () => {
 			expect(((await inbox.json()) as { total: number }).total).toBe(1);
 
 			// The followed writer's posts now also surface in the /follows feed
-			// (round 354): all three authored posts are by a followed author.
+			//: all three authored posts are by a followed author.
 			await page.goto("/follows");
 			await expect(page.getByRole("heading", { level: 1 })).toContainText("我的关注", {
 				timeout: 15000,

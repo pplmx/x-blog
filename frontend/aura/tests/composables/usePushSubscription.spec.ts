@@ -1,5 +1,5 @@
 /**
- * usePushSubscription composable tests (DEC-055, TASK-118).
+ * usePushSubscription composable tests.
  *
  * Drives the opt-in state machine with a fake browser push stack
  * (navigator.serviceWorker / pushManager, Notification, fetch): SSR-safe
@@ -150,7 +150,7 @@ describe("usePushSubscription", () => {
 		);
 	});
 
-	it("subscribe carries new-post prefs on the request body (DEC-076/TASK-147)", async () => {
+	it("subscribe carries new-post prefs on the request body ", async () => {
 		const { reg } = setupBrowser({ permission: "granted" });
 		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
 		const { usePushSubscription } = await import("~/composables/usePushSubscription");
@@ -168,7 +168,7 @@ describe("usePushSubscription", () => {
 		);
 	});
 
-	it("setNewPostPrefs upserts prefs on an existing subscription (DEC-076/TASK-147)", async () => {
+	it("setNewPostPrefs upserts prefs on an existing subscription ", async () => {
 		setupBrowser({ permission: "granted", existingSubscription: fakePushSubscription(ENDPOINT) });
 		const { usePushSubscription } = await import("~/composables/usePushSubscription");
 		const { status, init, setNewPostPrefs } = usePushSubscription();
@@ -187,7 +187,7 @@ describe("usePushSubscription", () => {
 		);
 	});
 
-	it("subscribe sends the reader JWT so the backend binds the reader (DEC-064)", async () => {
+	it("subscribe sends the reader JWT so the backend binds the reader ", async () => {
 		localStorage.setItem("reader_token", "reader.jwt.token");
 		const { svc, reg } = setupBrowser({ permission: "granted" });
 		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
@@ -216,7 +216,7 @@ describe("usePushSubscription", () => {
 		reg.pushManager.subscribe.mockResolvedValue(fakePushSubscription(ENDPOINT));
 		// VAPID key fetch succeeds, but the subscribe POST returns 500 — a
 		// transient failure the CALLER must be able to observe (per-call-site
-		// surfacing; the initiating button decides the feedback, ISS-215).
+		// surfacing; the initiating button decides the feedback).
 		globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
 			if (String(url).includes("/api/push/vapid-public-key")) {
 				return { ok: true, json: () => Promise.resolve({ public_key: PUBLIC_KEY }) };
@@ -246,7 +246,7 @@ describe("usePushSubscription", () => {
 		expect(status.value).toBe("denied");
 	});
 
-	it("coalesces a second subscribe() fired while the first is in flight (single-flight, ISS-423)", async () => {
+	it("coalesces a second subscribe() fired while the first is in flight (single-flight)", async () => {
 		// A double-click, or the header bell + a thread/category follow in the
 		// same tick, calls subscribe() twice before status flips to
 		// "subscribing" (that only happens after the backend key round-trip).
@@ -307,7 +307,7 @@ describe("usePushSubscription", () => {
 		);
 	});
 
-	it("syncReaderBinding re-stamps an existing subscription with the reader JWT (DEC-064)", async () => {
+	it("syncReaderBinding re-stamps an existing subscription with the reader JWT ", async () => {
 		setupBrowser({ permission: "granted", existingSubscription: fakePushSubscription(ENDPOINT) });
 		localStorage.setItem("reader_token", "reader.jwt.token");
 		const { usePushSubscription } = await import("~/composables/usePushSubscription");

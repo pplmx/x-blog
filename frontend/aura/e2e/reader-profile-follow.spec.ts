@@ -1,5 +1,5 @@
 /**
- * Reader-to-reader follow journey (round 365, DEC-403).
+ * Reader-to-reader follow journey.
  *
  * A signed-in reader follows another commenter straight from their public
  * profile (/readers/{id}) — the person-shaped cousin of following an author —
@@ -88,7 +88,7 @@ async function postAndApproveReaderComment(
 	return comment.id;
 }
 
-test.describe("Reader-to-reader follow (DEC-403)", () => {
+test.describe("Reader-to-reader follow ", () => {
 	test("follow from the profile → approved comment lands a fan-out inbox row", async ({
 		page,
 		request,
@@ -105,7 +105,7 @@ test.describe("Reader-to-reader follow (DEC-403)", () => {
 		await page.goto(`/readers/${a.reader_id}`);
 		// The follower count is BOTH the visible aria-label'd span and a sr-only
 		// aria-live copy, so getByText("N 位粉丝") hits strict-mode ambiguity
-		// (round-458) — target the visible count by its aria-label instead.
+		// — target the visible count by its aria-label instead.
 		await expect(page.locator('[aria-label="0 位粉丝"]')).toBeVisible();
 		const followBtn = page.getByRole("button", { name: "关注" });
 		await expect(followBtn).toBeVisible();
@@ -122,7 +122,7 @@ test.describe("Reader-to-reader follow (DEC-403)", () => {
 			a.access_token,
 			admin,
 			postId,
-			"A follow-worthy take from the round-365 e2e",
+			"A follow-worthy take from the e2e",
 		);
 
 		await page.goto("/notifications");

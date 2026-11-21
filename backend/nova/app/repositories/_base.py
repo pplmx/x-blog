@@ -18,10 +18,10 @@ logger = get_logger(__name__)
 
 
 # Tables whose post_id column is a plain integer — no DB-level FK and no ORM
-# cascade from Post (the DEC-009 additive-table convention, integrity enforced
+# cascade from Post (the additive-table convention, integrity enforced
 # at the API layer). delete_post must purge these rows explicitly or every post
-# delete leaves permanent orphan rows (RIL ISS-296).
-# Cap on the recommendation candidate pool (round 278): recommend_posts scores
+# delete leaves permanent orphan rows.
+# Cap on the recommendation candidate pool: recommend_posts scores
 # candidates in Python, so without a bound it would materialize every public
 # post per request — an O(all posts) authenticated-triggerable load. 2000 keeps
 # behavior identical on blogs under the cap and hard-bounds a pathological one.
@@ -33,12 +33,12 @@ _POST_CHILD_TABLES: list[tuple[Any, Any]] = [
     (models.ReadingHistory, models.ReadingHistory.post_id),
     (models.CommentSubscription, models.CommentSubscription.post_id),
     (models.PostViewsDaily, models.PostViewsDaily.post_id),
-    # Reader likes are the same additive DEC-009 table class as the others:
+    # Reader likes are the same additive table class as the others:
     # deleting a post must not leave orphaned like rows behind (they would
     # drift the reader's like count and, on SQLite id reuse, could surface as
     # "liked" on an unrelated later post — deep-dive finding).
     (models.ReaderPostLike, models.ReaderPostLike.post_id),
-    # Guest (anonymous) thread subscriptions are the same additive DEC-009
+    # Guest (anonymous) thread subscriptions are the same additive
     # table class with no ORM cascade from Post: deleting a post must purge
     # its (email, post_id) rows too, or on SQLite autoincrement reuse a later
     # post could inherit ghost subscriptions and re-fire email that the guest
@@ -59,7 +59,7 @@ def utc_now_naive() -> datetime:
 
 
 # Device clocks drift; how far ahead of the server a history-import read time
-# is allowed to be before being treated as a bad clock (TASK-348/ISS-450).
+# is allowed to be before being treated as a bad clock.
 # A well-synced device is within seconds of the server, so a couple of minutes
 # of slack never trips a legitimate import, while a year-ahead "2031" read —
 # which would otherwise pin the post at the top of history forever — is always
@@ -91,7 +91,7 @@ def effective_publish_ts(post: models.Post, fallback: datetime | None = None) ->
     matching the naive ``publish_at`` domain). Both holes fall back to
     ``fallback`` (defaulting to now). Shared by the digest window, RSS/Atom
     feed dates and any "published when" surface so a scheduled post is never
-    mis-dated by its draft time (RIL ISS-264)."""
+    mis-dated by its draft time."""
     ts = post.publish_at if post.publish_at is not None else post.created_at
     if ts is None:
         return fallback if fallback is not None else utc_now_naive()
@@ -107,7 +107,7 @@ async def _populate_post_metrics(db: AsyncSession, posts: list[models.Post]) -> 
     grouped query (no N+1) so cost scales with the page size. Shared by every
     public PostList-producing path (list / popular / related / adjacent) so a
     PostList consumer never gets a misleading 0 for a post that has comments
-    (RIL TASK-109, ISS-089).
+    .
     """
     if not posts:
         return
@@ -133,7 +133,7 @@ def _effective_publish_col():
 
     A post is "published when" its scheduled ``publish_at`` (if set), else its
     ``created_at`` — the same line ``effective_publish_ts`` draws in Python,
-    expressed in SQL so ordering/grouping/filtering agree (RIL ISS-265). On
+    expressed in SQL so ordering/grouping/filtering agree. On
     SQLite the created_at column may carry a ``+00:00`` suffix while publish_at
     is bare naive-UTC text; COALESCE returns whichever is set, and both format
     identically up to the suffix, so string ordering stays aligned.
@@ -186,16 +186,16 @@ async def _bump_post_likes(db: AsyncSession, post_id: int, delta: int) -> None:
     """Atomic UPDATE of a post's like counter WITHOUT committing.
 
     Shared by increment_likes/decrement_likes (standalone commits) and the
-    reader like-row paths (ISS-574: merged into the row's own transaction so a
+    reader like-row paths (merged into the row's own transaction so a
     crash between the two can never leave a durable like row with a counter
-    that was never bumped — the same atomicity fix comments got at ISS-560).
+    that was never bumped — the same atomicity fix comments got).
     """
     if delta < 0:
         # ``likes > 0`` never matches a NULL row (comparisons with NULL are
         # UNKNOWN), but coalescing keeps the arithmetic honest on the decrement
         # floor: NULL+(-1) via the negative branch is impossible here because
         # the predicate excludes it; the else-branch below must coalesce to
-        # make NULL likes incrementable like views above (TASK-535).
+        # make NULL likes incrementable like views above.
         stmt = (
             update(models.Post)
             .where(models.Post.id == post_id, models.Post.likes > 0)
@@ -217,7 +217,7 @@ async def _commit_reader_upsert(db: AsyncSession) -> bool:
     (the same (reader, target) row was committed just before ours), rolls back
     and returns False so the caller re-fetches the winner and reports
     created=False — the merge-friendly PUT contracts stay idempotent and can
-    never 500 on an IntegrityError (ISS-143).
+    never 500 on an IntegrityError.
     """
     try:
         await db.commit()
@@ -227,7 +227,7 @@ async def _commit_reader_upsert(db: AsyncSession) -> bool:
         return False
 
 
-# Reading-streak + activity window for the /history summary (DEC-169, TASK-201).
+# Reading-streak + activity window for the /history summary.
 # The heatmap shows the last 52 weeks; entries are produced for every day
 # (zeros included) so the frontend renders a complete calendar without gaps.
 ACTIVITY_DAYS = 364
@@ -235,11 +235,11 @@ ACTIVITY_DAYS = 364
 
 # Retention cap per reader: keep the most recent N notifications, pruning older
 # rows on insert so the inbox can never grow without bound (mirrors the per-post
-# revision cap, DEC-158).
+# revision cap).
 MAX_NOTIFICATIONS_PER_READER = 200
 
 
-# Reply / thread-comment / @-mention copy (DEC-340, TASK-396): moved here from
+# Reply / thread-comment / @-mention copy: moved here from
 # the comments router so the per-reader localization lives with the fan-out
 # copy, still operator-overridable via the same env vars (the zh site default
 # reads them exactly as before; the English copy is static for now).
@@ -261,7 +261,7 @@ MENTION_NOTIF_TITLE = os.getenv("MENTION_NOTIFICATION_TITLE", "有人在评论�
 MENTION_NOTIF_BODY = os.getenv("MENTION_NOTIFICATION_BODY", "{commenter} 在《{post_title}》中提到了你")
 
 
-# @-mention resolution (DEC-322, TASK-389).
+# @-mention resolution.
 # Hard cap on reader display-names scanned per approved comment: a personal-blog
 # reader table resolves in milliseconds, but a pathological scale should fail
 # silently (no pick-and-choose partial matching) rather than do unbounded work
@@ -285,7 +285,7 @@ def _from_iso(value: str | None) -> datetime | None:
         parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
-    # Restore the same absolute instant in the naive-UTC domain (DEC-213): an
+    # Restore the same absolute instant in the naive-UTC domain: an
     # exported aware value must not re-enter the DB shifted by the reader's
     # timezone or the session TimeZone.
     if parsed.tzinfo is not None:

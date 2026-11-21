@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// /highlights — the signed-in reader's saved passages (round 466, DEC-511 /
-// TASK-583). Cloud-only: guests are redirected to /login with a return path,
+// /highlights — the signed-in reader's saved passages. Cloud-only: guests are redirected to /login with a return path,
 // like the likes page. Each row links back to its post and exposes inline
 // note editing + delete. Paginated like the follows/liked feed: the page comes
 // from ?page= so it is deep-linkable, and the list is windowed+ellipsis aware

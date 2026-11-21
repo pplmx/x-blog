@@ -1,5 +1,5 @@
 /**
- * useSlugRedirect composable tests (round 350).
+ * useSlugRedirect composable tests.
  *
  * The backend 404s a re-slugged post / series / page with an `X-Redirect-To`
  * header naming the canonical target; this composable turns it into a real 301
@@ -29,7 +29,7 @@ function plainError(statusCode: number) {
 	return { statusCode };
 }
 
-describe("useSlugRedirect (round 350)", () => {
+describe("useSlugRedirect ", () => {
 	let replaceSpy: ReturnType<typeof vi.fn>;
 
 	afterEach(() => {

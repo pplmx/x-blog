@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { computed, reactive, ref } from "vue";
 import type { SearchSuggestion } from "~~/api/public/search";
 
-// Blocked-reader suppression (round 386, DEC-437): stub the composable so the
+// Blocked-reader suppression: stub the composable so the
 // comment-search test can inject a blocked reader id and observe the hit vanish.
 const mockBlockedSet = ref(new Set<number>());
 vi.mock("~~/composables/useBlockedReaderIds", () => ({
@@ -71,7 +71,7 @@ const mockEmptyResult = {
 	},
 };
 
-// A comment search hit (round 366, DEC-405): the Comment envelope + snippet +
+// A comment search hit: the Comment envelope + snippet +
 // post brief so a result can land ON the comment.
 const mockCommentResult = {
 	items: [
@@ -151,7 +151,7 @@ async function mountSearchPage({
 	allResult?: typeof mockAllResult | null;
 	allPending?: boolean;
 	allError?: { message: string } | null;
-	/** "Did you mean" payload (round 390, DEC-443) — only rendered on zero hits. */
+	/** "Did you mean" payload — only rendered on zero hits. */
 	suggestResult?: { query: string; suggestions: SearchSuggestion[] };
 	/** Category/tag lists for the filter selects' on-mount $fetch (default empty). */
 	taxonomy?: { categories?: { id: number; name: string }[]; tags?: { id: number; name: string }[] };
@@ -177,7 +177,7 @@ async function mountSearchPage({
 	vi.stubGlobal("computed", computed);
 
 	// Mock useFetch (used by useApi/useSearch internally). The page drives TWO
-	// searches (round 366): posts via /api/search and comments via
+	// searches: posts via /api/search and comments via
 	// /api/search/comments — route each to its own mock payload.
 	vi.stubGlobal(
 		"useFetch",
@@ -221,7 +221,7 @@ async function mountSearchPage({
 		}),
 	);
 
-	// The filter bar loads the category/tag lists via $fetch on mount (DEC-084);
+	// The filter bar loads the category/tag lists via $fetch on mount;
 	// stub it so the select options render empty instead of an unhandled error.
 	vi.stubGlobal(
 		"$fetch",
@@ -395,7 +395,7 @@ describe("Search Page", () => {
 				searchResult: null,
 			});
 			expect(wrapper.text()).toContain("加载失败");
-			// ISS-135: never leak the raw backend/exception message to readers.
+			// never leak the raw backend/exception message to readers.
 			expect(wrapper.text()).not.toContain("Network error");
 		});
 	});
@@ -546,7 +546,7 @@ describe("Search Page", () => {
 			expect(wrapper.text()).toContain("试试其他关键词吧");
 		});
 
-		it("names the active filter instead of blaming keywords when a filter caused the zero (round 278)", async () => {
+		it("names the active filter instead of blaming keywords when a filter caused the zero ", async () => {
 			const wrapper = await mountSearchPage({
 				searchResult: mockEmptyResult,
 				routeQuery: { q: "test query", category: "Tech" },
@@ -561,7 +561,7 @@ describe("Search Page", () => {
 		});
 	});
 
-	describe("Did you mean suggestions (round 390, DEC-443)", () => {
+	describe("Did you mean suggestions ", () => {
 		const mockSuggestResult = {
 			query: "javascrit",
 			suggestions: [
@@ -701,9 +701,9 @@ describe("Search Page", () => {
 			expect(links.length).toBeGreaterThanOrEqual(2);
 		});
 
-		it("renders a highlighted snippet when the backend provides one (DEC-071)", async () => {
+		it("renders a highlighted snippet when the backend provides one ", async () => {
 			// The backend emits a <mark>-highlighted snippet (CJK-aware since
-			// DEC-071); the page renders it sanitized and the term is visible.
+			//); the page renders it sanitized and the term is visible.
 			const withSnippet = {
 				...mockSearchResult,
 				items: [
@@ -928,7 +928,7 @@ describe("Search Page", () => {
 		});
 	});
 
-	describe("Out-of-range page clamp (ISS-308)", () => {
+	describe("Out-of-range page clamp ", () => {
 		it("clamps a stale page=999 deep link back to the last real page once pagination arrives", async () => {
 			const navMock = vi.fn();
 			vi.stubGlobal("useRuntimeConfig", () => ({
@@ -1093,7 +1093,7 @@ describe("Search Page", () => {
 	});
 });
 
-describe("Comment search mode (round 366, DEC-405)", () => {
+describe("Comment search mode ", () => {
 	it("renders both mode tabs with posts selected by default", async () => {
 		const wrapper = await mountSearchPage({ routeQuery: { q: "nuxt" } });
 		const tabs = wrapper.findAll('[role="tab"]');
@@ -1106,7 +1106,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 	it("renders comment results with a deep link onto the comment when ?type=comments", async () => {
 		const wrapper = await mountSearchPage({ routeQuery: { q: "42", type: "comments" } });
 		// The comment hit renders its highlighted snippet, commenter, and the
-		// post brief — and the card deep-links ONTO the comment (DEC-321).
+		// post brief — and the card deep-links ONTO the comment.
 		expect(wrapper.text()).toContain("Searchable Post");
 		expect(wrapper.text()).toContain("Commenter One");
 		expect(wrapper.text()).toContain("real answer is 42");
@@ -1116,7 +1116,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.text()).not.toContain("Search Result Post");
 	});
 
-	it("never renders a verified reader's email as the commenter (round 396)", async () => {
+	it("never renders a verified reader's email as the commenter ", async () => {
 		// A reader with no display_name has their account email stamped as the
 		// nickname — the search results must render the generic identity, not
 		// the PII (same rule as the thread and discussion feed).
@@ -1168,7 +1168,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.findAll("button").some((b) => b.text() === "清除筛选")).toBe(false);
 	});
 
-	it("offers a route back to article search on a zero-hit comments search (ISS-612)", async () => {
+	it("offers a route back to article search on a zero-hit comments search ", async () => {
 		// A dead-end comment search used to leave the reader with only the
 		// shared empty state — no way back to the same term in posts mode even
 		// though the term might match article titles/bodies.
@@ -1182,7 +1182,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.text()).toContain("没有匹配的评论");
 	});
 
-	it("recovery link switches a zero-hit comments search back to posts mode (ISS-612)", async () => {
+	it("recovery link switches a zero-hit comments search back to posts mode ", async () => {
 		const wrapper = await mountSearchPage({
 			routeQuery: { q: "zzz", type: "comments" },
 			commentResult: {
@@ -1249,7 +1249,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(navigateSpy).toHaveBeenCalledWith({ query: { q: "42", type: "comments", page: "2" } });
 	});
 
-	it("hides a blocked reader's comment hit from comment search (round 386, DEC-437)", async () => {
+	it("hides a blocked reader's comment hit from comment search ", async () => {
 		const withReaderHit = {
 			...mockCommentResult,
 			items: [
@@ -1274,7 +1274,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapperHidden.text()).not.toContain("Blocked Author");
 	});
 
-	it("renders the empty state when every comment hit is by a blocked reader (round 386, DEC-437)", async () => {
+	it("renders the empty state when every comment hit is by a blocked reader ", async () => {
 		const allBlocked = {
 			...mockCommentResult,
 			items: [
@@ -1292,7 +1292,7 @@ describe("Comment search mode (round 366, DEC-405)", () => {
 		expect(wrapper.text()).not.toContain("Blocked Author");
 	});
 
-	// TASK-478 / ISS-554: an invalid ?page= must resolve to page 1. The
+	// an invalid ?page= must resolve to page 1. The
 	// un-clamped computed forwarded NaN/0 raw to /api/search (guaranteed 422)
 	// while the clamp watcher short-circuits NaN/<2, bricking the results
 	// region with a dead Retry. Clamp at the computed (follows.vue pattern).

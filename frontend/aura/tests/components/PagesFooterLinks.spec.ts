@@ -1,5 +1,5 @@
 /**
- * PagesFooterLinks component tests (round 347).
+ * PagesFooterLinks component tests.
  *
  * The footer's published-page link list: renders a link per published page,
  * and renders nothing (not an error state) when the site has none / the fetch

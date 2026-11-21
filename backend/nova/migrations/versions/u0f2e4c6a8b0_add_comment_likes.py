@@ -5,7 +5,7 @@ so a determined caller could inflate a comment's likes to skew the "most
 helpful" ordering — contradicting the idempotency hardening applied to flags.
 This additive table mirrors comment_flags: one row per (comment, ip_key) so a
 visitor likes a comment at most once and the count means distinct supporters.
-Only the new table is added — no existing DDL is touched (DEC-009).
+Only the new table is added — no existing DDL is touched.
 
 Revision ID: u0f2e4c6a8b0
 Revises: t8e4g6a8c0e2

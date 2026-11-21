@@ -260,7 +260,7 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockApproveAdminComment).toHaveBeenCalledWith(2, true);
-			// The queue reload is silent — the success feedback (ISS-311) must render.
+			// The queue reload is silent — the success feedback must render.
 			expect(wrapper.text()).toContain("评论已通过审核");
 		});
 
@@ -278,11 +278,11 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockApproveAdminComment).toHaveBeenCalledWith(1, false);
-			// Reject/revoke feedback (ISS-311).
+			// Reject/revoke feedback.
 			expect(wrapper.text()).toContain("已撤销该评论的审核通过");
 		});
 
-		it("replies to an approved comment as the author, then reloads (DEC-192)", async () => {
+		it("replies to an approved comment as the author, then reloads ", async () => {
 			mockReplyAdminComment.mockResolvedValue({});
 			const fetchSpy = vi.mocked(mockFetchAdminComments);
 
@@ -387,7 +387,7 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], true);
-			// Batch success feedback (ISS-311).
+			// Batch success feedback.
 			expect(wrapper.text()).toContain("已通过 1 条评论");
 		});
 
@@ -410,7 +410,7 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 
 			expect(mockBatchApproveAdminComments).toHaveBeenCalledWith([2], false);
-			// Batch reject feedback (ISS-311).
+			// Batch reject feedback.
 			expect(wrapper.text()).toContain("已拒绝 1 条评论");
 		});
 
@@ -485,7 +485,7 @@ describe("Admin Comments Page", () => {
 			await flushPromises();
 		});
 
-		it("bulk-deletes selected comments after confirmation (DEC-110)", async () => {
+		it("bulk-deletes selected comments after confirmation ", async () => {
 			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 			mockBatchDeleteAdminComments.mockResolvedValue({ deleted: 1 });
 			window.confirm = vi.fn(() => true);
@@ -600,7 +600,7 @@ describe("Admin Comments Page", () => {
 			);
 		});
 
-		it("pages by the APPLIED filter set, not a search term still in the box (round 417)", async () => {
+		it("pages by the APPLIED filter set, not a search term still in the box ", async () => {
 			// Typing a new term without pressing Enter used to leak into the next
 			// page's request: gotoPage read the live searchQuery, so Prev/Next
 			// silently switched to the NEW term's result set while the screen
@@ -689,7 +689,7 @@ describe("Admin Comments Page", () => {
 		});
 	});
 
-	describe("Deep-dive polish (round 254)", () => {
+	describe("Deep-dive polish ", () => {
 		beforeEach(() => {
 			mockFetchAdminComments.mockResolvedValue(mockCommentList);
 		});
@@ -1008,7 +1008,7 @@ describe("Admin Comments Page", () => {
 			expect(mockBatchDeleteAdminComments).not.toHaveBeenCalled();
 		});
 
-		it("dismisses reader flags on a flagged comment (DEC-108)", async () => {
+		it("dismisses reader flags on a flagged comment ", async () => {
 			mockFetchAdminComments.mockResolvedValue({
 				items: [{ ...mockComments[0], flag_count: 2 }],
 				pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },

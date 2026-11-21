@@ -1,5 +1,5 @@
 /**
- * Print / PDF view journey (DEC-112, TASK-168).
+ * Print / PDF view journey.
  *
  * A reader can open the print-friendly route for any post and get a clean
  * article: navigate to the print route from the article page's "Print / PDF"
@@ -20,7 +20,7 @@ async function firstPost(
 	return body.items[0];
 }
 
-test.describe("Print / PDF view (TASK-168)", () => {
+test.describe("Print / PDF view ", () => {
 	test("reader opens the print route and sees the article content", async ({ page, request }) => {
 		const post = await firstPost(request);
 

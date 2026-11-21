@@ -1,17 +1,17 @@
 <script setup lang="ts">
 /**
- * Inline author-follow control (round 353).
+ * Inline author-follow control.
  *
  * Attaches to the author byline on the post page so a signed-in reader can
- * follow/unfollow the writer in place — the same discoverability gap DEC-290
- * closed for series and DEC-196 for tags, but for the pen-named author behind
+ * follow/unfollow the writer in place — the same discoverability gap
+ * closed for series and for tags, but for the pen-named author behind
  * an article they just loved (author attribution, rounds 343-346/359). Renders
  * nothing for guests. Follow state is loaded through the imperative
  * getReaderAuthorFollows seam ($fetch — a lifecycle-hook useFetch never sends,
- * ISS-119/TASK-220) and the per-author notify toggle lives in /account's
+ *) and the per-author notify toggle lives in /account's
  * followed-writers section; here it is a single follow/unfollow toggle.
  * Dead-session 401s drop the expired token and offer the sign-in prompt
- * instead of a misleading "follow failed" bubble (round-300 guard, mirrors
+ * instead of a misleading "follow failed" bubble (guard, mirrors
  * SeriesFollowButton).
  */
 import { ref, watch } from "vue";

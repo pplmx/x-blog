@@ -1,6 +1,6 @@
 import type { PaginationInfo } from "./shared";
 
-/** One registered reader as surfaced on the admin readers list (DEC-194). */
+/** One registered reader as surfaced on the admin readers list. */
 export interface AdminReader {
 	id: number;
 	email: string;

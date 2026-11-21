@@ -123,7 +123,7 @@ describe("reader follow commands", () => {
 	});
 });
 
-describe("reader tag follow API (DEC-195)", () => {
+describe("reader tag follow API ", () => {
 	it("fetches tag follows reactively", () => {
 		useReaderTagFollows();
 
@@ -155,7 +155,7 @@ describe("reader tag follow API (DEC-195)", () => {
 	});
 });
 
-describe("reader follow GET commands ($fetch seam for onMounted, ISS-110/111 pattern)", () => {
+describe("reader follow GET commands ($fetch seam for onMounted pattern)", () => {
 	it("fetches series follows imperatively", async () => {
 		await getReaderSeriesFollows();
 
@@ -178,7 +178,7 @@ describe("reader follow GET commands ($fetch seam for onMounted, ISS-110/111 pat
 	});
 });
 
-describe("reader-to-reader follow API (round 365, DEC-403)", () => {
+describe("reader-to-reader follow API ", () => {
 	it("fetches the followed readers imperatively", async () => {
 		await getReaderFollows();
 

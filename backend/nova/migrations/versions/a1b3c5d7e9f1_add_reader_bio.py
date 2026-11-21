@@ -1,7 +1,7 @@
-"""add reader_accounts.bio (round 352)
+"""add reader_accounts.bio
 
 A simple additive TEXT column — no touch to existing columns, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Nullable, backfilled
+SQLite-can't-add-FK constraint of does not apply. Nullable, backfilled
 as NULL (existing readers have no bio until they write one).
 """
 

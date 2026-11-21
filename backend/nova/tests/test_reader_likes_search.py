@@ -1,10 +1,10 @@
-"""Reader liked-posts recall-search tests (DEC-413, TASK-432).
+"""Reader liked-posts recall-search tests.
 
 A signed-in reader can filter their liked posts on /me/likes by a term
 (case-insensitive) matching the post title or excerpt, so a reader with a long
 "posts I appreciated" list can recall a specific one. The filter stays scoped
 to the caller's own likes; LIKE metacharacters are escaped so % and _ match
-literally (round-366 precedent; same pattern as history recall-search DEC-148).
+literally.
 """
 
 LIKES = "/api/reader/me/likes"

@@ -36,7 +36,7 @@ async def visible_series_post_counts(db: AsyncSession) -> dict[int, int]:
     """Map series_id -> count of publicly visible posts (drafts/scheduled
     excluded), for ALL series in one grouped query. The public series list
     used a per-series count query (N+1 on an uncached public endpoint — one
-    count per series on every anonymous hit, RIL ISS-292)."""
+    count per series on every anonymous hit)."""
     now = utc_now_naive()
     rows = (
         await db.execute(
@@ -145,7 +145,7 @@ async def create_series(db: AsyncSession, data: schemas.SeriesCreate) -> models.
         await db.rollback()
         raise ValueError(f"Series with slug '{data.slug}' already exists")
     await db.refresh(db_series)
-    # The sitemap now lists series (DEC-318), so a create must bust the
+    # The sitemap now lists series, so a create must bust the
     # rendered feeds too — clear_posts_list_cache is the superset that also
     # clears series_cache, matching update_series/delete_series.
     clear_posts_list_cache()
@@ -159,7 +159,7 @@ async def update_series(db: AsyncSession, series_id: int, data: schemas.SeriesUp
         return None
     update_data = data.model_dump(exclude_unset=True)
     if "slug" in update_data and update_data["slug"] != db_series.slug:
-        # Slug-change redirect (round 350): an old series URL that was shared/
+        # Slug-change redirect: an old series URL that was shared/
         # indexed must keep pointing at this series after the rename.
         await record_slug_redirect(db, "series", db_series.slug, update_data["slug"])
     for field, value in update_data.items():
@@ -188,7 +188,7 @@ async def delete_series(db: AsyncSession, series_id: int) -> bool:
         .where(models.Post.series_id == series_id)
         .values({models.Post.series_id: None, models.Post.series_order: 0})
     )
-    # SeriesFollow is an additive DEC-009 table with no ORM cascade from
+    # SeriesFollow is an additive table with no ORM cascade from
     # Series: purge the follow rows too, or a deleted series leaves stale
     # follows that, on SQLite autoincrement id reuse, re-point at an unrelated
     # later series (same orphan class as category/tag follows — deep-dive

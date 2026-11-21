@@ -17,7 +17,7 @@ class TestTagSchemas:
         assert tag.name == "python"
 
     def test_tag_create_empty_name(self):
-        """A blank tag name is rejected (round 276: a whitespace-only name
+        """A blank tag name is rejected (a whitespace-only name
         persisted and rendered as an empty chip / empty RSS channel title)."""
         with pytest.raises(ValidationError):
             schemas.TagCreate(name="")
@@ -45,7 +45,7 @@ class TestCategorySchemas:
         assert category.name == "Technology"
 
     def test_category_create_empty_name(self):
-        """A blank category name is rejected (round 276, blank-name cleanup)."""
+        """A blank category name is rejected."""
         with pytest.raises(ValidationError):
             schemas.CategoryCreate(name="")
         with pytest.raises(ValidationError):
@@ -130,7 +130,7 @@ class TestPostBaseSchemas:
 
 
 class TestPublishAtNormalization:
-    """Zone-marked publish_at must land in the naive-UTC domain (DEC-213).
+    """Zone-marked publish_at must land in the naive-UTC domain.
 
     The frontend sends naive-UTC publish_at, but a client can still pass an
     offset/Z ISO (e.g. a date-picker's toISOString()). It must be stored as
@@ -191,7 +191,7 @@ class TestPostCreateSchema:
         assert post.tags == []
 
     def test_post_create_blank_title_rejected(self):
-        """A whitespace-only title is rejected (round 276) — a blank card and
+        """A whitespace-only title is rejected — a blank card and
         an empty RSS/Atom channel title were previously persisted."""
         with pytest.raises(ValidationError):
             schemas.PostCreate(title="   ", slug="blank-title", content="x")
@@ -676,7 +676,7 @@ class TestColumnLengthParity:
 
     def test_comment_nickname_blank_rejected(self):
         """Whitespace-only nicknames must not reach the moderation queue
-        (round 276: min_length=1 alone can't catch ' ', the strip does)."""
+        ."""
         with pytest.raises(ValidationError):
             schemas.CommentCreate(nickname="   ", email="a@b.c", content="hi")
 
@@ -691,7 +691,7 @@ class TestColumnLengthParity:
 
     def test_comment_email_boundary_100_accepted(self):
         # Length parity: a 100-char address is still accepted — but it must be
-        # validly shaped, not a run of "e"s (the shape check is ISS-145).
+        # validly shaped, not a run of "e"s (the shape check is).
         c = schemas.CommentCreate(nickname="ok", email="a" * 95 + "@b.co", content="hi")
         assert len(c.email) == 100
 
@@ -703,7 +703,7 @@ class TestColumnLengthParity:
 
     def test_comment_email_empty_placeholder_allowed(self):
         # Signed-in readers send "" — the backend stamps the account identity
-        # and ignores the value, so the schema must keep accepting it (ISS-145).
+        # and ignores the value, so the schema must keep accepting it.
         c = schemas.CommentCreate(nickname="x", email="", content="hi")
         assert c.email == ""
 

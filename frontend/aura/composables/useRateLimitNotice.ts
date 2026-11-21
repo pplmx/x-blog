@@ -1,5 +1,5 @@
 /**
- * App-wide HTTP 429 rate-limit notice (round 211).
+ * App-wide HTTP 429 rate-limit notice.
  *
  * slowapi returns a technical 429 (`{"detail":"Rate limit exceeded: N per
  * minute"}`) and the pages that surface it show everything from a raw-ish

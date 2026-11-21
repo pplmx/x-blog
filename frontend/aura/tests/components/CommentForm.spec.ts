@@ -123,7 +123,7 @@ describe("CommentForm", () => {
 			expect(button.text()).toContain("提交评论");
 		});
 
-		it("renders the Markdown hint under the content box (DEC-088)", async () => {
+		it("renders the Markdown hint under the content box ", async () => {
 			const wrapper = await mountCommentForm();
 			expect(wrapper.text()).toContain("支持 Markdown");
 		});
@@ -193,7 +193,7 @@ describe("CommentForm", () => {
 				content: "Great post!",
 				parent_id: null,
 				website: "",
-				// Guest reply-email consent defaults OFF (DEC-332): a guest who
+				// Guest reply-email consent defaults OFF: a guest who
 				// doesn't tick the box is never emailed about replies.
 				reply_notify_email: false,
 			});
@@ -214,7 +214,7 @@ describe("CommentForm", () => {
 		});
 	});
 
-	describe("Guest reply-email consent (DEC-332)", () => {
+	describe("Guest reply-email consent ", () => {
 		const checkbox = (wrapper: ReturnType<typeof mountCommentForm>) =>
 			wrapper.find('input[type="checkbox"]') as any;
 
@@ -462,7 +462,7 @@ describe("CommentForm", () => {
 		});
 	});
 
-	describe("Per-instance field ids (round 278)", () => {
+	describe("Per-instance field ids ", () => {
 		it("gives coexisting forms distinct field ids so labels bind within their own form", async () => {
 			// A post page mounts the standalone bottom form and (while open) an
 			// inline reply form at once. Duplicate `comment-nickname`/`comment-
@@ -505,7 +505,7 @@ describe("CommentForm", () => {
 		});
 	});
 
-	describe("disabled prop (mid-refetch guard, ISS-416)", () => {
+	describe("disabled prop (mid-refetch guard)", () => {
 		// The post page disables the comment form while the main post is mid-SPA-
 		// refetch (prev/next): submitting in that window would attach the comment
 		// to the OLD post the reader is still looking at.
@@ -535,7 +535,7 @@ describe("CommentForm", () => {
 	});
 });
 
-describe("Markdown live preview (DEC-306/TASK-381)", () => {
+describe("Markdown live preview ", () => {
 	it("renders the Write/Preview tab switch with a preview panel", async () => {
 		const wrapper = await mountCommentForm();
 		const textarea = () => wrapper.find("textarea");
@@ -599,7 +599,7 @@ describe("Markdown live preview (DEC-306/TASK-381)", () => {
 		wrapper.unmount();
 	});
 
-	it("arrow roving stays inside its OWN tablist when two CommentForms coexist (round 418 audit)", async () => {
+	it("arrow roving stays inside its OWN tablist when two CommentForms coexist ", async () => {
 		// The post page mounts a bottom CommentForm AND CommentList mounts one
 		// inline on Reply — both carry aria-label "Comment markdown preview".
 		// The old roving handler queried the whole document (findIndex over ALL
@@ -706,7 +706,7 @@ describe("Markdown live preview (DEC-306/TASK-381)", () => {
 		expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe("");
 	});
 
-	describe("@-mention picker (DEC-324)", () => {
+	describe("@-mention picker ", () => {
 		const riki = { id: 1, display_name: "Riki", avatar_url: null };
 		const aria = { id: 2, display_name: "Aria", avatar_url: null };
 

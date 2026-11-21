@@ -109,10 +109,10 @@ class TestRateLimitExceeded:
 class TestAdminWriteEndpointsRateLimited:
     """Admin create/update write endpoints must carry the WRITE rate limit.
 
-    Regression guard for the round-17 gap where only *destructive* admin
+    Regression guard for the gap where only *destructive* admin
     writes were limited: create-post/update-post/create+update category and
     tag had no @limiter.limit while their public-router equivalents did, so
-    an unrate-limited write path existed behind admin auth. (RIL TASK-034)
+    an unrate-limited write path existed behind admin auth.
 
     slowapi registers each decorated route in ``limiter._route_limits`` at
     import time; this app disables the X-RateLimit response headers
@@ -151,7 +151,7 @@ class TestAdminWriteEndpointsRateLimited:
     def test_admin_misc_writes_are_rate_limited(self):
         """Every remaining admin write route carries the WRITE bucket.
 
-        Regression guard for the round-450 sweep: dismiss_comment_flags
+        Regression guard for the sweep: dismiss_comment_flags
         (DELETE /comments/{id}/flags), put_site_setting_ep (PUT
         /settings/{key}), reader de/activate, and the on-demand weekly digests
         each had silently dropped the @limiter.limit every sibling admin write
@@ -183,13 +183,13 @@ class TestAdminWriteEndpointsRateLimited:
 class TestReaderWriteEndpointsRateLimited:
     """Reader self-service writes must carry the WRITE rate limit.
 
-    Regression guard mirroring the admin write-endpoint guard (TASK-034):
+    Regression guard mirroring the admin write-endpoint guard:
     slowapi registers each decorated route in ``limiter._route_limits`` at
     import time, so registry presence is the signal. The comment-thread
     subscription toggle writes a CommentSubscription row (fan-out later on
     every approved comment) and the notification-prefs/locale toggles hit the
     reader account row; each had silently dropped the @limiter.limit its
-    sibling writes carry (backend edge-case audit, ISS-651).
+    sibling writes carry (backend edge-case audit).
     """
 
     def test_reader_thread_subscription_writes_are_rate_limited(self):

@@ -1,17 +1,17 @@
 /**
- * Reading-history page journey (DEC-114, TASK-169).
+ * Reading-history page journey.
  *
  * A reader who opens a post can reach the Reading history page and see that
  * post listed newest-first; clearing history returns the page to its empty
  * state. The trail is client-side (localStorage), so this needs only a live
  * backend with at least one published post. This is a guest journey — personal
- * links live in the signed-in "My" avatar menu (round 382), so the page is
+ * links live in the signed-in "My" avatar menu, so the page is
  * reached by navigating directly.
  */
 
 import { expect, test } from "@playwright/test";
 
-test.describe("Reading history page (TASK-169)", () => {
+test.describe("Reading history page ", () => {
 	test("lists a viewed post and clears it to the empty state", async ({ page }) => {
 		await page.goto("/");
 		const postLink = page.locator("article a").first();
@@ -22,7 +22,7 @@ test.describe("Reading history page (TASK-169)", () => {
 		// Build the needle from the card's heading minus the pinned badge span:
 		// the history entry renders only the bare post title, so the whole-card
 		// textContent (badge + date + stats + excerpt) could never match it
-		// (pre-existing journey break against the shared dev DB, ISS-119). The
+		// (pre-existing journey break against the shared dev DB). The
 		// first /posts/ link on a signed-in home may be a "为你推荐" card (h3)
 		// instead of the posts-grid PostCard (h2), so match on either heading.
 		const titleEl = postLink.locator("h2, h3").first();
@@ -52,7 +52,7 @@ test.describe("Reading history page (TASK-169)", () => {
 		}
 
 		// Reach the history page. This spec is a GUEST journey, and the personal
-		// links now live in the signed-in "My" avatar menu (round 382) — guests
+		// links now live in the signed-in "My" avatar menu — guests
 		// have no header entry, so navigate directly.
 		await page.goto("/history");
 		await page.waitForURL("**/history");

@@ -1,5 +1,5 @@
 /**
- * Reader email-change journey (DEC-357, TASK-404).
+ * Reader email-change journey.
  *
  * A signed-in reader asks to switch login email from the account settings page
  * (current password + new address), the backend mails a single-use verification
@@ -46,7 +46,7 @@ function freshEmail(): string {
 	return `emailchange-${Date.now()}-${emailCounter}@example.com`;
 }
 
-test.describe("Reader email change (DEC-357)", () => {
+test.describe("Reader email change ", () => {
 	test("swaps the sign-in email via the emailed link", async ({ page, request }) => {
 		test.skip(!(await smtpIsUp(request)), "requires the e2e SMTP sink");
 

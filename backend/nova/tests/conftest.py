@@ -103,7 +103,7 @@ def _isolate_pg_advisory_lock_per_worker(worker_id: str):
     digest job's fixed ``_DIGEST_LOCK_KEY`` lives on the shared database — so
     the advisory-lock-contention test in one worker made every OTHER worker's
     digest send return ``locked`` (digest suite red under ``-n`` on PG while
-    each test passed in isolation; PG-parity regression found round 448). Set a
+    each test passed in isolation; PG-parity regression found). Set a
     per-worker key derivation so parallel workers never contend, while the
     in-worker lock/contention semantics stay intact. Production (no
     TEST_DATABASE_URL) never sets the env var and keeps the stable key.
@@ -187,7 +187,7 @@ def test_engine(worker_id: str) -> AsyncEngine | None:
             # Point every pooled connection (schema creation + every query) at
             # this worker's schema, and pin the session to UTC so the aware
             # ORM defaults (datetime.now(UTC)) store as naive-UTC wall clock —
-            # the DEC-213 storage contract app/database.py enforces in prod.
+            # the storage contract app/database.py enforces in prod.
             cur = dbapi_connection.cursor()
             cur.execute(f'SET search_path TO "{schema}"')
             cur.execute("SET TIME ZONE 'UTC'")
@@ -388,7 +388,7 @@ async def editor_user(db_session: AsyncSession):
     """
     Create a non-superuser editor admin within the test's transaction.
     Editors can moderate content (posts/comments/categories/tags) but cannot
-    manage users/export/batch (DEC-054, TASK-115).
+    manage users/export/batch.
     """
     from app.auth import ROLE_EDITOR, User, get_password_hash
 

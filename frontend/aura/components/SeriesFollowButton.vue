@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /**
- * Inline series-follow control (DEC-290 / TASK-374).
+ * Inline series-follow control.
  *
  * Attaches to the in-series nav box on the post page so a signed-in reader can
  * follow/unfollow the current series and toggle its new-part notifications in
- * place — the same discoverability gap DEC-196 closed for tags, but for series
+ * place — the same discoverability gap closed for tags, but for series
  * (which only had a follow surface on /series/[slug]). Renders nothing for
  * guests. Follow state is loaded through the imperative getReaderSeriesFollows
- * seam ($fetch — a lifecycle-hook useFetch never sends, ISS-119/TASK-220).
+ * seam ($fetch — a lifecycle-hook useFetch never sends).
  * Dead-session 401s drop the expired token and offer the sign-in prompt
- * instead of a misleading "failed" bubble (round-300 guard, mirrors the
+ * instead of a misleading "failed" bubble (guard, mirrors the
  * /series page follow block).
  */
 import { ref, watch } from "vue";
@@ -124,7 +124,7 @@ async function toggleFollow() {
 	}
 }
 
-/** Toggle new-part push on/off for a followed series (TASK-181). */
+/** Toggle new-part push on/off for a followed series. */
 async function toggleNotify() {
 	if (followBusy.value || !followsSeries.value) return;
 	followBusy.value = true;

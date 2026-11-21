@@ -1,4 +1,4 @@
-"""Contract tests for new-post Web Push notifications (DEC-076, TASK-147).
+"""Contract tests for new-post Web Push notifications.
 
 Covers:
 - subscribe carries want_new_posts / new_post_category_id prefs (defaults False/None,
@@ -161,7 +161,7 @@ class TestPublishFanOut:
 
     async def test_reader_bound_subscriber_with_new_post_pref_off_is_skipped(self, client, auth_headers):
         # A reader-bound push subscription is dropped when that reader turns
-        # the 'new_post' notification kind off (DEC-171, TASK-202): the opt-out
+        # the 'new_post' notification kind off: the opt-out
         # gates both the durable inbox row and the browser push.
         reg = await client.post(
             "/api/reader/register",

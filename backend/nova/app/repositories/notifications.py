@@ -44,7 +44,7 @@ async def _prune_notifications_for_readers(db: AsyncSession, reader_ids: set[int
     reader, ordered by id desc) — portable across SQLite and PostgreSQL. This
     is the batched replacement for ``record_reader_notification``'s
     per-reader "SELECT recent-N + DELETE", which was O(2n) queries in the
-    new-post fan-out (ISS-113, supersedes DEC-176's deferral): a heavily
+    new-post fan-out (supersedes's deferral): a heavily
     followed post now pays one delete instead of one per follower. Rows
     just inserted carry the highest ids, so they always rank inside the kept
     window (a fan-out adds at most one row per reader).
@@ -74,7 +74,7 @@ async def record_reader_notification(
     body: str | None = None,
     url: str | None = None,
 ) -> models.ReaderNotification:
-    """Persist one reader-facing notification row (inbox, DEC-160/TASK-192).
+    """Persist one reader-facing notification row (inbox).
 
     Called at the same dispatch points that fire the Web Push (new post in a
     followed series/category, reply, thread comment) so the durable inbox and
@@ -125,8 +125,7 @@ def notification_copy(
 ) -> tuple[str, str]:
     """Localized (title, body) for one reader notification kind.
 
-    Covers every kind the fan-out produces (DEC-338/TASK-395 new_post +
-    series_new_part; DEC-340/TASK-396 reply, thread_comment, mention). The
+    Covers every kind the fan-out produces (new_post + series_new_part reply, thread_comment, mention). The
     tuple feeds both the durable inbox row and the email channel (email
     Subject = title, body = body), so one switch localizes every channel.
     ``zh`` is the site default and the behavior for a reader who never set a
@@ -173,7 +172,7 @@ def notification_copy(
 
 async def reader_locale_map(db: AsyncSession, reader_ids: Collection[int]) -> dict[int, str | None]:
     """``ReaderAccount.id`` → stored copy locale for the given readers
-    (DEC-338, TASK-395), NULL left as the zh site default for callers.
+    , NULL left as the zh site default for callers.
 
     Loads reader language for a notification fan-out in ONE batch query (the
     locale lives on the account, separate from the prefs row). Indexed by row
@@ -191,7 +190,7 @@ async def reader_locale_map(db: AsyncSession, reader_ids: Collection[int]) -> di
 
 
 async def set_reader_locale(db: AsyncSession, reader_id: int, locale: str) -> str:
-    """Persist a reader's notification-copy language (DEC-338, TASK-395).
+    """Persist a reader's notification-copy language.
 
     Stores the frontend locale code ("en" / "zh"); the fan-out's
     ``notification_copy`` reads it back at dispatch time. Returns the stored
@@ -207,21 +206,21 @@ async def set_reader_locale(db: AsyncSession, reader_id: int, locale: str) -> st
 
 async def maybe_notify_due_scheduled_posts(db: AsyncSession) -> int:
     """Fire the new-post fan-out for scheduled posts whose ``publish_at`` has
-    now passed but that were never announced (DEC-336, TASK-394).
+    now passed but that were never announced.
 
     A post created as published-but-future ``publish_at`` becomes publicly
     visible the moment the clock crosses it, but both write-time fan-outs are
     gated on visibility AT WRITE TIME: create_post skips a still-future
     publish_at and update_post only fires on a draft->visible transition, so
     the crossing itself has no trigger — there is no background scheduler
-    (DEC-076). This helper is the fire-on-read sweep: called from the public
+    . This helper is the fire-on-read sweep: called from the public
     read paths that surface a post after its crossing (post list, post detail,
     RSS/Atom feeds), it claims every crossed-but-unannounced post atomically
     and runs the same batched fan-out as an immediate publish.
 
     Exactly-once: the ``new_post_notified_at`` stamp is written with an atomic
     conditional UPDATE (``... WHERE id = ? AND stamp IS NULL``), so concurrent
-    sweep calls across uvicorn workers (DEC-004) cannot both claim the same
+    sweep calls across uvicorn workers cannot both claim the same
     post; the stamp is committed before any dispatch, so even a crash mid-fan-
     out cannot cause a duplicate. Best effort by construction — the fan-out
     helpers never raise — and a claim already stamped is skipped. Returns the
@@ -276,7 +275,7 @@ async def maybe_notify_due_scheduled_posts(db: AsyncSession) -> int:
 
 async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> None:
     """Persist a new-post inbox notification for every reader who follows the
-    post's series or category (DEC-160, TASK-192).
+    post's series or category.
 
     Mirrors the follower targeting of ``dispatch_new_post`` (series followers +
     category followers + tag followers with notify on), but persists to the
@@ -286,14 +285,14 @@ async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> 
     be the just-persisted, publicly-visible post (callers gate on
     ``is_publicly_visible``).
 
-    Kind (ISS-114, DEC-181): a series follow surfaces the distinct
+    Kind: a series follow surfaces the distinct
     ``series_new_part`` kind (frontend icons/labels it 系列更新) while a
     category-only (or tag-only) follow keeps ``new_post`` (新文章发布). A
     reader following both the series AND the category/tag of the same post gets
     exactly one row, preferring ``series_new_part`` — the series follow is the
-    more specific signal for the same event. Tag followers (DEC-195/TASK-215)
+    more specific signal for the same event. Tag followers
     join under the same ``new_post`` umbrella. Both kinds stay gated by the
-    single ``new_post`` opt-out (DEC-171 umbrella): a series update IS a new
+    single ``new_post`` opt-out umbrella: a series update IS a new
     post, so a reader who silenced new_post is not woken for series parts.
     """
     try:
@@ -328,7 +327,7 @@ async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> 
                 ).all()
             )
         # Readers who follow any of this post's tags with notifications on
-        # (DEC-195/TASK-215). One query for the whole tag set.
+        # One query for the whole tag set.
         tag_ids = [t.id for t in (post.tags or [])]
         if tag_ids:
             tag_reader_ids.update(await list_tag_follow_reader_ids(db, tag_ids))
@@ -340,8 +339,7 @@ async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> 
             author_reader_ids.update(await list_author_follow_reader_ids(db, post.author_id))
         target_reader_ids = series_reader_ids | category_reader_ids | tag_reader_ids | author_reader_ids
         # A deactivated reader is a moderation action: they keep their follow
-        # rows, but must not still receive the durable inbox row (DEC-194,
-        # RIL ISS-278). The email fan-out and push already filter is_active —
+        # rows, but must not still receive the durable inbox row. The email fan-out and push already filter is_active —
         # the inbox was the last channel that didn't.
         if target_reader_ids:
             active_ids = {
@@ -356,20 +354,20 @@ async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> 
                 ).all()
             }
             target_reader_ids &= active_ids
-        # Per-kind opt-out (DEC-171, TASK-202): batch-load every target's prefs
+        # Per-kind opt-out: batch-load every target's prefs
         # once. The same reader-level intent gates the push in
         # webpush.dispatch_new_post (which also reaches want_new_posts push
         # subscriptions with no follow), so an opted-out reader gets neither an
         # inbox row here nor a new_post push.
         prefs = await reader_notification_prefs_for(db, target_reader_ids)
-        # Batch the fan-out (ISS-113, supersedes DEC-176): build every row up
+        # Batch the fan-out (supersedes): build every row up
         # front, add all with one flush + one commit, then prune the whole
         # inbox retention cap for all touched readers with a single set-based
         # window-function delete — instead of record_reader_notification's
         # per-reader SELECT-recent-200 + DELETE + commit (O(2n) queries per
         # publish on a heavily followed post). The single commit also makes the
         # fan-out atomic: either every follower's inbox row lands or none does.
-        # Reader language for the copy (DEC-338, TASK-395): one batch query for
+        # Reader language for the copy: one batch query for
         # every target's stored locale (NULL reads as the zh site default). Locale
         # lives on the account, separate from the prefs row, so load it once here.
         locale_of = await reader_locale_map(db, target_reader_ids)
@@ -390,7 +388,7 @@ async def record_new_post_notifications(db: AsyncSession, post: models.Post) -> 
                     url=f"/posts/{post.slug}",
                 )
             )
-            # Email channel (DEC-197, TASK-217): a best-effort off-site copy of
+            # Email channel: a best-effort off-site copy of
             # the same fan-out, only for readers who opted into email for the
             # kind. The email Subject is item.title and the body is item.body,
             # so the localized copy carries straight through to email.
@@ -423,7 +421,7 @@ async def resolve_mention_reader_ids(db: AsyncSession, content: str) -> list[int
     ``@Riki`` names reader "Riki" but never a reader named "Ri" (a naive
     substring would misfire on the longer name). Runs only at approval time
     (human-paced) and fast-paths when the comment has no ``@``, so the read path
-    never pays for it. (DEC-322, TASK-389)
+    never pays for it.
     """
     if not content or "@" not in content:
         return []
@@ -451,7 +449,7 @@ async def suggest_mention_readers(
 ) -> list[dict[str, Any]]:
     """Active readers with a display name matching an '@'-mention picker query.
 
-    Public picker data for the comment box (DEC-324, TASK-390): case-insensitive
+    Public picker data for the comment box: case-insensitive
     substring match on the display name with LIKE wildcards escaped (a ''%'' query
     must not match everything), prefix matches ranked before substring-only ones,
     display-name-asc within a rank, and a hard ``limit`` so a one-character query
@@ -493,8 +491,7 @@ async def _notification_rows(
 ) -> list[models.ReaderNotification]:
     """Per-reader-localized ReaderNotification rows for a batched fan-out.
 
-    Loads each target's stored locale once (DEC-340/TASK-396, same batch
-    pattern as the new-post fan-out in round 332) so an English reader's row
+    Loads each target's stored locale once (same batch pattern as the new-post fan-out) so an English reader's row
     carries English copy alongside a zh reader's Chinese copy in the SAME
     batch — one flush, one prune, one commit. ``commenter`` supplies the
     mention body's acting reader label.
@@ -522,7 +519,7 @@ async def record_reader_follow_notifications(
     url: str,
 ) -> None:
     """Persist a 'reader you follow commented' inbox row for every follower at
-    once (round 365, DEC-403).
+    once.
 
     Same batched, atomic, best-effort contract as the thread-comment and
     mention fan-outs: build every row (localized per reader), flush once, prune
@@ -559,9 +556,9 @@ async def record_mention_notifications(
     """Persist an @-mention inbox row for every mentioned reader at once.
 
     Batched counterpart of record_thread_comment_notifications for the
-    mention approval fan-out (DEC-322, TASK-389): build every row, flush once,
+    mention approval fan-out: build every row, flush once,
     prune once, commit once — atomic and failure-proof like the other fan-outs.
-    Copy is localized per reader (DEC-340/TASK-396).
+    Copy is localized per reader.
     """
     try:
         rows = await _notification_rows(
@@ -592,14 +589,14 @@ async def record_thread_comment_notifications(
     """Persist a thread-comment inbox row for every follower at once.
 
     Batched counterpart of record_reader_notification for the thread-comment
-    approval fan-out (ISS-427): the previous per-follower loop called
+    approval fan-out: the previous per-follower loop called
     record_reader_notification for N readers, each doing a flush + a
     SELECT-recent-200 + a DELETE + a commit — O(2n) queries and N transactions
     for one approved comment on a heavily subscribed thread. Build every row,
     flush once, prune once, commit once (the same batched pattern
-    record_new_post_notifications introduced for new-post fan-out, ISS-113).
+    record_new_post_notifications introduced for new-post fan-out).
     The single commit also makes the fan-out atomic. Copy is localized per
-    reader (DEC-340/TASK-396). Best effort: never raises so a notify path
+    reader. Best effort: never raises so a notify path
     cannot break the approving write.
     """
     try:
@@ -620,17 +617,17 @@ async def record_thread_comment_notifications(
         await db.rollback()
 
 
-# Notification-kind opt-outs (DEC-171, TASK-202). The preferences surface
+# Notification-kind opt-outs. The preferences surface
 # exposes exactly these toggles. Dispatch can also produce series_new_part as a
-# label refinement of new_post (ISS-114, DEC-181) — it is never a separate
+# label refinement of new_post — it is never a separate
 # toggle because a series update IS a new post; the new_post kill-switch gates
 # it.
 NOTIFICATION_KINDS: tuple[str, ...] = ("new_post", "reply", "thread_comment", "mention", "reader_comment")
 
 
-# Email channel (DEC-197, TASK-217): per-kind opt-ins accepted by the same
+# Email channel: per-kind opt-ins accepted by the same
 # PATCH endpoint. The fan-out gating for these lives in emailer.email_channel_enabled.
-# email_weekly_digest (DEC-201, TASK-222) is the recurring digest opt-in — same
+# email_weekly_digest is the recurring digest opt-in — same
 # toggle surface, but not a fan-out kind (the digest job reads it directly).
 EMAIL_KINDS: tuple[str, ...] = (
     "email_new_post",
@@ -648,7 +645,7 @@ async def get_reader_notification_prefs(db: AsyncSession, reader_id: int) -> mod
     """The reader's per-kind notification prefs, materializing an all-on row
     the first time it is read (GET). Dispatch gating must NOT call this — it
     writes; use ``reader_notification_prefs_for`` for fan-out paths.
-    (DEC-171, TASK-202)
+
     """
     row = await db.get(models.ReaderNotificationPref, reader_id)
     if row is None:
@@ -677,7 +674,7 @@ async def reader_notification_prefs_for(
     Returns {reader_id: pref_row}. Missing readers are absent (treat as all-on
     via ``notification_kind_enabled``), so a reader who never opted out keeps
     getting every kind without materializing a row in hot fan-out paths.
-    (DEC-171, TASK-202)
+
     """
     ids = list(reader_ids)
     if not ids:
@@ -695,7 +692,7 @@ async def reader_notification_prefs_for(
 def notification_kind_enabled(pref: models.ReaderNotificationPref | None, kind: str) -> bool:
     """True when a reader allows ``kind`` to fan out. A missing pref row (None)
     reads as enabled — defaults are all-on. Callers pass the row from
-    ``reader_notification_prefs_for``. (DEC-171, TASK-202)
+    ``reader_notification_prefs_for``.
     """
     if pref is None:
         return True
@@ -709,7 +706,7 @@ async def set_reader_notification_kind(
 
     ``kind`` must be in ``PREF_KINDS`` (whitelist — never write an
     attacker-controlled attribute). None if the kind is rejected; the router
-    422s on that. (DEC-171, TASK-202; email channel DEC-197)
+    422s on that. (email channel)
     """
     if kind not in PREF_KINDS:
         return None
@@ -819,11 +816,11 @@ async def mark_all_reader_notifications_read(db: AsyncSession, reader_id: int) -
 async def delete_reader_notification(db: AsyncSession, reader_id: int, notification_id: int) -> bool:
     """Delete one of the reader's inbox rows. Returns False if not theirs.
 
-    The inbox is durable (DEC-160) but had no pruning path — mark-read/read-all
+    The inbox is durable but had no pruning path — mark-read/read-all
     only clear the badge, so consumed notification rows accumulate forever.
     Delete is scoped by reader_id like every reader table: a reader removes
     exactly their own row, and an unknown/foreign id is a miss (404), never a
-    cross-reader delete. (DEC-312, TASK-384)
+    cross-reader delete.
     """
     row = (
         (

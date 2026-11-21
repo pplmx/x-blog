@@ -1,5 +1,5 @@
 <!--
-  Reader email-change redemption (DEC-357, TASK-404).
+  Reader email-change redemption.
 
   Landed on via the `?token=` link inside the verification email that the
   account page mailed to the NEW address. Fires the backend confirm once on
@@ -23,7 +23,7 @@ useSeo(() => ({
 	title: t("reader.emailChange.seoTitle"),
 	description: t("reader.emailChange.seoDesc"),
 	path: "/email-change",
-	// Reader auth flows are private surfaces — never index them (round 437).
+	// Reader auth flows are private surfaces — never index them.
 	noindex: true,
 }));
 
@@ -65,7 +65,7 @@ async function run() {
 	// Route only after a truthful success is fixed — a rejecting navigateTo
 	// (e.g. middleware error, tests) must not overwrite the success state with
 	// a network-failure message while the reader is in fact signed in under the
-	// new email and the link is already spent (round-342 review).
+	// new email and the link is already spent.
 	await navigateTo("/account", { replace: true });
 }
 onMounted(() => void run());

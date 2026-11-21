@@ -1,4 +1,4 @@
-"""Reader reading-insights tests (DEC-417, TASK-434).
+"""Reader reading-insights tests.
 
 A signed-in reader gets a "what and how much" view of their reading on
 `/me/history/insights` — distinct publicly-visible posts read all-time and in

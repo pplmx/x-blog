@@ -40,7 +40,7 @@
 ## 新组件 `ReaderMenu.vue`（"我的"下拉）
 
 触发器：头像（`reader.avatar_url` 有则显示，否则默认用户图标）+ 未读红点数字徽标。
-无障碍：`aria-haspopup="menu"`、`aria-expanded`；Escape 关闭并归还焦点到触发器；点击外部关闭。复用 `HeaderSearch` / 移动菜单（ISS-131）的既有键盘与焦点模式。
+无障碍：`aria-haspopup="menu"`、`aria-expanded`；Escape 关闭并归还焦点到触发器；点击外部关闭。复用 `HeaderSearch` / 移动菜单的既有键盘与焦点模式。
 
 菜单项自顶向下：
 

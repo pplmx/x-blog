@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * App-wide rate-limit notice (round 211, DEC-216 theme: 使用性/易用性).
+ * App-wide rate-limit notice.
  *
  * Renders when any API call in the app receives HTTP 429 (see
  * api/transport.ts flagRateLimit). Reads the reactive flag from the shared

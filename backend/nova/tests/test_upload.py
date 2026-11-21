@@ -90,7 +90,7 @@ async def test_upload_fake_image_content_rejected(client, auth_headers):
 async def test_upload_corrupt_image_with_valid_magic_rejected(client, auth_headers):
     """Valid PNG magic bytes but corrupt content must be rejected.
 
-    Magic bytes only prove the header; the Pillow decode check (round 17)
+    Magic bytes only prove the header; the Pillow decode check
     rejects files that have the right signature but are not decodable images.
     """
     file_content = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
@@ -176,7 +176,7 @@ async def test_upload_requires_auth(client):
 
 
 # ---------------------------------------------------------------------------
-# Ingest optimization (DEC-185, TASK-208): same-format re-encode, never-larger,
+# Ingest optimization: same-format re-encode, never-larger,
 # EXIF stripped, GIF/fallback preserved.
 # ---------------------------------------------------------------------------
 
@@ -311,7 +311,7 @@ class TestIngestOptimization:
 
 
 # ---------------------------------------------------------------------------
-# Media library (DEC-183): GET /api/upload/files + DELETE .../files/{y}/{m}/{f}
+# Media library: GET /api/upload/files + DELETE.../files/{y}/{m}/{f}
 # ---------------------------------------------------------------------------
 
 
@@ -351,7 +351,7 @@ class TestMediaLibrary:
             assert len(found) == 1, f"uploaded url {url} missing from listing: {data['items']}"
             item = found[0]
             assert item["referenced"] is False
-            # The stored file is the optimized same-format re-encode (DEC-185),
+            # The stored file is the optimized same-format re-encode,
             # never larger than the original PNG but not byte-identical to it.
             assert 0 < item["size"] <= len(PNG_BYTES)
             assert item["width"] == 2 and item["height"] == 2
@@ -496,7 +496,7 @@ class TestMediaLibrary:
     async def test_list_orders_equal_mtime_files_by_name(self, client, auth_headers):
         """Two uploads landing in the same second (equal mtime) must still have a
         deterministic order — mtime-only sorting skipped/duplicated rows at page
-        boundaries and flipped equal files between requests (round-292 deep-dive)."""
+        boundaries and flipped equal files between requests."""
         import os
         import time
 
@@ -527,7 +527,7 @@ class TestMediaLibrary:
 
 
 # ---------------------------------------------------------------------------
-# Media library bulk delete (DEC-191, TASK-211): POST /api/upload/files/batch-delete
+# Media library bulk delete: POST /api/upload/files/batch-delete
 # ---------------------------------------------------------------------------
 
 
@@ -611,7 +611,7 @@ class TestMediaLibraryBulkDelete:
 
 
 # ---------------------------------------------------------------------------
-# Media library reference cache (TASK-333): the list render must not rescan
+# Media library reference cache: the list render must not rescan
 # every post body per request; a post write invalidates the cached map.
 # ---------------------------------------------------------------------------
 
@@ -621,7 +621,7 @@ class TestMediaReferenceCache:
         """Two list renders share ONE full-content scan — the second is a cache hit.
 
         Guard against regressing to the per-render _collect_upload_references
-        pass (the pre-TASK-333 behavior): every media render, search and page
+        pass (the pre behavior): every media render, search and page
         turn used to stream all post bodies. The uploads root must exist for the
         route to reach the reference computation at all.
         """
@@ -687,7 +687,7 @@ class TestMediaReferenceCache:
 
 
 async def test_referencing_posts_matches_content_and_cover_only(db_session):
-    """The targeted delete-guard probe (TASK-334/ISS-432) finds a URL embedded
+    """The targeted delete-guard probe finds a URL embedded
     in content OR cover_image, and ignores posts that reference neither —
     replacing the full _collect_upload_references regex pass over every body
     with a per-URL contains() probe on the delete paths."""

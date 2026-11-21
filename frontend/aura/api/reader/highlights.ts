@@ -8,7 +8,7 @@ export interface ReaderHighlightPost {
 	title: string;
 }
 
-/** A reader's saved passage (round 466, DEC-511 / TASK-583). */
+/** A reader's saved passage. */
 export interface ReaderHighlight {
 	id: number;
 	post_id: number;

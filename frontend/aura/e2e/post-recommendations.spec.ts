@@ -1,5 +1,5 @@
 /**
- * Personalized "Recommended for you" on the post page (round 362, DEC-397).
+ * Personalized "Recommended for you" on the post page.
  *
  * The homepage has the affinity-scored strip; the post page only had topic-
  * similar Related Posts. A signed-in reader who finishes an article should
@@ -54,7 +54,7 @@ async function readFirstPost(page: import("@playwright/test").Page): Promise<str
 	return href;
 }
 
-test.describe("Post-page Recommended for you (DEC-397)", () => {
+test.describe("Post-page Recommended for you ", () => {
 	test("a signed-in reader who read a post sees recommendations on a different post", async ({
 		page,
 		request,

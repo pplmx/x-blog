@@ -25,7 +25,7 @@ const editingId = ref<number | null>(null);
 const editingName = ref("");
 const actionError = ref<string | null>(null);
 // Client-side filter: the taxonomy endpoint returns every category and a long
-// unbounded list with no way to narrow it is wasted scrolling (ISS-311 part 3).
+// unbounded list with no way to narrow it is wasted scrolling (part 3).
 // Taxonomies are small enough that in-memory filtering beats server paging.
 const search = ref("");
 const visibleCategories = computed(() => {
@@ -35,7 +35,7 @@ const visibleCategories = computed(() => {
 });
 
 function getErrorMessage(e: unknown): string {
-	// Shared admin error surfacing (round 394): backend envelope human message,
+	// Shared admin error surfacing: backend envelope human message,
 	// else a local non-HTTP error's message, else the localized fallback.
 	return apiErrorMessage(e, t("admin.categories.operationFailed"));
 }
@@ -143,7 +143,7 @@ async function handleDelete(id: number) {
 					class="px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
 				>
 					<!-- Spinner: says the click registered instead of reading as a frozen
-               page while the POST round-trips (round-445 audit). -->
+               page while the POST round-trips. -->
 					<Icon
 						v-if="isProcessing"
 						icon="lucide:loader-2"
@@ -165,7 +165,7 @@ async function handleDelete(id: number) {
 		<div v-else-if="error" class="text-center py-12 text-red-500">
 			<!-- Localized, never error.message: an HTTP failure's message is only
            ofetch's technical string, leaking the API URL in a wrong-language
-           line (round-445 audit). -->
+           line. -->
 			<p class="mb-4">{{ t("admin.categories.loadFailed") }}</p>
 			<button
 				type="button"

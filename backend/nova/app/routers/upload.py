@@ -17,7 +17,7 @@ from app.cache import upload_refs_cache
 from app.database import get_db
 
 # Image validation/optimization shared with the reader avatar uploader
-# (DEC-299/TASK-378) — the security surface lives in one place (app/image_validation.py).
+# — the security surface lives in one place (app/image_validation.py).
 # Private-name aliases keep the module's pre-existing API (used by tests) stable.
 from app.image_validation import (
     ALLOWED_EXTENSIONS,
@@ -79,7 +79,7 @@ async def upload_image(
     except UnidentifiedImageError, OSError, ValueError:
         raise HTTPException(400, detail="File is not a valid image")
 
-    # Re-encode in the same format to shrink + strip EXIF (DEC-185, TASK-208).
+    # Re-encode in the same format to shrink + strip EXIF.
     # Never-larger + never-rejecting, and the extension/URL is untouched so the
     # media library and every existing post reference stay valid.
     contents = _optimize_image(contents, file.content_type)
@@ -123,7 +123,7 @@ async def _collect_upload_references(db: AsyncSession) -> dict[str, list[tuple[i
 
 
 async def _get_upload_references(db: AsyncSession) -> dict[str, list[tuple[int, str]]]:
-    """Cached media-library reference map (TASK-333/ISS-432).
+    """Cached media-library reference map.
 
     The listing used to run the full _collect_upload_references scan — a regex
     pass streaming every post's stored markdown — for EACH list render, filename
@@ -168,7 +168,7 @@ async def _referencing_posts(db: AsyncSession, url: str) -> list[tuple[int, str]
 
 
 def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -> UploadFileInfo:
-    """Derive the media-library row for one stored upload (DEC-183)."""
+    """Derive the media-library row for one stored upload."""
     year, month, filename = full_path.parent.parent.name, full_path.parent.name, full_path.name
     url = f"/static/uploads/{year}/{month}/{filename}"
     size = full_path.stat().st_size if full_path.exists() else 0
@@ -183,7 +183,7 @@ def _upload_file_info(full_path: Path, refs: dict[str, list[tuple[int, str]]]) -
     # mtime is a UTC epoch; fromtimestamp without tz would render the server's
     # LOCAL wall clock (a UTC+8 host shows uploads 8h off from every other
     # timestamp in the same dashboard). Convert to naive UTC, matching the
-    # app-wide naive-UTC wire contract (DEC-213; round 276 deep-dive).
+    # app-wide naive-UTC wire contract deep-dive.
     uploaded_at = datetime.fromtimestamp(full_path.stat().st_mtime, UTC).replace(tzinfo=None)
     post_refs = [UploadPostRef(id=post_id, title=title) for post_id, title in refs.get(url, [])]
     return UploadFileInfo(
@@ -214,7 +214,7 @@ async def list_uploaded_files(
     listing is a bounded filesystem walk; reference status comes from one scan
     of the posts table rather than per-file queries. `q` narrows by filename
     substring (case-insensitive) so an author can locate a specific upload
-    without scrolling a long library (DEC-189, TASK-210).
+    without scrolling a long library.
     """
     uploads_root = STATIC_DIR / "uploads"
     if not uploads_root.is_dir():
@@ -319,10 +319,10 @@ async def delete_uploaded_files_batch(
     db: AsyncSession = Depends(get_db),
     _current_user: User = Depends(get_current_admin),
 ):
-    """Delete many uploaded images in one action (media bulk delete, DEC-191).
+    """Delete many uploaded images in one action (media bulk delete).
 
     The admin media library keeps hundreds of files with no way to clean up
-    except one-by-one; this mirrors the comment batch-delete pattern (DEC-110):
+    except one-by-one; this mirrors the comment batch-delete pattern:
     a capped request that validates every URL against the exact upload shape,
     then refuses the WHOLE batch with a 409 listing the referencing posts if
     ANY image is still embedded (fail-closed — same guard as the single delete,

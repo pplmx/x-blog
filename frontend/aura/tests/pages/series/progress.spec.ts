@@ -1,5 +1,5 @@
 /**
- * Series reading-progress tests (DEC-122, TASK-173).
+ * Series reading-progress tests.
  *
  * A signed-in reader sees a per-series progress card (read count, progress
  * bar, continue-from-first-unread link) derived from the API; completed series
@@ -47,7 +47,7 @@ const h = vi.hoisted(() => {
 	};
 	const progress: { value: Progress | null } = { value: null };
 	// getReaderSeriesProgress / getReaderSeriesFollows are the imperative
-	// $fetch seams the page now uses from onMounted (TASK-220) — they resolve
+	// $fetch seams the page now uses from onMounted — they resolve
 	// to the raw payload, not a { data: { value } } AsyncData wrapper.
 	const fetchProgress = vi.fn(async () => progress.value);
 	const fetchFollows = vi.fn(async () => ({ items: [] as Array<{ id: number }>, total: 0 }));
@@ -64,7 +64,7 @@ const h = vi.hoisted(() => {
 		setNotify,
 		// Injected with a real Vue ref after imports: the series `data` the
 		// useSeriesBySlug mock returns, so a test can SPA-navigate the page's
-		// id-watch by swapping its value (the stale-response race, ISS-367).
+		// id-watch by swapping its value (the stale-response race).
 		seriesRef: null as unknown as { value: typeof mockSeries | null },
 	};
 });
@@ -114,7 +114,7 @@ async function mountPage(query = "") {
 	return wrapper;
 }
 
-describe("Series reading progress (TASK-173)", () => {
+describe("Series reading progress ", () => {
 	beforeEach(() => {
 		window.localStorage.setItem("reader_token", "token");
 		h.progress.value = null;
@@ -180,7 +180,7 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).not.toContain("继续阅读");
 	});
 
-	it("marks read episodes with a check and highlights the up-next episode (ISS-379)", async () => {
+	it("marks read episodes with a check and highlights the up-next episode ", async () => {
 		h.progress.value = {
 			series_slug: "tutorial",
 			series_title: "Tutorial",
@@ -203,18 +203,18 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(h.fetchProgress).not.toHaveBeenCalled();
 		expect(wrapper.text()).not.toContain("阅读进度");
 		// The read-marker mapping is progress-gated: no check badges, no up-next
-		// highlights for a guest (ISS-379).
+		// highlights for a guest.
 		expect(wrapper.findAll('[data-icon="lucide:check"]').length).toBe(0);
 		expect(wrapper.text()).not.toContain("下一篇");
 	});
 
-	it("links the scoped series RSS feed (TASK-177)", async () => {
+	it("links the scoped series RSS feed ", async () => {
 		const wrapper = await mountPage();
 		expect(wrapper.find('a[href="/rss/series/tutorial.xml"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain("RSS 订阅");
 	});
 
-	it("toggles series new-part follow (TASK-178)", async () => {
+	it("toggles series new-part follow ", async () => {
 		h.fetchFollows.mockResolvedValueOnce({
 			items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }],
 			total: 1,
@@ -232,7 +232,7 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(h.followSeries).toHaveBeenCalledWith(1);
 	});
 
-	it("toggles new-part notifications without unfollowing (TASK-181)", async () => {
+	it("toggles new-part notifications without unfollowing ", async () => {
 		h.fetchFollows.mockResolvedValueOnce({
 			items: [{ id: 1, title: "Tutorial", slug: "tutorial", notify: true }],
 			total: 1,
@@ -258,7 +258,7 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).toContain("已关注新篇"); // still followed
 	});
 
-	it("clamps the progress bar to 100% when read_count exceeds total (ISS-369)", async () => {
+	it("clamps the progress bar to 100% when read_count exceeds total ", async () => {
 		// A post left the series after being read: read_count > total.
 		h.progress.value = {
 			series_slug: "tutorial",
@@ -276,7 +276,7 @@ describe("Series reading progress (TASK-173)", () => {
 		).toContain("100%");
 	});
 
-	it("drops a stale progress response when a newer series is in flight (ISS-367)", async () => {
+	it("drops a stale progress response when a newer series is in flight ", async () => {
 		// Slow (older) request for the first series — stays in flight.
 		let resolveStale!: (v: unknown) => void;
 		h.fetchProgress.mockImplementationOnce(
@@ -318,7 +318,7 @@ describe("Series reading progress (TASK-173)", () => {
 		expect(wrapper.text()).not.toContain("已读 1 / 2");
 	});
 
-	it("drops a stale follow-state response so it can't clobber a newer toggle (ISS-374)", async () => {
+	it("drops a stale follow-state response so it can't clobber a newer toggle ", async () => {
 		// The initial follow-state GET stays in flight (slow).
 		let resolveStale!: (v: unknown) => void;
 		h.fetchFollows.mockImplementationOnce(

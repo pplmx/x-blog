@@ -1,10 +1,10 @@
-"""add post_views_daily table for reading-trend analytics (DEC-086)
+"""add post_views_daily table for reading-trend analytics
 
 One row per (post, calendar day) with a monotonic view counter, upserted from
 the same write-on-read path as ``posts.views``. Powers the admin dashboard's
 per-day readership trend + in-period top posts.
 
-Entirely additive (new table, no existing DDL touched, DEC-009 preserved).
+Entirely additive (new table, no existing DDL touched preserved).
 No DB-level FOREIGN KEY on post_id (SQLite alembic can't add FK-carrying
 columns to existing tables; the reader_bookmarks/comment_subscriptions tables
 set this convention). Defensive like the comment_subscriptions migration: if

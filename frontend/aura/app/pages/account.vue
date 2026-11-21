@@ -3,9 +3,9 @@ import { apiErrorMessage } from "~~/api/errors";
 import { parseApiDate } from "~~/composables/apiDate";
 
 /**
- * Reader account settings (DEC-067, TASK-142): edit the display name, switch
+ * Reader account settings: edit the display name, switch
  * the sign-in email (current password + new address; the emailed link swaps
- * it, DEC-357/TASK-404), rotate the password (verifying the current one; the
+ * it), rotate the password (verifying the current one; the
  * fresh token keeps this session alive while the version bump signs other
  * sessions out), and see/revoke the browser push devices bound to the account.
  */
@@ -70,44 +70,44 @@ const { isAuthenticated, reader, setProfile, updateToken, logout, isStaleSession
 // The reader token lives in localStorage (client-only): during SSR + the first
 // client render auth is simply unknown, so without a hydration gate the
 // server-rendered "sign in" prompt would flash at a signed-in reader. Render a
-// neutral placeholder until mount, then decide guest vs. account (round-299
-// deep-dive; same pattern as CommentForm).
+// neutral placeholder until mount, then decide guest vs. account (deep-dive;
+// same pattern as CommentForm).
 const hydrated = ref(false);
 onMounted(() => {
 	hydrated.value = true;
 });
 
 // Getter form: an in-app language switch re-evaluates the title/og tags
-// (static object froze them in the initial language — deep-dive, ISS-372).
+// (static object froze them in the initial language — deep-dive).
 useSeo(() => ({
 	title: t("account.seoTitle"),
 	description: t("account.seoDesc"),
 	path: "/account",
-	// Account settings are private — never index them (round 437).
+	// Account settings are private — never index them.
 	noindex: true,
 }));
 
 /* Profile --------------------------------------------------------------- */
 const displayName = ref(reader.value?.display_name ?? "");
-// Short "about me" (round 352): a one-paragraph bio saved with the profile
+// Short "about me": a one-paragraph bio saved with the profile
 // and shown on the reader's public page. Empty text saves as a clear.
 const bio = ref(reader.value?.bio ?? "");
-// Opt-in public "Liked posts" tab (round 360, DEC-393): saved with the
+// Opt-in public "Liked posts" tab: saved with the
 // profile; off by default so a reader who never touches it stays private.
 const publicLikes = ref(reader.value?.public_likes ?? false);
-// Opt-in public "Saved posts" tab (round 363, DEC-399): saved with the
+// Opt-in public "Saved posts" tab: saved with the
 // profile; off by default (the curated bookmark list stays private too).
 const publicBookmarks = ref(reader.value?.public_bookmarks ?? false);
 const savingProfile = ref(false);
 const profileSaved = ref(false);
 const profileFailed = ref(false);
 // The backend's specific reason (e.g. a rate-limit "try again in 60s") shown
-// instead of the generic fallback — statusOf() alone discards it (round 396).
+// instead of the generic fallback — statusOf() alone discards it.
 const profileFailedMessage = ref("");
 // Monotonic profile-save sequence (see saveProfileName — the latest-wins guard).
 let profileSaveSeq = 0;
 
-// An empty-name submit (round 264): the Save button is disabled on an empty
+// An empty-name submit: the Save button is disabled on an empty
 // field, but Enter in a text input still submits the form regardless — so the
 // form must never swallow that submit as a silent no-op. Flag it inline.
 const nameError = ref(false);
@@ -121,7 +121,7 @@ async function saveProfileName() {
 	const name = displayName.value.trim();
 	if (!name) {
 		nameError.value = true;
-		return; // guard before touching state so Save never sticks disabled (ISS-127)
+		return; // guard before touching state so Save never sticks disabled
 	}
 	// Re-entry guard + monotonic sequence: a second Enter while the first
 	// request is in flight must not double-submit, and a slow first response
@@ -153,7 +153,7 @@ async function saveProfileName() {
 		if (seq !== profileSaveSeq) return;
 		// Surface the backend's reason (e.g. a rate-limit wait) over the generic
 		// fallback — the reader can act on "try again in 60s", not just retry
-		// blind and deepen the lockout (round 396; shared apiErrorMessage).
+		// blind and deepen the lockout.
 		profileFailed.value = true;
 		profileFailedMessage.value = apiErrorMessage(err, t("account.profile.saveFailed"));
 	} finally {
@@ -162,7 +162,7 @@ async function saveProfileName() {
 }
 
 /* Avatar ---------------------------------------------------------------- */
-// Profile picture (DEC-299/TASK-378): upload raw via a hidden <input type=file>
+// Profile picture: upload raw via a hidden <input type=file>
 // (no client-side resizing — the backend re-encodes), preview the chosen file
 // with a local object URL, and replace/remove against /api/reader/me/avatar.
 const avatarPreview = ref<string | null>(null);
@@ -193,7 +193,7 @@ function previewAvatar(event: Event) {
 }
 
 async function uploadAvatar(file: File) {
-	// Handler-level re-entry guard (round-418 audit): the buttons are
+	// Handler-level re-entry guard: the buttons are
 	// :disabled while busy, but a rapid second action queued in the same tick
 	// beats Vue patching disabled next render — two overlapping upload
 	// responses could then setProfile out of order (the older landing last
@@ -217,7 +217,7 @@ async function uploadAvatar(file: File) {
 }
 
 async function removeAvatar() {
-	// Re-entry guard + confirm (round-418 audit): without the handler guard a
+	// Re-entry guard + confirm: without the handler guard a
 	// fast double-click fired two DELETE /me/avatar requests (two responses,
 	// the last one wins, but the first could still error into "error" state on
 	// a 404); and unlike the other destructive actions on this page
@@ -251,7 +251,7 @@ const pw = ref({ current: "", next: "", confirm: "" });
 const passwordState = ref<"idle" | "busy" | "success" | "wrong" | "mismatch" | "short" | "failed">(
 	"idle",
 );
-// The backend's specific reason on the generic "failed" bucket (round 396).
+// The backend's specific reason on the generic "failed" bucket.
 const passwordFailedMessage = ref("");
 
 async function submitPassword() {
@@ -294,12 +294,12 @@ async function submitPassword() {
 		}
 		passwordState.value = statusOf(err) === 401 ? "wrong" : "failed";
 		// Surface the backend's reason (e.g. a rate-limit wait) on the generic
-		// failed bucket instead of the fallback alone (round 396).
+		// failed bucket instead of the fallback alone.
 		passwordFailedMessage.value = apiErrorMessage(err, t("account.password.failed"));
 	}
 }
 
-/* Two-factor authentication (round 364, DEC-401) ------------------------ */
+/* Two-factor authentication ------------------------ */
 // Enabling is a two-phase flow: /me/2fa/setup hands back a base32 secret + an
 // otpauth provisioning URI (nothing enabled yet), the reader scans/adds it in
 // their authenticator, then /me/2fa/enable proves possession with one code and
@@ -364,7 +364,7 @@ function cancelTwoFactorEnroll() {
 
 async function submitTwoFactorEnable() {
 	// Enrollment requires the current password too (security review MEDIUM,
-	// DEC-401): a stolen session must not be able to register a factor.
+	//): a stolen session must not be able to register a factor.
 	if (twoFactorBusy.value || !twoFactorSetupPw.value || !twoFactorSetupCode.value) return;
 	twoFactorBusy.value = true;
 	twoFactorError.value = null;
@@ -409,7 +409,7 @@ async function submitTwoFactorDisable() {
 	}
 }
 
-/* Email change (DEC-357, TASK-404) -------------------------------------- */
+/* Email change -------------------------------------- */
 const em = ref({ newEmail: "", current: "" });
 const emailState = ref<"idle" | "busy" | "success" | "wrong" | "taken" | "same" | "failed">("idle");
 
@@ -448,7 +448,7 @@ async function submitEmailChange() {
 
 // Clear a stale ERROR as soon as the reader edits either field, so a previous
 // "wrong password / taken / same / failed" doesn't nag over a now-fixed input
-// (mirrors the display-name section's nameError watch, round-342 review). Only
+// (mirrors the display-name section's nameError watch review). Only
 // error states are cleared: a freshly-set success must not be wiped by the
 // watcher firing on the field-clear that follows the success.
 watch(
@@ -469,7 +469,7 @@ watch(
 const devices = ref<ReaderPushSubscription[]>([]);
 const devicesLoaded = ref(false);
 const devicesLoadFailed = ref(false);
-// Per-row in-flight marker (deep-dive, round 258): a single `revokingId` slot
+// Per-row in-flight marker (deep-dive): a single `revokingId` slot
 // let a second row's revoke-overlap clear the first row's marker when IT
 // finished — re-enabling the first row's (destructive revoke) button mid-flight,
 // the same race closed on bookmarks/comments/readers.
@@ -525,7 +525,7 @@ async function revokeDevice(device: ReaderPushSubscription) {
 	}
 }
 
-/* New-post notification prefs (DEC-076, TASK-147) ------------------------- */
+/* New-post notification prefs ------------------------- */
 const categories = ref<Category[]>([]);
 const savingPrefsId = ref<number | null>(null);
 const prefsError = ref(false);
@@ -551,11 +551,11 @@ async function loadCategories() {
 async function setDeviceNewPosts(device: ReaderPushSubscription, want: boolean) {
 	// The checkbox disables while `savingPrefsId !== null`, but a change already
 	// queued in the same tick passes the disabled attribute — the handler guard
-	// is what actually single-flights both prefs writes (deep-dive, round 258).
+	// is what actually single-flights both prefs writes (deep-dive).
 	if (savingPrefsId.value !== null) return;
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
-	// Optimistic mirror (round 292): the control is `:checked`-bound, so without
+	// Optimistic mirror: the control is `:checked`-bound, so without
 	// flipping the model before the round-trip the checkbox visually unsnaps to
 	// its old state for the whole flight — a toggle on a slow connection read as
 	// "my toggle was rejected" while the row's "…" spinner pulsed beside the old
@@ -583,7 +583,7 @@ async function setDeviceFollowCategory(device: ReaderPushSubscription, categoryI
 	if (savingPrefsId.value !== null) return; // single-flight, see setDeviceNewPosts
 	prefsError.value = false;
 	savingPrefsId.value = device.id;
-	// Optimistic mirror (round 292): same rationale as setDeviceNewPosts — the
+	// Optimistic mirror: same rationale as setDeviceNewPosts — the
 	// select is `:value`-bound, so the model must move before the round-trip to
 	// keep the visibly-selected option and the follow-pin in sync while saving.
 	const prevWant = device.want_new_posts;
@@ -618,11 +618,11 @@ function onDeviceCategoryChange(device: ReaderPushSubscription, event: Event) {
 	return setDeviceFollowCategory(device, value ? Number(value) : null);
 }
 
-/* Followed discussions (DEC-078, TASK-150) -------------------------------- */
+/* Followed discussions -------------------------------- */
 const threads = ref<SubscribedThreadItem[]>([]);
 const threadsLoaded = ref(false);
 const threadsLoadFailed = ref(false);
-// Per-row in-flight marker (deep-dive, round 258): see revokingIds — a single
+// Per-row in-flight marker (deep-dive): see revokingIds — a single
 // slot let a second row's unfollow clear the first row's marker on completion.
 const unsubscribingIds = ref(new Set<number>());
 const threadsError = ref(false);
@@ -660,11 +660,11 @@ async function unfollowThread(thread: SubscribedThreadItem) {
 	}
 }
 
-/* Followed series for new-part push (DEC-134, TASK-179) -------------------- */
+/* Followed series for new-part push -------------------- */
 const seriesFollows = ref<FollowedSeriesItem[]>([]);
 const seriesFollowsLoaded = ref(false);
 const seriesFollowsLoadFailed = ref(false);
-// Per-row in-flight markers (deep-dive, round 258): single slots clobbered
+// Per-row in-flight markers (deep-dive): single slots clobbered
 // across rows — convert to Sets like the devices/threads sections above.
 const seriesUnfollowIds = ref(new Set<number>());
 const seriesNotifyId = ref<number | null>(null);
@@ -701,7 +701,7 @@ async function unfollowFollowedSeries(item: FollowedSeriesItem) {
 	}
 }
 
-/** Toggle new-part push on/off for a followed series (TASK-181). */
+/** Toggle new-part push on/off for a followed series. */
 async function toggleSeriesNotify(item: FollowedSeriesItem) {
 	if (seriesNotifyId.value != null) return;
 	seriesNotifyId.value = item.id;
@@ -719,11 +719,11 @@ async function toggleSeriesNotify(item: FollowedSeriesItem) {
 	}
 }
 
-/* Followed categories for new-post push (DEC-140, TASK-182) --------------- */
+/* Followed categories for new-post push --------------- */
 const categoryFollows = ref<FollowedCategoryItem[]>([]);
 const categoryFollowsLoaded = ref(false);
 const categoryFollowsLoadFailed = ref(false);
-// Per-row in-flight marker (deep-dive, round 258); see seriesUnfollowIds.
+// Per-row in-flight marker (deep-dive); see seriesUnfollowIds.
 const categoryUnfollowIds = ref(new Set<number>());
 const categoryNotifyId = ref<number | null>(null);
 const categoryFollowsError = ref(false);
@@ -776,11 +776,11 @@ async function toggleCategoryNotify(item: FollowedCategoryItem) {
 	}
 }
 
-/* Followed tags for new-post push (DEC-195, TASK-215) ---------------------- */
+/* Followed tags for new-post push ---------------------- */
 const tagFollows = ref<FollowedTagItem[]>([]);
 const tagFollowsLoaded = ref(false);
 const tagFollowsLoadFailed = ref(false);
-// Per-row in-flight marker (deep-dive, round 258); see seriesUnfollowIds.
+// Per-row in-flight marker (deep-dive); see seriesUnfollowIds.
 const tagUnfollowIds = ref(new Set<number>());
 const tagNotifyId = ref<number | null>(null);
 const tagFollowsError = ref(false);
@@ -840,7 +840,7 @@ async function toggleTagNotify(item: FollowedTagItem) {
 	}
 }
 
-/* Followed authors for new-post notification (round 353) ---------------- */
+/* Followed authors for new-post notification ---------------- */
 const authorFollows = ref<FollowedAuthorItem[]>([]);
 const authorFollowsLoaded = ref(false);
 const authorFollowsLoadFailed = ref(false);
@@ -896,8 +896,8 @@ async function toggleAuthorNotify(item: FollowedAuthorItem) {
 	}
 }
 
-/* Delete account (DEC-106, TASK-165) ---------------------------------- */
-// Data export (DEC-126, TASK-175): download the reader's portable JSON bundle.
+/* Delete account ---------------------------------- */
+// Data export: download the reader's portable JSON bundle.
 const exportingData = ref(false);
 const exportState = ref<"idle" | "done" | "failed">("idle");
 
@@ -954,7 +954,7 @@ async function deleteAccount() {
 		deleteError.value = {
 			code,
 			// Surface the backend's reason (rate-limit wait, etc.) over the
-			// generic fallback (round 396; shared apiErrorMessage).
+			// generic fallback.
 			message: apiErrorMessage(e, t("account.deleteAccount.failed")),
 		};
 	} finally {
@@ -973,7 +973,7 @@ function statusOf(err: unknown): number | undefined {
 	return e?.status ?? e?.statusCode;
 }
 
-/* Followed readers (round 365, DEC-403): subscribe to another commenter's
+/* Followed readers: subscribe to another commenter's
    approved comments — the person-to-person cousin of the followed-writers
    section below. No per-follow notify toggle yet: the fan-out is on as long
    as the follow exists, so each row is just identity + unfollow. */
@@ -1014,7 +1014,7 @@ async function unfollowFollowedReader(item: FollowedReaderItem) {
 	}
 }
 
-/* Blocked readers (round 379, DEC-425): the harassment-control list opposite
+/* Blocked readers: the harassment-control list opposite
    the follows above. Each row is public identity + when the block was placed,
    and the only action is unblock — unblocking is one click, so a reader can
    take a block back the moment they change their mind. */
@@ -1125,7 +1125,7 @@ function shortEndpoint(endpoint: string): string {
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
 					{{ t("account.profile.title") }}
 				</h2>
-				<!-- Profile picture (DEC-299/TASK-378): the reader's public face,
+				<!-- Profile picture: the reader's public face,
              shown on their profile page and beside their comments. A hidden
              file input uploads straight to /api/reader/me/avatar; the preview
              shows the chosen file before the server re-encode round-trip. -->
@@ -1203,10 +1203,10 @@ function shortEndpoint(endpoint: string): string {
 							maxlength="50"
 							class="max-w-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
 						/>
-						<!-- Save stays enabled on an empty name (ISS-127: never a stuck-
+						<!-- Save stays enabled on an empty name (never a stuck-
                  disabled control), so submitting nothing must be explained, not
                  silently swallowed. Click or Enter on the empty field shows the
-                 reason inline (round 264). -->
+                 reason inline. -->
 						<span v-if="nameError" role="alert" class="text-sm text-red-500 dark:text-red-400">
 							{{ t("account.profile.nameRequired") }}
 						</span>
@@ -1224,7 +1224,7 @@ function shortEndpoint(endpoint: string): string {
 						/>
 						<span class="text-xs text-gray-400">{{ t("account.profile.bioHint") }}</span>
 					</label>
-					<!-- Public liked-posts opt-in (round 360, DEC-393): the first
+					<!-- Public liked-posts opt-in: the first
                reader-to-reader discovery surface — but only when the reader
                chooses it. A checkbox saved with the profile, off by default. -->
 					<label class="flex items-start gap-3 text-sm cursor-pointer">
@@ -1273,8 +1273,7 @@ function shortEndpoint(endpoint: string): string {
 
 			<!-- Sign-in email: changing it is proven by a link mailed to the NEW
            address, mirroring password reset — the old address keeps
-           authenticating until the linked confirm page swaps it (DEC-357,
-           TASK-404). -->
+           authenticating until the linked confirm page swaps it. -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.email.title") }}
@@ -1417,7 +1416,7 @@ function shortEndpoint(endpoint: string): string {
 				</form>
 			</section>
 
-			<!-- Two-factor authentication (round 364, DEC-401) -->
+			<!-- Two-factor authentication -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.twoFactor.title") }}
@@ -1650,7 +1649,7 @@ function shortEndpoint(endpoint: string): string {
 							</button>
 						</div>
 
-						<!-- New-post notification prefs (DEC-076, TASK-147) -->
+						<!-- New-post notification prefs -->
 						<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
 							<label class="inline-flex items-center gap-2 cursor-pointer">
 								<input
@@ -1701,7 +1700,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed discussions (DEC-078, TASK-150) -->
+			<!-- Followed discussions -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.threads.title") }}
@@ -1770,7 +1769,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed series for new-part push (DEC-134, TASK-179) -->
+			<!-- Followed series for new-part push -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.series.title") }}
@@ -1852,7 +1851,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed categories for new-post push (DEC-140, TASK-182) -->
+			<!-- Followed categories for new-post push -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.categories.title") }}
@@ -1939,7 +1938,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed writers (round 353): subscribe to a specific author's
+			<!-- Followed writers: subscribe to a specific author's
            new posts — the person-shaped cousin of the topic-shaped
            category/series/tag follows. -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
@@ -2023,7 +2022,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed readers (round 365, DEC-403): subscribe to another
+			<!-- Followed readers: subscribe to another
            commenter's approved comments — the person-to-person cousin of the
            followed-writers section. -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
@@ -2108,7 +2107,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Blocked readers (round 379, DEC-425): the harassment-control list —
+			<!-- Blocked readers: the harassment-control list —
            who this reader blocked, when, and one-click unblock. Blocking never
            tells the other side, so this list is only the blocker's own. -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
@@ -2193,7 +2192,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Followed tags for new-post push (DEC-195, TASK-215) -->
+			<!-- Followed tags for new-post push -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.tags.title") }}
@@ -2275,7 +2274,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Data export (DEC-126, TASK-175): portable copy of the reader's data -->
+			<!-- Data export: portable copy of the reader's data -->
 			<section class="border border-gray-100 dark:border-gray-700 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
 					{{ t("account.export.title") }}
@@ -2305,7 +2304,7 @@ function shortEndpoint(endpoint: string): string {
 				</p>
 			</section>
 
-			<!-- Delete account (DEC-106, TASK-165): self-service account deletion -->
+			<!-- Delete account: self-service account deletion -->
 			<section class="border border-red-200 dark:border-red-900/50 rounded-xl p-5">
 				<h2 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-1">
 					{{ t("account.deleteAccount.title") }}

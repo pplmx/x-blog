@@ -1,10 +1,10 @@
 /**
- * Blocked readers' comments hidden from the blocker (round 386, DEC-437).
+ * Blocked readers' comments hidden from the blocker.
  *
- * Round 379 (DEC-425) shipped reader blocking as a receiver-side opt-out: it
+ * Round 379 shipped reader blocking as a receiver-side opt-out: it
  * suppressed the notification fan-outs but a blocked reader's comments still
  * rendered in the post thread, the discussion feed and comment search — the
- * DEC-425 rationale promises "a blocked commenter is invisible to them even
+ * rationale promises "a blocked commenter is invisible to them even
  * mid-thread", which was only true of the notification path. This spec closes
  * that loop on the render path: two readers comment on a public post, an admin
  * approves both, the blocker signs in and sees both; after blocking the target
@@ -56,7 +56,7 @@ async function signIn(page: import("@playwright/test").Page, session: ReaderSess
 	}, session);
 }
 
-/** Approve a comment under the post (every comment is moderated, DEC-066). */
+/** Approve a comment under the post (every comment is moderated). */
 async function approveComment(
 	request: APIRequestContext,
 	adminH: Record<string, string>,
@@ -69,7 +69,7 @@ async function approveComment(
 	expect(approve.status()).toBe(200);
 }
 
-/** Post a comment as a signed-in reader and approve it (DEC-066 moderation).
+/** Post a comment as a signed-in reader and approve it moderation.
  *  Non-empty nickname/email placeholders are required even though a signed-in
  *  reader's identity is stamped from the JWT and those values are ignored. */
 async function postAndApproveComment(
@@ -89,7 +89,7 @@ async function postAndApproveComment(
 	return comment.id;
 }
 
-test.describe("Blocked readers' comments hidden (DEC-437)", () => {
+test.describe("Blocked readers' comments hidden ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("block from the profile hides the target's comment but keeps the control's", async ({
@@ -144,7 +144,7 @@ test.describe("Blocked readers' comments hidden (DEC-437)", () => {
 		await page.locator("main").getByText(targetText).waitFor();
 		await page.locator("main").getByText(controlText).waitFor();
 
-		// Block the target from their public profile (the DEC-425 entry point).
+		// Block the target from their public profile (the entry point).
 		// Blocking is a safety action: accept the one-time confirm, then wait for
 		// the button flip so the PUT has landed before we navigate away.
 		await page.goto(`/readers/${target.reader_id}`);

@@ -1,5 +1,5 @@
 /**
- * Read-later vs Done bookmark queue journey (round 361, DEC-395).
+ * Read-later vs Done bookmark queue journey.
  *
  * A saved post either lives in the To-read queue or is marked Done. A signed-in
  * reader opens /bookmarks, marks a post Done (pruning the queue), and the
@@ -40,7 +40,7 @@ async function signIn(
 	}, session);
 }
 
-test.describe("Bookmarks To-read/Done queue (DEC-395)", () => {
+test.describe("Bookmarks To-read/Done queue ", () => {
 	test("mark a bookmark Done → it leaves To-read and survives a reload in Done", async ({
 		page,
 		request,

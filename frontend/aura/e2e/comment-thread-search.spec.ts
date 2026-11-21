@@ -1,5 +1,5 @@
 /**
- * Search inside a comment thread journey (round 389, DEC-442).
+ * Search inside a comment thread journey.
  *
  * A long discussion has no "find X in this thread" surface — the global
  * comment search cannot scope to a post. The thread list now accepts a `q`

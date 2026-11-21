@@ -1,5 +1,5 @@
 /**
- * Public static page (/pages/{slug}) tests (round 347).
+ * Public static page (/pages/{slug}) tests.
  *
  * Covers rendering states: loading, a published page (title + markdown body +
  * updated date), a genuine 404 (unpublished/unknown — the public surface is

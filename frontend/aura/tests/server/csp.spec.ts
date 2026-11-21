@@ -1,5 +1,5 @@
 /**
- * Unit tests for the nonce-based CSP helpers (RIL DEC-057 / TASK-126).
+ * Unit tests for the nonce-based CSP helpers.
  * The nitro plugin wiring itself is exercised by the e2e CSP journey.
  */
 

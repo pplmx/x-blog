@@ -1,4 +1,4 @@
-"""Reader series reading-progress contract tests (DEC-122, TASK-173).
+"""Reader series reading-progress contract tests.
 
 A signed-in reader's progress through a series is derived from their server
 reading history: episodes already in the history count as read, `next_slug` is

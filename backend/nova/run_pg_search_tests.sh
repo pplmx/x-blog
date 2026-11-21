@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Postgres-gated CJK search integration (DEC-070, TASK-143).
+# Postgres-gated CJK search integration.
 #
 # The local SQLite suite cannot execute to_tsvector, so the original bug (CJK
 # queries failing partial/prefix match on Postgres full-text search) only

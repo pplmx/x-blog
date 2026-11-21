@@ -1,4 +1,4 @@
-/** Reader /email-change page tests (DEC-357, TASK-404). */
+/** Reader /email-change page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";

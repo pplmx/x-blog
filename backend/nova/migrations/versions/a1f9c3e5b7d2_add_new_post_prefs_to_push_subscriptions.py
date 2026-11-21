@@ -1,11 +1,11 @@
-"""add push_subscriptions.want_new_posts / new_post_category_id (DEC-076)
+"""add push_subscriptions.want_new_posts / new_post_category_id
 
 Readers who opt into new-post notifications get a Web Push when the author
 publishes; ``new_post_category_id`` narrows that to a single followed category
 (null = all new posts).
 
 Entirely additive. No DB-level FOREIGN KEY on the category column (SQLite
-alembic can't add an FK-carrying column to an existing table, DEC-009);
+alembic can't add an FK-carrying column to an existing table);
 integrity (unknown category id) is enforced at the API layer. Defensive: each
 piece is created only if absent (create_all-era dev DBs already carry the
 columns via the model).

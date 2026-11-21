@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /**
- * The signed-in reader's own comment history — "my comments" (DEC-066,
- * TASK-140).
+ * The signed-in reader's own comment history — "my comments".
  *
  * A moderated blog hides pending/rejected comments from everyone but their
  * author; this page shows the caller's comments with a derived moderation
@@ -25,7 +24,7 @@ const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 
 // Getter form: an in-app language switch re-evaluates the title/OG tags,
 // which a static object would have frozen in the initial language (same
-// reason every other page passes a getter — deep-dive, ISS-371).
+// reason every other page passes a getter — deep-dive).
 useSeo(() => ({
 	title: t("myComments.seoTitle"),
 	description: t("myComments.seoDesc"),
@@ -39,13 +38,13 @@ useSeo(() => ({
 const commentData = ref<MyCommentListResponse | null>(null);
 const loading = ref(true);
 const loadFailed = ref(false);
-// Status filter + pagination (DEC-102, TASK-163).
+// Status filter + pagination.
 const statusFilter = ref<MyCommentStatusFilter>("all");
 const currentPage = ref(1);
 
-// Keyword search over the reader's own comment history (DEC-411, TASK-431):
+// Keyword search over the reader's own comment history:
 // server-side `q` filter so a long history is searched in full, not just the
-// loaded page. Debounced like history's recall-search (DEC-148) so fast typing
+// loaded page. Debounced like history's recall-search so fast typing
 // doesn't fire a server call per keystroke; the loadSeq guard below drops
 // out-of-order responses.
 const searchQuery = ref("");
@@ -77,7 +76,7 @@ onUnmounted(() => {
 
 // Monotonic request sequence so a slow earlier response (e.g. a page-2 fetch)
 // cannot overwrite a newer filter tab's data after a fast response landed. Same
-// guard as useReadingHistory's recall-search (ISS-128) and HeaderSearch.
+// guard as useReadingHistory's recall-search and HeaderSearch.
 let loadSeq = 0;
 
 /**
@@ -85,7 +84,7 @@ let loadSeq = 0;
  * the auth-dependency detail) to sign-in instead of a misleading network error
  * whose Retry can never succeed, while the page still looks signed-in. Any
  * other failure just marks the target failed. Same handling as account.vue and
- * notifications.vue (ISS-110); the reader shows the sign-in prompt mid-route.
+ * notifications.vue; the reader shows the sign-in prompt mid-route.
  */
 function handleLoadFailure(err: unknown, markFailed: () => void): void {
 	if (isStaleSession(err)) {
@@ -100,11 +99,11 @@ async function load() {
 	// Guests see the in-page sign-in prompt — do not fire an authenticated
 	// request (the resulting 401 would otherwise race the prompt into a
 	// redirect to /login, stealing the reader's intended post-login landing;
-	// mirror notifications/account, ISS-383).
+	// mirror notifications/account).
 	if (!isAuthenticated.value) return;
 	const seq = ++loadSeq; // invalidate any in-flight older request
 	// Re-enter loading on refetch (tab/page change) so the swap is visible, and
-	// keep errors distinct from a genuinely empty list (ISS-129).
+	// keep errors distinct from a genuinely empty list.
 	loading.value = true;
 	loadFailed.value = false;
 	try {
@@ -126,7 +125,7 @@ async function load() {
 		if (seq !== loadSeq) return;
 		// A dead session must not present as "network error": log out and go to
 		// /login. Missing token, offline, etc — signal failure instead of
-		// pretending the list is empty (ISS-129).
+		// pretending the list is empty.
 		commentData.value = null;
 		handleLoadFailure(err, () => {
 			loadFailed.value = true;
@@ -138,8 +137,8 @@ async function load() {
 // The reader token lives in localStorage (client-only): during SSR + the first
 // client render auth is simply unknown, so without a hydration gate the
 // server-rendered "sign in" prompt would flash at a signed-in reader. Render a
-// neutral placeholder until mount, then decide guest vs. list (round-299
-// deep-dive; same pattern as CommentForm).
+// neutral placeholder until mount, then decide guest vs. list (deep-dive;
+// same pattern as CommentForm).
 const hydrated = ref(false);
 onMounted(() => {
 	hydrated.value = true;
@@ -154,7 +153,7 @@ const totalPages = computed(() => commentData.value?.total_pages || 0);
 // by "…"), matching the archive/search/category/tag feeds — the previous
 // hand-rolled 5-window had no far-page affordance, so deep comment history
 // offered no way to jump to the first/last page without walking the window
-// (survey finding #4, round 265).
+// (survey finding #4).
 const paginationTokens = computed(() => paginationPages(totalPages.value, currentPage.value));
 
 function setStatus(status: MyCommentStatusFilter): void {
@@ -237,7 +236,7 @@ function formatDate(dateStr: string): string {
 			</div>
 		</div>
 
-		<!-- Status filter buttons (DEC-102, TASK-163). These are mutually
+		<!-- Status filter buttons. These are mutually
          exclusive filter buttons, not a roving-tabindex tablist — plain
          buttons with aria-pressed is the honest semantics (a fake role="tab"
          promised arrow-key navigation the buttons don't implement). -->
@@ -259,8 +258,7 @@ function formatDate(dateStr: string): string {
 			</button>
 		</div>
 
-		<!-- Keyword search over the reader's own comment history (DEC-411,
-         TASK-431): mirrors history's recall-search — debounced, server-side,
+		<!-- Keyword search over the reader's own comment history: mirrors history's recall-search — debounced, server-side,
          composes with the status filter. -->
 		<div v-if="isAuthenticated" class="relative mb-6 max-w-sm">
 			<Icon
@@ -319,7 +317,7 @@ function formatDate(dateStr: string): string {
 			</div>
 		</div>
 
-		<!-- Error (distinct from an empty list, ISS-129) -->
+		<!-- Error (distinct from an empty list) -->
 		<div
 			v-else-if="loadFailed"
 			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
@@ -337,14 +335,14 @@ function formatDate(dateStr: string): string {
 
 		<!-- Empty: a non-'all' filter that returns zero must not claim the reader
          has "never commented" — it's this filter that has nothing. Per-filter
-         copy plus a one-click reset to the full list (ISS-385). Only the
+         copy plus a one-click reset to the full list. Only the
          genuinely-empty 'all' view keeps the browse-to-posts CTA. -->
 		<div
 			v-else-if="comments.length === 0"
 			class="text-center py-12 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl"
 		>
 			<!-- Search with no matches names the term and offers a one-click reset
-           (same shape as the ISS-385 filtered-empty branch). -->
+           (same shape as the filtered-empty branch). -->
 			<template v-if="searching">
 				<p class="mb-3">{{ t("myComments.emptySearch", { q: searchQuery.trim() }) }}</p>
 				<button
@@ -380,7 +378,7 @@ function formatDate(dateStr: string): string {
 
 		<!-- Comment list -->
 		<ul v-else class="space-y-3">
-			<!-- Screen-reader page announcement (round 398, same pattern as home):
+			<!-- Screen-reader page announcement:
            pagination swaps the list in place, invisible to assistive tech. -->
 			<li class="sr-only" role="status" aria-live="polite">
 				{{ t("common.state.pageAnnounce", { page: currentPage }) }}
@@ -438,7 +436,7 @@ function formatDate(dateStr: string): string {
 			{{ t("myComments.deleteFailed") }}
 		</p>
 
-		<!-- Pagination (DEC-102, TASK-163; round 265: shared first/last + ellipsis
+		<!-- Pagination (shared first/last + ellipsis
          tokens like the archive/search feeds, so deep history can reach the
          far pages instead of a fixed local window) -->
 		<nav v-if="isAuthenticated && totalPages > 1" class="flex justify-center gap-2 mt-6">

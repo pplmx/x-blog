@@ -1,8 +1,8 @@
-"""add series_follows table for 'new part' push (DEC-132, TASK-178)
+"""add series_follows table for 'new part' push
 
 A signed-in reader can follow a series to be pushed a notification when a new
 public post is published in it. Adds the additive ``series_follows`` table
-(reader↔series unique pair); no existing DDL is touched (DEC-009).
+(reader↔series unique pair); no existing DDL is touched.
 
 Revision ID: f2a4c6e8d0b2
 Revises: d7e9f1a3b5c7

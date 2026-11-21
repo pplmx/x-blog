@@ -1,5 +1,5 @@
 /**
- * "My comments" page tests (DEC-066, TASK-140).
+ * "My comments" page tests.
  *
  * Reader-scoped comment history: logged-out visitors see a sign-in prompt; a
  * signed-in reader sees their comments with moderation-status badges
@@ -117,7 +117,7 @@ describe("My comments page", () => {
 		expect(wrapper.text()).toContain("登录后可以查看和管理你的评论");
 	});
 
-	it("does not fire an authenticated fetch (or a redirect) for a guest (ISS-383)", async () => {
+	it("does not fire an authenticated fetch (or a redirect) for a guest ", async () => {
 		// Guests see the in-page sign-in prompt; the old code called getMyComments
 		// on mount, whose 401 raced the prompt into logout()+navigateTo('/login') —
 		// stealing the reader's intended post-login landing. The guard must keep
@@ -142,7 +142,7 @@ describe("My comments page", () => {
 		expect(wrapper.text()).toContain("还没有发表过评论");
 	});
 
-	it("shows a distinct error state (not the empty list) when the fetch fails (ISS-129)", async () => {
+	it("shows a distinct error state (not the empty list) when the fetch fails ", async () => {
 		isAuthenticated.value = true;
 		mockFetchMyComments.mockRejectedValueOnce(new Error("network"));
 		const wrapper = await mountPage();
@@ -164,7 +164,7 @@ describe("My comments page", () => {
 		expect(wrapper.text()).toContain("共 1 条评论");
 	});
 
-	it("deep-links the 'on post' jump to the exact comment, not the headline (DEC-321)", async () => {
+	it("deep-links the 'on post' jump to the exact comment, not the headline ", async () => {
 		isAuthenticated.value = true;
 		mockData.value = {
 			items: [makeComment({ id: 42, post: { id: 1, title: "Test Post", slug: "test-post" } })],
@@ -252,7 +252,7 @@ describe("My comments page", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("routes an expired session to /login instead of a misleading network error (ISS-110)", async () => {
+	it("routes an expired session to /login instead of a misleading network error ", async () => {
 		// A dead reader token 401s with no recoverable meaning; the old path
 		// showed a "网络错误 + retry" that could never succeed while the page
 		// still looked signed-in. Now it logs out and sends the reader to sign-in,
@@ -325,7 +325,7 @@ describe("My comments page", () => {
 		vi.unstubAllGlobals();
 	});
 
-	describe("filter + pagination (DEC-102, TASK-163)", () => {
+	describe("filter + pagination ", () => {
 		it("renders the four status filter buttons", async () => {
 			isAuthenticated.value = true;
 			mockData.value = { items: [makeComment()], total: 1 };
@@ -381,7 +381,7 @@ describe("My comments page", () => {
 			// Round 399: the status filter bar and keyword-search box were gated
 			// on !loading, so a filter/page tap dropped focus off the search
 			// input and unmounted the controls mid-interaction (same chrome
-			// class the round-397 tags/categories/archive fix addressed). They
+			// class the tags/categories/archive fix addressed). They
 			// must stay mounted during the refetch; only the list region swaps.
 			isAuthenticated.value = true;
 			mockData.value = { items: [makeComment()], total: 1 };
@@ -401,7 +401,7 @@ describe("My comments page", () => {
 			await flushPromises();
 		});
 
-		it("says this filter is empty (not 'never commented') with a show-all reset (ISS-385)", async () => {
+		it("says this filter is empty (not 'never commented') with a show-all reset ", async () => {
 			// A reader with approved comments on the Pending tab got told "you
 			// haven't commented yet" and steered to Browse posts — a lie that hid
 			// where their content is. A filtered-empty view must name the filter
@@ -431,7 +431,7 @@ describe("My comments page", () => {
 			expect(mockFetchMyComments).toHaveBeenLastCalledWith("all", 1, 20, "");
 		});
 
-		it("offers first/last + ellipsis far-page navigation on deep history (round 265)", async () => {
+		it("offers first/last + ellipsis far-page navigation on deep history ", async () => {
 			// Regression (survey #4): the previous hand-rolled 5-window showed
 			// only pages 3..7 around page 5 on a 10-page history — no path to the
 			// far pages. The shared paginationPages tokens now include page 1,
@@ -522,7 +522,7 @@ describe("My comments page", () => {
 		});
 	});
 
-	describe("keyword search (DEC-411, TASK-431)", () => {
+	describe("keyword search ", () => {
 		// Fake timers drive the 300ms recall-search debounce deterministically.
 		// The page clears its pending timer onUnmounted, so unmount every wrapper
 		// to avoid leaking a real timer into later tests.
@@ -636,7 +636,7 @@ describe("My comments page", () => {
 
 			await typeSearch(wrapper, "nothing-here");
 			// Neither the "never commented" copy nor the browse CTA — the search
-			// names the term and offers a one-click reset (ISS-385 shape).
+			// names the term and offers a one-click reset shape.
 			expect(wrapper.text()).toContain("没有匹配「nothing-here」的评论");
 			expect(wrapper.text()).toContain("清除搜索");
 			expect(wrapper.text()).not.toContain("还没有发表过评论");

@@ -1,5 +1,5 @@
 /**
- * /readers/[id] public profile page tests (DEC-294, TASK-376).
+ * /readers/[id] public profile page tests.
  *
  * Covers: profile header (display_name, join date, verified badge), the
  * comment list with post links, not-found (404), load-failure retry, empty
@@ -35,10 +35,10 @@ let mockSavedReject: unknown = null;
 let mockLikesDefer: ((release: (value: unknown) => void) => void) | null = null;
 let mockReaderId = "5";
 let mockQuery: Record<string, string> = {};
-// TASK-478 / ISS-554: records the page arg each getReaderProfile call received
+// records the page arg each getReaderProfile call received
 // so a test can assert an invalid ?page= resolves to 1 on the wire.
 let mockProfilePages: unknown[] = [];
-// ISS-572: per-call behaviors for the profile mock, consumed FIFO. `deferred`
+// per-call behaviors for the profile mock, consumed FIFO. `deferred`
 // installs a manual-release promise so a test can hold one response open while
 // a newer load lands, then release the stale one.
 let mockProfileSteps: Array<{
@@ -63,7 +63,7 @@ vi.mock("~~/api/public/readers", () => ({
 		if (mockLikesReject) throw mockLikesReject;
 		if (mockLikesDefer) {
 			// Hold THIS response open until the test releases it; every later
-			// call falls back to the static payload (round-422 tab-race test).
+			// call falls back to the static payload.
 			const defer = mockLikesDefer;
 			mockLikesDefer = null;
 			return new Promise<unknown>((release) => defer(release));
@@ -84,7 +84,7 @@ vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({ t: (k: string) => k, locale: ref("zh") }),
 }));
 
-// Reader-to-reader follow (round 365, DEC-403): the header's ReaderFollowButton
+// Reader-to-reader follow: the header's ReaderFollowButton
 // calls the follow/unfollow seams directly (the profile payload already carries
 // is_following, so there is no initial follow-state GET to mock).
 const { mockFollowReader, mockUnfollowReader } = vi.hoisted(() => ({
@@ -96,7 +96,7 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReader: mockUnfollowReader,
 }));
 
-// Reader block (round 379, DEC-425): the header's ReaderBlockButton seeds from
+// Reader block: the header's ReaderBlockButton seeds from
 // the profile's is_blocked stance, so only the block/unblock seams are mocked.
 const { mockBlockReader, mockUnblockReader } = vi.hoisted(() => ({
 	mockBlockReader: vi.fn(),
@@ -110,7 +110,7 @@ vi.mock("~~/api/reader/blocks", () => ({
 const stubs = {
 	Icon: { template: "<svg class='icon-stub' :data-icon='icon' />", props: ["icon"] },
 	NuxtLink: { template: "<a class='nuxt-link-stub' :href='to'><slot/></a>", props: ["to"] },
-	// Shared component (round-446); stub to the bare img so avatar assertions
+	// Shared component; stub to the bare img so avatar assertions
 	// stay on the resolved <img src>.
 	ReaderAvatar: {
 		props: ["url", "name"],
@@ -125,7 +125,7 @@ const samplePage = {
 		avatar_url: null,
 		public_likes: false,
 		public_bookmarks: false,
-		// Round 365 (DEC-403): the public follower count + the caller's own
+		// Round 365: the public follower count + the caller's own
 		// follow stance ride on the profile payload.
 		follower_count: 3,
 		is_following: false,
@@ -147,7 +147,7 @@ const samplePage = {
 	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
 };
 
-// An opted-in reader (round 360, DEC-393): public_likes true → the profile
+// An opted-in reader: public_likes true → the profile
 // gains a "Liked posts" tab fed by getReaderPublicLikes.
 const sampleLikerPage = {
 	...samplePage,
@@ -167,8 +167,7 @@ const sampleLikes = {
 	pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
 };
 
-// A reader who also opts into the curated "Saved posts" tab (round 363,
-// DEC-399): public_bookmarks true → the profile gains a third tab.
+// A reader who also opts into the curated "Saved posts" tab: public_bookmarks true → the profile gains a third tab.
 const sampleSaverPage = {
 	...samplePage,
 	profile: { ...samplePage.profile, public_bookmarks: true },
@@ -228,7 +227,7 @@ async function mountPage() {
 /**
  * Mount with a REACTIVE route query so a test can change ?page= / ?view= after
  * mount and fire the load watcher, which the plain mountPage() (static query)
- * cannot do — the reader load race test (ISS-572) needs that seam.
+ * cannot do — the reader load race test needs that seam.
  */
 async function mountPageReactiveQuery(initialQuery: Record<string, string>) {
 	// Deep-reactive route: the page computed reads route.query.page on every
@@ -267,7 +266,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.find('[data-icon="lucide:badge-check"]').exists()).toBe(true);
 	});
 
-	it("renders the reader's avatar when one is set (DEC-299/TASK-378)", async () => {
+	it("renders the reader's avatar when one is set ", async () => {
 		mockPayload = {
 			...samplePage,
 			profile: { ...samplePage.profile, avatar_url: "/static/avatars/riki.png" },
@@ -277,14 +276,14 @@ describe("Reader profile page", () => {
 		expect(avatar.exists()).toBe(true);
 	});
 
-	it("shows the initial-letter placeholder when the reader has no avatar (DEC-299/TASK-378)", async () => {
+	it("shows the initial-letter placeholder when the reader has no avatar ", async () => {
 		mockPayload = samplePage;
 		const wrapper = await mountPage();
 		expect(wrapper.find("img").exists()).toBe(false);
 		expect(wrapper.text()).toContain("R"); // first letter of display_name
 	});
 
-	it("renders the reader's bio when one is set (round 352)", async () => {
+	it("renders the reader's bio when one is set ", async () => {
 		mockPayload = {
 			...samplePage,
 			profile: { ...samplePage.profile, bio: "I write about small self-hosted things." },
@@ -293,7 +292,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("I write about small self-hosted things.");
 	});
 
-	it("omits the bio block when the reader has none (round 352)", async () => {
+	it("omits the bio block when the reader has none ", async () => {
 		mockPayload = { ...samplePage, profile: { ...samplePage.profile, bio: null } };
 		const wrapper = await mountPage();
 		// The bio is the page's only whitespace-pre-wrap paragraph — nothing
@@ -305,7 +304,7 @@ describe("Reader profile page", () => {
 		mockPayload = samplePage;
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("a comment on a post");
-		// DEC-321: comment-history surfaces must land ON the comment, not the
+		// comment-history surfaces must land ON the comment, not the
 		// post headline — the post page's CommentList lands #comment-<id>.
 		expect(wrapper.find('.nuxt-link-stub[href="/posts/the-post#comment-1"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain("The Post");
@@ -354,7 +353,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).not.toContain("readerProfile.loadFailed");
 	});
 
-	it("a slow stale profile response cannot overwrite a newer one (ISS-572)", async () => {
+	it("a slow stale profile response cannot overwrite a newer one ", async () => {
 		// Quick page-click + tab-switch fires overlapping load() calls. The
 		// older (stale) response must not clobber the newer data or flip the
 		// spinner off while the newer request is still in flight.
@@ -397,8 +396,8 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("readerProfile.likesTab");
 	});
 
-	it("a stale likes-tab response cannot overwrite a newer page (round 422)", async () => {
-		// load() is seq-guarded (ISS-572), but the discovery-tab fetchers were
+	it("a stale likes-tab response cannot overwrite a newer page ", async () => {
+		// load() is seq-guarded, but the discovery-tab fetchers were
 		// not: a fast page-click on the Likes tab fires a second loadLikes()
 		// while the first is still in flight (both profiles resolve, so each
 		// passes its own load()'s seq check), and the last-resolver wrote the
@@ -469,7 +468,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("a comment on a post");
 	});
 
-	it("renders the Likes tab for an opted-in reader (round 360)", async () => {
+	it("renders the Likes tab for an opted-in reader ", async () => {
 		mockPayload = sampleLikerPage;
 		const wrapper = await mountPage();
 		// Default tab is comments; the Likes tab button is offered.
@@ -488,7 +487,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).not.toContain("a comment on a post");
 	});
 
-	it("roves the tablist with Arrow keys (round 428 a11y audit)", async () => {
+	it("roves the tablist with Arrow keys ", async () => {
 		// The profile tablist follows the role="tab" keyboard contract
 		// (ArrowLeft/Right/Home/End) that search.vue and CommentForm already
 		// implement — previously only click moved tabs, so a keyboard user
@@ -557,7 +556,7 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).toContain("a comment on a post");
 	});
 
-	it("renders the Saved tab for an opted-in reader (round 363)", async () => {
+	it("renders the Saved tab for an opted-in reader ", async () => {
 		mockPayload = sampleSaverPage;
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("readerProfile.savedTab");
@@ -587,7 +586,7 @@ describe("Reader profile page", () => {
 	});
 });
 
-describe("Reader follow on the profile header (round 365, DEC-403)", () => {
+describe("Reader follow on the profile header ", () => {
 	function scaledPayload(is_following: boolean, follower_count = 3) {
 		return {
 			...samplePage,
@@ -678,7 +677,7 @@ describe("Reader follow on the profile header (round 365, DEC-403)", () => {
 	});
 });
 
-describe("Reader block on the profile header (round 379, DEC-425)", () => {
+describe("Reader block on the profile header ", () => {
 	function scaledPayload(is_blocked: boolean) {
 		return {
 			...samplePage,
@@ -772,7 +771,7 @@ describe("Reader block on the profile header (round 379, DEC-425)", () => {
 		expect(buttonTexts).not.toContain("readerProfile.blocked");
 	});
 
-	// TASK-478 / ISS-554: an invalid ?page= must resolve to page 1 on the wire.
+	// an invalid ?page= must resolve to page 1 on the wire.
 	// The un-clamped computed forwarded NaN/0 to getReaderProfile (guaranteed
 	// 422) while the clamp watcher short-circuits NaN/<2, bricking the profile
 	// with a dead Retry. Clamp at the computed (follows.vue pattern).

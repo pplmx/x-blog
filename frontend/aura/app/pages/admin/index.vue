@@ -19,7 +19,7 @@ definePageMeta({ layout: "admin" });
 const { t, locale } = useLang();
 const config = useRuntimeConfig();
 const apiBase = (config.public.apiUrl || "").replace(/\/+$/, "");
-// Session-expiry handling (RIL ISS-273): a 401 from any admin call means the
+// Session-expiry handling: a 401 from any admin call means the
 // token expired or was revoked server-side — drop it and go to login instead
 // of rendering a stale-looking error dashboard.
 const { handleAdminUnauthorized } = useAdminAuth();
@@ -30,7 +30,7 @@ useHead({ title: computed(() => t("admin.dashboard.seoTitle")) });
 // (auth is localStorage-only), so the page mounts client-side after hydration;
 // Nuxt's top-level `await useFetch` does not populate data in that client-only
 // mount (the in-flight request is aborted during the hydration recount). Load
-// imperatively after mount to fix the hard-reload empty dashboard (ISS-032),
+// imperatively after mount to fix the hard-reload empty dashboard,
 // while keeping SSR gating so admin payload never reaches SSR HTML.
 const posts = ref<AdminPost[]>([]);
 const categories = ref<Category[] | null>(null);
@@ -43,7 +43,7 @@ const loading = ref(true);
 // silently render all-zero stat cards that look like an empty installation.
 const loadError = ref(false);
 
-// Reading-trend analytics (DEC-086): per-day view totals + top posts by
+// Reading-trend analytics: per-day view totals + top posts by
 // in-period views. Null when the endpoint failed — the card then hides.
 interface ViewsTrend {
 	days: number;
@@ -52,7 +52,7 @@ interface ViewsTrend {
 	top_posts: Array<{ id: number; title: string; slug: string; views: number }>;
 }
 const viewsTrend = ref<ViewsTrend | null>(null);
-// Follow analytics (DEC-144, TASK-184): per-series/category reader follow
+// Follow analytics: per-series/category reader follow
 // counts + totals (tracking-based, notify-independent). Null on failure.
 interface FollowStats {
 	total_series_follows: number;
@@ -71,7 +71,7 @@ const followMax = computed(() =>
 function followPct(count: number): number {
 	return Math.round((count / followMax.value) * 100);
 }
-// Search-term analytics (DEC-152/TASK-188): top public search counts.
+// Search-term analytics: top public search counts.
 interface SearchTerm {
 	query: string;
 	count: number;
@@ -81,8 +81,8 @@ const searchMax = computed(() => Math.max(1, ...(topSearches.value?.map((s) => s
 function searchPct(count: number): number {
 	return Math.round((count / searchMax.value) * 100);
 }
-// Comment activity analytics (DEC-154/TASK-189): engagement axis.
-// pending_count is the authoritative moderation-queue depth (round 276): it
+// Comment activity analytics: engagement axis.
+// pending_count is the authoritative moderation-queue depth: it
 // moved from the public /api/stats (a moderation-state oracle any visitor
 // could poll) onto this admin-scoped endpoint, so the dashboard's pending
 // stat reads it here instead of blogStats.pending_comments.
@@ -101,7 +101,7 @@ function commentPct(count: number): number {
 	return Math.round((count / commentMax.value) * 100);
 }
 
-// Per-analytics failure state (round 278): a failing axis used to hide its
+// Per-analytics failure state: a failing axis used to hide its
 // card with no message and no recovery except a full reload — the global
 // loadError/retry only fires when the WHOLE dashboard load fails, so a single
 // endpoint 500 silently orphaned that card. Each axis now records its own
@@ -201,7 +201,7 @@ function authHeaders(): Record<string, string> {
 // dashboard's raw-$fetch islands (analytics loaders, CSV export, backup/restore,
 // pending-comments refresh) bypass that — an expired/revoked token on one of
 // them left the operator staring at a raw ofetch 401 with no re-auth path while
-// parked on the dashboard (round-445 audit, useUpload.ts:48 pattern). Only the
+// parked on the dashboard. Only the
 // navigation-stopping 401 matters here; other failures rethrow for the caller's
 // existing per-surface error handling.
 async function adminFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
@@ -226,12 +226,12 @@ async function loadDashboard(): Promise<void> {
 		// single page at 100. Previously the dashboard used the PUBLIC
 		// /api/posts?limit=100 endpoint — published-only and hard-capped, so
 		// top/recency/category rankings under-reported on blogs >100 posts and
-		// drafts never surfaced (RIL TASK-077, ISS-046).
+		// drafts never surfaced.
 		// The admin endpoint is skip/limit (admin.py admin_list_posts), NOT
 		// page/limit: sending `page` was ignored (skip stayed 0), so every
 		// iteration re-fetched the same first 100 posts and the loop broke on
 		// the duplicated length — top/recency/category stats silently came from
-		// a first-100 slice on blogs with more posts (ISS-443).
+		// a first-100 slice on blogs with more posts.
 		const batchSize = 100;
 		const postsPage: AdminPost[] = [];
 		let skip = 0;
@@ -263,10 +263,10 @@ async function loadDashboard(): Promise<void> {
 				headers: authHeaders(),
 			}),
 			$fetch<BlogStats>(`${apiBase}/api/stats`),
-			// Analytics axes (DEC-086/144/152/154): best-effort loads that fill
+			// Analytics axes: best-effort loads that fill
 			// their own refs and record per-axis failure — a single 500 hides
 			// that card WITH an inline retry instead of silently vanishing or
-			// blocking the whole dashboard (round 278).
+			// blocking the whole dashboard.
 			loadViewsTrend(),
 			loadFollowStats(),
 			loadTopSearches(),
@@ -281,7 +281,7 @@ async function loadDashboard(): Promise<void> {
 		// An expired/revoked admin session makes every admin call 401 — that is
 		// not a transient failure: drop the stale token and hard-redirect to
 		// /admin/login (session expiry = logged out, protected page = login
-		// prompt, RIL ISS-273) rather than a load-error that looks temporary.
+		// prompt) rather than a load-error that looks temporary.
 		const status =
 			(cause as { statusCode?: number } | undefined)?.statusCode ??
 			(cause as { response?: { status?: number } } | undefined)?.response?.status;
@@ -301,7 +301,7 @@ async function loadDashboard(): Promise<void> {
 	} finally {
 		loading.value = false;
 		// Stamp the data-freshness time when the load actually completes (deep-dive
-		// finding ISS-310): the previous const captured setup-time once, so a
+		// finding): the previous const captured setup-time once, so a
 		// post-action reload showed a stale "Updated at" despite fresh numbers.
 		loadedAt.value = new Date().toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US");
 	}
@@ -310,8 +310,7 @@ onMounted(() => {
 	loadDashboard();
 });
 
-// Data export is a superuser-only capability — hidden for editors (DEC-054,
-// TASK-116). The API itself enforces this (get_current_superuser); this is a
+// Data export is a superuser-only capability — hidden for editors. The API itself enforces this (get_current_superuser); this is a
 // UI affordance so an editor never sees a section that would 403. Defaults to
 // visible and downgrades only on a confirmed editor role so a failed /me
 // response never hides export from a superuser.
@@ -330,7 +329,7 @@ onMounted(async () => {
 const exporting = ref<"posts" | "comments" | null>(null);
 const exportError = ref("");
 
-// Export options (RIL TASK-079, ISS-048): posts status + both kinds' date
+// Export options: posts status + both kinds' date
 // range, passed as query params to the CSV endpoints.
 const exportStatus = ref<"all" | "published" | "draft" | "scheduled">("all");
 const exportApproved = ref<"all" | "approved" | "pending">("all");
@@ -371,14 +370,14 @@ async function downloadExport(kind: "posts" | "comments"): Promise<void> {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit).
+		// when readable, else the localized fallback.
 		exportError.value = apiErrorMessage(e, t("admin.dashboard.operationFailed"));
 	} finally {
 		exporting.value = null;
 	}
 }
 
-// Full-blog backup & restore (DEC-082, TASK-153): superuser-only like the CSV
+// Full-blog backup & restore: superuser-only like the CSV
 // export. Download fetches the whole blog as one JSON snapshot; restore
 // uploads such a snapshot and upserts it into this instance (natural keys +
 // import_key idempotency).
@@ -423,7 +422,7 @@ async function downloadFullBackup(): Promise<void> {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit).
+		// when readable, else the localized fallback.
 		backupError.value = apiErrorMessage(e, t("admin.dashboard.backup.downloadFailed"));
 	} finally {
 		backupState.value = "idle";
@@ -463,7 +462,7 @@ async function onRestoreFileChange(event: Event): Promise<void> {
 	} catch (e) {
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit). Restore
+		// when readable, else the localized fallback. Restore
 		// errors have a page-specific line (parse errors already carry their own).
 		backupError.value = apiErrorMessage(e, t("admin.dashboard.backup.restoreFailed"));
 	} finally {
@@ -499,7 +498,7 @@ const pendingCommentsCount = computed(
 // Recent 5 published posts sorted by effective publish time (publish_at ??
 // created_at, newest first) — a scheduled post reaches this card when it
 // actually goes live, not when it was drafted (matches the public feed,
-// RIL ISS-266). A future-scheduled post (publish_at still ahead) is NOT live
+//). A future-scheduled post (publish_at still ahead) is NOT live
 // and is excluded, exactly as the public feed hides it (the previously
 // published-only filter surfaced a not-yet-live post as "newest published").
 // The sort uses the same line the card's date will show.
@@ -579,7 +578,7 @@ async function handleApprove(commentId: number, approved: boolean) {
 		if (comment && typeof previous === "boolean") comment.is_approved = previous;
 		// apiErrorMessage: an HTTP failure's e.message is only ofetch's technical
 		// string (leaks the API URL in a wrong-language line) — backend envelope
-		// when readable, else the localized fallback (round-445 audit).
+		// when readable, else the localized fallback.
 		approveError.value = apiErrorMessage(e, t("admin.dashboard.operationFailed"));
 	} finally {
 		const next = new Set(approvingIds.value);
@@ -671,7 +670,7 @@ const stats = computed(() => [
 			</p>
 		</div>
 
-		<!-- Data loads client-side after auth (ISS-032); brief loading hint -->
+		<!-- Data loads client-side after auth; brief loading hint -->
 		<div v-if="loading" class="mb-4 text-sm text-gray-500 dark:text-gray-400">
 			{{ t("admin.dashboard.loading") }}
 		</div>
@@ -799,7 +798,7 @@ const stats = computed(() => [
 			</div>
 		</div>
 
-		<!-- Follow analytics (DEC-144, TASK-184): what readers track -->
+		<!-- Follow analytics: what readers track -->
 		<div
 			v-if="followStats"
 			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
@@ -899,7 +898,7 @@ const stats = computed(() => [
 			</button>
 		</div>
 
-		<!-- Search-term analytics (DEC-152, TASK-188): what readers look for -->
+		<!-- Search-term analytics: what readers look for -->
 		<div
 			v-if="topSearches"
 			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
@@ -947,7 +946,7 @@ const stats = computed(() => [
 			</button>
 		</div>
 
-		<!-- Comment activity (DEC-154, TASK-189): engagement axis -->
+		<!-- Comment activity: engagement axis -->
 		<div
 			v-if="commentActivity"
 			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
@@ -1026,7 +1025,7 @@ const stats = computed(() => [
 			</button>
 		</div>
 
-		<!-- Reading trend (DEC-086): last-30-days view series + top posts -->
+		<!-- Reading trend: last-30-days view series + top posts -->
 		<div
 			v-if="viewsTrend"
 			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"
@@ -1243,7 +1242,7 @@ const stats = computed(() => [
 				{{ exportError }}
 			</div>
 
-			<!-- Export filters (RIL TASK-079) -->
+			<!-- Export filters -->
 			<div class="flex flex-wrap items-end gap-3 mb-4">
 				<label class="flex flex-col gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
 					{{ t("admin.dashboard.export.postStatus") }}
@@ -1318,7 +1317,7 @@ const stats = computed(() => [
 			</div>
 		</div>
 
-		<!-- Full-blog backup & restore (DEC-082) -->
+		<!-- Full-blog backup & restore -->
 		<div
 			v-if="canExport"
 			class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-8"

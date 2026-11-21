@@ -24,7 +24,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe("useCommentSearch (round 366, DEC-405)", () => {
+describe("useCommentSearch ", () => {
 	it("requests the comment search endpoint with q and pagination", () => {
 		useCommentSearch({ q: "42", page: 2, limit: 10 });
 

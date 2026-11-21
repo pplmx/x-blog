@@ -1,12 +1,12 @@
 /**
- * In-place series-follow on the post page (DEC-290, TASK-374).
+ * In-place series-follow on the post page.
  *
  * Series-follow (follow the series for a push when a new part is published,
- * DEC-132/TASK-178) was only reachable from /series/[slug]. On the post page
+ *) was only reachable from /series/[slug]. On the post page
  * the in-series nav box renders prev/next without any follow control — a
  * reader landing on part 3 of a series (via search/related/prev-next) had to
  * leave the post to subscribe to future parts. This closes that gap exactly
- * the way DEC-196 closed it for tags: a signed-in reader follows/unfollows the
+ * the way closed it for tags: a signed-in reader follows/unfollows the
  * series and toggles new-part notifications in place, and it reflects in the
  * account page's Followed-series section. Guests see no control.
  */
@@ -54,7 +54,7 @@ async function pickSeriesPost(request: import("@playwright/test").APIRequestCont
 	return null;
 }
 
-test.describe("In-place series follow on the post page (TASK-374)", () => {
+test.describe("In-place series follow on the post page ", () => {
 	test("guests see no in-place series-follow control on a post page", async ({ page, request }) => {
 		const slug = await pickSeriesPost(request);
 		if (!slug) {

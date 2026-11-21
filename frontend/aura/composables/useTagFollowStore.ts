@@ -8,7 +8,7 @@ import {
 import { isStaleSession } from "~~/composables/useReaderAuth";
 
 /**
- * Shared reader tag-follow state for the reading surface (DEC-196/TASK-216).
+ * Shared reader tag-follow state for the reading surface.
  *
  * Module-scoped singleton so every TagFollowButton on a page shares one
  * GET /api/reader/me/tag-follows instead of fetching once per tag chip, and
@@ -22,7 +22,7 @@ import { isStaleSession } from "~~/composables/useReaderAuth";
  */
 
 export interface TagFollowEntry {
-	/** Whether new-post push is enabled for this follow (TASK-215). */
+	/** Whether new-post push is enabled for this follow. */
 	notify: boolean;
 }
 
@@ -74,7 +74,7 @@ async function ensureLoaded(): Promise<boolean> {
 			// the caller (the tag-follow chip) can drop the dead token and show
 			// the sign-in prompt up front — otherwise a returning reader sees
 			// every chip as unfollowed and only discovers the dead session on
-			// the noisy first tap (round-300 review).
+			// the noisy first tap.
 			if (isStaleSession(cause)) throw cause;
 			return false;
 		} finally {

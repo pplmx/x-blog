@@ -1,8 +1,8 @@
 /**
- * Guest commenter reply-email journey (DEC-332, TASK-392).
+ * Guest commenter reply-email journey.
  *
  * The comment form REQUIRES a guest to leave an email and it is stored on the
- * comment row, but until DEC-332 no dispatch path used it — a reply to an
+ * comment row, but until then no dispatch path used it — a reply to an
  * anonymous comment notified nobody. This journey: a guest comments (with the
  * "email me when someone replies" consent) on a public post; the author
  * approves a reply written by a reader; the guest's STORED address receives
@@ -24,7 +24,7 @@ const SINK_FILE = "/tmp/x-blog-smtp-sink.jsonl";
 
 // The reply-email subject (shared with the address-scoped counters below).
 // Distinct from the "你的评论已发布 — 可管理" manage email, which ALSO lands at
-// the guest's address (round 385, when their own comment gets approved) — any
+// the guest's address — any
 // address-scoped assertion must scope by this subject to isolate reply mails.
 const REPLY_SUBJECT = "有人回复了你的评论";
 
@@ -63,7 +63,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 	return ((await res.json()) as { access_token: string }).access_token;
 }
 
-test.describe("Guest commenter reply-email (TASK-392)", () => {
+test.describe("Guest commenter reply-email ", () => {
 	test.skip(() => !!process.env.CI_RESTRICTED, "full journey requires admin publish");
 
 	test("approved reply emails the opted-in guest, then unsubscribe stops future mail", async ({
@@ -162,7 +162,7 @@ test.describe("Guest commenter reply-email (TASK-392)", () => {
 		// No NEW REPLY email after unsubscribing (the reply count stays at the
 		// one from before the unsubscribe). Scoped by SUBJECT, not address: the
 		// guest's own comment-approval also sends the "你的评论已发布 — 可管理"
-		// manage email to the same address (round 385), so an address-scoped
+		// manage email to the same address, so an address-scoped
 		// count is two by construction and would false-red the journey.
 		const after = readFileSync(SINK_FILE, "utf8")
 			.split("\n")

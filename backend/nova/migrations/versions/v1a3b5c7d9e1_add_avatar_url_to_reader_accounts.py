@@ -1,13 +1,13 @@
 """add avatar_url to reader_accounts (reader profile picture)
 
-Reader-identity wave (DEC-294, reader profiles) made a commenter's display name
+Reader-identity wave (reader profiles) made a commenter's display name
 linkable, but the identity is text-only: there is no picture anywhere in the
 system. A reader-set avatar (a small profile photo served from /static/avatars,
 uploaded through a reader-scoped endpoint) makes the same identity visible in
 the comment list and on the public profile page - the natural completion of the
 identity slice.
 
-This additive nullable column follows DEC-009: no existing DDL is touched, and
+This additive nullable column follows no existing DDL is touched, and
 existing rows simply carry a NULL avatar_url (rendered as a placeholder).
 
 Revision ID: v1a3b5c7d9e1

@@ -132,7 +132,7 @@ async def test_list_posts_cache_invalidated_on_delete(client, auth_headers):
 async def test_category_post_count_invalidated_on_post_write(client, auth_headers):
     """Assigning a post to a category must refresh the cached category post_count.
 
-    Regresses the stale post_count bug (RIL TASK-074, ISS-042): post writes
+    Regresses the stale post_count bug: post writes
     cleared tags/posts caches but not categories_cache, so the per-category
     post_count stayed stale up to the 1800s TTL.
     """
@@ -265,12 +265,12 @@ async def test_scheduled_post_hidden_until_publish_at(client, auth_headers):
 async def test_null_views_likes_counter_self_heals_on_increment(client, db_session):
     """A NULL view/like counter (raw-SQL/COPY/legacy row) must not stay NULL.
 
-    Regression for TASK-535/ISS-614: Post.views/likes are nullable with only a
+    Regression for Post.views/likes are nullable with only a
     Python-side default, so a non-ORM insert can land a NULL. An unconditional
     ``Post.views + 1`` then yields NULL on both SQLite and Postgres — the view
     counter stays null forever, POST /view returns ``views: null``, and the
     popular ranking puts the row FIRST on Postgres (NULLS FIRST on DESC) while
-    SQLite put it LAST (dialect divergence, DEC-071). COALESCE in the increment
+    SQLite put it LAST (dialect divergence). COALESCE in the increment
     makes the counter self-heal and the ranking dialect-parity.
     """
     from app import models
@@ -304,7 +304,7 @@ async def test_null_views_likes_counter_self_heals_on_increment(client, db_sessi
 async def test_null_views_ranks_last_in_popular_and_views_sort(client, db_session):
     """A still-NULL view counter must rank as 0, not first — and not 500.
 
-    Regression continuation of TASK-535: until the first pageview lands, a
+    Regression continuation of until the first pageview lands, a
     raw/legacy NULL-views row would top `/popular/list` on PostgreSQL
     (default NULLS FIRST for DESC) while SQLite ranked it last. COALESCE in the
     ORDER BY makes both dialects agree. A real NULL must also survive
@@ -348,7 +348,7 @@ async def test_null_views_ranks_last_in_popular_and_views_sort(client, db_sessio
 async def test_null_pinned_ranks_with_unpinned_group(client, db_session):
     """A raw/legacy NULL-pinned row must sort with the unpinned group.
 
-    Regression continuation of the TASK-535 NULL-parity discipline, applied to
+    Regression continuation of the NULL-parity discipline, applied to
     Post.pinned (also nullable with only a Python-side default): ORDER BY
     pinned DESC puts NULLs FIRST on PostgreSQL (NULLS FIRST) but LAST on
     SQLite, so a NULL-pinned post would jump to the top of the public feed —
@@ -358,7 +358,7 @@ async def test_null_pinned_ranks_with_unpinned_group(client, db_session):
 
     The NULL is planted with a Core UPDATE (`.values(pinned=None)`), the same
     route a raw-SQL/COPY import takes: setting ``pinned=None`` through the ORM
-    constructor instead fires the Python-side ``default=False`` (TASK-535's
+    constructor instead fires the Python-side ``default=False`` ('s
     NULL trigger), so it would never produce the row this test needs.
     """
     from app import models
@@ -429,7 +429,7 @@ async def test_update_post(client, auth_headers):
 
 async def test_update_post_rejects_orphan_author_and_unknown_tag(client, auth_headers):
     """PUT /api/posts/{id} (crud.update_post) must 400 on an unknown author_id
-    or tag_id instead of silently orphaning (TASK-479, ISS-555/ISS-556).
+    or tag_id instead of silently orphaning.
 
     category_id/series_id already 400 here; author_id was assigned blind (a
     deleted writer left the post author: null with a 404 writer archive/RSS and
@@ -517,7 +517,7 @@ async def test_huge_int_params_are_422_not_500(client, auth_headers):
     An unbounded ``post_id: int`` path param accepted input like
     99999999999999999999 (a valid Python int — arbitrary precision — only
     overflowing at the DBAPI bind on SQLite) and 500'd the public route
-    (round 276 deep-dive). Bound both path ids and query page to the real
+    . Bound both path ids and query page to the real
     id range so garbage input gets the repo-standard 422 instead.
     """
     huge = "9" * 25  # valid big int, way past any real autoincrement id
@@ -714,7 +714,7 @@ async def test_get_adjacent_posts_404(client, db_session):
 async def test_adjacent_popular_related_include_comment_count(client, db_session, auth_headers):
     """PostList from adjacent/popular/related must carry the real comment_count.
 
-    Regression for RIL TASK-109, ISS-089: these paths returned 0 even for
+    Regression for these paths returned 0 even for
     posts with approved comments (only get_posts populated it).
     """
     post = (await _seed_adjacent_posts(db_session))["Middle"]
@@ -755,7 +755,7 @@ async def test_adjacent_popular_related_include_comment_count(client, db_session
 async def test_adjacent_posts_follow_effective_publish_order(client, db_session):
     """Adjacent prev/next must match the real feed order (effective publish
     time), not draft created_at — the route's contract is "matching get_posts",
-    and get_posts orders by publish_at ?? created_at (RIL ISS-265/267).
+    and get_posts orders by publish_at ?? created_at.
 
     A post drafted in Jan but live in Jun sits where a June post sits — after a
     Jul-created post and before a Jun-created post — NOT at its January slot.
@@ -800,7 +800,7 @@ async def test_adjacent_posts_follow_effective_publish_order(client, db_session)
 async def test_related_posts_candidates_rank_by_effective_publish(client, db_session):
     """Related posts in the same category must rank newest-by-effective-publish,
     so a post drafted long ago but live today leads a draft-created-today post
-    that actually went live earlier — mirroring the feed (RIL ISS-265/267).
+    that actually went live earlier — mirroring the feed.
     """
     from datetime import UTC, datetime, timedelta
 
@@ -967,7 +967,7 @@ async def test_related_404_for_draft_post(client, auth_headers):
 
 
 # ---------------------------------------------------------------------------
-# Round 387 (DEC-438): public "Trending this week" — /posts/trending/list
+# Round 387: public "Trending this week" — /posts/trending/list
 # ---------------------------------------------------------------------------
 
 

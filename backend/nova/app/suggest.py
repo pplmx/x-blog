@@ -2,13 +2,13 @@
 
 A reader who misspells or half-remembers a term ("recatvie", "响应试") gets a
 zero-hit page with no recovery path: the post search is exact substring +
-tsvector, with no fuzzy layer (round-390 gap analysis, DEC-443). This module
+tsvector, with no fuzzy layer. This module
 fills the dead-end by scoring a small vocabulary of canonical topics — tag
 names, category names, and recent public post titles — with plain Python
 edit distance.
 
 Why not a Postgres trigram/Levenshtein extension: the repo enforces strict
-PG/SQLite + CJK/ASCII dialect parity everywhere (DEC-071 and friends), and the
+PG/SQLite + CJK/ASCII dialect parity everywhere (and friends), and the
 edit distance works on code points, so a Chinese one-character typo
 ("响应试" → "响应式") scores exactly like an ASCII one. Computing in Python
 against a bounded vocabulary also keeps the suggestion latency off the hot
@@ -127,7 +127,7 @@ async def build_search_vocabulary(db: AsyncSession) -> list[dict]:
     vocab: list[dict] = []
 
     # Tag/category names with their public post counts — the payloads the tags
-    # and categories APIs already serve (cached; ISS-362 guards count the
+    # and categories APIs already serve (cached guards count the
     # published+effective-publish-passed posts that a tag listing returns).
     for tag in await get_tags(db):
         if tag["post_count"] > 0:

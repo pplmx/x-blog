@@ -1,5 +1,5 @@
 /**
- * Admin weekly-digest overview + preview journey (DEC-423, TASK-436).
+ * Admin weekly-digest overview + preview journey.
  *
  * The digest's backend machinery (send_weekly_digest with advisory lock,
  * idempotent stamps, dry_run summary) had no operator reading surface: an
@@ -54,7 +54,7 @@ function freshEmail(): string {
 	return `admin-digest-${Date.now()}-${counter}@example.com`;
 }
 
-test.describe("Admin weekly-digest panel (DEC-423)", () => {
+test.describe("Admin weekly-digest panel ", () => {
 	test("overview counter reflects a confirmed digest guest; preview is a dry run", async ({
 		page,
 		request,

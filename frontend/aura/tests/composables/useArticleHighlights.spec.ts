@@ -1,5 +1,5 @@
 /**
- * useArticleHighlights composable (round 466, DEC-511 / TASK-583).
+ * useArticleHighlights composable.
  *
  * Verifies the non-trivial render path in a real happy-dom element: after
  * loading, existing highlights are re-rendered as <mark data-highlight>
@@ -86,7 +86,7 @@ describe("useArticleHighlights", () => {
 		// component is reused, so postId/proseEl point at the NEW post). The created
 		// highlight persists server-side under the original post, but the client
 		// wrap + list prepend must not run against the new post's DOM/list — the
-		// ISS-572-class guard carries the savePostId and bails on a mismatch.
+		// guard carries the savePostId and bails on a mismatch.
 		let settled: (created: ReaderHighlight) => void;
 		const pending = new Promise<ReaderHighlight>((res) => {
 			settled = res;
@@ -140,7 +140,7 @@ describe("useArticleHighlights", () => {
 		// loadExisting awaits getReaderHighlights; if the reader SPA-navigates to
 		// another /posts/[slug] while it's in flight, the stale resolve must not
 		// overwrite the NEW post's highlight list or inject <mark>s into its prose.
-		// Mirrors the save() nav guard (ISS-572-class, ISS-672).
+		// Mirrors the save() nav guard.
 		const stale = Promise.withResolvers<{ items: ReaderHighlight[]; total: number }>();
 		const fresh = Promise.withResolvers<{ items: ReaderHighlight[]; total: number }>();
 		// call 1 = post 1 (deferred), call 2 = post 2 (deferred) — both controlled

@@ -25,8 +25,7 @@ export interface Post extends PostList {
 	 *  Absent on list cards — only the public detail serializes it. */
 	comments_enabled?: boolean;
 	updated_at: string;
-	/** Scheduled publication time (the backend detail Post serializes it, RIL
-	 *  ISS-264); null/absent for immediately-published posts. */
+	/** Scheduled publication time (the backend detail Post serializes it); null/absent for immediately-published posts. */
 	publish_at?: string | null;
 }
 
@@ -124,7 +123,7 @@ export function usePopularPosts(limit = 5) {
 	return query<PostList[]>("/api/posts/popular/list", { query: { limit } });
 }
 
-/** A public top-post by in-window views (round 387, DEC-438): PostList plus
+/** A public top-post by in-window views: PostList plus
  *  the sum of views within the trending window (default: last 7 days) from the
  *  backend's post_views_daily table, so the home page can say "N reads this
  *  week" instead of the all-time counter. */

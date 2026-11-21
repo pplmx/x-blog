@@ -1,15 +1,15 @@
-"""Contract tests for scheduled-post publish-time fan-out (DEC-336, TASK-394).
+"""Contract tests for scheduled-post publish-time fan-out.
 
 A post created as published-but-future ``publish_at`` becomes publicly visible
 the moment the clock crosses ``publish_at``, but the create/update fan-outs run
 at WRITE time only: create_post fires ``if is_publicly_visible`` (False while
 the publish_at is still in the future) and update_post fires once on a
 draft->visible transition — so a scheduled post crosses with no push, no
-durable inbox row, and no email ever reaching its followers (DEC-076: there is
+durable inbox row, and no email ever reaching its followers (there is
 no background scheduler to notice the crossing).
 
 This suite proves the fire-on-read sweep ``crud.maybe_notify_due_scheduled_posts``
-(``new_post_notified_at`` stamp, DEC-336):
+(``new_post_notified_at`` stamp):
 
 - claims a crossed-but-unannounced post exactly once from the public read paths
 - performs the same batched fan-out as an immediate publish (durable inbox +
@@ -116,7 +116,7 @@ class TestScheduledCrossing:
     async def test_follows_feed_path_also_fires_the_sweep(self, client, db_session, auth_headers):
         """The follower's own aggregation surface (/follows) is the most likely
         place a follower notices a crossed post — it must fire the fan-out too
-        (DEC-344/TASK-398), not silently surface the post with no notification."""
+        , not silently surface the post with no notification."""
         token = (await _register(client, "sched-follows@example.com")).json()["access_token"]
         cat = await client.post("/api/categories", json={"name": "SchedFF"}, headers=auth_headers)
         cat_id = cat.json()["id"]

@@ -62,11 +62,11 @@ async def lifespan(_app: FastAPI):
     setup_sentry()
     logger.info("app_startup", extra={"version": "0.1.0"})
 
-    # Fail-loud guardrail (round 436): feeds, sitemap and email links are built
+    # Fail-loud guardrail: feeds, sitemap and email links are built
     # from settings.site_url, which defaults to http://localhost:3000 — a
     # production container that forgets SITE_URL silently publishes loopback
     # absolute URLs to every feed reader / crawler / mail recipient (same
-    # root-cause class as the frontend og:url bake, TASK-557). Warn loudly
+    # root-cause class as the frontend og:url bake). Warn loudly
     # instead of letting the deployment discover it via broken links.
     if not is_development() and is_dev_default_site_url(settings.site_url):
         logger.warning(
@@ -77,7 +77,7 @@ async def lifespan(_app: FastAPI):
         )
 
     # Bring the schema to head via Alembic — the single authoritative schema
-    # path for both dev and prod (completes DEC-011). The baseline migration is
+    # path for both dev and prod (completes). The baseline migration is
     # idempotent/self-adopting, so it upgrades a stale dev SQLite DB in place
     # (the old `Base.metadata.create_all` never altered existing tables and
     # left DBs missing columns like users.token_version, breaking login with
@@ -136,7 +136,7 @@ app.add_middleware(BaseHTTPMiddleware, dispatch=add_security_headers)
 
 # Cache policy: default every response to Cache-Control: no-store unless the
 # route set its own Cache-Control (public list/feed endpoints opt in via
-# routers/conditional.py, TASK-128). Admin/private and write-on-read responses
+# routers/conditional.py). Admin/private and write-on-read responses
 # therefore never reach shared caches. See middleware/cache.py.
 app.add_middleware(BaseHTTPMiddleware, dispatch=add_cache_policy)
 
@@ -223,7 +223,7 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
     error_code = code_map.get(exc.status_code, "ERROR")
     message = exc.detail if isinstance(exc.detail, str) else "An error occurred"
 
-    # Preserve any custom headers the exception carries (round 350): the
+    # Preserve any custom headers the exception carries: the
     # slug-change 404 marks its canonical target via ``X-Redirect-To``, which
     # the web layer reads to emit a 301 — dropping it would orphan old URLs.
     return JSONResponse(

@@ -1,4 +1,4 @@
-"""Email notification channel tests (DEC-197, TASK-217).
+"""Email notification channel tests.
 
 The email channel is a per-kind *opt-in* off-site copy of the reader
 notification fan-out: delivery over SMTP to the reader's registered address,

@@ -1,8 +1,8 @@
 /**
- * Comment live-preview journey (DEC-306, TASK-381).
+ * Comment live-preview journey.
  *
- * The comment form advertises sanitized-Markdown rendering (DEC-088) but the
- * draft only renders after submit + moderation (DEC-066), so a malformed
+ * The comment form advertises sanitized-Markdown rendering but the
+ * draft only renders after submit + moderation, so a malformed
  * markup draft would burn an approval cycle with zero feedback. This spec
  * pins the fix: a commenter toggles Write/Preview and sees their draft
  * rendered live by the same commentMarkdownToHtml pipeline the comment list
@@ -16,7 +16,7 @@ import { expect, test } from "@playwright/test";
 
 const DRAFT = "Check this **bold** and a fence:\n\n```ts\nconst y = 2;\n```";
 
-test.describe("Comment live preview (DEC-306)", () => {
+test.describe("Comment live preview ", () => {
 	test("Write/Preview toggle renders the draft as sanitized markdown", async ({ page }) => {
 		// Open the first post and scroll the bottom-of-page comment form into
 		// view (the form is below the article + previous comments).
@@ -75,7 +75,7 @@ test.describe("Comment live preview (DEC-306)", () => {
 		expect(executed).toBeUndefined();
 	});
 
-	test("submitting a moderated comment does not page through the thread (DEC-310)", async ({
+	test("submitting a moderated comment does not page through the thread ", async ({
 		page,
 	}) => {
 		// On the default moderated config the create endpoint returns the
@@ -111,7 +111,7 @@ test.describe("Comment live preview (DEC-306)", () => {
 		await page.waitForTimeout(700);
 
 		// Exactly ONE comment-API request fired since the click: the POST.
-		// A post-submit paging walk (the pre-DEC-310 bug) would add GETs.
+		// A post-submit paging walk (the pre bug) would add GETs.
 		expect(commentApiRequests.length).toBe(1);
 		expect(commentApiRequests[0]).toMatch(/\/api\/comments\/post\/\d+$/);
 	});

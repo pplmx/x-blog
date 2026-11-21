@@ -221,7 +221,7 @@ describe("buildArticleJsonLd", () => {
 	});
 
 	it("appends Z to naive-UTC dates (schema.org needs an explicit instant)", () => {
-		// The backend serializes naive UTC bare (DEC-213); without the suffix a
+		// The backend serializes naive UTC bare; without the suffix a
 		// crawler in UTC+8 would render a late-UTC-day post a full day early.
 		const naive = {
 			...mockPost,
@@ -407,7 +407,7 @@ describe("useSeo composable", () => {
 		expect(ogLocale?.content).toBe("zh_CN");
 	});
 
-	it("honors the page's active UI locale for og:locale (round 397)", () => {
+	it("honors the page's active UI locale for og:locale ", () => {
 		useSeo({
 			title: "My Page",
 			description: "A description.",
@@ -510,7 +510,7 @@ describe("useSeo composable", () => {
 		expect(robots).toBeUndefined();
 	});
 
-	it("accepts a getter and re-evaluates the title reactively (RIL TASK-080)", () => {
+	it("accepts a getter and re-evaluates the title reactively ", () => {
 		const title = ref("Tag One");
 		useSeo(() => ({
 			title: title.value ? `Tag ${title.value}` : "All Tags",
@@ -713,7 +713,7 @@ describe("usePostSeo composable", () => {
 		expect(jsonLd.keywords).toBe("");
 	});
 
-	it("uses publish_at as datePublished for a scheduled post (RIL ISS-264)", () => {
+	it("uses publish_at as datePublished for a scheduled post ", () => {
 		// A post scheduled for later publication (publish_at > created_at) must
 		// report its TRUE publish time to Google/social — the draft's created_at
 		// would mis-date the article and hurt freshness signals.
@@ -742,7 +742,7 @@ describe("usePostSeo composable", () => {
 		expect(publishedTime?.content).toBe(mockPost.created_at);
 	});
 
-	describe("pagination rel-links + paginated canonical (round 397)", () => {
+	describe("pagination rel-links + paginated canonical ", () => {
 		const paginationOptions = {
 			title: "Archive",
 			description: "desc",

@@ -158,7 +158,7 @@ describe("MarkdownContent", () => {
 	});
 
 	describe("GFM inline footnotes", () => {
-		it("renders a footnote reference and its definition list (DEC-441)", async () => {
+		it("renders a footnote reference and its definition list ", async () => {
 			const wrapper = mountMarkdown("Citations matter[^1].\n\n[^1]: The source material.");
 			await flushPromises();
 			// In-text ref: an <sup> that jumps down to the definition.
@@ -296,7 +296,7 @@ describe("MarkdownContent", () => {
 		});
 	});
 
-	describe("Image lightbox (DEC-302/TASK-379)", () => {
+	describe("Image lightbox ", () => {
 		afterEach(() => {
 			document.body.innerHTML = "";
 			document.body.style.overflow = "";
@@ -409,7 +409,7 @@ describe("MarkdownContent", () => {
 			expect(wrapper.text()).toContain("Second");
 		});
 
-		it("re-renders a mermaid diagram after a content swap (ISSUE-444 stale-diagram regressions)", async () => {
+		it("re-renders a mermaid diagram after a content swap (stale-diagram regressions)", async () => {
 			// SPA navigation reuses the SAME MarkdownContent instance for the new
 			// post, and the new post's first diagram shares the runtime key with the
 			// old one ("mermaid-1"). The render memo keys ("already rendered") must

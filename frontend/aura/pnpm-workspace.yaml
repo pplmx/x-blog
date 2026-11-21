@@ -14,7 +14,7 @@ minimumReleaseAgeExclude:
   - nuxt@4.6.1
 
 # Force patched versions for transitive advisories tracked on the default
-# branch (TASK-196 / ISS-108). All are dev/build-tooling chains; both the
+# branch. All are dev/build-tooling chains; both the
 # range and the exact resolved-version overrides are listed so every reporter
 # of a vulnerable version is re-mapped (pnpm keeps exact-resolved instances
 # unless the exact key is also overridden).

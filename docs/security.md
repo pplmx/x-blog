@@ -1,6 +1,6 @@
 # X-Blog 安全头与内容安全策略 (CSP)
 
-本文档记录 X-Blog 全站的安全响应头与 Content-Security-Policy 现状、设计取舍与验证方式（RIL DEC-057 里程碑，TASK-125/126/127）。
+本文档记录 X-Blog 全站的安全响应头与 Content-Security-Policy 现状、设计取舍与验证方式。
 
 ## 覆盖范围
 
@@ -46,7 +46,7 @@ form-action 'self'
   精简子集）。渲染在内联 `<svg>` 完成，没有对 `api.iconify.design` 等第三方 CDN
   的运行时连接，因此 `connect-src` 可保持严格为 `'self'`。
 - **SRI 不在范围内**：所有脚本/样式均为同源 Vite 打包产物，没有第三方 CDN 引用，
-  SRI 针对的 CDN 篡改威胁模型不成立（DEC-057 记录为范围取舍而非缺口）。
+  SRI 针对的 CDN 篡改威胁模型不成立（记录为范围取舍而非缺口）。
 - **开发模式放宽**：`import.meta.dev` 下额外允许 `'unsafe-inline'`/`'unsafe-eval'`
   以及 `ws://localhost:*`/`http://localhost:*`，保证 vite HMR 可用；生产构建不受影响。
 
@@ -89,7 +89,7 @@ nosniff、XFO、XSS、HSTS）与前端一致，由 `add_security_headers` 中间
 
 ## 认证与受众分离（Admin / Reader）
 
-RIL DEC-059 里程碑（TASK-131）。系统有两类 JWT，使用同一签名密钥（HS256，
+ 里程碑。系统有两类 JWT，使用同一签名密钥（HS256，
 `JWT_SECRET_KEY`），靠 **`aud` claim（受众）** 严格区分：
 
 | 凭据         | 签发源                                             | `aud` claim     | 可访问                                              |
@@ -111,11 +111,11 @@ RIL DEC-059 里程碑（TASK-131）。系统有两类 JWT，使用同一签名�
   登录复用 `RATE_LIMIT_AUTH_PER_MINUTE`（默认 10/min/IP），防开放注册被滥用。
 
 **不可缓存**：`/api/reader/*` 属于私有端点，默认保持 `Cache-Control: no-store`
-（DEC-058/TASK-129 的默认策略），不允许共享缓存存放读者身份/书签数据。
+（默认策略），不允许共享缓存存放读者身份/书签数据。
 
 ## HTTP 缓存策略（Cache-Control / 条件请求）
 
-RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: no-store`
+默认情况下每条 API 响应都是 `Cache-Control: no-store`
 （`backend/nova/app/middleware/cache.py`，路由未声明缓存策略时施加），避免共享
 缓存存放私有/动态数据。**可缓存的公开 GET 端点显式选择缓存**，通过
 `app/conditional.py` 的 `conditional_response` / `conditional_json`：
@@ -123,7 +123,7 @@ RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: n
 - 响应带**强 ETag**（响应体的确定性哈希）与 `Cache-Control: public, max-age=60`；
 - 客户端携带匹配的 `If-None-Match` 重校验时返回 **304（空响应体）**，并携带同一
   ETag 与 Cache-Control（刷新已存副本的新鲜度窗口）；
-- 覆盖：RSS/Atom/sitemap（原有 TASK-089 行为统一到该辅助函数）、`/api/posts`
+- 覆盖：RSS/Atom/sitemap（原有行为统一到该辅助函数）、`/api/posts`
   列表与 archive/popular/related/adjacent、`/api/series` 列表与详情、
   `/api/categories`、`/api/tags`（列表与单项）。
 
@@ -141,7 +141,7 @@ RIL DEC-058 里程碑。默认情况下每条 API 响应都是 `Cache-Control: n
   开发放宽、离线图标不依赖 iconify CDN、apiUrl 放行；16 例）；`backend/nova/tests/test_errors.py`
   （后端安全头与 `/docs` CSP 放行回归）。
 - **浏览器验证（关键）**：`frontend/aura/e2e/csp.spec.ts` 提供 live-browser
-  验证（DEC-051 曾因无法在真实浏览器验证而推迟本项）：断言 CSP 头带 nonce、所有内联
+  验证（曾因无法在真实浏览器验证而推迟本项）：断言 CSP 头带 nonce、所有内联
   脚本携带该 nonce、`script-src` 无 `'unsafe-inline'`；首页与含 KaTeX/Mermaid 的文章页
   **零 CSP 违规控制台错误**；暗色主题 bootstrap 内联脚本在策略下真实执行（暗色模式
   生效）且 JSON-LD 完整。

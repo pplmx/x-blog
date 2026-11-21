@@ -1,7 +1,7 @@
 /**
  * Emit a nonce-based Content-Security-Policy on every SSR HTML response and
  * attach the per-request nonce to each inline `<script>` Nuxt renders so the
- * policy never blocks the page it applies to (RIL DEC-057 / TASK-126).
+ * policy never blocks the page it applies to.
  *
  * Nuxt 4 has no `csp` config option, so this plugs into the render lifecycle:
  * the `render:html` hook fires with the fragment arrays before they are

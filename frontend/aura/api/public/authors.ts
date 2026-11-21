@@ -11,10 +11,10 @@ import {
 type Getter<T> = () => T;
 type MaybeGetter<T> = T | Getter<T> | Ref<T>;
 
-/** A public author's archive (DEC-359/TASK-405): the author envelope rides on
+/** A public author's archive: the author envelope rides on
  *  the (possibly empty) post list so the page can title itself by pen name
  *  even before the writer has published anything. The envelope carries the
- *  archive-shaped author — AuthorArchive (round 357) — with the "about this
+ * archive-shaped author — AuthorArchive — with the "about this
  *  writer" bio; per-post lists keep the slim AuthorBrief. */
 export interface AuthorPostsResponse extends PostListResponse {
 	author?: AuthorArchive | null;
@@ -31,7 +31,7 @@ export interface AuthorIndex {
 	avatar_url?: string | null;
 }
 
-/** Every public writer, pen name + published-post count (round 346) — powers
+/** Every public writer, pen name + published-post count — powers
  *  the /authors index page. Anonymous + caching-friendly. */
 export function useAuthors() {
 	return query<AuthorIndex[]>("/api/authors");

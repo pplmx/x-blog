@@ -174,7 +174,7 @@ async def test_posts_list_reading_time(client, db_session):
 
 
 def test_reading_minutes_cjk_aware():
-    """CJK text (no spaces) must not collapse to a 1-minute read (RIL TASK-082)."""
+    """CJK text (no spaces) must not collapse to a 1-minute read."""
     from app.schemas import reading_minutes
 
     # 600 CJK chars => each counts as a word => 600/200 = 3 min. A whitespace

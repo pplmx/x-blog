@@ -103,7 +103,7 @@ describe("PostCard", () => {
 		});
 	});
 
-	describe("author byline (DEC-359/TASK-405)", () => {
+	describe("author byline ", () => {
 		it("renders the author's pen name when the post has a public author", () => {
 			const wrapper = mountPostCard({ ...mockPost, author: { id: 7, display_name: "Riki" } });
 			expect(wrapper.text()).toContain("Riki");
@@ -112,13 +112,13 @@ describe("PostCard", () => {
 		it("links the author chip to the writer's archive page", () => {
 			const wrapper = mountPostCard({ ...mockPost, author: { id: 7, display_name: "Riki" } });
 			// The chip lives OUTSIDE the title link, so the pen name appears
-			// only in its own anchor (DEC-359/TASK-405, DEC-196).
+			// only in its own anchor.
 			const chip = wrapper.findAll("a").find((a) => a.text().includes("Riki"));
 			expect(chip?.exists()).toBe(true);
 			expect(chip?.attributes("href")).toBe("/authors/7");
 		});
 
-		it("renders the writer's avatar on the byline when set (round 358)", () => {
+		it("renders the writer's avatar on the byline when set ", () => {
 			const wrapper = mountPostCard({
 				...mockPost,
 				author: { id: 7, display_name: "Riki", avatar_url: "/static/avatars/a1.png" },
@@ -136,7 +136,7 @@ describe("PostCard", () => {
 		});
 	});
 
-	describe("date display (RIL ISS-265)", () => {
+	describe("date display ", () => {
 		it("defaults to created_at for immediately-published posts", () => {
 			const wrapper = mountPostCard({ ...mockPost, created_at: "2024-01-15T10:00:00Z" });
 			expect(wrapper.text()).toContain("2024年1月15日");
@@ -257,7 +257,7 @@ describe("PostCard", () => {
 	});
 });
 
-it("renders each tag chip as a link to the tag-filtered view (DEC-196)", () => {
+it("renders each tag chip as a link to the tag-filtered view ", () => {
 	const hrefStub = {
 		...stubs,
 		NuxtLink: {
@@ -276,11 +276,11 @@ it("renders each tag chip as a link to the tag-filtered view (DEC-196)", () => {
 	expect(chipLinks[1].text()).toBe("#nuxt");
 });
 
-it("renders the category chip as a link to the category-filtered view (ISS-375)", () => {
+it("renders the category chip as a link to the category-filtered view ", () => {
 	// The category pill used to share the tag chips' pill styling but was an
 	// inert span — a dead click on the feed's busiest surface. It must now be a
 	// real link and must NOT be nested inside the card's main NuxtLink (the tag
-	// chips already established the outside-the-link pattern, DEC-196).
+	// chips already established the outside-the-link pattern).
 	const hrefStub = {
 		...stubs,
 		NuxtLink: {
@@ -301,7 +301,7 @@ it("renders the category chip as a link to the category-filtered view (ISS-375)"
 	expect(wrapper.findAll("a.nl").length).toBe(4);
 });
 
-it("puts the full title on the card link as a tooltip for truncated titles (ISS-377)", () => {
+it("puts the full title on the card link as a tooltip for truncated titles ", () => {
 	const wrapper = mountPostCard({
 		...mockPost,
 		title: "A very long title that clamps to two lines",

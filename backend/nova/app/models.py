@@ -60,13 +60,13 @@ class Post(Base):
     excerpt: Mapped[str | None] = mapped_column(String(500))
     published: Mapped[bool | None] = mapped_column(Boolean, default=False, index=True)
     pinned: Mapped[bool | None] = mapped_column(Boolean, default=False)
-    # Per-post comments on/off (round 351): an operator closes the door on a
+    # Per-post comments on/off: an operator closes the door on a
     # post's comments (stale content, privacy, high-noise threads) without
     # deleting the conversation or disabling comments site-wide. Existing
     # comments stay visible; only new comment creation is gated (comments.py).
     comments_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     publish_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
-    # Durable exactly-once stamp for the new-post fan-out (DEC-336, TASK-394):
+    # Durable exactly-once stamp for the new-post fan-out:
     # set the moment a post that became publicly visible without ever being
     # announced is claimed by the fire-on-read sweep (or immediately at write
     # time when created/updated already-visible). NULL before first claim;
@@ -88,16 +88,16 @@ class Post(Base):
     views: Mapped[int | None] = mapped_column(Integer, default=0, index=True)
     likes: Mapped[int | None] = mapped_column(Integer, default=0)
 
-    # No DB-level FOREIGN KEY on series_id, by design (DEC-056/TASK-121): the
-    # series migration is entirely additive per DEC-009, and SQLite's alembic
+    # No DB-level FOREIGN KEY on series_id, by design: the
+    # series migration is entirely additive per and SQLite's alembic
     # dialect can't add an FK column to an existing table without batch-mode
     # table recreation. Referential integrity is enforced at the ORM layer
     # (crud validates series on create/update and unlinks posts on series
     # delete), so the join below is declared explicitly instead.
     series_id: Mapped[int | None] = mapped_column(Integer, index=True)
     series_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
-    # Author attribution (DEC-359, TASK-405): the admin user who wrote the post.
-    # Plain integer + ORM-level relationship, no DB-level FK — the same DEC-009
+    # Author attribution: the admin user who wrote the post.
+    # Plain integer + ORM-level relationship, no DB-level FK — the same
     # additive rationale as series_id (SQLite alembic can't add FK-carrying
     # columns to existing tables, enforced at the ORM layer). NULL on
     # pre-attribution posts; the public byline only renders when the author has
@@ -108,7 +108,7 @@ class Post(Base):
     # extra query (WHERE id IN (...)) instead of N+1 per post — no joinedload
     # bookkeeping needed at the ~a dozen PostList-producing query sites. The
     # explicit primaryjoin is required (like series_id) because author_id is a
-    # plain integer with no DB-level FK (DEC-009).
+    # plain integer with no DB-level FK.
     author: Mapped[User | None] = relationship(
         "User",
         primaryjoin="Post.author_id == User.id",
@@ -135,7 +135,7 @@ class Post(Base):
         cascade="all, delete-orphan",
         order_by="desc(PostRevision.id)",
         # post_id is a plain integer (no DB-level FK, SQLite-safe additive
-        # convention, DEC-009), so the ORM join must be explicit — same as the
+        # convention), so the ORM join must be explicit — same as the
         # series_id relationship above.
         primaryjoin="Post.id == PostRevision.post_id",
         foreign_keys="PostRevision.post_id",
@@ -143,14 +143,14 @@ class Post(Base):
 
 
 class PostRevision(Base):
-    """An immutable snapshot of a post's editable fields (DEC-158, TASK-191).
+    """An immutable snapshot of a post's editable fields.
 
     Captured on every admin create/update (and before a restore, so a restore
     is itself part of the history / undo-able). Lets the author view and
     restore any past state — per-post version history on top of the whole-blog
-    backup (DEC-082). Additive table; the FK is a plain integer + ORM-level
+    backup. Additive table; the FK is a plain integer + ORM-level
     relationship (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009), with cascade enforced at the ORM layer.
+    tables), with cascade enforced at the ORM layer.
     """
 
     __tablename__ = "post_revisions"
@@ -192,15 +192,15 @@ class Category(Base):
 
 
 class CategoryFollow(Base):
-    """A reader following a category (DEC-140, TASK-182).
+    """A reader following a category.
 
     Durable, reader-level intent (cross-device, unlike the per-device new-post
-    category pin on PushSubscription from DEC-076): a follow with notify=true
+    category pin on PushSubscription ): a follow with notify=true
     is fanned out in new-post dispatch for that category, and appears in the
     reader's Followed-categories list. ``notify`` decouples tracking from push
-    (mirrors SeriesFollow, DEC-138/TASK-181). Additive table, no DB-level FK on
+    (mirrors SeriesFollow). Additive table, no DB-level FK on
     the columns (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009); integrity enforced at the API layer.
+    tables); integrity enforced at the API layer.
     """
 
     __tablename__ = "category_follows"
@@ -223,15 +223,15 @@ class CategoryFollow(Base):
 
 
 class TagFollow(Base):
-    """A reader following a tag (DEC-195, TASK-215).
+    """A reader following a tag.
 
-    Mirrors CategoryFollow (DEC-140/TASK-182): durable reader-level intent
+    Mirrors CategoryFollow: durable reader-level intent
     (cross-device) with a notify true/false that fans out new-post dispatch for
     that tag (a post's tags come from the post_tags junction) and decouples
     tracking from push. Tags are the fine-grained subscription axis categories
     are too coarse for — a reader follows ``rust``, not a whole taxonomy.
     Additive table, no DB-level FK on the columns (SQLite alembic can't add
-    FK-carrying columns to existing tables, DEC-009); integrity enforced at
+    FK-carrying columns to existing tables); integrity enforced at
     the API layer.
     """
 
@@ -255,12 +255,12 @@ class TagFollow(Base):
 
 
 class SearchLog(Base):
-    """Aggregated public search-term analytics (DEC-152, TASK-188).
+    """Aggregated public search-term analytics.
 
     One row per normalized (lowercased, trimmed) query with a counter and the
     last-searched time. Aggregate-only and never linked to a reader, so it is
     privacy-safe while giving the operator visibility into what visitors look
-    for. Additive table; no DB-level FK needed (DEC-009).
+    for. Additive table; no DB-level FK needed.
     """
 
     __tablename__ = "search_logs"
@@ -293,27 +293,27 @@ class Comment(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     ip_address: Mapped[str | None] = mapped_column(String(50))
     is_approved: Mapped[bool | None] = mapped_column(Boolean, default=True, index=True)
-    # Author reply from the moderation queue (DEC-192/TASK-212): True when the
+    # Author reply from the moderation queue: True when the
     # blog owner (admin) answered a commenter. Immediately approved (no
     # moderation for the author) and rendered with an "author" badge in the
-    # thread. Additive per DEC-009.
+    # thread. Additive per.
     is_author_reply: Mapped[bool | None] = mapped_column(Boolean, default=False)
-    # Comment upvote count (DEC-092/TASK-158): anonymous count++, mirrors the
+    # Comment upvote count: anonymous count++, mirrors the
     # post-likes precedent. The backend only ever increments it (atomic update
     # in crud.increment_comment_likes), never decrements.
     likes: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
     # When a moderator last reviewed this comment (approve OR reject). Null
     # distinguishes "still pending" from "reviewed and rejected" for the
-    # author's comment-history status (DEC-066, TASK-139).
+    # author's comment-history status.
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # When the comment's multi-channel approval fan-out first ran (round 393).
+    # When the comment's multi-channel approval fan-out first ran.
     # Mirrors Post.new_post_notified_at: a comment that was EVER public already
     # notified its subscribers, so a moderator rejecting and re-approving it
     # (approve → reject → approve) must not re-fire duplicate pushes/inbox rows/
     # emails — `reviewed_at` only tracks the immediately-prior state, this stamp
-    # tracks "already public once". Additive per DEC-009.
+    # tracks "already public once". Additive per.
     notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # When the reader-author last edited their own comment (DEC-096, TASK-160).
+    # When the reader-author last edited their own comment.
     # Null = never edited; set by PATCH /api/reader/me/comments/{id}. Additive.
     edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
@@ -325,28 +325,28 @@ class Comment(Base):
     # stored here: it lives on reader_accounts; anonymous comments keep their
     # free-text email column.
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
-    # Guest reply-email consent (DEC-332, TASK-392): True when an ANONYMOUS
+    # Guest reply-email consent: True when an ANONYMOUS
     # commenter ticked "email me when someone replies" in the comment form. The
     # consent is only ever set for anonymous comments — a signed-in reader's
-    # reply email is the account-level per-kind pref (DEC-197), never this
+    # reply email is the account-level per-kind pref, never this
     # comment-row field. Default False keeps the channel strictly opt-in.
     reply_notify_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), default=False)
-    # Per-comment unsubscribe token for the guest reply email (DEC-332). Set
+    # Per-comment unsubscribe token for the guest reply email. Set
     # only when reply_notify_email is True; the emailed unsubscribe link carries
     # this token so a guest can flip their own consent off without an account.
     # Null = no consent on this comment (no token to send).
     reply_notify_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Idempotency anchor for full-blog restore (DEC-082): the backup export
+    # Idempotency anchor for full-blog restore: the backup export
     # stamps each comment with "{post_slug}#{export-ordinal}" and restore
     # upserts by (post_id, import_key), so re-importing the same snapshot never
     # duplicates comments. Nullable + non-indexed: only used during restore;
-    # additive per DEC-009.
+    # additive per.
     import_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     post: Mapped[Post] = relationship("Post", back_populates="comments")
     parent: Mapped[Comment | None] = relationship("Comment", remote_side=[id], backref="replies")
     # Reader account that authored the comment (None for anonymous). No DB FK on
-    # reader_id (additive column per DEC-009 — SQLite alembic can't add an
+    # reader_id (additive column per SQLite alembic can't add an
     # FK-carrying column to an existing table); the join is explicit, mirroring
     # the ReaderBookmark/Series pattern.
     reader: Mapped[ReaderAccount | None] = relationship(
@@ -355,10 +355,10 @@ class Comment(Base):
         foreign_keys="Comment.reader_id",
     )
     # Votes/accusations die with their comment: CommentLike/CommentFlag are
-    # additive tables with a plain-integer comment_id (no DB-level FK, DEC-009),
+    # additive tables with a plain-integer comment_id (no DB-level FK),
     # so without an ORM cascade removing a comment — directly, via bulk_delete,
     # or as part of a post delete — stranded rows permanently referenced a
-    # deleted comment_id (deep-dive, TASK-352). ORM-level delete-orphan
+    # deleted comment_id (deep-dive). ORM-level delete-orphan
     # mirrors the Post->Comment/PostRevision cascade convention (models.py:118).
     comment_likes: Mapped[list[CommentLike]] = relationship(
         "CommentLike",
@@ -375,13 +375,13 @@ class Comment(Base):
 
 
 class CommentFlag(Base):
-    """A reader flagging a comment for moderation (DEC-108, TASK-166).
+    """A reader flagging a comment for moderation.
 
     One flag per comment per visitor is enforced by the unique (comment_id,
     ip_key) pair, so repeated clicks by the same person are idempotent and the
     moderator sees a count of distinct reporters, not click spam. Additive table,
     no DB-level FK on the columns (SQLite alembic can't add FK-carrying columns
-    to existing tables, DEC-009).
+    to existing tables).
     """
 
     __tablename__ = "comment_flags"
@@ -399,14 +399,14 @@ class CommentFlag(Base):
 
 
 class CommentLike(Base):
-    """A visitor liking a comment for the "most helpful" ranking (DEC-092).
+    """A visitor liking a comment for the "most helpful" ranking.
 
     Mirrors CommentFlag: one like per comment per visitor enforced by the
     unique (comment_id, ip_key) pair, so repeated clicks by the same person are
     idempotent and the like count means distinct supporters, not click spam.
     Previously the count++ was guarded only by browser localStorage (abuse-
     hardening gap flagged in security review) — server-side dedupe now matches
-    the flag dedupe. Additive table, no DB-level FK (DEC-009).
+    the flag dedupe. Additive table, no DB-level FK.
     """
 
     __tablename__ = "comment_likes"
@@ -423,12 +423,12 @@ class CommentLike(Base):
 
 
 class BookmarkFolder(Base):
-    """A reader's bookmark folder/collection (DEC-120, TASK-172).
+    """A reader's bookmark folder/collection.
 
     One folder per reader with a unique (reader_id, name) pair, so a reader
     can organize saved posts by topic/project. Additive table, no DB-level FK
-    (SQLite alembic can't add FK-carrying columns to existing tables,
-    DEC-009); ownership is enforced at the API layer.
+    (SQLite alembic can't add FK-carrying columns to existing tables);
+    ownership is enforced at the API layer.
     """
 
     __tablename__ = "bookmark_folders"
@@ -444,13 +444,13 @@ class BookmarkFolder(Base):
 
 
 class ReaderBookmark(Base):
-    """A reader's saved post (cloud-synced bookmarks, DEC-059/TASK-132).
+    """A reader's saved post (cloud-synced bookmarks).
 
     ``reader_accounts.id`` ↔ ``posts.id`` pair is unique (one bookmark per
     post per reader). An optional ``folder_id`` files the save into a
-    BookmarkFolder (DEC-120/TASK-172). Referential integrity is enforced at
+    BookmarkFolder. Referential integrity is enforced at
     the ORM layer and by a DB-level unique constraint on the pair; the
-    migration creates the table/additive column entirely additively (DEC-009).
+    migration creates the table/additive column entirely additively.
     """
 
     __tablename__ = "reader_bookmarks"
@@ -459,7 +459,7 @@ class ReaderBookmark(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     folder_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
-    # Queue state (round 361, DEC-395): done separates "saved to read later"
+    # Queue state: done separates "saved to read later"
     # from "already read / keep this". Defaults false so every existing bookmark
     # reads as To-read until the reader marks it done. Folders classify by
     # topic; this tracks the queue.
@@ -471,7 +471,7 @@ class ReaderBookmark(Base):
     __table_args__ = (UniqueConstraint("reader_id", "post_id", name="uq_reader_bookmarks_reader_post"),)
 
     # No DB-level FK on the columns (SQLite alembic can't add FK-carrying
-    # columns to existing tables, DEC-009) — the join is declared explicitly,
+    # columns to existing tables) — the join is declared explicitly,
     # mirroring the Post.series_id pattern. Ownership/folder validity is
     # enforced at the API layer.
     post: Mapped[Post] = relationship(
@@ -487,15 +487,14 @@ class ReaderBookmark(Base):
 
 
 class ReaderPostLike(Base):
-    """A signed-in reader's like of a post (cloud-synced likes, round 359).
+    """A signed-in reader's like of a post (cloud-synced likes).
 
-    Guest likes are anonymous + client-local (useLikes dedups in localStorage,
-    RIL ISS-038); a signed-in reader's like is durable here so it survives the
+    Guest likes are anonymous + client-local (useLikes dedups in localStorage);
+    a signed-in reader's like is durable here so it survives the
     device, can be un-liked (decrementing the public count), and is listed on
-    the reader's "liked posts" surface — mirroring ReaderBookmark (DEC-059/
-    TASK-132) and the reading-history server trail (DEC-116/TASK-170). The
+    the reader's "liked posts" surface — mirroring ReaderBookmark and the reading-history server trail. The
     ``reader_id`` ↔ ``post_id`` pair is unique: one like per post per reader,
-    server-enforced. Additive table, no DB-level FK (DEC-009).
+    server-enforced. Additive table, no DB-level FK.
     """
 
     __tablename__ = "reader_post_likes"
@@ -517,15 +516,15 @@ class ReaderPostLike(Base):
 
 
 class ReadingHistory(Base):
-    """A reader's server-backed view history (DEC-116, TASK-170).
+    """A reader's server-backed view history.
 
     One row per reader↔post pair (unique constraint) holding the last time the
     reader viewed the post — an upsert updates ``viewed_at`` in place so there
     are no duplicate rows. This makes a signed-in reader's Continue-reading
     trail follow them across devices (the client-side localStorage trail,
-    DEC-104/TASK-169, remains the guest fallback). Additive table, no DB-level
+    remains the guest fallback). Additive table, no DB-level
     FK on the columns (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009; integrity enforced at the API layer like ReaderBookmark).
+    tables; integrity enforced at the API layer like ReaderBookmark).
     """
 
     __tablename__ = "reading_history"
@@ -533,11 +532,11 @@ class ReadingHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    # Naive-UTC (DEC-213 contract, ISS-452): this column is declared DateTime
+    # Naive-UTC contract: this column is declared DateTime
     # without tz and every consumer compares against naive UTC — the default
     # must not smuggle an aware offset in.
     viewed_at: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
-    # Denormalized reading-time estimate (ISS-451): `reading_minutes(content)`
+    # Denormalized reading-time estimate: `reading_minutes(content)`
     # as of the reader's last view of the post, maintained by the history
     # write paths. Without it, /me/history/stats materialized every read row's
     # full content per pageview (multi-MB at scale); with it the summary is
@@ -545,12 +544,12 @@ class ReadingHistory(Base):
     # minutes track the content actually last read. server_default keeps
     # pre-migration rows valid until the data backfill re-computes them.
     reading_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1", default=1)
-    # Per-post resume position (DEC-167, TASK-200): last saved vertical scroll
+    # Per-post resume position: last saved vertical scroll
     # offset in px, so a returning reader can be dropped back where they left
     # off. Nullable + additive. Updated in place by the record endpoint only
     # when the client sends an explicit value (plain views preserve it).
     scroll_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Cross-viewport resume fraction (DEC-346, TASK-399): the same position as
+    # Cross-viewport resume fraction: the same position as
     # a 0..1 fraction of the scrollable document height, saved alongside the
     # pixel so a continuation on a DIFFERENT viewport (phone -> desktop) lands
     # at the same place instead of an absolute-pixel offset that means a
@@ -571,12 +570,12 @@ class ReadingHistory(Base):
 
 
 class ReaderHighlight(Base):
-    """A signed-in reader's saved passage from a post (round 466, TASK-583).
+    """A signed-in reader's saved passage from a post.
 
     Passage-level capture over a whole-post bookmark or a like: the exact
     paragraph that matters, optionally with a short private note. Private by
-    design (unlike the public_likes axis, DEC-393). Additive table with no
-    DB-level FK on the columns (DEC-009: SQLite alembic can't add FK-carrying
+    design (unlike the public_likes axis). Additive table with no
+    DB-level FK on the columns (SQLite alembic can't add FK-carrying
     columns), so integrity is enforced at the API layer like ReaderBookmark.
     The reader/post/text triple is unique, so re-highlighting an identical
     passage is idempotent (returns the existing row).
@@ -606,14 +605,14 @@ class ReaderHighlight(Base):
 
 
 class CommentSubscription(Base):
-    """A reader following a post's comment thread (DEC-078/TASK-150).
+    """A reader following a post's comment thread.
 
     One row per reader↔post pair (unique constraint): the reader opted in to a
     Web Push whenever a *new comment* on the post is approved. Distinct from
-    reply notifications (DEC-064), which only target the replied-to author —
+    reply notifications, which only target the replied-to author —
     this follows the whole discussion. Additive table, no DB-level FK on the
-    columns (SQLite alembic can't add FK-carrying columns to existing tables,
-    DEC-009); integrity (unknown post/reader) is enforced at the API layer,
+    columns (SQLite alembic can't add FK-carrying columns to existing tables);
+    integrity (unknown post/reader) is enforced at the API layer,
     mirroring ReaderBookmark/PushSubscription.
     """
 
@@ -636,9 +635,9 @@ class CommentSubscription(Base):
 
 
 class GuestCommentSubscription(Base):
-    """An anonymous email subscribed to a post's comment thread (round 380, DEC-427).
+    """An anonymous email subscribed to a post's comment thread.
 
-    The auth-free cousin of CommentSubscription (DEC-078): thread-follow was
+    The auth-free cousin of CommentSubscription: thread-follow was
     reader-gated, so an anonymous visitor reading a discussion had no way to be
     emailed when it moved. One row per (email, post_id) pair; double opt-in
     (``is_confirmed`` flips only after the emailed token link is clicked —
@@ -649,7 +648,7 @@ class GuestCommentSubscription(Base):
     indistinguishable from a never-existing subscription (no enumeration
     oracle). "email" is normalized to lowercase at the API boundary (unique
     pair). Additive table, no DB-level FK (SQLite alembic can't add FK-carrying
-    columns to existing tables, DEC-009); integrity (unknown post) is enforced
+    columns to existing tables); integrity (unknown post) is enforced
     at the API layer.
     """
 
@@ -660,20 +659,19 @@ class GuestCommentSubscription(Base):
     post_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
-    # Weekly-digest cadence (round 381, DEC-429): opt-in — a confirmed
+    # Weekly-digest cadence: opt-in — a confirmed
     # follower who prefers one weekly summary to a mail per approved comment
     # flips ``digest_weekly`` (the token-gated cadence endpoint / the confirm
     # page toggle, mirroring NewsletterSubscriber.digest_weekly). Defaults
     # false so every existing follow stays per-comment until it opts in, and
     # weekly rows are excluded from the per-comment fan-out so exactly one
-    # channel serves a subscriber (DEC-355 parity).
+    # channel serves a subscriber parity.
     digest_weekly: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     # Last weekly thread-digest send for this (email, post) row (naive UTC,
     # utc_now_naive in digest.py) — the idempotency/window marker the weekly
     # job uses so a follower is never re-mailed the same comments.
     digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # Consent-restart gate (TASK-485/ISS-561, mirroring NewsletterSubscriber
-    # round 393): set when the holder unsubscribes, so replaying the OLD
+    # Consent-restart gate (mirroring NewsletterSubscriber): set when the holder unsubscribes, so replaying the OLD
     # double-opt-in link can never silently re-subscribe — re-activation
     # requires a fresh subscribe with a fresh token + confirmation email.
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -686,7 +684,7 @@ class GuestCommentSubscription(Base):
 
 
 class ReaderNotification(Base):
-    """A durable, in-app notification for a signed-in reader (DEC-160, TASK-192).
+    """A durable, in-app notification for a signed-in reader.
 
     The blog's reader-facing notifications (new post in a followed
     series/category, a reply to the reader's comment, a new comment on a
@@ -696,7 +694,7 @@ class ReaderNotification(Base):
     them. This table persists one row per reader-facing notification event so
     a signed-in reader can review their activity in-app as a read/unread list,
     each row deep-linking to the source post/comment. Additive table, no DB-level
-    FK (SQLite alembic can't add FK-carrying columns to existing tables, DEC-009);
+    FK (SQLite alembic can't add FK-carrying columns to existing tables);
     integrity (unknown reader) is enforced at the API layer like the other reader
     extension tables. Rows are written at the same dispatch points that fire the
     push, so the inbox and the push stay in sync.
@@ -708,7 +706,7 @@ class ReaderNotification(Base):
     reader_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     # kind ∈ {new_post, series_new_part, reply, thread_comment, reader_comment,
     # mention}; distinguishes the event source for iconography/filtering on the
-    # frontend. reader_comment is the reader-to-reader follow fan-out (round 365).
+    # frontend. reader_comment is the reader-to-reader follow fan-out.
     kind: Mapped[str] = mapped_column(String(32), nullable=False, default="new_post")
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     body: Mapped[str | None] = mapped_column(String(500))
@@ -724,7 +722,7 @@ class ReaderNotification(Base):
 
 
 class ReaderNotificationPref(Base):
-    """Per-reader notification-kind opt-out (DEC-171, TASK-202).
+    """Per-reader notification-kind opt-out.
 
     A signed-in reader silences a whole notification *kind* (new_post, reply,
     thread_comment) on top of the per-follow ``notify`` flags on
@@ -733,7 +731,7 @@ class ReaderNotificationPref(Base):
     a kind is off every dispatch point skips it — the durable inbox row AND the
     browser push. One row per reader (reader_id primary key). Additive table,
     no DB-level FK (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009); integrity enforced at the API layer like the other reader
+    tables); integrity enforced at the API layer like the other reader
     extension tables.
     """
 
@@ -743,16 +741,16 @@ class ReaderNotificationPref(Base):
     new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    # @-mentions (DEC-322, TASK-389): a durable inbox row when an approved
+    # @-mentions: a durable inbox row when an approved
     # comment names this reader's display name as @<name>. On by default like
-    # the other push/inbox kinds; additive column (DEC-009).
+    # the other push/inbox kinds; additive column.
     mention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    # Reader-to-reader follow (round 365, DEC-403): a durable inbox row when
+    # Reader-to-reader follow: a durable inbox row when
     # an approved comment by a reader the reader FOLLOWS lands. On by default
-    # like the other inbox kinds; additive column (DEC-009). Per-follow fine
+    # like the other inbox kinds; additive column. Per-follow fine
     # control (ReaderFollow.notify) is a separate, reserved axis.
     reader_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
-    # Email channel (DEC-197, TASK-217): a per-kind *opt-in* copy of the fan-out,
+    # Email channel: a per-kind *opt-in* copy of the fan-out,
     # delivered over SMTP to the reader's registered address. Off by default —
     # email must never arrive unless the reader explicitly asked for it — and
     # independent of the push/inbox toggles above (a reader may want nothing on
@@ -761,13 +759,13 @@ class ReaderNotificationPref(Base):
     email_new_post: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     email_thread_comment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
-    # Email copy of @-mentions (DEC-326, TASK-391): the personal "someone
+    # Email copy of @-mentions: the personal "someone
     # named you" kind reaches opted-in email readers off-site. Off by default
     # like the other email_* kinds; independent of the in-app 'mention' toggle
     # (a reader may silence the inbox row but still want the email, or vice
-    # versa). Additive column (DEC-009).
+    # versa). Additive column.
     email_mention: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
-    # Weekly digest (DEC-201, TASK-222): a separate *opt-in* recurring email —
+    # Weekly digest: a separate *opt-in* recurring email —
     # one aggregated summary of the week's public posts, independent of the
     # per-event email_* toggles (a reader may want event mail off but the weekly
     # digest on, or both silently off by default).
@@ -783,7 +781,7 @@ class ReaderNotificationPref(Base):
 
 
 class SeriesFollow(Base):
-    """A reader following a series (DEC-132, TASK-178; notify control DEC-138/TASK-181).
+    """A reader following a series (notify control).
 
     One row per reader↔series pair (unique) records the reader's intent to be
     notified when a new public post is published in the series. ``notify``
@@ -793,7 +791,7 @@ class SeriesFollow(Base):
     Delivery goes through the reader's browser Web Push subscriptions
     (PushSubscription); this table is the series-scoped opt-in. Additive table,
     no DB-level FK on the columns (SQLite alembic can't add FK-carrying columns
-    to existing tables, DEC-009); integrity enforced at the API layer.
+    to existing tables); integrity enforced at the API layer.
     """
 
     __tablename__ = "series_follows"
@@ -816,19 +814,18 @@ class SeriesFollow(Base):
 
 
 class AuthorFollow(Base):
-    """A reader following a writer's new posts (round 353).
+    """A reader following a writer's new posts.
 
     On a multi-editor blog, a reader who loved one author's posts can now
     subscribe to JUST that writer — category/series follows are topic-shaped,
-    so there was no way to follow the person. Mirrors CategoryFollow (DEC-140/
-    TASK-182): one row per reader↔author pair, ``notify`` decouples tracking
+    so there was no way to follow the person. Mirrors CategoryFollow: one row per reader↔author pair, ``notify`` decouples tracking
     from push fan-out, and the durable new-post fan-out (crud
     record_new_post_notifications) + the Web Push fan-out (webpush
     dispatch_new_post) both reach writer followers. Only a pen-named author is
     followable (the public surface is no-oracle; a username-only admin has no
     public identity to follow). ``author_id`` is a plain integer with no
     DB-level FK (SQLite alembic can't add FK-carrying columns to existing
-    tables, DEC-009); referential integrity is enforced at the API layer.
+    tables); referential integrity is enforced at the API layer.
     """
 
     __tablename__ = "author_follows"
@@ -851,18 +848,18 @@ class AuthorFollow(Base):
 
 
 class ReaderFollow(Base):
-    """A reader following another READER's approved comments (round 365).
+    """A reader following another READER's approved comments.
 
     The reader-to-reader follow axis: authors, tags, series and categories were
     followable, but a commenter whose takes a reader enjoys had no way to
-    subscribe to the person. Mirrors AuthorFollow (round 353): one row per
+    subscribe to the person. Mirrors AuthorFollow: one row per
     reader↔followed pair, ``notify`` decouples tracking from push fan-out, and
     the fan-out happens when a followed reader's comment is approved
     (comments.py _notify_comment_approved → a durable inbox row, unlike the
     author-follow new-post fan-out). Only an active reader is followable (the
     public surface is no-oracle); a reader cannot follow themself.
     ``followed_id`` is a plain integer without a DB-level FK (SQLite alembic
-    can't add FK-carrying columns to existing tables, DEC-009); integrity is
+    can't add FK-carrying columns to existing tables); integrity is
     enforced at the API layer.
     """
 
@@ -888,15 +885,15 @@ class ReaderFollow(Base):
 
 
 class ReaderBlock(Base):
-    """A reader blocking another READER's personal fan-out (round 379, DEC-425).
+    """A reader blocking another READER's personal fan-out.
 
-    The harassment-control axis opposite ReaderFollow (round 365): a reader who
+    The harassment-control axis opposite ReaderFollow: a reader who
     blocks a commenter opts out of that commenter's @-mention / reply /
     thread-comment / follow-activity notifications at every dispatch point.
     One row per blocker↔blocked pair; the block is one-way and invisible (the
     blocked reader is never told and can keep posting — it is a receiver-side
     opt-out, not a content filter). ``blocked_id`` is a plain integer without a
-    DB-level FK (SQLite alembic can't add FK-carrying columns, DEC-009);
+    DB-level FK (SQLite alembic can't add FK-carrying columns);
     integrity is enforced at the API layer like the other reader extension
     tables.
     """
@@ -923,12 +920,12 @@ class PushSubscription(Base):
     subscribers whose endpoint goes 410/404 are removed on the next dispatch —
     the push service drops subscriptions that are no longer reachable.
 
-    ``reader_id`` (nullable, DEC-064/TASK-137) binds the subscription to the
+    ``reader_id`` (nullable) binds the subscription to the
     reader account that subscribed, enabling targeted notifications (e.g. "someone
     replied to your comment"). Anonymous subscriptions (None) still receive the
-    superuser broadcast. No DB FK on the column (additive per DEC-009).
+    superuser broadcast. No DB FK on the column (additive per).
 
-    (DEC-055, TASK-117; DEC-064, TASK-137)
+
     """
 
     __tablename__ = "push_subscriptions"
@@ -943,36 +940,35 @@ class PushSubscription(Base):
         DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None)
     )
     # Reader account that subscribed this browser (None = anonymous). Enables
-    # targeted per-reader notifications (DEC-064, TASK-137).
+    # targeted per-reader notifications.
     reader_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     # Client rate-limit key stamped only on ANONYMOUS rows (None when signed
-    # in), so per-IP caps bound anonymous growth (security review; additive,
-    # DEC-009).
+    # in), so per-IP caps bound anonymous growth (security review; additive,).
     ip_key: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
-    # New-post notification opt-in (DEC-076, TASK-147). When True the browser
+    # New-post notification opt-in. When True the browser
     # receives a push when a post is published; new_post_category_id narrows
     # that to a single followed category (None = all new posts). Both additive,
-    # no DB FK on the category column (DEC-009 convention).
+    # no DB FK on the category column convention.
     want_new_posts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     new_post_category_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
 class AdminPushSubscription(Base):
-    """An admin's browser Web Push subscription for moderation alerts (DEC-080).
+    """An admin's browser Web Push subscription for moderation alerts.
 
     The blog moderates every comment, and the author only learns a comment is
     pending by re-opening the admin moderation queue. This table lets an admin
-    (superuser or editor, DEC-054) opt a browser into a push when a new comment
+    (superuser or editor) opt a browser into a push when a new comment
     is created — the receiver of the blog's one-sided push arc, which until now
-    only went reader-ward (reply/new-post/thread, DEC-064/076/078).
+    only went reader-ward (reply/new-post/thread).
 
     Deliberately a separate table from ``PushSubscription``: reader rows are
     mixed into anonymous + reader-bound broadcasts (``/api/push/notify`` queries
     every ``PushSubscription``), so mixing admin rows in would leak moderation
     pushes to reader fan-outs. It also mirrors the account-audience separation
-    (``User`` vs ``ReaderAccount``, DEC-059). ``endpoint`` is unique per table
+    (``User`` vs ``ReaderAccount``). ``endpoint`` is unique per table
     so re-subscribing the same browser upserts; ``user_id`` binds it to the
-    admin account (no DB FK — additive per DEC-009; integrity at the API layer,
+    admin account (no DB FK — additive per integrity at the API layer,
     mirroring PushSubscription).
     """
 
@@ -989,7 +985,7 @@ class AdminPushSubscription(Base):
 
 
 class PostViewsDaily(Base):
-    """Per-day view counts for reading-trend analytics (DEC-086).
+    """Per-day view counts for reading-trend analytics.
 
     One row per (post, calendar day) — unique pair, monotonic ``views`` counter
     upserted from the same write-on-read path as ``Post.views``. This is the
@@ -997,7 +993,7 @@ class PostViewsDaily(Base):
     traction day by day); the aggregate ``Post.views`` counter stays as-is.
 
     Additive table, no DB-level FK on ``post_id`` (SQLite alembic can't add
-    FK-carrying columns to existing tables, DEC-009) — integrity at the API
+    FK-carrying columns to existing tables) — integrity at the API
     layer, mirroring ReaderBookmark/CommentSubscription.
     """
 
@@ -1012,14 +1008,14 @@ class PostViewsDaily(Base):
 
 
 class Series(Base):
-    """An ordered group of posts presented as a multi-part sequence (DEC-056).
+    """An ordered group of posts presented as a multi-part sequence.
 
     Posts opt into a series via ``Post.series_id``; ``Post.series_order`` fixes
     their position so the public series detail renders a deterministic order the
     author controls (rather than feed order). ``slug`` is unique and follows the
     same slug pattern as posts so series URLs stay stable and shareable.
 
-    (DEC-056, TASK-121)
+
     """
 
     __tablename__ = "series"
@@ -1038,7 +1034,7 @@ class Series(Base):
     )
 
     # Ordered by series_order then id so equal orders fall back to insertion
-    # order deterministically (TASK-121).
+    # order deterministically.
     posts: Mapped[list[Post]] = relationship(
         "Post",
         back_populates="series",
@@ -1049,7 +1045,7 @@ class Series(Base):
 
 
 class Page(Base):
-    """An admin-curated static page served publicly at ``/pages/{slug}`` (round 347).
+    """An admin-curated static page served publicly at ``/pages/{slug}``.
 
     A self-hosted blog is expected to answer for itself — privacy policy,
     terms, contact, changelog — but X-Blog only had a hardcoded ``/about``, so
@@ -1059,7 +1055,7 @@ class Page(Base):
     route — an unpublished or unknown slug answers the same 404, so the
     surface cannot enumerate drafts. ``slug`` is unique and follows the same
     slug pattern as posts/series so page URLs stay stable and shareable.
-    Additive table, no DB-level FK (DEC-009).
+    Additive table, no DB-level FK.
     """
 
     __tablename__ = "pages"
@@ -1080,7 +1076,7 @@ class Page(Base):
 
 
 class SlugRedirect(Base):
-    """A 301 redirect map from an old public slug to the current one (round 350).
+    """A 301 redirect map from an old public slug to the current one.
 
     The admin editors let an operator re-slug posts, series and static pages
     freely, but the old URL then answered 404 — orphaning every inbound link,
@@ -1090,7 +1086,7 @@ class SlugRedirect(Base):
 
     ``kind`` scopes the map (post | series | page); ``(kind, old_slug)`` is
     unique — one canonical redirect per old URL. Additive table, no DB-level
-    FK (DEC-009).
+    FK.
     """
 
     __tablename__ = "slug_redirects"
@@ -1106,17 +1102,17 @@ class SlugRedirect(Base):
 
 
 class SiteSetting(Base):
-    """Operator-controlled runtime settings, stored as key/value (DEC-100, TASK-162).
+    """Operator-controlled runtime settings, stored as key/value.
 
     The only current key is ``auto_approve_reader_comments`` (a boolean flag
     persisted as "true"/"false") which the comment-create path resolves with an
     env fallback, so an admin can flip the moderation trust tier at runtime
-    without a redeploy. Additive table — no changes to existing tables (DEC-009).
+    without a redeploy. Additive table — no changes to existing tables.
 
     The only current key is ``auto_approve_reader_comments`` (a boolean flag
     persisted as "true"/"false") which the comment-create path resolves with an
     env fallback, so an admin can flip the moderation trust tier at runtime
-    without a redeploy. Additive table — no changes to existing tables (DEC-009).
+    without a redeploy. Additive table — no changes to existing tables.
     """
 
     __tablename__ = "site_settings"
@@ -1131,7 +1127,7 @@ class SiteSetting(Base):
 
 
 class NewsletterSubscriber(Base):
-    """An anonymous email address on the guest newsletter (DEC-351, TASK-401).
+    """An anonymous email address on the guest newsletter.
 
     The blog's email surface (weekly digest, per-event emails, guest reply
     emails) was gated behind a reader account or a comment, so an anonymous
@@ -1141,11 +1137,11 @@ class NewsletterSubscriber(Base):
     row never receives new-post email until its owner proved the address.
 
     ``token`` is the per-subscriber secret the confirmation/unsubscribe links
-    carry — mirroring Comment.reply_notify_token (DEC-332), it is stored as a
+    carry — mirroring Comment.reply_notify_token, it is stored as a
     random opaque string (not a JWT) and never returned by any read surface, so
     an unknown token is indistinguishable from a never-existing subscription
     (no enumeration oracle). Additive table, no DB-level FK (SQLite alembic
-    can't add FK-carrying columns to existing tables, DEC-009); \"email\" is
+    can't add FK-carrying columns to existing tables); \"email\" is
     normalized to lowercase at the API boundary and unique so re-subscribing
     can never create a duplicate row.
     """
@@ -1159,13 +1155,13 @@ class NewsletterSubscriber(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     is_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # When the address was last cancelled via an unsubscribe link (round 393).
+    # When the address was last cancelled via an unsubscribe link.
     # After an unsubscribe the same token must NOT silently re-activate the
     # address — a replay of the old confirm link is a consent restart, gated by
     # a real re-subscribe (fresh token + fresh double-opt-in email). Null =
-    # never unsubscribed. Additive per DEC-009.
+    # never unsubscribed. Additive per.
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # Weekly-digest cadence (DEC-355, TASK-403): opt-in — a subscriber who
+    # Weekly-digest cadence: opt-in — a subscriber who
     # prefers one weekly summary to per-post mail flips ``digest_weekly`` (the
     # default stays per-post, mirroring ``ReaderNotificationPref``).
     # ``digest_sent_at`` is the idempotency stamp of the guest digest job (same

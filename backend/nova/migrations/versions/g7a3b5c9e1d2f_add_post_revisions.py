@@ -1,8 +1,8 @@
-"""add post_revisions table for per-post version history (DEC-158, TASK-191)
+"""add post_revisions table for per-post version history
 
 Immutable snapshots of a post's editable fields, captured on every admin
 create/update and before a restore. Additive table; no existing DDL is touched
-(DEC-009). The post_id column is a plain integer (indexed) with ORM-level
+. The post_id column is a plain integer (indexed) with ORM-level
 cascade, matching the project's SQLite-safe additive-table convention.
 
 Revision ID: g7a3b5c9e1d2f

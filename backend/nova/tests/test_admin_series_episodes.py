@@ -1,4 +1,4 @@
-"""Admin series episode-management tests (DEC-146, TASK-185).
+"""Admin series episode-management tests.
 
 An author can list a series' episodes in order (incl. drafts) and reorder them
 via an explicit post-id list; the new order is persisted and reflected in the
@@ -121,10 +121,9 @@ class TestSeriesEpisodes:
 
 
 async def test_create_post_negative_series_order_is_422(client, auth_headers):
-    """PostCreate.series_order had no ge=0 (the update path did, ISS-294), so a
+    """PostCreate.series_order had no ge=0 (the update path did), so a
     negative order persisted an episode that sorts ahead of its peers in the
-    public series detail. Create must reject it like update (round-297
-    deep-dive)."""
+    public series detail. Create must reject it like update (deep-dive)."""
     series = await _create_series(client, auth_headers, slug="negorder")
     resp = await client.post(
         "/api/posts",

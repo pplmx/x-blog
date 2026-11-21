@@ -1,7 +1,7 @@
 import { adminAuthHeaders } from "../auth";
 import { command } from "../transport";
 
-/** Push notification body accepted by POST /api/push/notify (DEC-055). */
+/** Push notification body accepted by POST /api/push/notify. */
 export interface PushNotifyPayload {
 	title: string;
 	body: string;

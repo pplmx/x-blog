@@ -1,7 +1,7 @@
-"""add pages table (round 347)
+"""add pages table
 
 A brand-new additive table only — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Holds admin-curated
+SQLite-can't-add-FK constraint of does not apply. Holds admin-curated
 static pages (privacy policy, terms, contact, ...) published at /pages/{slug}:
 markdown content (rendered client-side through the same pipeline as posts), a
 ``published`` flag gating the public route (an unpublished or unknown slug

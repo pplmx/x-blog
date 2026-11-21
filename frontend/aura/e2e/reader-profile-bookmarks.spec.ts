@@ -1,7 +1,7 @@
 /**
- * Opt-in public saved-posts profile tab journey (round 363, DEC-399).
+ * Opt-in public saved-posts profile tab journey.
  *
- * Mirrors the round-360 liked-posts surface: a signed-in reader flips the
+ * Mirrors the liked-posts surface: a signed-in reader flips the
  * public-bookmarks opt-in on /account, and their public /readers/{id} profile
  * gains a "Saved posts" tab that ANYONE (guest included) can browse — the
  * posts they chose to keep are visible without sign-in. Default posture
@@ -61,7 +61,7 @@ async function saveFirstPost(page: import("@playwright/test").Page): Promise<str
 	return href;
 }
 
-test.describe("Public saved-posts profile tab (DEC-399)", () => {
+test.describe("Public saved-posts profile tab ", () => {
 	test("opt in on /account → the public profile gained a tab a guest can browse", async ({
 		page,
 		request,
@@ -89,7 +89,7 @@ test.describe("Public saved-posts profile tab (DEC-399)", () => {
 
 		// Server agrees: the flag is on and the public bookmarks endpoint lists it.
 		// Poll rather than a one-shot GET: under the full serial suite the PATCH
-		// commit can race the immediate read (bookmarks seen red at round-424/PR
+		// commit can race the immediate read (bookmarks seen red at PR
 		// #50; passes in isolation), and a single-shot assert is timing-luck.
 		await expect
 			.poll(

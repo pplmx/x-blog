@@ -1,7 +1,7 @@
 /**
- * Admin newsletter subscriber management journey (DEC-354, TASK-402).
+ * Admin newsletter subscriber management journey.
  *
- * The guest newsletter (DEC-351) has no operator surface without this page:
+ * The guest newsletter has no operator surface without this page:
  * an admin can't see who is on the list, how many are confirmed vs pending,
  * or remove an address. An address subscribes through the public API, the
  * admin sees it on the /admin/newsletter table (pending chip, since the
@@ -26,7 +26,7 @@ async function loginAdmin(page: import("@playwright/test").Page) {
 	await page.waitForURL("**/admin/posts");
 }
 
-test.describe("Admin newsletter management (DEC-354)", () => {
+test.describe("Admin newsletter management ", () => {
 	test("subscribe → listed with pending chip → search narrows → confirm delete removes only that row", async ({
 		page,
 		request,

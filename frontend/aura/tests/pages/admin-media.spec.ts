@@ -1,5 +1,5 @@
 /**
- * Admin Media Library page tests (DEC-183, TASK-207).
+ * Admin Media Library page tests.
  *
  * Renders the uploaded-image grid from the media API, marks referenced images
  * (delete disabled), copies a URL, and deletes an unreferenced image with
@@ -91,7 +91,7 @@ describe("Admin Media page", () => {
 		expect(wrapper.text()).toContain("使用中");
 	});
 
-	it("renders the uploaded date in the site language, not the browser's (TASK-480, ISS-558)", async () => {
+	it("renders the uploaded date in the site language, not the browser's ", async () => {
 		// useLang falls back to the detected browser locale in vitest, which is
 		// zh here — so the date must render with the explicit zh-CN + options
 		// (month form), NOT the bare toLocaleDateString() slash-date the
@@ -127,7 +127,7 @@ describe("Admin Media page", () => {
 		}
 	});
 
-	it("drops a single-deleted image from the bulk selection (round 259 review)", async () => {
+	it("drops a single-deleted image from the bulk selection ", async () => {
 		// A card that was ticked for the bulk selection and then single-deleted
 		// must leave the selection — otherwise "已选 N 张" counts a deleted file
 		// and 删除选中 operates on a phantom URL (backend skips it idempotently,
@@ -167,7 +167,7 @@ describe("Admin Media page", () => {
 		}
 	});
 
-	it("keeps other rows deletable while one delete is in flight (per-row markers, round 259)", async () => {
+	it("keeps other rows deletable while one delete is in flight (per-row markers)", async () => {
 		// A global `isDeleting` flag froze the whole grid on the first click. The
 		// per-row marker keeps other rows clickable — which also makes the busy
 		// state genuinely observable, since happy-dom swallows clicks on disabled
@@ -223,7 +223,7 @@ describe("Admin Media page", () => {
 		}
 	});
 
-	it("blocks a batch delete while a single-row delete is in flight (round 259)", async () => {
+	it("blocks a batch delete while a single-row delete is in flight ", async () => {
 		// A batch delete and an in-flight single delete must not run
 		// concurrently (their refreshes interleave; a file in both would
 		// double-delete → 404 on the second). The batch guard must drop the
@@ -278,7 +278,7 @@ describe("Admin Media page", () => {
 		}
 	});
 
-	it("batch-deletes selected unreferenced images (DEC-191)", async () => {
+	it("batch-deletes selected unreferenced images ", async () => {
 		const refresh = vi.fn(() => Promise.resolve());
 		listMock.mockReturnValue(
 			fakeListing(
@@ -343,7 +343,7 @@ describe("Admin Media page", () => {
 		expect(refresh).toHaveBeenCalled();
 	});
 
-	it("filters by filename through the debounced search box (DEC-189)", async () => {
+	it("filters by filename through the debounced search box ", async () => {
 		listMock.mockReturnValue(fakeListing([]));
 		const wrapper = await mountPage();
 		const input = wrapper.find('input[type="search"]');
@@ -505,7 +505,7 @@ describe("Admin Media page", () => {
 			expect(wrapper.text()).toContain("3 / 3");
 		});
 
-		it("single-flights the pager while a page fetch is in flight (round 418 audit)", async () => {
+		it("single-flights the pager while a page fetch is in flight ", async () => {
 			// The pending guard (goToPage early-returns + Next disabled) stops a
 			// rapid double-click from advancing two pages before useFetch's
 			// pending flag paints (it updates on the NEXT render). The admin

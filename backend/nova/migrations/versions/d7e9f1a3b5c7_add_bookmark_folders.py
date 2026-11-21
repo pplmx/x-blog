@@ -1,9 +1,9 @@
-"""add bookmark_folders table + folder_id on reader_bookmarks (DEC-120)
+"""add bookmark_folders table + folder_id on reader_bookmarks
 
 Signed-in readers can organize saved posts into folders. Adds the new
 additive ``bookmark_folders`` table and a nullable ``folder_id`` column on the
-existing ``reader_bookmarks`` table (both additive, no existing DDL mutated —
-DEC-009). No DB-level FK on the new column (SQLite alembic can't add
+existing ``reader_bookmarks`` table (both additive, no existing DDL mutated).
+No DB-level FK on the new column (SQLite alembic can't add
 FK-carrying columns to existing tables); ownership is enforced at the API
 layer like the other reader-owned resources.
 
@@ -39,7 +39,7 @@ def upgrade() -> None:
             sa.UniqueConstraint("reader_id", "name", name="uq_bookmark_folders_reader_name"),
         )
     # Add the nullable folder_id column to the existing reader_bookmarks table
-    # if not already present (additive ALTER TABLE — DEC-009).
+    # if not already present (additive ALTER TABLE).
     columns = {c["name"] for c in inspector.get_columns("reader_bookmarks")}
     if "folder_id" not in columns:
         op.add_column("reader_bookmarks", sa.Column("folder_id", sa.Integer(), nullable=True, index=True))

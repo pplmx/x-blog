@@ -1,5 +1,5 @@
 /**
- * Reader self-service account deletion journey (DEC-106, TASK-165).
+ * Reader self-service account deletion journey.
  *
  * A signed-in reader deletes their account from /account with their password.
  * Afterwards the account can't authenticate and the reader's past comment
@@ -36,7 +36,7 @@ async function registerReader(
 	return (await login.json()).access_token as string;
 }
 
-test.describe("Reader account deletion (DEC-106)", () => {
+test.describe("Reader account deletion ", () => {
 	test("deleting the account anonymizes the reader's comment and removes login", async ({
 		page,
 		request,

@@ -1,4 +1,4 @@
-"""Reader avatar (profile picture) endpoint tests (DEC-299, TASK-378).
+"""Reader avatar (profile picture) endpoint tests.
 
 A reader can upload a small image that becomes their public face: it is
 returned on the self view, the public reader profile, and every comment they

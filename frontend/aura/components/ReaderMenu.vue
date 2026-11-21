@@ -67,7 +67,7 @@ function onDocPointer(e: Event) {
 
 // Full menu keyboard contract: Escape closes (focus back to trigger);
 // ArrowDown/ArrowUp/Home/End roam between the items; Tab hands focus to the
-// next control after the trigger (see LanguageSwitcher's round-300 comment).
+// next control after the trigger (see LanguageSwitcher's comment).
 function onKeydown(e: KeyboardEvent) {
 	if (e.key === "Escape") {
 		if (open.value) closeMenu();
@@ -125,8 +125,8 @@ function onSignOut() {
 			:aria-expanded="open"
 			@click="toggle"
 		>
-			<!-- Avatar (DEC-299) or letter fallback, + unread badge (ISS-124).
-           ReaderAvatar degrades to the letter if the file is gone (round-446). -->
+			<!-- Avatar or letter fallback, + unread badge.
+           ReaderAvatar degrades to the letter if the file is gone. -->
 			<span class="relative">
 				<ReaderAvatar v-if="reader" :url="reader.avatar_url" :name="displayName" size="h-8 w-8" />
 				<span
@@ -169,7 +169,7 @@ function onSignOut() {
 					</span>
 				</NuxtLink>
 
-				<!-- Public reader profile (round 352): their /readers/{id} page. -->
+				<!-- Public reader profile: their /readers/{id} page. -->
 				<NuxtLink
 					v-if="reader?.id"
 					:to="`/readers/${reader.id}`"

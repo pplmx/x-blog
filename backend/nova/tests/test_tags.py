@@ -150,7 +150,7 @@ async def test_update_tag_duplicate_name_returns_400(client, auth_headers, db_se
 async def test_tag_post_count_excludes_drafts_and_scheduled(client, auth_headers, db_session):
     """Public /api/tags post_count counts only publicly visible posts — a
     draft or scheduled-future post under a tag must not leak existence or
-    inflate the count (ISS-362)."""
+    inflate the count."""
     from datetime import datetime
 
     from app import models
@@ -181,7 +181,7 @@ async def test_tag_post_count_excludes_drafts_and_scheduled(client, auth_headers
 
 async def test_get_tag_post_count_present(client, auth_headers, db_session):
     """Single-item GET /api/tags/{id} must report the real visible count, not
-    the schema default 0 (ISS-363)."""
+    the schema default 0."""
     from app import models
 
     tag_id = (await client.post("/api/tags", json={"name": "ItemTag"}, headers=auth_headers)).json()["id"]

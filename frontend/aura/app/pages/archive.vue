@@ -86,7 +86,7 @@ const years = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
 
 // Archive index narrowing filter (survey finding): on a multi-year blog the
 // year/month pill stack is long and unscannable with no way to jump — the
-// exact problem tags/categories fixed in ISS-381. Filter the month pills by
+// exact problem tags/categories fixed. Filter the month pills by
 // label/years text (localized label + year/month digits).
 const archiveQuery = ref("");
 const filteredYears = computed<{ year: number; months: ArchiveEntry[] }[]>(() => {
@@ -121,7 +121,7 @@ const populatedMonths = computed<{ year: number; month: number }[]>(() =>
 	years.value.flatMap((y) => y.months.map((m) => ({ year: y.year, month: m.month }))),
 );
 
-// Adjacent-month navigation (deep-dive finding, ISS-376): a selected month view
+// Adjacent-month navigation (deep-dive finding): a selected month view
 // previously dead-ended in a single "back to all" link — paging chronologically
 // meant back → scan the pills → click each time. Now compute the previous and
 // next month that actually has posts and link them directly, preserving the
@@ -159,7 +159,7 @@ const paginationTokens = computed(() =>
 	paginationPages(posts.value?.pagination?.total_pages ?? 0, posts.value?.pagination?.page ?? 1),
 );
 
-// Screen-reader page announcement (round 397, same pattern as home): pagination
+// Screen-reader page announcement: pagination
 // swaps the list in place, which is invisible to assistive tech — announce the
 // landed page when it changes.
 const pageAnnouncement = computed(() =>
@@ -170,7 +170,7 @@ const pageAnnouncement = computed(() =>
 // after posts were deleted) would otherwise render the "no posts" empty state
 // while earlier pages still hold content — clamp back to the last real page
 // once pagination is known, preserving the year/month period (home/search
-// already do this; deep-dive finding ISS-308). Loop-safe: the clamp target is
+// already do this; deep-dive finding). Loop-safe: the clamp target is
 // valid by construction, so the refetch settles on total_pages === page.
 watch(
 	() => posts.value?.pagination,
@@ -264,7 +264,7 @@ useSeo(() => ({
 
 				<div v-if="years.length" class="space-y-6">
 					<!-- Narrowing filter (survey finding): matches the tags/categories
-               filter the ISS-381 fix added — a long multi-year archive is
+               filter the fix added — a long multi-year archive is
                otherwise unscannable. Rendered only when there is something to
                filter. -->
 					<div class="relative max-w-sm">
@@ -331,7 +331,7 @@ useSeo(() => ({
 						<Icon icon="lucide:arrow-left" class="w-4 h-4" />
 						{{ t("archive.backToAll") }}
 					</NuxtLink>
-					<!-- Adjacent-month navigation (ISS-376): the selected-month view used
+					<!-- Adjacent-month navigation: the selected-month view used
                to dead-end in "back to all" — step to the previous/next month
                that actually has posts directly, bounded at the archive ends. -->
 					<div class="flex items-center gap-2">

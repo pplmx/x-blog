@@ -1,5 +1,5 @@
 /**
- * GuestThreadFollow component tests (DEC-427, TASK-438).
+ * GuestThreadFollow component tests.
  *
  * The compact guest email thread-follow form on the post comment header: it
  * POSTs the entered address to the guest thread-follow endpoint once, shows a

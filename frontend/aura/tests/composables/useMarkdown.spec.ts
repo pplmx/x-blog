@@ -313,12 +313,12 @@ describe("sanitizeHtml", () => {
 	it("neutralizes javascript: hrefs even after DOMPurify is loaded", () => {
 		// DOMPurify passes element/handler checks in some DOM harnesses but
 		// still fails to enforce its URI whitelist — stripUnsafeUrlAttrs must
-		// hold the line regardless of which sanitizer is active (DEC-088).
+		// hold the line regardless of which sanitizer is active.
 		const result = sanitizeHtml('hello <a href="javascript:alert(1)">click</a>');
 		expect(result).not.toContain('href="javascript:');
 	});
 
-	it("adds target/rel to absolute links and alt to img without alt (ISS-221)", () => {
+	it("adds target/rel to absolute links and alt to img without alt ", () => {
 		const result = sanitizeHtml('<p><a href="https://example.com">link</a><img src="/a.png"></p>');
 		expect(result).toContain('href="https://example.com"');
 		expect(result).toContain('target="_blank"');
@@ -327,7 +327,7 @@ describe("sanitizeHtml", () => {
 	});
 });
 
-describe("addSafeLinkAttrs (ISS-221)", () => {
+describe("addSafeLinkAttrs ", () => {
 	it("opens absolute http(s) links in a new tab with rel=noopener noreferrer", () => {
 		expect(addSafeLinkAttrs('<a href="https://example.com">x</a>')).toBe(
 			'<a href="https://example.com" target="_blank" rel="noopener noreferrer">x</a>',
@@ -538,11 +538,11 @@ describe("segment extraction edge cases", () => {
 	});
 });
 
-describe("inline Markdown footnotes (DEC-441, TASK-451)", () => {
+describe("inline Markdown footnotes ", () => {
 	it("renders a footnote reference as a backlinked <sup> and the definition as a footnotes list", () => {
 		// GFM footnote syntax: an author citing a source gets a clickable sup
 		// superscript that jumps to the definition list, instead of the raw
-		// `[^1]` text that used to leak into the article (DEC-441).
+		// `[^1]` text that used to leak into the article.
 		const md = "Citations are nice[^1].\n\n[^1]: The source material.";
 		const html = markdownToHtml(md);
 		// Reference: sup with an href/id pair so the in-text marker jumps down.
@@ -617,7 +617,7 @@ describe("inline Markdown footnotes (DEC-441, TASK-451)", () => {
 	});
 });
 
-describe("commentMarkdownToHtml (DEC-088, TASK-156)", () => {
+describe("commentMarkdownToHtml ", () => {
 	it("renders comment markdown with breaks and sanitizes it", () => {
 		const out = commentMarkdownToHtml("**hi**\nline two");
 		expect(out).toContain("<strong>hi</strong>");

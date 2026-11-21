@@ -1,4 +1,4 @@
-"""add new_post_notified_at stamp to posts (DEC-336, TASK-394).
+"""add new_post_notified_at stamp to posts.
 
 A post created as published-but-future ``publish_at`` becomes publicly visible
 when the clock crosses it, but the write-time new-post fan-out ran when
@@ -7,7 +7,7 @@ transition), so scheduled posts could reach readers without ever notifying
 followers. ``maybe_notify_due_scheduled_posts`` (fire-on-read sweep) claims
 each crossed-but-unannounced post exactly once using a durable
 ``new_post_notified_at`` timestamp: NULL until the post is announced, then set
-atomically so no sweep or write-time path double-fires. Additive (DEC-009);
+atomically so no sweep or write-time path double-fires. Additive;
 no existing column is touched and existing rows start NULL (pre-existing
 scheduled posts that already crossed are retroactively claimable on their next
 public read).

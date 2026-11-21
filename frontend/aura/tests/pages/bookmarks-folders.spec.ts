@@ -1,5 +1,5 @@
 /**
- * Bookmark-folder UI tests (DEC-120, TASK-172).
+ * Bookmark-folder UI tests.
  *
  * A signed-in reader sees the folder bar, can filter bookmarks by folder,
  * create/rename/delete folders, and file a bookmark into (or out of) a folder.
@@ -92,7 +92,7 @@ const bm = (id: number, title: string, folderId?: number | null): Bookmark => ({
 	tags: [],
 });
 
-describe("Bookmark folders page (TASK-172)", () => {
+describe("Bookmark folders page ", () => {
 	beforeEach(() => {
 		window.localStorage.setItem(READER_TOKEN_KEY, "reader-token");
 		mockBookmarks.value = [];

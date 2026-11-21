@@ -63,7 +63,7 @@ function retry() {
 			<p>{{ t("authors.indexEmpty") }}</p>
 		</div>
 
-		<!-- Writers grid (round 346): each card is the writer's archive door. -->
+		<!-- Writers grid: each card is the writer's archive door. -->
 		<div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<NuxtLink
 				v-for="a in authors"
@@ -96,7 +96,7 @@ function retry() {
 							})
 						}}
 					</span>
-					<!-- Public "about this writer" (round 357): a one-line window into
+					<!-- Public "about this writer": a one-line window into
                the writer's bio so the index card says who they are, not just
                how many posts they have. -->
 					<span

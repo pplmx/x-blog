@@ -8,7 +8,7 @@ Caches that are actually read by the application live here:
   Invalidated on post create/update/delete (admin writes) and on every
   increment of a post's live counters — the payloads embed views/likes, so a
   pageview/like must drop them too or public lists show stale counts until the
-  TTL (ISS-141; the counters do not, however, affect list ordering).
+  TTL (the counters do not, however, affect list ordering).
 """
 
 from __future__ import annotations
@@ -59,11 +59,11 @@ series_cache: TTLCache[str, dict, float] = TTLCache(  # type: ignore[reportAssig
 # "rss-author", "sitemap", comment feeds), and multiple categories/tags spread
 # them further — a maxsize of 8 evicted everything but the single busiest feed
 # under a modest crawl (sitemap + a couple of subscriptions), forcing a DB
-# re-query + full markdown re-render per poll (TASK-536, ISS-615).
+# re-query + full markdown re-render per poll.
 feed_cache: TTLCache[tuple | str, str, float] = TTLCache(  # type: ignore[reportAssignmentType]
     maxsize=64, ttl=300
 )
-# Media-library reference map (TASK-333/ISS-432): the per-upload
+# Media-library reference map: the per-upload
 # "which posts reference me" map built by uploading posts' stored markdown.
 # Building it streams every post's full content, so a media list render (and
 # its search/pagination) must not pay that each request. Short 30s TTL is a
@@ -119,10 +119,10 @@ def clear_posts_list_cache():
     Also clears the rendered RSS/Atom/sitemap feeds — they derive from the same
     published post set (and content), so a write must invalidate them too.
     And the series detail cache: a post write can change which posts appear in
-    a series and their order (TASK-121).
+    a series and their order.
     And the media-library reference map: a post's content/cover_image are
     exactly the URL sources that map indexes, so any post write moves it
-    (TASK-333).
+    .
     """
     posts_list_cache.clear()
     feed_cache.clear()
@@ -137,7 +137,7 @@ def clear_counter_caches():
     Pageviews/likes embed in the cached list payloads, so those must drop. The
     series DETAIL cache embeds the same PostList objects (per-episode views/likes
     render on series/[slug].vue), so it must drop too — the old docstring's
-    claim that "series details don't contain views/likes" was wrong (ISS-373).
+    claim that "series details don't contain views/likes" was wrong.
     Only the rendered RSS/Atom/sitemap FEEDS are counter-free, so they stay warm
     across pageviews: a popular post's view burst must not re-render them every
     time. Series/count recalc is cheap (one series recompute on its next view).
@@ -156,7 +156,7 @@ def clear_series_cache():
 
 
 def clear_upload_refs_cache():
-    """Clear the media-library reference map (post-write invalidation, TASK-333).
+    """Clear the media-library reference map (post-write invalidation).
 
     Called by clear_posts_list_cache on every post write, and by the test
     fixture so cross-test DB rollbacks never leak a stale reference map.

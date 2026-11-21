@@ -1,9 +1,9 @@
-"""add reader_notification_prefs table for per-kind reader opt-out (DEC-171, TASK-202)
+"""add reader_notification_prefs table for per-kind reader opt-out
 
 One row per reader storing which notification kinds may fan out to them
 (new_post / reply / thread_comment, all default true = on). A reader who turns
 a kind off stops both the durable inbox row and the browser push at every
-dispatch point. Additive table; no existing DDL is touched (DEC-009). reader_id
+dispatch point. Additive table; no existing DDL is touched. reader_id
 is the primary key (one row per reader) and carries no DB-level FK, matching the
 project's SQLite-safe additive-table convention (integrity at the API layer).
 

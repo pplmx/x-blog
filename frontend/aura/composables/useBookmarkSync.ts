@@ -1,6 +1,6 @@
 /**
  * Bridges the localStorage-only bookmark list (useBookmarks) to the cloud
- * bookmarks API (DEC-059, TASK-134).
+ * bookmarks API.
  *
  * Strategy (merge-friendly, offline-safe):
  *  - While a reader is signed in, every add/remove ALSO mirrors to the cloud
@@ -40,7 +40,7 @@ function hasReaderToken(): boolean {
  * — the backend answers 401; a wrong-audience token answers 403). hasReaderToken
  * checks *presence* only, so without this a dead session would keep presenting
  * "saved to cloud" while the server silently rejects every mirror — and a later
- * merge would pull the never-saved bookmark away (ISS-222). Transient failures
+ * merge would pull the never-saved bookmark away. Transient failures
  * (offline, 5xx) deliberately stay silent: the next merge re-conciliates.
  */
 export type SyncIssue = "auth" | null;
@@ -54,7 +54,7 @@ export type SyncIssue = "auth" | null;
 export const syncIssue = ref<SyncIssue>(null);
 
 /** Non-null when the last sync attempt proved the stored session is dead
- *  (ISS-222). The bookmarks page renders a dismissible warning off this; the
+ *. The bookmarks page renders a dismissible warning off this; the
  *  toggle itself keeps working locally. */
 export function clearSyncIssue(): void {
 	syncIssue.value = null;
@@ -63,13 +63,13 @@ export function clearSyncIssue(): void {
 /**
  * Bumped by every Clear-all so an in-flight merge can tell that the local list
  * was intentionally wiped while it was pushing/pulling (deep-dive finding, cf.
- * TASK-233). A merge that started before the clear MUST NOT replace the local
+ *). A merge that started before the clear MUST NOT replace the local
  * list with its (now stale) pull snapshot — that would resurrect cleared
  * bookmarks in the UI until the next clear/merge, silently undoing Clear-all.
  */
 let clearEpoch = 0;
 
-// Cloud-write serialization for Clear-all (TASK-233 hardening). A PUT that is
+// Cloud-write serialization for Clear-all hardening. A PUT that is
 // already in flight when Clear-all fires can reach the server AFTER the clear's
 // DELETE and re-create the id cloud-side — the per-PUT membership check only
 // stops FUTURE PUTs, and the epoch gate only keeps the local list clean, so the
@@ -223,7 +223,7 @@ export function useBookmarkSync() {
 	/** Mirror a To-read/Done flip to the cloud. Chained per post like the
 	 *  add/remove mirrors so a rapid done→to-read→done toggle stays ordered;
 	 *  offline-safe: errors are swallowed, the next merge reconciles.
-	 *  (round 361, DEC-395) */
+	 * */
 	async function mirrorDone(postId: number, done: boolean): Promise<void> {
 		if (!hasReaderToken()) return;
 		try {
@@ -251,7 +251,7 @@ export function useBookmarkSync() {
 			// this page) is live intent that the pull must not wipe from the UI —
 			// even if its mirrorAdd hasn't landed yet, the next merge reconciles.
 			const startedWith = new Set(bookmarks.value.map((b) => b.id));
-			// Queue state (round 361, DEC-395): snapshot each local row's done so
+			// Queue state: snapshot each local row's done so
 			// the pull below can't clobber it. The push only PUTs the post id —
 			// the server creates a fresh row with done=false — so a bookmark the
 			// reader marked Done while logged out would otherwise come back To-read
@@ -264,7 +264,7 @@ export function useBookmarkSync() {
 			// mid-push wipes that array — without the check the merge would keep
 			// PUT-ing the just-cleared ids, some landing after the cloud DELETE
 			// and resurrecting them on the server for the next merge (deep-dive
-			// finding — undermines TASK-233's "clear sticks to the cloud").
+			// finding — undermines's "clear sticks to the cloud").
 			for (const b of bookmarks.value) {
 				if (!bookmarks.value.some((x) => x.id === b.id)) continue;
 				// Track the PUT as a cloud write so a Clear-all fired mid-push
@@ -273,7 +273,7 @@ export function useBookmarkSync() {
 				await withPendingWrite(() => addReaderBookmark(b.id));
 			}
 			// Pull the whole merged server list and make it the local truth.
-			// The endpoint is bounded per page (ISS-142), so walk total_pages
+			// The endpoint is bounded per page, so walk total_pages
 			// instead of relying on one response to contain everything.
 			let all: ReaderBookmarkItem[] = [];
 			let page = 1;
@@ -296,7 +296,7 @@ export function useBookmarkSync() {
 			// Re-apply the local done snapshot to rows this device already had:
 			// server rows this reader synced carry their own done (PATCH-mirrored),
 			// but a logged-out Done mark that was just pushed up has a server row
-			// that still reads done=false — local intent wins for those (DEC-395).
+			// that still reads done=false — local intent wins for those.
 			for (const b of pulled) {
 				if (localDone.has(b.id)) b.done = localDone.get(b.id);
 			}
@@ -314,7 +314,7 @@ export function useBookmarkSync() {
 		} catch (err) {
 			// Cloud unreachable — keep the local list untouched. A dead session
 			// must NOT replace the local list with the unreachable server truth
-			// (silent deletion of local-only bookmarks), so warn instead (ISS-222).
+			// (silent deletion of local-only bookmarks), so warn instead.
 			noteFailure(err);
 		} finally {
 			syncing.value = false;
@@ -334,21 +334,21 @@ export function useBookmarkSync() {
 	}
 
 	/** Flip a bookmark between To-read and Done locally, mirroring to the cloud
-	 *  when signed in (round 361, DEC-395). */
+	 * when signed in. */
 	function setDone(postId: number, done: boolean): void {
 		store.setDone(postId, done);
 		void mirrorDone(postId, done);
 	}
 
 	/**
-	 * Clear every bookmark — local AND cloud when signed in (TASK-233).
+	 * Clear every bookmark — local AND cloud when signed in.
 	 *
 	 * The previous ``clearBookmarks()`` wiped only localStorage, so a signed-in
 	 * reader's "Clear all" silently resurrected on the next mount when
 	 * mergeLocalToCloud pulled the server list back down. Offline-safe: if the
 	 * cloud clear fails we keep the local wipe, but the reader must know the
 	 * server copy survived — the next merge would otherwise pull those rows back
-	 * down and undo the clear in front of them (ISS-387). Returns false exactly
+	 * down and undo the clear in front of them. Returns false exactly
 	 * when a cloud copy still exists (guests clear only local, so they get true).
 	 */
 	async function clearAll(): Promise<boolean> {
@@ -359,7 +359,7 @@ export function useBookmarkSync() {
 			// Let every in-flight cloud write (mirror PUTs/DELETEs and the merge's
 			// push) land BEFORE the clear's DELETE, so none can arrive after it and
 			// resurrect an id server-side. The local wipe already happened, so this
-			// is pure ordering insurance for the cloud (TASK-233 hardening).
+			// is pure ordering insurance for the cloud hardening.
 			await waitForWritesIdle();
 			const { clearReaderBookmarks } = await import("~~/api/reader/bookmarks");
 			await clearReaderBookmarks();

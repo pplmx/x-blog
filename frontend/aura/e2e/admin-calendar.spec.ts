@@ -1,5 +1,5 @@
 /**
- * Admin editorial calendar journey (DEC-162, TASK-194).
+ * Admin editorial calendar journey.
  *
  * An admin opens the Calendar page, sees the month grid (42 day cells, month
  * title, legend), and can navigate to the previous/next month. Runs against

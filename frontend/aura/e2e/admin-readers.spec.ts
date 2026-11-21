@@ -1,5 +1,5 @@
 /**
- * Admin reader moderation journey (DEC-194, TASK-214, ISS-116).
+ * Admin reader moderation journey.
  *
  * A reader registers through the public API; the admin sees them on the
  * /admin/readers table, deactivates the account from the UI (confirm dialog),
@@ -24,7 +24,7 @@ async function loginAdmin(page: import("@playwright/test").Page) {
 	await page.waitForURL("**/admin/posts");
 }
 
-test.describe("Admin reader moderation (DEC-194)", () => {
+test.describe("Admin reader moderation ", () => {
 	test("register → listed → UI deactivate locks the reader out → UI reactivate restores login", async ({
 		page,
 		request,

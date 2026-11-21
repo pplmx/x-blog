@@ -1,5 +1,5 @@
 /**
- * Scoped category/series/author feed routes (DEC-130, TASK-177; round 345).
+ * Scoped category/series/author feed routes.
  *
  * The backend serves `/rss/category/{name}.xml`, `/rss/series/{slug}.xml` and
  * `/rss/authors/{id}.xml`, and the corresponding pages advertise those URLs

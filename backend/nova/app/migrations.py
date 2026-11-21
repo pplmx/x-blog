@@ -8,7 +8,7 @@ which could never alter existing tables) without a manual ``stamp``.
 
 Replaces the old dev-only ``create_all`` safety net, which left stale dev DBs
 missing columns added later (e.g. ``users.token_version``) and broke login with
-``no such column``. Completes DEC-011.
+``no such column``. Completes.
 """
 
 from __future__ import annotations

@@ -1,10 +1,10 @@
-"""add newsletter_subscribers table (DEC-351, TASK-401).
+"""add newsletter_subscribers table.
 
 A brand-new additive table only — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. The table holds
+SQLite-can't-add-FK constraint of does not apply. The table holds
 guest email addresses opted into the "email me new posts" newsletter, with a
 per-subscriber opaque token for confirm/unsubscribe links (mirroring
-Comment.reply_notify_token, DEC-332) and a defensive ``is_confirmed`` double
+Comment.reply_notify_token) and a defensive ``is_confirmed`` double
 opt-in flag. ``email`` is unique at the DB level so a concurrent resubscribe
 can never create a duplicate row.
 """

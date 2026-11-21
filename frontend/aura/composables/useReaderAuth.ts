@@ -1,5 +1,5 @@
 /**
- * Reader authentication composable (DEC-059, TASK-133).
+ * Reader authentication composable.
  *
  * Manages the reader JWT ("reader_token" in localStorage) + the profile for
  * the signed-in reader, mirroring useAdminAuth. Distinct from admin auth: a
@@ -59,7 +59,7 @@ const reader = ref<ReaderProfile | null>(null);
 
 /**
  * True when a rejected reader API call means an expired/invalid reader session
- * (ISS-110) — NOT a business-level 401. The backend uses the same status for
+ * — NOT a business-level 401. The backend uses the same status for
  * two different conditions: the auth dependency raises 401 (detail "Could not
  * validate credentials") on an expired/revoked token, while /me/password and
  * /me/account raise 401 ("Incorrect current password") on a genuinely wrong
@@ -73,12 +73,12 @@ export function isStaleSession(cause: unknown): boolean {
 		(cause as { response?: { status?: number } } | undefined)?.response?.status;
 	if (status !== 401) return false;
 	// The backend wraps every reader rejection in {"error":{"message":...}} with
-	// NO top-level `detail` (round-391 envelope work), surfaced by command() on
+	// NO top-level `detail`, surfaced by command() on
 	// `error.data` and on `error.response._data`. /me/password and /me/account
 	// raise 401 for BOTH a dead session ("Could not validate credentials") and a
 	// genuinely wrong current password ("Incorrect current password") — read the
 	// envelope message (keeping the legacy top-level detail shape too) so a
-	// wrong password is a form-level error, not a silent sign-out (round-393).
+	// wrong password is a form-level error, not a silent sign-out.
 	const data =
 		(cause as { response?: { _data?: unknown } } | undefined)?.response?._data ??
 		(cause as { data?: unknown } | undefined)?.data;
@@ -101,7 +101,7 @@ export function useReaderAuth() {
 	/** Store the auth session from a /api/reader/{login,register} response. */
 	const setSession = (session: ReaderLoginResponse): void => {
 		// A complete session (token + reader) is the whole contract; a 2FA
-		// challenge response (round 364) never reaches here — login() short-
+		// challenge response never reaches here — login() short-
 		// circuits on two_factor_required before it is passed.
 		if (!session.access_token || !session.reader) return;
 		writeStorage(READER_TOKEN_KEY, session.access_token);
@@ -135,7 +135,7 @@ export function useReaderAuth() {
 		if (error.value) {
 			throw toAuthError(error.value, "Login failed");
 		}
-		// 2FA readers (round 364, DEC-401): the first step only proves the
+		// 2FA readers: the first step only proves the
 		// password, so no session is stored here — the caller sees
 		// two_factor_required and drives the second step via login2FA().
 		if (data.value?.two_factor_required) {
@@ -149,7 +149,7 @@ export function useReaderAuth() {
 	};
 
 	/** Complete a 2FA login: exchange the challenge token + authenticator code
-	 *  for the real session (round 364, DEC-401). Caller must hold an mfa_token
+	 * for the real session. Caller must hold an mfa_token
 	 *  from a prior `login()` that reported `two_factor_required`. */
 	const login2FA = async (mfaToken: string, code: string): Promise<ReaderLoginResponse> => {
 		const { readerLogin2FA } = await import("~~/api/reader/auth");
@@ -184,7 +184,7 @@ export function useReaderAuth() {
 
 	/**
 	 * Redeem a password-reset token and adopt the fresh auto-login session
-	 * (DEC-286, TASK-371). The backend bumps token_version on reset, so the
+	 *. The backend bumps token_version on reset, so the
 	 * returned token supersedes any previously stored one — updateToken (like
 	 * the in-account password change) is the right persistence path.
 	 */
@@ -206,7 +206,7 @@ export function useReaderAuth() {
 
 	/**
 	 * Redeem an emailed email-change token and adopt the fresh session
-	 * (DEC-357, TASK-404). The backend swaps the email and bumps token_version,
+	 *. The backend swaps the email and bumps token_version,
 	 * so the returned token supersedes the stored one — updateToken (like
 	 * password reset / change) is the right persistence path. Business-level
 	 * rejection statuses (400 = used/expired/invalid link, 409 = target taken
@@ -224,7 +224,7 @@ export function useReaderAuth() {
 	/**
 	 * Persist a (possibly rotated) session without clearing the rest — used
 	 * after a password change returns a fresh token whose version supersedes
-	 * the stored one (DEC-067, TASK-141). Login/register use setSession.
+	 * the stored one. Login/register use setSession.
 	 */
 	const updateToken = (session: ReaderLoginResponse): void => {
 		// Same completeness guard as setSession — a fresh rotated token is the

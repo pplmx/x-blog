@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Reader notification inbox page (DEC-160, TASK-192).
+ * Reader notification inbox page.
  *
  * Lists a signed-in reader's durable notifications newest-first with read/unread
  * state, kind labels, deep-links to the source (post / post + comment anchor),
@@ -29,19 +29,19 @@ const { isAuthenticated, logout, isStaleSession } = useReaderAuth();
 const router = useRouter();
 
 // Guests and stale sessions land on /login with the return path back to this
-// page (ISS-563): sign in once and come straight back to the inbox instead of
+// page: sign in once and come straight back to the inbox instead of
 // dumping onto the default /bookmarks landing (comments/account parity — the
 // login page only honors same-origin relative redirect values).
 const loginTarget = { path: "/login", query: { redirect: "/notifications" } } as const;
 
-// The nav badge and this inbox share one count (ISS-124, TASK-224): every
+// The nav badge and this inbox share one count: every
 // read/mark-all action re-fetches the shared count from the server (not a
 // locally-decremented guess) so the header badge drop never overwrites a
 // fresher value the layout's 60s poll already fetched.
 const { refresh: refreshBadge } = useNotificationBadge();
 
 // Getter form: an in-app language switch re-evaluates the title/og tags
-// (static object frozen them in the initial language — deep-dive, ISS-372).
+// (static object frozen them in the initial language — deep-dive).
 useSeo(() => ({
 	title: t("notifications.seoTitle"),
 	description: t("notifications.seoDesc"),
@@ -76,7 +76,7 @@ const loadMoreError = ref(false);
 /** True while an older page still exists (there is more to load). */
 const hasMore = computed(() => !loading.value && page.value < totalPages.value);
 
-// Per-kind preferences (DEC-171, TASK-202). A reader who turns a kind off stops
+// Per-kind preferences. A reader who turns a kind off stops
 // receiving it everywhere (inbox row + push), via the server gate.
 const prefs = ref<ReaderNotificationPrefs | null>(null);
 const prefsError = ref(false);
@@ -100,7 +100,7 @@ async function load() {
 		// The inbox is auth-scoped: a 401 means the stored reader token is
 		// expired/invalid, not a transient outage. Drop the stale session and
 		// send the reader back to sign-in (same route as the guest redirect)
-		// instead of surfacing a misleading network error. (ISS-110, TASK-198)
+		// instead of surfacing a misleading network error.
 		if (isStaleSession(cause)) {
 			logout();
 			void router.replace(loginTarget);
@@ -304,11 +304,11 @@ watch(isAuthenticated, (authed) => {
 });
 
 // In-flight + failure state for the mark-read actions so the buttons disable
-// while running and surface a failure instead of failing silently (ISS-133).
+// while running and surface a failure instead of failing silently.
 // The failed action's target is tracked separately from the generic flag so
 // the banner can say WHICH action failed and offer a targeted retry — a
-// failed "mark all read" must not read as a failed inbox load (ISS-611
-// deep-dive: three unrelated failures collapsed into one "network error").
+// failed "mark all read" must not read as a failed inbox load (deep-dive:
+// three unrelated failures collapsed into one "network error").
 const markingIds = ref<Set<number>>(new Set());
 const markingAll = ref(false);
 const markActionFailed = ref(false);
@@ -369,7 +369,7 @@ function retryMarkRead() {
 	markFailedTarget.value = null;
 }
 
-// Deleting an inbox row (DEC-312/TASK-384): the durable inbox had no prune
+// Deleting an inbox row: the durable inbox had no prune
 // path (mark read/read-all only clear the badge), so consumed rows accumulated
 // forever. Delete removes exactly one row with the same in-flight/failure
 // discipline as mark-read — the row leaves the list optimistically on success
@@ -378,7 +378,7 @@ function retryMarkRead() {
 const deletingIds = ref<Set<number>>(new Set());
 const deleteFailed = ref(false);
 // Which row's delete failed (for the targeted retry + distinct copy); null
-// clears the failure banner (ISS-611).
+// clears the failure banner.
 const deleteFailedId = ref<number | null>(null);
 
 async function deleteRow(item: ReaderNotification) {
@@ -437,7 +437,7 @@ function kindIcon(kind: string): string {
 	if (kind === "thread_comment") return "lucide:message-circle";
 	if (kind === "mention") return "lucide:at-sign";
 	if (kind === "series_new_part") return "lucide:layers";
-	// Reader-to-reader follow fan-out (round 365, DEC-403): a followed reader
+	// Reader-to-reader follow fan-out: a followed reader
 	// posted a comment — visually distinct from the thread/reply icons.
 	if (kind === "reader_comment") return "lucide:user-plus";
 	return "lucide:file-text";
@@ -474,7 +474,7 @@ function kindIcon(kind: string): string {
 			</button>
 		</div>
 
-		<!-- Each failure carries its own copy + a targeted retry (ISS-611): a
+		<!-- Each failure carries its own copy + a targeted retry: a
          failed mark-read or delete must not read as a failed inbox load. -->
 		<div
 			v-if="error || markActionFailed || deleteFailed"
@@ -680,7 +680,7 @@ function kindIcon(kind: string): string {
 						</span>
 						<template v-else>{{ t("notifications.markRead") }}</template>
 					</button>
-					<!-- Delete the row (DEC-312/TASK-384): the durable inbox had no prune
+					<!-- Delete the row: the durable inbox had no prune
                path, so consumed rows accumulated forever. A sibling to the link
                (like mark-read) so it never nests in invalid HTML; scoped
                in-flight state disables it while deleting. -->

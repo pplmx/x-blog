@@ -19,9 +19,9 @@ router = APIRouter(prefix="/api/series", tags=["series"])
 @router.get("", response_model=list[schemas.SeriesPublic])
 async def list_series(request: Request, db: AsyncSession = Depends(get_db)):
     # One grouped count query for every series' visible-post count, not a
-    # per-series count (RIL ISS-292). The list is small and computed per
+    # per-series count. The list is small and computed per
     # request instead of cached — only the detail payload (which builds
-    # reading_time per post) is cached (TASK-121).
+    # reading_time per post) is cached.
     counts = await series_service.visible_series_post_counts(db)
     summaries = [
         schemas.SeriesPublic(
@@ -44,7 +44,7 @@ async def get_series(request: Request, slug: str, db: AsyncSession = Depends(get
 
     series = await series_service.get_series_by_slug(db, slug)
     if not series:
-        # Slug-change redirect (round 350): a re-slugged series' old URL points
+        # Slug-change redirect: a re-slugged series' old URL points
         # at the canonical target so the web layer can emit a 301 (see posts).
         redirect_target = await series_service.resolve_slug_redirect(db, "series", slug)
         if redirect_target:
@@ -126,7 +126,7 @@ async def delete_series(
 
 
 class SeriesEpisodeItem(BaseModel):
-    """One series post in admin episode order (DEC-146/TASK-185)."""
+    """One series post in admin episode order."""
 
     id: int
     title: str

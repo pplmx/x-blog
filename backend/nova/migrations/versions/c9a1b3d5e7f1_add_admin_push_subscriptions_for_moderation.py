@@ -1,4 +1,4 @@
-"""add admin_push_subscriptions table for moderation alerts (DEC-080)
+"""add admin_push_subscriptions table for moderation alerts
 
 The blog moderates every comment, and the author only learns a comment is
 pending by re-opening the admin moderation queue. ``admin_push_subscriptions``
@@ -7,9 +7,9 @@ comment is created, deep-linking to the moderation queue.
 
 Deliberately separate from ``push_subscriptions``: reader fan-outs (the
 superuser broadcast) query every ``PushSubscription`` row, so mixing admin rows
-in would leak moderation pushes into reader broadcasts (DEC-080).
+in would leak moderation pushes into reader broadcasts.
 
-Entirely additive (new table, no existing DDL touched, DEC-009 preserved).
+Entirely additive (new table, no existing DDL touched preserved).
 No DB-level FOREIGN KEY on the columns (SQLite alembic can't add FK-carrying
 columns to existing tables; the push_subscriptions/comment_subscriptions
 tables set this convention) — integrity is enforced at the API layer.

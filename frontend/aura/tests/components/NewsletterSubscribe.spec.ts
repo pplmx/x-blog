@@ -1,5 +1,5 @@
 /**
- * NewsletterSubscribe component tests (DEC-351, TASK-401).
+ * NewsletterSubscribe component tests.
  *
  * Verifies the footer "email me new posts" form: it POSTs the entered address
  * once (generic backend response), clears the field and shows success; a

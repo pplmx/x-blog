@@ -1,6 +1,6 @@
 """add GIN index on the post-search tsvector expression (performance)
 
-The Postgres ASCII search path (crud.search_posts, DEC-070/DEC-084) matches
+The Postgres ASCII search path (crud.search_posts) matches
 ``to_tsvector('english', title || ' ' || COALESCE(excerpt, '') || ' ' ||
 content) @@ plainto_tsquery('english', ...)`` but had NO supporting index —
 every search recomputed to_tsvector over the whole posts table, a full-table
@@ -14,7 +14,7 @@ every write transparently.
 Deliberately PG-only and migration-only:
 
 - GIN and to_tsvector are PostgreSQL-only; SQLite has no equivalent, and the
-  SQLite search path is the ILIKE substring branch anyway (DEC-070), so there
+  SQLite search path is the ILIKE substring branch anyway, so there
   is nothing for this migration to do there (a no-op keeps ``alembic upgrade
   head`` on the CI SQLite drift gate green).
 - The index is NOT declared on the model: a ``__table_args__`` Index with a

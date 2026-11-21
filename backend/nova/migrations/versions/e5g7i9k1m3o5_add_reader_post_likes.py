@@ -1,12 +1,11 @@
-"""add reader_post_likes table (reader cloud-synced likes, round 359)
+"""add reader_post_likes table (reader cloud-synced likes)
 
 A brand-new additive table — no existing table is touched, so the
-SQLite-can't-add-FK constraint of DEC-009 does not apply. Holds a signed-in
+SQLite-can't-add-FK constraint of does not apply. Holds a signed-in
 reader's likes of posts (reader_id, post_id) with a DB-level unique on the
 pair so a reader can never like the same post twice — the server-enforced
-"one like per post per reader" that guest localStorage dedup (RIL ISS-038)
-could only approximate on the client. Mirrors ReaderBookmark (DEC-059/
-TASK-132): the reader's reading artifacts (bookmarks, history, now likes)
+"one like per post per reader" that guest localStorage dedup
+could only approximate on the client. Mirrors ReaderBookmark: the reader's reading artifacts (bookmarks, history, now likes)
 persist across devices. No DB-level FK, additive.
 """
 

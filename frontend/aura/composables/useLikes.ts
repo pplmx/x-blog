@@ -1,7 +1,7 @@
 import { ref } from "vue";
 
 // Per-user "liked this post" markers, persisted client-side so a visitor can
-// like a post at most once (RIL ISS-038). Without this, POST /like incremented
+// like a post at most once. Without this, POST /like incremented
 // unconditionally and the count could be inflated unboundedly.
 const STORAGE_KEY = "x_blog_liked_posts";
 

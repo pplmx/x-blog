@@ -1,4 +1,4 @@
-"""Reader-attributed comments contract tests (DEC-062, TASK-135).
+"""Reader-attributed comments contract tests.
 
 Reader accounts give commenters a verified identity: a signed-in reader's
 comment is stamped with their account (client-supplied nickname/email is
@@ -108,7 +108,7 @@ class TestSignedInIdentity:
         optional) must not get their account email published as the public
         comment nickname — the email column is already suppressed for
         reader-attributed comments, so this must not reappear through the
-        nickname fallback (audit finding, ISS-606/TASK-532).
+        nickname fallback (audit finding).
 
         The nickname must be a generated non-PII handle instead, and the
         account email must never ride the response body.
@@ -153,7 +153,7 @@ class TestCommentHistory:
     async def test_pending_comments_shown_as_pending(self, client, db_session):
         """A pending comment is the author's own content — show it with a
         pending status (moderated-blog visibility: the author knows it is in
-        review). (DEC-066 flips the DEC-062 approved-only read path)."""
+        review). (flips the approved-only read path)."""
         post = await _create_post(db_session)
         token = await _token(client)
         created = (await _post_comment(client, post.id, headers=_auth(token))).json()
@@ -195,7 +195,7 @@ class TestCommentHistory:
     async def test_history_pagination_stable_with_tied_timestamps(self, client, db_session):
         """The reader's own history must not repeat/skip across pages when
         several comments share one created_at — crud appends an id tiebreak to
-        the newest-first ordering (round 278, same class as the public list).
+        the newest-first ordering.
         """
         from app import models
 
@@ -231,7 +231,7 @@ class TestCommentHistory:
     async def test_post_subscriptions_pagination_stable_with_tied_timestamps(self, client, db_session):
         """/me/post-subscriptions newest-first paging must not repeat/skip
         threads when follows tie on created_at — crud appends the subscription
-        id tiebreak (round 278, same class as the comment lists).
+        id tiebreak.
         """
         from app import models
         from app.auth import ReaderAccount
@@ -347,7 +347,7 @@ class TestEditOwnComment:
         """Editing an APPROVED comment drops it off the public surface (its
         comment_count falls on the cached posts list) — the write must clear
         the posts-list cache, not leave a stale higher count for the TTL
-        (ISS-608/TASK-529)."""
+        ."""
         from app import repositories as _repos
 
         calls = []
@@ -367,7 +367,7 @@ class TestEditOwnComment:
     async def test_edit_with_blank_content_is_422(self, client, db_session):
         # A whitespace-only edit used to store a blank body (re-entering
         # moderation with an empty blob) — the create path rejects it via
-        # CommentBase; the edit path must agree (round-297 deep-dive).
+        # CommentBase; the edit path must agree.
         post, comment_id, token = await self._own_approved(client, db_session)
         for blank in ("   ", " \t\n "):
             resp = await client.patch(
@@ -379,7 +379,7 @@ class TestEditOwnComment:
 
     async def test_edit_republishes_when_verified_reader_trust_tier_enabled(self, client, db_session, monkeypatch):
         """With AUTO_APPROVE_READER_COMMENTS on, an edit republishes through
-        the same trust tier as a new comment (DEC-098/100) — consistent, not
+        the same trust tier as a new comment — consistent, not
         a second, stricter fence."""
         from app.routers import comments as comments_router
         from app.routers import reader as reader_router
@@ -399,7 +399,7 @@ class TestEditOwnComment:
 
     async def test_edit_of_public_comment_does_not_renotify_thread_followers(self, client, db_session, monkeypatch):
         """Editing an already-public comment never leaves the public surface, so
-        it must not re-fan out thread notifications to followers (ISS-404): the
+        it must not re-fan out thread notifications to followers: the
         follower seen the original publication; a mere edit is not a new one."""
         from app import models
         from app.routers import comments as comments_router
@@ -432,7 +432,7 @@ class TestEditOwnComment:
 
     async def test_edit_of_pending_comment_notifies_on_republish(self, client, db_session, monkeypatch):
         """A comment pending BEFORE the edit genuinely becomes public on the
-        auto-approve republish, so followers ARE notified then (ISS-404 keeps
+        auto-approve republish, so followers ARE notified then (keeps
         the notification for real new publications, only)."""
         from app import models
         from app.routers import comments as comments_router
@@ -522,7 +522,7 @@ class TestDeleteReparentsReplies:
 
 
 class TestAutoApproveVerifiedReaders:
-    """Moderation trust tier (DEC-098, TASK-161): AUTO_APPROVE_READER_COMMENTS."""
+    """Moderation trust tier: AUTO_APPROVE_READER_COMMENTS."""
 
     async def test_verified_reader_comment_publishes_immediately_when_enabled(self, client, db_session, monkeypatch):
         from app.routers import comments as comments_router
@@ -561,7 +561,7 @@ class TestAutoApproveVerifiedReaders:
 
 
 class TestFilterAndPaginate:
-    """My Comments status filter + pagination (DEC-102, TASK-163)."""
+    """My Comments status filter + pagination."""
 
     async def _reader_with_statuses(self, client, db_session, count=3):
         from app.repositories import approve_comment

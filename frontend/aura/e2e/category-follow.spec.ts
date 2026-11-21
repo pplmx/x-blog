@@ -1,5 +1,5 @@
 /**
- * Category follow journey (DEC-140, TASK-182).
+ * Category follow journey.
  *
  * A signed-in reader can follow a category as a durable (cross-device) intent,
  * see + toggle new-post notifications on the category page, and manage/unfollow
@@ -19,7 +19,7 @@ function tokenHeader(token: string): Record<string, string> {
 	return { Authorization: `Bearer ${token}` };
 }
 
-test.describe("Category follow (TASK-182)", () => {
+test.describe("Category follow ", () => {
 	test("guests see no reader-level follow control on the category page", async ({
 		page,
 		request,

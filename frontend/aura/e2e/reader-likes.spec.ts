@@ -1,5 +1,5 @@
 /**
- * Reader cloud-synced likes journey (round 359, DEC-391/TASK-421).
+ * Reader cloud-synced likes journey.
  *
  * Exercises the end-to-end "posts I appreciated" story through the same-origin
  * frontend proxy: a guest like is promoted to a durable cloud row on sign-in

@@ -1,6 +1,6 @@
 /**
  * Nonce-based Content-Security-Policy helper for the SSR HTML response
- * (RIL DEC-057 / TASK-126).
+ *.
  *
  * Nuxt 4 removed the `csp` config option, so the policy is emitted manually: a
  * per-request nonce is attached to every inline `<script>` the renderer
@@ -14,10 +14,10 @@
  * - `style-src 'self' 'unsafe-inline'` — required by KaTeX/Mermaid, which
  *   inject `<style>` tags and `style=""` attributes at runtime in the browser.
  *   Inline styles are a lower risk class than inline scripts (no script
- *   execution), so this is accepted per DEC-057.
+ * execution), so this is accepted per.
  * - All script/css assets are same-origin Vite bundles — there are no
  *   third-party CDN scripts to protect with SRI, so SRI is intentionally out
- *   of scope for this policy (null threat model, recorded in DEC-057).
+ * of scope for this policy (null threat model, recorded).
  */
 
 /** Matches an opening `<script>` tag that is inline (no `src=`) and not yet nonced. */

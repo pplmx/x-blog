@@ -1,5 +1,5 @@
 /**
- * Offline reading (round 384, service-worker runtime cache).
+ * Offline reading.
  *
  * The service worker is registered app-wide in the production build and
  * network-first caches successful same-origin GETs. Visiting a post caches

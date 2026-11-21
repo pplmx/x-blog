@@ -1,4 +1,4 @@
-"""Reader account self-service contract tests (DEC-067, TASK-141).
+"""Reader account self-service contract tests.
 
 A reader who registered (open signup, no email recovery) can maintain their
 own account: update the display name, change the password (verifying the
@@ -87,7 +87,7 @@ class TestReaderProfileUpdate:
 
     async def test_display_name_explicit_null_is_no_update(self, client):
         """display_name `None` = no update (declared on the schema): an explicit
-        null must preserve the existing name, not clear it (DEC-318). Only bio
+        null must preserve the existing name, not clear it. Only bio
         and the public flags clear on explicit null."""
         token = (await _register(client, display_name="Keep")).json()["access_token"]
         resp = await client.patch("/api/reader/me", json={"display_name": None}, headers=_auth(token))
@@ -104,7 +104,7 @@ class TestReaderProfileUpdate:
     async def test_display_name_whitespace_only_rejected_422(self, client):
         """'   ' passed min_length=1 (Pydantic counts raw chars), then stored a
         display_name that rendered as a blank author name on comments/digests —
-        strip at the boundary like every other name field (ISS-456)."""
+        strip at the boundary like every other name field."""
         token = (await _register(client)).json()["access_token"]
         blank = await client.patch("/api/reader/me", json={"display_name": "   "}, headers=_auth(token))
         assert blank.status_code == 422, blank.text
@@ -253,7 +253,7 @@ class TestPushSubscriptionManagement:
     async def test_revoke_huge_subscription_id_is_422(self, client, db_session):
         # >bigint subscription id is rejected at the boundary (IdInt) with a
         # clean 422 on every backend, not a Postgres-only bigint-overflow 500
-        # (backend deep-dive, ISS-448).
+        # (backend deep-dive).
         token = (await _register(client, email="bigid@example.com")).json()["access_token"]
         resp = await client.delete(
             "/api/reader/me/push-subscriptions/99999999999999999999999999",

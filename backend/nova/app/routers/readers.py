@@ -1,6 +1,6 @@
-"""Public reader profile endpoint (DEC-294, TASK-376).
+"""Public reader profile endpoint.
 
-Reader-attributed comments (DEC-062) serialize a verified reader profile
+Reader-attributed comments serialize a verified reader profile
 (id + display_name) on every public comment, but that identity was inert — the
 display name was not clickable. This router gives a reader a public homepage:
 GET /api/readers/{id} returns their public profile (display_name, join-date)
@@ -44,27 +44,27 @@ class ReaderPublicProfile(BaseModel):
 
     id: int
     display_name: str | None = None
-    # Reader-written "about me" (round 352) — plain text, it is their own
+    # Reader-written "about me" — plain text, it is their own
     # public self-description by definition, so it is intentionally public.
     bio: str | None = None
-    # Profile picture (DEC-299/TASK-378) — a public image URL, never PII.
+    # Profile picture — a public image URL, never PII.
     avatar_url: str | None = None
-    # Opt-in public "Liked posts" tab (round 360, DEC-393): carrying the flag
+    # Opt-in public "Liked posts" tab: carrying the flag
     # on the profile lets the page render the tab only when the reader chose
     # to publish their likes (its likes endpoint 404s otherwise — no oracle
     # about what they like or why a tab is absent).
     public_likes: bool = False
-    # Opt-in public "Saved posts" tab (round 363, DEC-399): the profile page
+    # Opt-in public "Saved posts" tab: the profile page
     # renders the tab only when the reader chose to publish their bookmarks
     # (the endpoint 404s otherwise — same no-oracle stance as public_likes).
     public_bookmarks: bool = False
-    # Reader-to-reader follow (round 365, DEC-403): how many readers follow
+    # Reader-to-reader follow: how many readers follow
     # this one — public, like an author-follow count. ``is_following`` is the
     # SIGNED-IN caller's own stance (false for guests / a caller not following),
     # so the profile header can render a Follow/Following button.
     follower_count: int = 0
     is_following: bool = False
-    # Reader-block stance (round 379, DEC-425): whether the SIGNED-IN caller
+    # Reader-block stance: whether the SIGNED-IN caller
     # has blocked this reader (false for guests / a caller who hasn't). Only
     # the caller's own block status — never the target's, never an inbox
     # graph — so the profile header can render a Block/Unblock toggle with the
@@ -116,7 +116,7 @@ async def suggest_mention_readers(
     query: str = Query("", max_length=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """Reader suggestions for the comment box's '@' picker (DEC-324, TASK-390).
+    """Reader suggestions for the comment box's '@' picker.
 
     Declared before ``/{reader_id}`` so "suggest" is never parsed as an id.
     Public like the profile: id + display name + avatar, never the email. An
@@ -143,7 +143,7 @@ async def reader_profile(
     Unknown reader -> 404 (a profile is only reachable by id that a comment
     actually carried, so a missing id is a broken link, not an empty page).
     The optional auth resolution is what lets the header render the caller's
-    own Follow/Following state (round 365) while the page stays fully public.
+    own Follow/Following state while the page stays fully public.
     """
     reader = await reader_service.get_reader_public_profile(db, reader_id)
     if reader is None:
@@ -191,7 +191,7 @@ async def reader_public_likes(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """A reader's liked posts, when they opted to publish them (round 360).
+    """A reader's liked posts, when they opted to publish them.
 
     The first reader-to-reader discovery surface: the profile page renders a
     "Liked posts" tab off this when ReaderPublicProfile.public_likes is true.
@@ -228,7 +228,7 @@ async def reader_public_bookmarks(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """A reader's saved posts, when they opted to publish them (round 363).
+    """A reader's saved posts, when they opted to publish them.
 
     The curated-reading counterpart to the liked-posts discovery surface: the
     profile page renders a "Saved posts" tab off this when

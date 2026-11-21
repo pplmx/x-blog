@@ -89,11 +89,11 @@ async def add_guest_comment_subscription(
     ``needs_opt_in_email=False`` and its confirm state unchanged — so a
     repeated subscribe never idempotently re-confirms and never mails twice.
     A DELIBERATELY UNSUBSCRIBED address (``unsubscribed_at`` set) starts a
-    FRESH consent cycle (TASK-485/ISS-561, mirroring the newsletter round 393):
+    FRESH consent cycle (mirroring the newsletter):
     token rotated, consent reset, ``needs_opt_in_email=True`` so the endpoint
     sends one new double-opt-in email and the old link can never re-activate.
     ``email`` is the caller's already-lowercased value; token is a fresh opaque
-    secret (no-enumeration). ``digest_weekly`` (round 381, DEC-429) is the
+    secret (no-enumeration). ``digest_weekly`` is the
     follower's cadence; a plain resubscribe never overrides the stored choice,
     but a re-activation re-records it like the newsletter does.
     """
@@ -142,7 +142,7 @@ async def get_guest_comment_subscription_by_token(
 async def confirm_guest_comment_subscription(db: AsyncSession, token: str) -> bool:
     """Flip a guest thread-subscription to confirmed via its token. Idempotent.
 
-    Consent restart gate (TASK-485/ISS-561, mirroring the newsletter round 393):
+    Consent restart gate (mirroring the newsletter):
     an address the holder explicitly unsubscribed must NOT be re-activated by
     replaying its ORIGINAL confirmation link — re-activation starts over via a
     fresh subscribe (fresh token + fresh double-opt-in email). The gate raises
@@ -169,7 +169,7 @@ async def unsubscribe_guest_comment_subscription(db: AsyncSession, token: str) -
     if row.is_confirmed:
         row.is_confirmed = False
         row.confirmed_at = None
-        # Consent-restart marker (TASK-485/ISS-561): the holder cancelled it, so
+        # Consent-restart marker: the holder cancelled it, so
         # a replayed confirm link must never flip this back on.
         row.unsubscribed_at = datetime.now(UTC).replace(tzinfo=None)
         await db.commit()
@@ -182,8 +182,8 @@ async def list_confirmed_guest_comment_subscribers(
     """Confirmed guest followers of a post's thread (for the approval fan-out).
 
     Only per-comment rows are returned: a follower on the weekly digest cadence
-    (``digest_weekly``, DEC-429) is excluded here because the weekly job covers
-    them, so exactly one channel serves a subscriber (DEC-355 parity).
+    (``digest_weekly``) is excluded here because the weekly job covers
+    them, so exactly one channel serves a subscriber parity.
     """
     return list(
         (
@@ -200,7 +200,7 @@ async def list_confirmed_guest_comment_subscribers(
 
 async def set_guest_thread_digest(db: AsyncSession, token: str, digest_weekly: bool) -> bool:
     """Flip a guest thread-subscription's cadence (weekly vs per-comment) via its
-    token (round 381, DEC-429). Idempotent; False on an unknown token (no oracle)."""
+    token. Idempotent; False on an unknown token (no oracle)."""
     row = await get_guest_comment_subscription_by_token(db, token)
     if row is None:
         return False
@@ -212,7 +212,7 @@ async def set_guest_thread_digest(db: AsyncSession, token: str, digest_weekly: b
 
 async def list_confirmed_guest_thread_digest_subs(db: AsyncSession) -> list[models.GuestCommentSubscription]:
     """Every confirmed guest thread-follower on the weekly cadence, for the
-    weekly comment-digest job (round 381, DEC-429)."""
+    weekly comment-digest job."""
     return list(
         (
             await db.execute(
@@ -234,7 +234,7 @@ async def list_reader_comment_subscriptions(
     draft/private/scheduled must not leak on this read path — it simply stops
     appearing (the follow row is kept; the reader can re-see it, and
     unsubscribe, once the post is public again). Visibility is pushed into SQL
-    so pages are stable; returns (items, total) with bounded paging (ISS-142).
+    so pages are stable; returns (items, total) with bounded paging.
     Newest follow first.
     """
     now = utc_now_naive()
@@ -254,7 +254,7 @@ async def list_reader_comment_subscriptions(
                 query.options(joinedload(models.Post.category), joinedload(models.Post.tags))
                 .order_by(
                     models.CommentSubscription.created_at.desc(),
-                    models.CommentSubscription.id.desc(),  # id tiebreak (round 278)
+                    models.CommentSubscription.id.desc(),  # id tiebreak
                 )
                 .offset((page - 1) * limit)
                 .limit(limit)

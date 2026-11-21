@@ -1,5 +1,5 @@
 /**
- * Admin post-editor author assignment (DEC-359, TASK-406).
+ * Admin post-editor author assignment.
  *
  * The editor's author picker lets any admin attribute a post to another
  * public writer (or keep the default "me"): a post created through the editor
@@ -35,7 +35,7 @@ async function getMe(request: APIRequestContext, token: string): Promise<AdminUs
 	return (await res.json()) as AdminUser;
 }
 
-test.describe("Admin editor author assignment (DEC-359)", () => {
+test.describe("Admin editor author assignment ", () => {
 	test.skip(
 		() => !!process.env.CI_RESTRICTED,
 		"full journey requires an admin publish on the live backend",

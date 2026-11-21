@@ -1,8 +1,8 @@
 /**
- * Account settings page tests (DEC-067, TASK-142).
+ * Account settings page tests.
  *
  * Four sections: edit display name (PATCH + setProfile), change sign-in email
- * (POST request + emailed link, DEC-357/TASK-404), rotate password (POST +
+ * (POST request + emailed link), rotate password (POST +
  * updateToken with the fresh session), and push-device management (list +
  * revoke with confirm). Logged-out visitors see a sign-in prompt.
  *
@@ -76,11 +76,11 @@ const mockFetchReaderSeriesFollows = vi.fn();
 const mockFetchReaderAuthorFollows = vi.fn();
 const mockUnfollowReaderAuthor = vi.fn();
 const mockSetAuthorFollowNotify = vi.fn();
-// Reader-to-reader follow (round 365, DEC-403) — no notify toggle yet, so
+// Reader-to-reader follow — no notify toggle yet, so
 // only the list + unfollow are wired.
 const mockFetchReaderFollows = vi.fn();
 const mockUnfollowReader = vi.fn();
-// Reader blocks (round 379, DEC-425) — list + one-click unblock.
+// Reader blocks — list + one-click unblock.
 const mockFetchReaderBlocks = vi.fn();
 const mockUnblockReader = vi.fn();
 const mockUnfollowReaderSeries = vi.fn();
@@ -151,7 +151,7 @@ vi.mock("../../api/public/taxonomy", () => ({
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },
 	// Render the `to` prop as data-to so tests can assert link targets (e.g.
-	// a followed category deep-links to the home filter, ISS-276).
+	// a followed category deep-links to the home filter).
 	NuxtLink: {
 		props: ["to"],
 		template: '<a class="nuxt-link-stub" :data-to="JSON.stringify(to)"><slot/></a>',
@@ -207,7 +207,7 @@ describe("Account settings page", () => {
 	});
 
 	it("shows a load-failure message with Retry instead of the empty state when the list fetch fails", async () => {
-		// A network failure must not masquerade as "no devices" (RIL ISS-286):
+		// A network failure must not masquerade as "no devices":
 		// the section renders the error + a Retry action, never the empty copy.
 		isAuthenticated.value = true;
 		mockFetchPushSubscriptions.mockRejectedValueOnce(new Error("network down"));
@@ -287,7 +287,7 @@ describe("Account settings page", () => {
 		const wrapper = await mountPage();
 		// Scope to the push-devices section (its own "移除"/revoke button) —
 		// NOT a global positional index, which the avatar "上传头像" button in
-		// the profile section would shift (DEC-299/TASK-378).
+		// the profile section would shift.
 		const devices = wrapper.findAll("section").find((s) => s.text().includes("推送设备"));
 		const revokeBtn = devices?.findAll("button").find((b) => b.text() === "移除");
 		await revokeBtn?.trigger("click");
@@ -298,7 +298,7 @@ describe("Account settings page", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("tracks each device's revoke in flight independently and guards duplicates (round 258)", async () => {
+	it("tracks each device's revoke in flight independently and guards duplicates ", async () => {
 		// A single `revokingId` slot let device 2's revoke COMPLETE while
 		// device 1's was still running and clear the shared marker —
 		// re-enabling device 1's (destructive) revoke button mid-flight. The
@@ -355,7 +355,7 @@ describe("Account settings page", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("guards a second device-prefs toggle while one is in flight (round 258)", async () => {
+	it("guards a second device-prefs toggle while one is in flight ", async () => {
 		// The prefs checkbox/select disable on `savingPrefsId !== null`, but a
 		// change queued in the same tick passes the disabled attribute — the
 		// handler guard is what single-flights the write; without it a second
@@ -476,7 +476,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	it("flips the new-post toggle optimistically, before the server round-trip (round 292)", async () => {
+	it("flips the new-post toggle optimistically, before the server round-trip ", async () => {
 		// The checkbox is `:checked`-bound to the device model; a pessimistic
 		// write (model mutated only after the response) made the control visually
 		// unsnap to its old value for the whole flight. Assert the model moves
@@ -502,7 +502,7 @@ describe("Account settings page", () => {
 		await flushPromises();
 	});
 
-	it("rolls the follow-category select back when the PATCH fails (round 292)", async () => {
+	it("rolls the follow-category select back when the PATCH fails ", async () => {
 		// The optimistic mirror must not leave the select pinned to a category
 		// the server rejected — revert to the pre-change value.
 		isAuthenticated.value = true;
@@ -584,7 +584,7 @@ describe("Account settings page", () => {
 		);
 	});
 
-	it("opts the reader into the public liked-posts tab (round 360)", async () => {
+	it("opts the reader into the public liked-posts tab ", async () => {
 		isAuthenticated.value = true;
 		reader.value = {
 			id: 1,
@@ -623,7 +623,7 @@ describe("Account settings page", () => {
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ public_likes: true }));
 	});
 
-	it("opts the reader into the public saved-posts tab (round 363)", async () => {
+	it("opts the reader into the public saved-posts tab ", async () => {
 		isAuthenticated.value = true;
 		reader.value = {
 			id: 1,
@@ -661,7 +661,7 @@ describe("Account settings page", () => {
 		expect(setProfile).toHaveBeenCalledWith(expect.objectContaining({ public_bookmarks: true }));
 	});
 
-	it("clearing the display name does not disable Save (ISS-127)", async () => {
+	it("clearing the display name does not disable Save ", async () => {
 		isAuthenticated.value = true;
 		mockUpdateMyProfile.mockResolvedValue({
 			id: 1,
@@ -690,8 +690,8 @@ describe("Account settings page", () => {
 		});
 	});
 
-	it("explains an empty-name submit instead of silently doing nothing (round 264)", async () => {
-		// Save stays enabled on an empty field (ISS-127), so a click or Enter
+	it("explains an empty-name submit instead of silently doing nothing ", async () => {
+		// Save stays enabled on an empty field, so a click or Enter
 		// with nothing typed used to be a silent no-op with zero feedback. The
 		// form must surface the reason inline and recover once the reader types.
 		isAuthenticated.value = true;
@@ -718,7 +718,7 @@ describe("Account settings page", () => {
 		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 	});
 
-	describe("avatar (DEC-299, TASK-378)", () => {
+	describe("avatar ", () => {
 		it("renders the reader's avatar and a Remove action when one is set", async () => {
 			isAuthenticated.value = true;
 			reader.value = {
@@ -801,7 +801,7 @@ describe("Account settings page", () => {
 			const wrapper = await mountPage();
 
 			// Removing the avatar is irreversible — the action now confirms
-			// first (round-418 audit), so the test accepts it like the sibling
+			// first, so the test accepts it like the sibling
 			// revoke/delete confirm flows.
 			const confirmSpy = vi.fn(() => true);
 			vi.stubGlobal("confirm", confirmSpy);
@@ -973,7 +973,7 @@ describe("Account settings page", () => {
 		vi.unstubAllGlobals();
 	});
 
-	describe("email change (DEC-357, TASK-404)", () => {
+	describe("email change ", () => {
 		function emailSection(wrapper: VueWrapper) {
 			return sectionByText(wrapper, "修改登录邮箱");
 		}
@@ -1076,7 +1076,7 @@ describe("Account settings page", () => {
 		it("explains when the typed address is the current one (backend 400)", async () => {
 			// The backend answers 400 ("new email must differ from the current")
 			// when the reader typed their own address — that must not be billed as
-			// SMTP/infrastructure trouble (round-342 review).
+			// SMTP/infrastructure trouble.
 			isAuthenticated.value = true;
 			mockRequestEmailChange.mockRejectedValue({ status: 400 });
 			const wrapper = await mountPage();
@@ -1103,14 +1103,14 @@ describe("Account settings page", () => {
 			expect(wrapper.text()).toContain("该邮箱已被其他账号使用");
 
 			// A stale error must not nag over a now-fixed input (mirrors the
-			// display-name nameError watch, round-342 review).
+			// display-name nameError watch review).
 			await newEmail.setValue("free@example.com");
 			await flushPromises();
 			expect(wrapper.text()).not.toContain("该邮箱已被其他账号使用");
 		});
 	});
 
-	describe("delete account (DEC-106, TASK-165)", () => {
+	describe("delete account ", () => {
 		it("deletes the account after confirming the password", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
@@ -1179,12 +1179,12 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("data export (TASK-175)", () => {
+	describe("data export ", () => {
 		beforeEach(() => {
 			// A fake download anchor's click() must not trigger a real page
 			// navigation: happy-dom's frame navigator can't build a URL from a
 			// blob: href and logs a noisy "URL is not a constructor" on every
-			// export test (round 258 test-hygiene fix — the production flow is
+			// export test (test-hygiene fix — the production flow is
 			// correct, this silences the environment's navigation attempt).
 			vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 		});
@@ -1247,7 +1247,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed series (DEC-134, TASK-179)", () => {
+	describe("followed series ", () => {
 		function mockFollows(items: Array<{ id: number; title: string; slug: string }> = []) {
 			mockFetchReaderSeriesFollows.mockResolvedValue({ items, total: items.length });
 		}
@@ -1290,7 +1290,7 @@ describe("Account settings page", () => {
 			vi.unstubAllGlobals();
 		});
 
-		it("tracks each series unfollow in flight independently (round 258)", async () => {
+		it("tracks each series unfollow in flight independently ", async () => {
 			// Same single-slot race as the device revoke: row 2's unfollow
 			// completing must not clear row 1's in-flight marker / re-enable its
 			// button. Per-row Set fixes it; the old `seriesUnfollowId !== null`
@@ -1340,7 +1340,7 @@ describe("Account settings page", () => {
 			vi.unstubAllGlobals();
 		});
 
-		it("toggles new-part notifications for a followed series (TASK-181)", async () => {
+		it("toggles new-part notifications for a followed series ", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderSeriesFollows.mockResolvedValue({
@@ -1418,7 +1418,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed writers (round 353, author follows)", () => {
+	describe("followed writers ", () => {
 		function mockWriters(
 			items: Array<{ author_id: number; display_name: string; notify: boolean }> = [],
 		) {
@@ -1486,7 +1486,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed readers (round 365, DEC-403)", () => {
+	describe("followed readers ", () => {
 		function mockReaders(
 			items: Array<{
 				reader_id: number;
@@ -1554,7 +1554,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("blocked readers (round 379, DEC-425)", () => {
+	describe("blocked readers ", () => {
 		function mockBlocks(
 			items: Array<{
 				reader_id: number;
@@ -1622,7 +1622,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed categories (DEC-140, TASK-182)", () => {
+	describe("followed categories ", () => {
 		function mockCatFollows(items: Array<{ id: number; name: string; notify: boolean }> = []) {
 			mockFetchReaderCategoryFollows.mockResolvedValue({ items, total: items.length });
 		}
@@ -1679,7 +1679,7 @@ describe("Account settings page", () => {
 			if (!section) throw new Error("categories section not found");
 
 			// The followed-category name links to the homepage's category filter
-			// (which honors /?category_id=X, RIL ISS-276) — not a query-only
+			// (which honors /?category_id=X) — not a query-only
 			// location that would resolve to the account page itself.
 			const link = section?.find("a");
 			const to = link?.attributes("data-to") ?? link?.props("to");
@@ -1689,7 +1689,7 @@ describe("Account settings page", () => {
 			});
 		});
 
-		it("toggles notifications for a followed category (TASK-182)", async () => {
+		it("toggles notifications for a followed category ", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderCategoryFollows.mockResolvedValue({
@@ -1720,7 +1720,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed tags (DEC-195, TASK-215)", () => {
+	describe("followed tags ", () => {
 		function mockTagFollows(items: Array<{ id: number; name: string; notify: boolean }> = []) {
 			mockFetchReaderTagFollows.mockResolvedValue({ items, total: items.length });
 		}
@@ -1763,7 +1763,7 @@ describe("Account settings page", () => {
 			vi.unstubAllGlobals();
 		});
 
-		it("toggles notifications for a followed tag (TASK-215)", async () => {
+		it("toggles notifications for a followed tag ", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
 			mockFetchReaderTagFollows.mockResolvedValue({
@@ -1808,7 +1808,7 @@ describe("Account settings page", () => {
 			expect(wrapper.text()).toContain("保存失败，请稍后再试");
 		});
 
-		it("surfaces the backend's specific reason when the profile save is rejected (round 396)", async () => {
+		it("surfaces the backend's specific reason when the profile save is rejected ", async () => {
 			// The shared apiErrorMessage prefers the backend envelope message —
 			// e.g. a 429 rate-limit explains WHEN to retry instead of a blind
 			// "saved failed" that deepens the lockout.
@@ -1866,7 +1866,7 @@ describe("Account settings page", () => {
 			// Scope to the device row's revoke control rather than a whole-page
 			// button index (the email section added buttons before this section).
 			// Fail loudly if the control isn't located so a mis-scoped selector
-			// can't make the assertion pass vacuously (round-342 review).
+			// can't make the assertion pass vacuously.
 			const devices = sectionByText(wrapper, "推送设备");
 			const revokeBtn = devices.findAll("button").find((b) => b.text() === "移除");
 			if (revokeBtn === undefined) throw new Error("device revoke button not found");
@@ -1947,7 +1947,7 @@ describe("Account settings page", () => {
 		});
 	});
 
-	describe("followed discussions (DEC-078, TASK-150)", () => {
+	describe("followed discussions ", () => {
 		it("shows the empty state when subscribing to no discussions", async () => {
 			isAuthenticated.value = true;
 			mockFetchPushSubscriptions.mockResolvedValue({ items: [], total: 0 });
@@ -2240,7 +2240,7 @@ describe("Account settings page", () => {
 	});
 });
 
-describe("two-factor authentication section (round 364, DEC-401)", () => {
+describe("two-factor authentication section ", () => {
 	const baseReader = {
 		id: 1,
 		email: "r@example.com",
@@ -2284,7 +2284,7 @@ describe("two-factor authentication section (round 364, DEC-401)", () => {
 		expect(wrapper.text()).toContain("JBSWY3DPEHPK3PXP");
 
 		// The password field ships in the enrollment view too — a session alone
-		// must not be able to register a factor (security review, DEC-401).
+		// must not be able to register a factor (security review).
 		// Scoped to the 2FA section: the password-change section above also has
 		// a current-password input.
 		const twoFactorSection = wrapper.findAll("section").find((s) => s.text().includes("两步验证"));

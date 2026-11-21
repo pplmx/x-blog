@@ -1,4 +1,4 @@
-"""Reader email-change with verification contract tests (DEC-357, TASK-404).
+"""Reader email-change with verification contract tests.
 
 Account management is otherwise complete (display name, avatar, password
 rotation, locale, data export, account delete) but the login email is
@@ -313,7 +313,7 @@ async def test_confirm_409_when_target_taken_while_pending(client, db_session, s
 async def test_request_send_refused_is_503_and_nothing_persisted(client, db_session, smtp_sink, monkeypatch):
     """A refused RFC-level send (e.g. the address provably bounces) is a 503 and
     nothing is staged — the docstring's core "nothing is persisted then" claim
-    (round-342 review)."""
+    ."""
     token = await _register(client, "alice@example.com")
 
     def _refuse(*_args, **_kwargs) -> bool:

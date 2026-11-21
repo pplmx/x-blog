@@ -44,7 +44,7 @@ export interface SeoPostData {
 	updated_at: string;
 	/** Scheduled publication time (null for immediate posts). When set, it is
 	 *  the TRUE publish time — JSON-LD/og datePublished must report it, never
-	 *  the draft's created_at (RIL ISS-264). */
+	 * the draft's created_at. */
 	publish_at?: string | null;
 	cover_image: string | null;
 	category: { id: number; name: string } | null;
@@ -56,7 +56,7 @@ export interface SeoPostData {
  *  publish_at (crud.is_publicly_visible), so this is when readers actually got
  *  the article — reporting the draft's created_at would mis-date it. Delegates
  *  to the shared apiDate helper so list cards, pages and SEO all draw the same
- *  line (RIL ISS-264/ISS-265). */
+ * line. */
 export function effectivePublishAt(post: Pick<SeoPostData, "publish_at" | "created_at">): string {
 	return effectivePublishTs(post);
 }
@@ -218,7 +218,7 @@ export function buildArticleJsonLd(
 			},
 		},
 		// schema.org needs an explicit-zone instant; naive-UTC wire timestamps
-		// get a "Z" suffix here (toIsoUtc), not in display code (round-429).
+		// get a "Z" suffix here (toIsoUtc), not in display code.
 		datePublished: toIsoUtc(effectivePublishAt(post)),
 		dateModified: toIsoUtc(post.updated_at),
 		mainEntityOfPage: {
@@ -277,14 +277,14 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 	const path = options.path || "/";
 	// Paginated views canonicalize the CURRENT page — page 1 keeps the
 	// query-free path, later pages carry ?page=N so a page-2 share link is not
-	// merged onto the index page's canonical (round 397).
+	// merged onto the index page's canonical.
 	const page = options.pagination?.page ?? 1;
 	const canonicalPath = options.pagination && page > 1 ? options.pagination.pagePath(page) : path;
 	const canonicalUrl = buildCanonicalUrl(canonicalPath, siteUrl);
 	const imageUrl = buildAbsoluteImageUrl(options.image || siteConfig.image, siteUrl);
 	const description = options.description || siteConfig.description;
 	const isArticle = !!options.article;
-	// og:locale follows the UI language when the caller passes it (round 397):
+	// og:locale follows the UI language when the caller passes it:
 	// an English reader sharing any page advertises en_US, not the zh_CN
 	// default. The localized default keywords follow the same locale.
 	const ogLocale = options.locale ?? siteConfig.locale;
@@ -339,7 +339,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		}
 	}
 
-	// Pagination rel-links (round 397): on an indexable multi-page feed Google
+	// Pagination rel-links: on an indexable multi-page feed Google
 	// treats rel=prev/next as boundary signals that keep deeper pages in the
 	// crawl. Page 1 has no prev; the last page has no next.
 	const links = [buildCanonicalLink(canonicalUrl)];

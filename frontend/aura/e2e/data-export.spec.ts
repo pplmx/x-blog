@@ -1,5 +1,5 @@
 /**
- * Reader data-export journey (DEC-126, TASK-175).
+ * Reader data-export journey.
  *
  * A signed-in reader can download their personal data (account, bookmarks,
  * comments, history) as a JSON file from the account page, after confirming.
@@ -14,7 +14,7 @@ function freshEmail(): string {
 	return `reader-${Date.now()}-${emailCounter}@example.com`;
 }
 
-test.describe("Reader data export (TASK-175)", () => {
+test.describe("Reader data export ", () => {
 	test("signed-in reader downloads the JSON bundle", async ({ page, request }) => {
 		const email = freshEmail();
 		const reg = await request.post("/api/reader/register", {
