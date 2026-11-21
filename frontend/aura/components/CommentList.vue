@@ -155,7 +155,6 @@
 								v-if="comment.reader"
 								:url="comment.reader.avatar_url"
 								:name="comment.reader.display_name"
-								:alt="comment.reader.display_name || 'avatar'"
 								size="w-5 h-5"
 							/>
 							<span class="font-medium text-sm text-gray-900 dark:text-gray-100">
@@ -378,7 +377,7 @@
 							<img
 								v-if="reply.reader && reply.reader.avatar_url"
 								:src="reply.reader.avatar_url"
-								:alt="reply.reader.display_name || 'avatar'"
+								alt=""
 								class="w-5 h-5 rounded-full object-cover"
 							/>
 							<span class="font-medium text-sm text-gray-900 dark:text-gray-100">
