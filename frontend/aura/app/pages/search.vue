@@ -973,20 +973,20 @@ function goToPage(pg: number | string) {
 					<div
 						v-for="post in activePosts"
 						:key="post.id"
-						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+						class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
 					>
 						<NuxtLink :to="`/posts/${post.slug}`" class="text-xl font-bold hover:text-blue-600">
 							{{ post.title }}
 						</NuxtLink>
 						<p
 							v-if="post.snippet"
-							class="text-gray-600 mt-2 line-clamp-3"
+							class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3"
 							v-html="sanitizeHtml(post.snippet)"
 						/>
-						<p v-else-if="post.excerpt" class="text-gray-600 mt-2 line-clamp-2">
+						<p v-else-if="post.excerpt" class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">
 							{{ post.excerpt }}
 						</p>
-						<div class="flex gap-4 mt-3 text-sm text-gray-500">
+						<div class="flex gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
 							<span v-if="post.category">
 								{{ post.category.name }}
 							</span>
@@ -1004,7 +1004,7 @@ function goToPage(pg: number | string) {
 					<div
 						v-for="comment in activeComments"
 						:key="comment.id"
-						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+						class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
 					>
 						<NuxtLink
 							:to="comment.post ? `/posts/${comment.post.slug}#comment-${comment.id}` : '#'"
@@ -1017,11 +1017,11 @@ function goToPage(pg: number | string) {
                  through sanitizeHtml like the post snippets. -->
 						<p
 							v-if="comment.snippet"
-							class="text-gray-600 mt-2 line-clamp-3"
+							class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3"
 							v-html="sanitizeHtml(comment.snippet)"
 						/>
-						<p v-else class="text-gray-600 mt-2 line-clamp-3">{{ comment.content }}</p>
-						<div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+						<p v-else class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">{{ comment.content }}</p>
+						<div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
 							<span class="inline-flex items-center gap-1">
 								<Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />
 								{{ commentAuthorName(comment, t("components.commentList.readerNoName")) }}
@@ -1045,7 +1045,7 @@ function goToPage(pg: number | string) {
 					<div
 						v-for="item in activeAll"
 						:key="`${item.type}-${item.id}`"
-						class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+						class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
 					>
 						<div class="flex items-center gap-2 mb-2">
 							<span
@@ -1061,7 +1061,7 @@ function goToPage(pg: number | string) {
 						</NuxtLink>
 						<p
 							v-if="item.snippet"
-							class="text-gray-600 mt-2 line-clamp-3"
+							class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3"
 							v-html="sanitizeHtml(item.snippet)"
 						/>
 					</div>
@@ -1081,7 +1081,7 @@ function goToPage(pg: number | string) {
 								? 'cursor-default text-gray-400'
 								: pg === activeResult!.pagination.page
 									? 'bg-blue-600 text-white cursor-default'
-									: 'border hover:bg-gray-50',
+									: 'border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800',
 						]"
 						@click="pg !== '…' && pg !== activeResult!.pagination.page && goToPage(pg)"
 					>

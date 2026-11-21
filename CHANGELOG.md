@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌗 **search results read as cards in both themes** — the post, comment and combined result rows
+  were a bare `gray-100` outline without dark variants; they now use the same raised surface
+  (`bg-white dark:bg-gray-900`, `border-gray-200 dark:border-gray-800`) as the rest of the site,
+  with dark snippets, metadata and pagination buttons.
 - 🌙 **loading skeletons stay legible in dark mode** — the archive, tags, categories and search
   placeholders used a light `gray-100` block that flashed near-white on a dark page; they now pair it
   with `dark:bg-gray-800`.
