@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🐛 **the share row wraps on small phones instead of overflowing** — six 44px share targets plus the
   分享到 label could not fit a 320px viewport, so the row ran past the article edge and widened the
   document to 329px. It now wraps with a tighter gap below `sm`, keeping every target on screen.
+- ✨ **hero stats use an even 2×2 grid on phones** — the four totals used to wrap as three-plus-one
+  under the hero, leaving 总评论数 orphaned on its own row. Below `sm` they now sit in two even
+  columns, four across above, and the stats-failure notice spans the full width.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its

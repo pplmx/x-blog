@@ -415,13 +415,15 @@ const stats = computed(() => {
 						{{ t("home.hero.aboutAction") }}
 					</NuxtLink>
 				</div>
-				<!-- Hero stat strip: wrap below sm so four 6-digit locale-grouped
-             numbers + CJK labels never overflow a 375px phone. -->
-				<div class="flex flex-wrap gap-x-8 gap-y-4 mt-8 pt-8 border-t border-white/15">
+				<!-- Hero stat strip: two even columns on phones (four 6-digit
+             locale-grouped numbers + CJK labels), four across from sm up. -->
+				<div
+					class="grid grid-cols-2 gap-x-6 gap-y-4 mt-8 pt-8 border-t border-white/15 sm:grid-cols-4 sm:gap-x-8"
+				>
 					<!-- A stats fetch failure must not read as "this blog has 0 posts":
                show the strip only when the totals are real. -->
 					<template v-if="statsFailed">
-						<div class="text-sm text-white/70">
+						<div class="text-sm text-white/70 col-span-2 sm:col-span-4">
 							<Icon icon="lucide:alert-triangle" class="w-4 h-4 inline -mt-0.5 mr-1" />
 							<button
 								type="button"
