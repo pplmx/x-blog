@@ -692,7 +692,8 @@ describe("Post Detail Page", () => {
 			const ldScripts = callArg.script.filter(
 				(s: { type: string }) => s.type === "application/ld+json",
 			);
-			expect(ldScripts.length).toBe(1);
+			// BlogPosting plus the BreadcrumbList trail (Home › Category › post).
+			expect(ldScripts.length).toBe(2);
 			const jsonLd = JSON.parse(ldScripts[0].textContent);
 			expect(jsonLd["@context"]).toBe("https://schema.org");
 			expect(jsonLd["@type"]).toBe("BlogPosting");
@@ -700,6 +701,14 @@ describe("Post Detail Page", () => {
 			expect(jsonLd.datePublished).toBe("2024-01-15T10:30:00Z");
 			expect(jsonLd.author.name).toBe("X-Blog");
 			expect(jsonLd.articleSection).toBe("Tech");
+
+			const breadcrumb = JSON.parse(ldScripts[1].textContent);
+			expect(breadcrumb["@type"]).toBe("BreadcrumbList");
+			expect(breadcrumb.itemListElement.map((item: { name: string }) => item.name)).toEqual([
+				"首页",
+				"Tech",
+				"Test Article Post",
+			]);
 		});
 	});
 

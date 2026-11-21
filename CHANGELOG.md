@@ -1760,6 +1760,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (the API accepts years 2000–2100 and months 1–12) rendered the generic failure state with a Retry
   button that could never succeed. The period is now validated before fetching, so a stale or
   hand-edited link lands on the empty-period copy with the existing back-to-archive link.
+- ✨ **articles carry a breadcrumb trail for search engines** — post pages emitted only the
+  `BlogPosting` JSON-LD, so results showed a bare URL. They now also emit a `BreadcrumbList`
+  (Home › Category › Article, using the reader's localized Home label), with the category crumb
+  linking to `/categories?category_id=…`.
 
 ## [0.1.0] - 2026-09-09
 

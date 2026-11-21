@@ -14,6 +14,7 @@ import { buildSiteJsonLd } from "../../composables/seo-jsonld.ts";
 import {
 	buildAbsoluteImageUrl,
 	buildArticleJsonLd,
+	buildBreadcrumbJsonLd,
 	buildCanonicalLink,
 	buildCanonicalUrl,
 	buildOgImageUrl,
@@ -241,6 +242,28 @@ describe("buildArticleJsonLd", () => {
 	it("handles empty tags array", () => {
 		const jsonLd = buildArticleJsonLd(mockPostNoCover, options);
 		expect(jsonLd.keywords).toBe("");
+	});
+});
+
+describe("buildBreadcrumbJsonLd", () => {
+	it("numbers crumbs from 1 and keeps their order", () => {
+		const jsonLd = buildBreadcrumbJsonLd([
+			{ name: "Home", url: "https://example.com/" },
+			{ name: "Tech", url: "https://example.com/categories?category_id=1" },
+			{ name: "Post", url: "https://example.com/posts/post" },
+		]);
+		expect(jsonLd["@context"]).toBe("https://schema.org");
+		expect(jsonLd["@type"]).toBe("BreadcrumbList");
+		expect(jsonLd.itemListElement).toEqual([
+			{ "@type": "ListItem", position: 1, name: "Home", item: "https://example.com/" },
+			{
+				"@type": "ListItem",
+				position: 2,
+				name: "Tech",
+				item: "https://example.com/categories?category_id=1",
+			},
+			{ "@type": "ListItem", position: 3, name: "Post", item: "https://example.com/posts/post" },
+		]);
 	});
 });
 
@@ -671,7 +694,8 @@ describe("usePostSeo composable", () => {
 		const ldScripts = callArg.script.filter(
 			(s: { type: string }) => s.type === "application/ld+json",
 		);
-		expect(ldScripts.length).toBe(1);
+		// BlogPosting plus the BreadcrumbList trail (mockPost has a category).
+		expect(ldScripts.length).toBe(2);
 
 		const jsonLd = JSON.parse(ldScripts[0].textContent);
 		expect(jsonLd["@type"]).toBe("BlogPosting");
@@ -683,6 +707,42 @@ describe("usePostSeo composable", () => {
 		expect(jsonLd.keywords).toBe("React, TypeScript");
 		expect(jsonLd.image).toBe("https://example.com/cover.jpg");
 		expect(jsonLd.mainEntityOfPage["@id"]).toBe("https://my-blog.com/posts/test-article-post");
+	});
+
+	it("emits a BreadcrumbList trail Home › Category › Article", () => {
+		usePostSeo(mockPost, { homeLabel: "首页" });
+
+		const callArg = useHeadSpy.mock.calls[0][0];
+		const ldScripts = callArg.script.filter(
+			(s: { type: string }) => s.type === "application/ld+json",
+		);
+		const breadcrumb = JSON.parse(ldScripts[1].textContent);
+		expect(breadcrumb["@type"]).toBe("BreadcrumbList");
+		expect(breadcrumb.itemListElement).toEqual([
+			{ "@type": "ListItem", position: 1, name: "首页", item: "https://my-blog.com/" },
+			{
+				"@type": "ListItem",
+				position: 2,
+				name: "Tech",
+				item: "https://my-blog.com/categories?category_id=1",
+			},
+			{
+				"@type": "ListItem",
+				position: 3,
+				name: "Test Article Post",
+				item: "https://my-blog.com/posts/test-article-post",
+			},
+		]);
+	});
+
+	it("omits the breadcrumb script when there is no trail and no category", () => {
+		usePostSeo(mockPostNoCover);
+
+		const callArg = useHeadSpy.mock.calls[0][0];
+		const ldScripts = callArg.script.filter(
+			(s: { type: string }) => s.type === "application/ld+json",
+		);
+		expect(ldScripts.length).toBe(1);
 	});
 
 	it("sets og:type to 'article'", () => {

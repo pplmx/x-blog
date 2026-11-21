@@ -68,6 +68,16 @@ export interface ArticleMetadata {
 	author: string;
 	section: string;
 	tags?: string[];
+	/** Trail above the article itself (localized home label, category, …).
+	 *  Site-relative paths; the article crumb is appended from the canonical
+	 *  URL by useSeo. Omit for a flat article with no meaningful trail. */
+	breadcrumbs?: BreadcrumbCrumb[];
+}
+
+/** One crumb in a breadcrumb trail; `path` is site-relative. */
+export interface BreadcrumbCrumb {
+	name: string;
+	path: string;
 }
 
 /** Options for useSeo(). */
@@ -230,8 +240,28 @@ export function buildArticleJsonLd(
 	};
 }
 
-// ─── Composables (use Nuxt built-ins) ────────────────────────────────
+/**
+ * Build BreadcrumbList JSON-LD for a trail of fully-qualified crumb URLs.
+ *
+ * Search engines use this to render the "site › section › article" path under
+ * the result instead of a bare URL. Positions are 1-based per schema.org.
+ */
+export function buildBreadcrumbJsonLd(
+	items: { name: string; url: string }[],
+): Record<string, unknown> {
+	return {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: items.map((item, index) => ({
+			"@type": "ListItem",
+			position: index + 1,
+			name: item.name,
+			item: item.url,
+		})),
+	};
+}
 
+// ─── Composables (use Nuxt built-ins) ────────────────────────────────
 /**
  * Get the site URL from runtime config.
  * Defaults to http://localhost:3000 for local development.
@@ -365,7 +395,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 	};
 
 	if (options.article) {
-		input.script = [
+		const scripts: { type: string; textContent: string }[] = [
 			{
 				type: "application/ld+json",
 				textContent: JSON.stringify(
@@ -392,6 +422,25 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 				),
 			},
 		];
+		// Search engines render the crumb trail under a result; the caller
+		// supplies the trail above the article (localized home label, category)
+		// and the article itself is appended from the canonical URL.
+		const trail = options.article.breadcrumbs;
+		if (trail?.length) {
+			scripts.push({
+				type: "application/ld+json",
+				textContent: JSON.stringify(
+					buildBreadcrumbJsonLd([
+						...trail.map((crumb) => ({
+							name: crumb.name,
+							url: buildCanonicalUrl(crumb.path, siteUrl),
+						})),
+						{ name: options.title, url: canonicalUrl },
+					]),
+				),
+			});
+		}
+		input.script = scripts;
 	}
 
 	return input;
@@ -407,7 +456,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
  * Otherwise, a dynamic OG image is generated with the post title (supports
  * Chinese characters via Noto Sans SC font).
  */
-export function usePostSeo(post: SeoPostData): void {
+export function usePostSeo(post: SeoPostData, options: { homeLabel?: string } = {}): void {
 	const siteUrl = useSiteUrl();
 	const path = `/posts/${post.slug}`;
 	const tags = post.tags.map((t) => t.name);
@@ -415,6 +464,20 @@ export function usePostSeo(post: SeoPostData): void {
 	// Use cover_image if available, otherwise generate a dynamic cover/OG image
 	const category = post.category?.name;
 	const ogImage = post.cover_image || buildCoverImageUrl(post.title, category, siteUrl);
+
+	// Crumb trail above the article: Home › Category (the article crumb is
+	// appended by useSeo from the canonical). Categories are addressed by id on
+	// /categories — the public post contract carries no category slug.
+	const breadcrumbs: BreadcrumbCrumb[] = [];
+	if (options.homeLabel) {
+		breadcrumbs.push({ name: options.homeLabel, path: "/" });
+	}
+	if (post.category) {
+		breadcrumbs.push({
+			name: post.category.name,
+			path: `/categories?category_id=${post.category.id}`,
+		});
+	}
 
 	useSeo({
 		title: post.title,
@@ -428,6 +491,7 @@ export function usePostSeo(post: SeoPostData): void {
 			author: siteConfig.name,
 			section: post.category?.name || "Blog",
 			tags,
+			breadcrumbs: breadcrumbs.length > 0 ? breadcrumbs : undefined,
 		},
 	});
 }

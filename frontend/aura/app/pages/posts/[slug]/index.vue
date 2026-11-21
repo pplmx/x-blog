@@ -148,7 +148,7 @@ const seriesNav = computed(() => {
 // title/og:image/canonical/JSON-LD follow the new slug.
 watchEffect(() => {
 	if (post.value) {
-		usePostSeo(post.value);
+		usePostSeo(post.value, { homeLabel: t("common.nav.home") });
 	}
 });
 
