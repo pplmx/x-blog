@@ -473,6 +473,18 @@ describe("Search Page", () => {
 			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
 		});
 
+		it("re-queries from the results-view search button", async () => {
+			const wrapper = await mountSearchPage(); // q=test query
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const input = wrapper.find('input[type="search"]');
+			await input.setValue("nuxt");
+			const submit = wrapper.findAll("button").find((button) => button.text() === "搜索");
+			expect(submit).toBeTruthy();
+			await submit?.trigger("click");
+			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
+		});
+
 		it("native clear (×) returns from a live search to the bare /search landing", async () => {
 			// Chromium's type="search" clear button fires a `search` event with an
 			// emptied box; previously this left stale results under a blank field —

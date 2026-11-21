@@ -655,20 +655,29 @@ function goToPage(pg: number | string) {
            /search?q=... (header/home search, or a shared deep link) can refine
            the term in place instead of being stuck with a frozen query. -->
 			<div class="mb-6 w-full max-w-md">
-				<div class="relative">
-					<input
-						v-model="searchInput"
-						type="search"
-						:placeholder="t('search.placeholder')"
-						:aria-label="t('search.placeholder')"
-						class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-						@keydown.enter="handleSearchInput"
-						@search="handleTermCleared"
-					/>
-					<Icon
-						icon="lucide:search"
-						class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-					/>
+				<div class="flex gap-2">
+					<div class="relative min-w-0 flex-1">
+						<input
+							v-model="searchInput"
+							type="search"
+							:placeholder="t('search.placeholder')"
+							:aria-label="t('search.placeholder')"
+							class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+							@keydown.enter="handleSearchInput"
+							@search="handleTermCleared"
+						/>
+						<Icon
+							icon="lucide:search"
+							class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+						/>
+					</div>
+					<button
+						type="button"
+						class="shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:bg-blue-500 dark:hover:bg-blue-600"
+						@click="handleSearchInput"
+					>
+						{{ t("search.submit") }}
+					</button>
 				</div>
 			</div>
 

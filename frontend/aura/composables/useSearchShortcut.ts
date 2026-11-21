@@ -1,12 +1,14 @@
 /**
- * Global "/" → focus the header search box.
+ * Global "/" (and ⌘/Ctrl+K) → focus the header search box.
  *
  * The GitHub/forum convention: pressing "/" anywhere on a reader page drops
  * the reader into the site search, so they can start typing a query without
- * tabbing through the whole header. The handler is deliberately narrow:
- *   - only an unmodified "/" (ctrl/meta/alt/shift variants pass through);
- *   - never steals "/" out of an editable control — typing "/" inside an
- *     input/textarea/select/contenteditable keeps working normally;
+ * tabbing through the whole header. The docs-site convention adds ⌘K / Ctrl+K
+ * for readers whose muscle memory reaches for the command palette. The handler
+ * is deliberately narrow:
+ *   - "/" only when unmodified; ⌘/Ctrl+K only with exactly that modifier;
+ *   - never steals a key out of an editable control — typing "/" or ⌘K inside
+ *     an input/textarea/select/contenteditable keeps working normally;
  *   - only targets a VISIBLE header-search input. The layout renders up to two
  *     HeaderSearch instances (the desktop nav and the mobile menu), exactly one
  *     of which is visible at any width; hidden (display:none) instances report
@@ -41,8 +43,14 @@ function visibleSearchInputs(): HTMLInputElement[] {
  * doesn't leak into the page); false leaves the event untouched.
  */
 export function handleGlobalSearchShortcut(event: KeyboardEvent): boolean {
-	if (event.key !== "/") return false;
-	if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return false;
+	const slash =
+		event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+	const commandK =
+		event.key.toLowerCase() === "k" &&
+		(event.metaKey || event.ctrlKey) &&
+		!event.altKey &&
+		!event.shiftKey;
+	if (!slash && !commandK) return false;
 	if (isEditableTarget(event.target)) return false;
 	const input = visibleSearchInputs()[0];
 	if (!input) return false;

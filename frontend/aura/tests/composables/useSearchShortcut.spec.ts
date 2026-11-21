@@ -80,6 +80,32 @@ describe("handleGlobalSearchShortcut", () => {
 		expect(focusSpy).not.toHaveBeenCalled();
 	});
 
+	it("focuses the visible header search on Cmd+K and Ctrl+K", () => {
+		const input = appendSearchInput(true);
+		const focusSpy = vi.spyOn(input, "focus");
+		for (const init of [{ metaKey: true }, { ctrlKey: true }]) {
+			const event = fireKey("k", init);
+			expect(handleGlobalSearchShortcut(event)).toBe(true);
+			expect(event.defaultPrevented).toBe(true);
+		}
+		expect(focusSpy).toHaveBeenCalledTimes(2);
+	});
+
+	it("ignores a bare 'k' and Shift/Alt variants of the command-K chord", () => {
+		const input = appendSearchInput(true);
+		const focusSpy = vi.spyOn(input, "focus");
+		for (const [key, init] of [
+			["k", {}],
+			["k", { metaKey: true, shiftKey: true }],
+			["k", { ctrlKey: true, altKey: true }],
+		] as const) {
+			const event = fireKey(key, init);
+			expect(handleGlobalSearchShortcut(event)).toBe(false);
+			expect(event.defaultPrevented).toBe(false);
+		}
+		expect(focusSpy).not.toHaveBeenCalled();
+	});
+
 	it("never steals '/' typed inside an editable control", () => {
 		const search = appendSearchInput(true);
 		const focusSpy = vi.spyOn(search, "focus");
