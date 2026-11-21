@@ -53,6 +53,9 @@ const mockEmptyPosts = {
 	},
 };
 
+/** Posts-fetch invocations, so tests can assert the request was gated off. */
+const fetchCalls: { url: string; enabled: boolean }[] = [];
+
 async function mountArchivePage({
 	archive = mockArchive,
 	posts = mockArchivePosts,
@@ -72,6 +75,8 @@ async function mountArchivePage({
 	postsRef?: { value: typeof mockArchivePosts | null };
 	routeQuery?: Record<string, string>;
 } = {}) {
+	fetchCalls.length = 0;
+
 	vi.stubGlobal("useRuntimeConfig", () => ({
 		public: {
 			apiUrl: "http://localhost:18888",
@@ -91,38 +96,46 @@ async function mountArchivePage({
 	// year/month is selected by passing a null url — handle null url).
 	vi.stubGlobal(
 		"useFetch",
-		vi.fn((url: string | (() => string) | { value: string } | null) => {
-			const urlStr =
-				url == null
-					? ""
-					: typeof url === "function"
-						? url()
-						: typeof url === "string"
-							? url
-							: (url.value ?? "");
-			if (urlStr.includes("/api/posts/archive")) {
+		vi.fn(
+			(
+				url: string | (() => string) | { value: string } | null,
+				options?: { enabled?: { value?: boolean } },
+			) => {
+				const urlStr =
+					url == null
+						? ""
+						: typeof url === "function"
+							? url()
+							: typeof url === "string"
+								? url
+								: (url.value ?? "");
+				if (urlStr.includes("/api/posts") && !urlStr.includes("/archive")) {
+					fetchCalls.push({ url: urlStr, enabled: options?.enabled?.value ?? true });
+				}
+				if (urlStr.includes("/api/posts/archive")) {
+					return {
+						data: ref(archive),
+						pending: ref(archivePending),
+						error: ref(archiveError),
+						refresh: vi.fn(),
+					};
+				}
+				if (urlStr.includes("/api/posts")) {
+					return {
+						data: (postsRef ?? ref(posts)) as unknown,
+						pending: ref(pending),
+						error: ref(postsError),
+						refresh: vi.fn(),
+					};
+				}
 				return {
-					data: ref(archive),
-					pending: ref(archivePending),
-					error: ref(archiveError),
+					data: ref(null),
+					pending: ref(false),
+					error: ref(null),
 					refresh: vi.fn(),
 				};
-			}
-			if (urlStr.includes("/api/posts")) {
-				return {
-					data: (postsRef ?? ref(posts)) as unknown,
-					pending: ref(pending),
-					error: ref(postsError),
-					refresh: vi.fn(),
-				};
-			}
-			return {
-				data: ref(null),
-				pending: ref(false),
-				error: ref(null),
-				refresh: vi.fn(),
-			};
-		}),
+			},
+		),
 	);
 
 	const { default: ArchivePage } = await import("../../app/pages/archive.vue");
@@ -265,6 +278,36 @@ describe("Archive Page", () => {
 				routeQuery: { year: "2025", month: "11" },
 			});
 			expect(wrapper.text()).toContain("该时间段暂无文章");
+		});
+
+		it("treats an out-of-range year as an empty period, not a load failure", async () => {
+			// The posts endpoint rejects years outside 2000–2100 with a 422. A
+			// stale or hand-edited deep link must not surface a "load failed"
+			// Retry button that can never succeed, and the doomed request is
+			// never enabled in the first place.
+			const wrapper = await mountArchivePage({
+				routeQuery: { year: "1900" },
+				postsError: { message: "422 Unprocessable Content" },
+			});
+			expect(wrapper.text()).toContain("该时间段暂无文章");
+			expect(wrapper.text()).not.toContain("加载失败");
+			expect(fetchCalls.every((call) => !call.enabled)).toBe(true);
+		});
+
+		it("treats an out-of-range month as an empty period, not a load failure", async () => {
+			const wrapper = await mountArchivePage({
+				routeQuery: { year: "2024", month: "13" },
+				postsError: { message: "422 Unprocessable Content" },
+			});
+			expect(wrapper.text()).toContain("该时间段暂无文章");
+			expect(wrapper.text()).not.toContain("加载失败");
+			expect(fetchCalls.every((call) => !call.enabled)).toBe(true);
+		});
+
+		it("still enables the posts request for an in-range period", async () => {
+			await mountArchivePage({ routeQuery: { year: "2024", month: "3" } });
+			expect(fetchCalls).toHaveLength(1);
+			expect(fetchCalls[0]?.enabled).toBe(true);
 		});
 
 		it("renders previous/next month navigation with an interior month ", async () => {

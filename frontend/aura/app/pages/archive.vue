@@ -23,6 +23,26 @@ const page = computed(() => (route.query.page ? Number.parseInt(String(route.que
 // post list). `enabled: false` makes Nuxt skip the request without firing it.
 const hasPeriod = computed(() => !!year.value || !!month.value);
 
+// The posts endpoint only accepts years 2000–2100 and months 1–12
+// (`backend/nova/app/routers/posts.py`). A hand-edited or stale deep link
+// outside that range would 422, which the page rendered as a load failure with
+// a Retry button that can never succeed. Treat it as an empty period instead of
+// asking the API. NaN (from `?year=abc`) already falls out via `hasPeriod`.
+const MIN_ARCHIVE_YEAR = 2000;
+const MAX_ARCHIVE_YEAR = 2100;
+const periodIsValid = computed(() => {
+	if (year.value === undefined) return true;
+	if (
+		!Number.isInteger(year.value) ||
+		year.value < MIN_ARCHIVE_YEAR ||
+		year.value > MAX_ARCHIVE_YEAR
+	) {
+		return false;
+	}
+	if (month.value === undefined) return true;
+	return Number.isInteger(month.value) && month.value >= 1 && month.value <= 12;
+});
+
 // Year/month/page filters mirror the previous URL construction: `withQuery`
 // omits undefined values, so page 1, an empty year, or an empty month leave no
 // trailing query params behind.
@@ -43,7 +63,9 @@ const {
 	pending: postsPending,
 	error: postsError,
 	refresh: refreshPosts,
-} = await usePosts(postsFilters, { enabled: hasPeriod });
+} = await usePosts(postsFilters, {
+	enabled: computed(() => hasPeriod.value && periodIsValid.value),
+});
 // The archive-index fetch and the posts fetch are independent. A year→month SPA
 // navigation refetches only the posts (the archive URL never changes), so the
 // index view must NOT be gated on the combined pending — it would flash a
@@ -375,6 +397,13 @@ useSeo(() => ({
 				<div class="space-y-2">
 					<div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
 				</div>
+			</div>
+
+			<!-- Out-of-range deep link (?year=1900, ?month=13): the API accepts
+           only 2000–2100 / 1–12, so this is not a load failure — show the empty
+           period with the period view's back-to-archive link above. -->
+			<div v-else-if="!periodIsValid" class="text-center py-12 text-gray-500 dark:text-gray-400">
+				{{ t("archive.postsEmpty") }}
 			</div>
 
 			<!-- Posts load failed — distinct from "empty": never tell the reader this

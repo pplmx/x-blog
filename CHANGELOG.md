@@ -1756,6 +1756,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rendered the generic failure state with a Retry button for a 404, so a dead link could be retried
   forever. It now mirrors the post page: a 404 (or an empty body) shows the not-found copy with links
   back to the series index and home, while real network errors keep the retry path.
+- 🐛 **out-of-range archive links show "no posts this period", not a load failure** — `/archive?year=1900`
+  (the API accepts years 2000–2100 and months 1–12) rendered the generic failure state with a Retry
+  button that could never succeed. The period is now validated before fetching, so a stale or
+  hand-edited link lands on the empty-period copy with the existing back-to-archive link.
 
 ## [0.1.0] - 2026-09-09
 
