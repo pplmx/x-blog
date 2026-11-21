@@ -214,3 +214,22 @@
 		margin: 1.5cm;
 	}
 }
+
+/* Respect the OS "reduce motion" preference. Durations collapse to ~0 rather
+ * than being removed outright: Vue's <Transition> still receives its (instant)
+ * leave hooks, so popovers keep their focus hand-off instead of being unmounted
+ * mid-interaction, and loading skeletons stop pulsing. */
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		transition-delay: 0ms !important;
+	}
+}
