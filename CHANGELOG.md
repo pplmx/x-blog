@@ -1768,6 +1768,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (it only ran when a year was present) and hit the API's 1–12 range check, so the page showed
   "load failed" with a pointless Retry. Month is now validated on its own and lands on the
   empty-period copy.
+- ✨ **tag cloud leads with what readers actually write about** — tags rendered in creation order
+  behind identical gradient pills with a `(0)` suffix, so one-off tags looked as important as
+  Python. The cloud now sorts by post count (name order on ties), shows the count in a compact
+  badge, and mutes tags with no posts.
 
 ## [0.1.0] - 2026-09-09
 

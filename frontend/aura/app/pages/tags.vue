@@ -105,10 +105,19 @@ watch(
 // tag cloud can hold dozens of pills with no way to find one except scanning.
 // A small substring box narrows the cloud as you type; empty filter shows all.
 const tagFilter = ref("");
+// Most-used tags first: the API returns definition order, so a cloud of equal
+// pills buried the tags readers actually write about under one-off ones. Ties
+// fall back to name order so the list stays stable between renders.
+const orderedTags = computed(() =>
+	[...(tags.value ?? [])].sort(
+		(a, b) =>
+			(b.post_count ?? 0) - (a.post_count ?? 0) || a.name.localeCompare(b.name, locale.value),
+	),
+);
 const filteredTags = computed(() => {
 	const q = tagFilter.value.trim().toLowerCase();
-	if (!q) return tags.value ?? [];
-	return (tags.value ?? []).filter((tag) => tag.name.toLowerCase().includes(q));
+	if (!q) return orderedTags.value;
+	return orderedTags.value.filter((tag) => tag.name.toLowerCase().includes(q));
 });
 
 // Look up the tag name for SEO when a tag is selected
@@ -353,9 +362,24 @@ onUnmounted(() => {
 						v-for="tag in filteredTags"
 						:key="tag.id"
 						:to="{ query: { tag_id: String(tag.id) } }"
-						class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+						class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+						:class="
+							(tag.post_count ?? 0) > 0
+								? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md hover:from-blue-600 hover:to-indigo-600 hover:shadow-lg'
+								: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+						"
 					>
-						#{{ tag.name }} <span class="opacity-80 text-xs">({{ tag.post_count ?? 0 }})</span>
+						<span>#{{ tag.name }}</span>
+						<span
+							class="rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
+							:class="
+								(tag.post_count ?? 0) > 0
+									? 'bg-white/20'
+									: 'bg-gray-200/70 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+							"
+						>
+							{{ tag.post_count ?? 0 }}
+						</span>
 					</NuxtLink>
 				</div>
 

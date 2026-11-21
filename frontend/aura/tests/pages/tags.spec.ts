@@ -200,6 +200,22 @@ describe("Tags Page", () => {
 			expect(wrapper.text()).toContain("#TypeScript");
 		});
 
+		it("orders the cloud by post count, most used first", async () => {
+			const tagsWithCounts = [
+				{ id: 1, name: "Rare", post_count: 0 },
+				{ id: 2, name: "Busy", post_count: 12 },
+				{ id: 3, name: "Mid", post_count: 3 },
+			];
+			const wrapper = await mountTagsPage({ tags: tagsWithCounts });
+			const pills = wrapper.findAll("a").filter((link) => link.text().startsWith("#"));
+			// The count badge sits in the same pill, so match pills by name and
+			// assert their positions rather than parsing the concatenated text.
+			const positions = ["Busy", "Mid", "Rare"].map((name) =>
+				pills.findIndex((pill) => pill.text().includes(name)),
+			);
+			expect(positions).toEqual([0, 1, 2]);
+		});
+
 		it("narrows the cloud via the filter box ", async () => {
 			const wrapper = await mountTagsPage();
 			// Filter input present on the all-tags view.
