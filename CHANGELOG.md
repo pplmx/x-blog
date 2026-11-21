@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **the table of contents marks the section in view** — each TOC link now
+  carries `aria-current="location"` while its heading is on screen, and the
+  desktop list is a labelled navigation landmark, so screen readers can tell
+  where the reader is in the article.
 - 🔢 **single items read naturally in English** — header search results, comment
   likes, sidebar views, series views, and the bookmark/like/follow/comment
   counters now use a singular form at count 1 instead of "1 posts".

@@ -722,6 +722,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							v-for="item in toc"
 							:key="item.id"
 							:href="`#${item.id}`"
+							:aria-current="activeTocId === item.id ? 'location' : undefined"
 							:style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
 							:class="[
 								'block text-sm py-1.5 rounded-lg transition-colors',
@@ -811,13 +812,18 @@ function handleCommentSubmitted(created: Comment | undefined) {
 
 		<div v-else class="flex gap-10 relative">
 			<!-- TOC sidebar -->
-			<nav v-if="toc.length > 1" class="hidden xl:block w-64 shrink-0">
+			<nav
+				v-if="toc.length > 1"
+				:aria-label="t('post.tableOfContents')"
+				class="hidden xl:block w-64 shrink-0"
+			>
 				<div class="sticky top-24">
 					<div class="border-l-2 border-gray-100 dark:border-gray-800 pl-4 space-y-1">
 						<a
 							v-for="item in toc"
 							:key="item.id"
 							:href="`#${item.id}`"
+							:aria-current="activeTocId === item.id ? 'location' : undefined"
 							:style="{ marginLeft: item.level === 1 ? '0px' : `${(item.level - 1) * 16}px` }"
 							:class="[
 								'block text-sm py-1.5 transition-all duration-200 border-l-2 -ml-[18px] pl-3',

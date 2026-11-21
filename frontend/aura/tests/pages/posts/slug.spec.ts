@@ -13,7 +13,7 @@
 
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type Ref, ref } from "vue";
+import { type Ref, nextTick, ref } from "vue";
 
 import CommentForm from "~~/components/CommentForm.vue";
 import SeriesFollowButton from "~~/components/SeriesFollowButton.vue";
@@ -1667,6 +1667,47 @@ describe("Post Detail Page", () => {
 			expect(headingLinks[0].attributes("href")).toBe("#introduction");
 			expect(headingLinks[1].attributes("href")).toBe("#getting-started");
 			expect(headingLinks[2].attributes("href")).toBe("#advanced");
+		});
+
+		it("marks the heading in view as the current location", async () => {
+			let notify: IntersectionObserverCallback | undefined;
+			class CapturingObserver {
+				constructor(callback: IntersectionObserverCallback) {
+					notify = callback;
+				}
+				observe() {}
+				disconnect() {}
+			}
+			vi.stubGlobal("IntersectionObserver", CapturingObserver);
+			try {
+				const wrapper = await mountPostPage({
+					post: {
+						...mockPost,
+						content:
+							"# Introduction\n\nLead.\n\n## Getting Started\n\nHow-to.\n\n## Advanced\n\nMore.",
+					},
+				});
+				const tocNav = 'nav[aria-label="目录"]';
+				expect(
+					wrapper.find(`${tocNav} a[href="#getting-started"]`).attributes("aria-current"),
+				).toBeUndefined();
+
+				notify?.(
+					[{ isIntersecting: true, target: { id: "getting-started" } } as never],
+					{} as IntersectionObserver,
+				);
+				await nextTick();
+
+				expect(
+					wrapper.find(`${tocNav} a[href="#getting-started"]`).attributes("aria-current"),
+				).toBe("location");
+				expect(
+					wrapper.find(`${tocNav} a[href="#introduction"]`).attributes("aria-current"),
+				).toBeUndefined();
+				wrapper.unmount();
+			} finally {
+				vi.unstubAllGlobals();
+			}
 		});
 
 		it("does NOT render TOC sidebar when post has only one heading", async () => {
