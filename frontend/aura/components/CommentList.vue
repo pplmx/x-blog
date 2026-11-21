@@ -250,7 +250,7 @@
                    visitor flags an inappropriate comment; one per browser. -->
 							<button
 								type="button"
-								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
 								:disabled="isCommentFlagged(comment.id) || flaggingIds.has(comment.id)"
 								:title="
 									isCommentFlagged(comment.id)
@@ -464,7 +464,7 @@
 							</span>
 							<button
 								type="button"
-								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+								class="comment-flag inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
 								:disabled="isCommentFlagged(reply.id) || flaggingIds.has(reply.id)"
 								:title="
 									isCommentFlagged(reply.id)

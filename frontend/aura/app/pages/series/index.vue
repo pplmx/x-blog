@@ -83,7 +83,7 @@ useSeo(() => ({
 						>
 							{{ s.description }}
 						</p>
-						<div class="flex items-center gap-3 mt-4 text-xs text-gray-400">
+						<div class="flex items-center gap-3 mt-4 text-xs text-gray-500 dark:text-gray-400">
 							<span class="inline-flex items-center gap-1">
 								{{ t("series.postsCount", { count: s.post_count }) }}
 							</span>

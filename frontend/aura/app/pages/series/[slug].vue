@@ -498,7 +498,7 @@ onUnmounted(() => {
 						>
 							{{ post.excerpt }}
 						</div>
-						<div class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-400">
+						<div class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
 							<span class="flex items-center gap-1">
 								<Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
 								{{ formatPostDate(effectivePublishTs(post), locale) }}

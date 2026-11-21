@@ -857,7 +857,7 @@ const sidebarStats = computed(() => [
 							{{ t("home.sidebar.browse") }}
 						</h3>
 
-						<h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
+						<h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
 							{{ t("home.sidebar.browseCategories") }}
 						</h4>
 						<!-- A taxonomy failure must not masquerade as "no categories yet":
@@ -896,11 +896,11 @@ const sidebarStats = computed(() => [
 								{{ t("common.action.retry") }}
 							</button>
 						</div>
-						<div v-else class="mb-4 text-sm text-gray-400">
+						<div v-else class="mb-4 text-sm text-gray-500 dark:text-gray-400">
 							{{ t("home.sidebar.noCategories") }}
 						</div>
 
-						<h4 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-2">
+						<h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
 							{{ t("home.sidebar.browseTags") }}
 						</h4>
 						<div v-if="tags?.length" class="flex flex-wrap gap-2">
@@ -930,7 +930,7 @@ const sidebarStats = computed(() => [
 							/>
 							{{ t("home.sidebar.tagsLoadFailed") }}
 						</div>
-						<div v-else class="text-sm text-gray-400">
+						<div v-else class="text-sm text-gray-500 dark:text-gray-400">
 							{{ t("home.sidebar.noTags") }}
 						</div>
 					</div>

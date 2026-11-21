@@ -334,7 +334,7 @@ useSeo(() => ({
 							<h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">
 								{{ y.year }}
 							</h2>
-							<span class="text-sm tabular-nums text-gray-400 dark:text-gray-500">
+							<span class="text-sm tabular-nums text-gray-500 dark:text-gray-400">
 								{{ t("archive.countLabel", { count: yearTotal(y.months) }) }}
 							</span>
 						</div>
