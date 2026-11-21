@@ -111,10 +111,18 @@ watch(
 // category cloud is unscannable without a way to narrow it. Substring match on
 // the name; empty filter shows everything.
 const categoryFilter = ref("");
+// Most-used categories first: the API returns creation order, so a lightly used
+// category could outrank the one readers actually browse. Ties fall back to
+// name order so the grid stays stable between renders.
+const orderedCategories = computed(() =>
+	[...(categories.value ?? [])].sort(
+		(a, b) => (b.post_count ?? 0) - (a.post_count ?? 0) || a.name.localeCompare(b.name, locale.value),
+	),
+);
 const filteredCategories = computed(() => {
 	const q = categoryFilter.value.trim().toLowerCase();
-	if (!q) return categories.value ?? [];
-	return (categories.value ?? []).filter((c) => c.name.toLowerCase().includes(q));
+	if (!q) return orderedCategories.value;
+	return orderedCategories.value.filter((c) => c.name.toLowerCase().includes(q));
 });
 
 // Look up the category name for SEO when a category is selected
@@ -355,8 +363,12 @@ onUnmounted(() => {
 		<div v-if="!categoryId">
 			<div v-if="categoriesPending" class="space-y-4" role="status" aria-busy="true">
 				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-				<div class="flex flex-wrap gap-3">
-					<div v-for="i in 5" :key="i" class="bg-gray-100 animate-pulse h-10 rounded-xl w-20" />
+				<div class="grid gap-4 sm:grid-cols-2">
+					<div
+						v-for="i in 4"
+						:key="i"
+						class="bg-gray-100 dark:bg-gray-800 animate-pulse h-[86px] rounded-2xl"
+					/>
 				</div>
 			</div>
 
@@ -403,15 +415,25 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<div v-if="filteredCategories.length" class="flex flex-wrap gap-3">
+				<div v-if="filteredCategories.length" class="grid gap-4 sm:grid-cols-2">
 					<NuxtLink
 						v-for="category in filteredCategories"
 						:key="category.id"
 						:to="{ query: { category_id: String(category.id) } }"
-						class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md hover:shadow-lg"
+						class="group flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-700"
 					>
-						{{ category.name }}
-						<span class="opacity-80 text-xs">({{ category.post_count ?? 0 }})</span>
+						<span class="min-w-0">
+							<span class="block truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+								{{ category.name }}
+							</span>
+							<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+								{{ t("categories.postCount", { count: category.post_count ?? 0 }) }}
+							</span>
+						</span>
+						<Icon
+							icon="lucide:arrow-right"
+							class="h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-purple-500 dark:text-gray-600"
+						/>
 					</NuxtLink>
 				</div>
 

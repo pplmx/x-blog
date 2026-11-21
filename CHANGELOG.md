@@ -1772,6 +1772,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behind identical gradient pills with a `(0)` suffix, so one-off tags looked as important as
   Python. The cloud now sorts by post count (name order on ties), shows the count in a compact
   badge, and mutes tags with no posts.
+- ✨ **categories are a browsable grid, not a pill row** — the index was four gradient pills in
+  creation order, with the post count as a grey `(n)`. Each category is now a card showing its
+  name and "N posts", the grid sorts by post count (name order on ties), and the loading skeleton
+  matches the card shape.
 
 ## [0.1.0] - 2026-09-09
 

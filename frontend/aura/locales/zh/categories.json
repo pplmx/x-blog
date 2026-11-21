@@ -3,6 +3,7 @@
 		"all": "全部分类",
 		"categoryTitle": "分类: {name}",
 		"countLabel": "共 {count} 个分类",
+		"postCount": "{count} 篇文章",
 		"empty": "暂无分类",
 		"backToAll": "返回所有分类",
 		"categoryPosts": "分类文章",

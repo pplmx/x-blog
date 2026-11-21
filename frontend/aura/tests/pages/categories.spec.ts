@@ -241,6 +241,20 @@ describe("Categories Page", () => {
 			expect(wrapper.text()).toContain("Life");
 		});
 
+		it("orders categories by post count, most used first", async () => {
+			const categoriesWithCounts = [
+				{ id: 1, name: "Quiet", post_count: 1 },
+				{ id: 2, name: "Busiest", post_count: 12 },
+				{ id: 3, name: "Middle", post_count: 4 },
+			];
+			const wrapper = await mountCategoriesPage({ categories: categoriesWithCounts });
+			const cards = wrapper.findAll("a");
+			const positions = ["Busiest", "Middle", "Quiet"].map((name) =>
+				cards.findIndex((card) => card.text().startsWith(name)),
+			);
+			expect(positions).toEqual([0, 1, 2]);
+		});
+
 		it("narrows the category cloud via the filter box ", async () => {
 			const wrapper = await mountCategoriesPage();
 			const input = wrapper.find('input[type="search"]');

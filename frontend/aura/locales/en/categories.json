@@ -3,6 +3,7 @@
 		"all": "All Categories",
 		"categoryTitle": "Category: {name}",
 		"countLabel": "{count} categories in total",
+		"postCount": "{count} posts",
 		"empty": "No categories yet",
 		"backToAll": "Back to all categories",
 		"categoryPosts": "Category posts",
