@@ -334,6 +334,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		{ property: "og:type", content: isArticle ? "article" : "website" },
 		{ property: "og:site_name", content: siteConfig.name },
 		{ property: "og:image", content: imageUrl },
+		{ property: "og:image:alt", content: options.title },
 		{ property: "og:url", content: canonicalUrl },
 		{ property: "og:locale", content: ogLocale },
 		// Twitter Card

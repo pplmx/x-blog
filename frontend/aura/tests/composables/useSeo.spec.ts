@@ -426,6 +426,11 @@ describe("useSeo composable", () => {
 		const ogImage = callArg.meta.find((m: { property?: string }) => m.property === "og:image");
 		expect(ogImage?.content).toBe("https://my-blog.com/api/og?title=X-Blog");
 
+		const ogImageAlt = callArg.meta.find(
+			(m: { property?: string }) => m.property === "og:image:alt",
+		);
+		expect(ogImageAlt?.content).toBe("My Page");
+
 		const ogUrl = callArg.meta.find((m: { property?: string }) => m.property === "og:url");
 		expect(ogUrl?.content).toBe("https://my-blog.com/my-page");
 

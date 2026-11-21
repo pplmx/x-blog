@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🖼 **shared previews describe their image** — `og:image:alt` now carries the
+  page title (Twitter already did), so link previews that read alt text out
+  have something meaningful to say.
 - 🔗 **shared comment links land on the comment** — opening a comment permalink
   (or a reply notification) now highlights the target comment and moves focus
   into it, so a long thread makes clear which reply the link means and screen
