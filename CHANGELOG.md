@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔗 **shared comment links land on the comment** — opening a comment permalink
+  (or a reply notification) now highlights the target comment and moves focus
+  into it, so a long thread makes clear which reply the link means and screen
+  readers start at its text.
 - 🧭 **the table of contents follows the reader** — each TOC link carries
   `aria-current="location"` while its heading is on screen, and choosing a
   section hands DOM focus to that heading (mobile sheet included) so screen

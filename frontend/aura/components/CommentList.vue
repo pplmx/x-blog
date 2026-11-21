@@ -134,7 +134,8 @@
 				v-for="comment in topLevelComments"
 				:key="comment.id"
 				:id="`comment-${comment.id}`"
-				class="border border-gray-100 dark:border-gray-700 rounded-lg p-3 scroll-mt-28"
+				tabindex="-1"
+				class="border border-gray-100 dark:border-gray-700 rounded-lg p-3 scroll-mt-28 transition-colors"
 			>
 				<div class="flex items-start gap-2">
 					<div class="flex-1">
@@ -366,7 +367,8 @@
 						v-for="reply in descendantsOf(comment.id)"
 						:key="reply.id"
 						:id="`comment-${reply.id}`"
-						class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 scroll-mt-28"
+						tabindex="-1"
+						class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 scroll-mt-28 transition-colors"
 					>
 						<div class="flex items-center gap-2 mb-1">
 							<span v-if="reply.parent_id !== comment.id" class="text-xs text-gray-400 -mr-1">
@@ -831,8 +833,15 @@ let deepLinkResolved = false;
  * to it. Stops at the thread's last page (authoritative total_pages comes from
  * the page-1 payload; later fetches refresh it) or when a page falls short of
  * a full page. */
+// Landing on a comment should move DOM focus, not just the viewport: the
+// timestamp permalink and reply notifications both target #comment-<id>, and
+// screen readers otherwise stay on the link that pointed at it. Comments carry
+// tabindex="-1" (not a tab stop) purely as a focus hand-off target.
 function scrollToComment(targetId: string): void {
-	document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+	const el = document.getElementById(targetId);
+	if (!el) return;
+	el.scrollIntoView({ behavior: "smooth", block: "start" });
+	el.focus({ preventScroll: true });
 }
 async function landOnDeepLink(targetId?: string, force = false): Promise<void> {
 	if (deepLinkResolved && !force) return;
@@ -1372,6 +1381,20 @@ defineExpose({ refreshList, surfaceComment });
 <!-- Comment markdown typography: code blocks/links/quotes inside the
      sanitized comment body read like the post body, minus the heavy features. -->
 <style scoped>
+/* A permalink landing flashes the comment it points at, so the reader can see
+   which reply a shared link means even before reading the anchor. */
+li[id^="comment-"]:target {
+	border-color: #bfdbfe;
+	background-color: #eff6ff;
+}
+.dark li[id^="comment-"]:target {
+	border-color: #1e40af;
+	background-color: rgba(30, 58, 138, 0.18);
+}
+li[id^="comment-"]:focus-visible {
+	outline: 2px solid var(--color-blue-500);
+	outline-offset: 2px;
+}
 .comment-body :deep(pre) {
 	overflow-x: auto;
 	padding: 0.5rem 0.75rem;

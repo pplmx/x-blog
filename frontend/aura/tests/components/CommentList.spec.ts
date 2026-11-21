@@ -318,9 +318,13 @@ describe("CommentList", () => {
 			window.history.replaceState(null, "", "/posts/x#comment-2");
 			expect(window.location.hash).toBe("#comment-2");
 			try {
-				const { wrapper } = await mountCommentList({ attachToBody: true });
-				expect(document.getElementById("comment-2")).toBeTruthy();
+				await mountCommentList({ attachToBody: true });
+				const target = document.getElementById("comment-2");
+				expect(target).toBeTruthy();
+				expect(target?.getAttribute("tabindex")).toBe("-1");
 				expect(scrollIntoView).toHaveBeenCalledTimes(1);
+				// The viewport is not enough: focus follows the permalink target.
+				expect(document.activeElement).toBe(target);
 			} finally {
 				Element.prototype.scrollIntoView = original;
 				window.history.replaceState(null, "", "/");
