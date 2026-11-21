@@ -1748,6 +1748,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`localStorage` key `xblog.search.recent`: newest first, case-insensitively deduped, capped at 5)
   and shown as chips under the prompt; clicking one re-runs it, and one click clears the list.
   Search history never leaves the browser.
+- ✨ **the search landing has a visible Search button** — the prompt read "Enter keywords to start
+  searching" while the only way to submit was the keyboard's Enter key, easy to miss on phones. The
+  input now sits beside a `Search` button (still fits at 320px), and the recent-list `Clear` control
+  grew to a 24px tap target.
 
 ## [0.1.0] - 2026-09-09
 

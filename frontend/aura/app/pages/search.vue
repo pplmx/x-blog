@@ -590,19 +590,28 @@ function goToPage(pg: number | string) {
 				{{ t("search.empty.hint") }}
 			</p>
 			<div class="w-full max-w-md">
-				<div class="relative">
-					<input
-						v-model="searchInput"
-						type="text"
-						:placeholder="t('search.placeholder')"
-						:aria-label="t('search.placeholder')"
-						class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-						@keydown.enter="handleSearchInput"
-					/>
-					<Icon
-						icon="lucide:search"
-						class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-					/>
+				<div class="flex gap-2">
+					<div class="relative min-w-0 flex-1">
+						<input
+							v-model="searchInput"
+							type="text"
+							:placeholder="t('search.placeholder')"
+							:aria-label="t('search.placeholder')"
+							class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+							@keydown.enter="handleSearchInput"
+						/>
+						<Icon
+							icon="lucide:search"
+							class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+						/>
+					</div>
+					<button
+						type="button"
+						class="shrink-0 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:bg-blue-500 dark:hover:bg-blue-600"
+						@click="handleSearchInput"
+					>
+						{{ t("search.submit") }}
+					</button>
 				</div>
 				<div v-if="recentSearches.length" class="mt-6">
 					<div class="mb-2 flex items-center justify-between">
@@ -613,7 +622,7 @@ function goToPage(pg: number | string) {
 						</span>
 						<button
 							type="button"
-							class="text-xs text-gray-500 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+							class="-my-1 rounded px-1 py-1 text-xs text-gray-500 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-400 dark:hover:text-blue-400"
 							@click="clearSearchHistory"
 						>
 							{{ t("search.recent.clear") }}

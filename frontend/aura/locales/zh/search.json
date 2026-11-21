@@ -11,6 +11,7 @@
 			"hint": "输入关键词开始搜索"
 		},
 		"placeholder": "输入关键词...",
+		"submit": "搜索",
 		"recent": {
 			"title": "最近搜索",
 			"clear": "清除"

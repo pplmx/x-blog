@@ -11,6 +11,7 @@
 			"hint": "Enter keywords to start searching"
 		},
 		"placeholder": "Enter keywords...",
+		"submit": "Search",
 		"recent": {
 			"title": "Recent searches",
 			"clear": "Clear"

@@ -385,6 +385,17 @@ describe("Search Page", () => {
 			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "nuxt" } });
 		});
 
+		it("submits the typed term from the landing's search button", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			await wrapper.find('input[type="text"]').setValue("fastapi");
+			const submit = wrapper.findAll("button").find((button) => button.text() === "搜索");
+			expect(submit).toBeTruthy();
+			await submit?.trigger("click");
+			expect(navMock).toHaveBeenCalledWith({ query: { page: "1", q: "fastapi" } });
+		});
+
 		it("keeps the input in sync with a route query on mount", async () => {
 			const wrapper = await mountSearchPage({ routeQuery: {} });
 			const input = wrapper.find('input[type="text"]');
