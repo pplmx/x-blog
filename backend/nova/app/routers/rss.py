@@ -781,13 +781,6 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     <priority>0.5</priority>
 </url>""")
 
-    # Search page
-    urls.append(f"""<url>
-    <loc>{site_url}/search</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.3</priority>
-</url>""")
-
     # Categories browse page
     urls.append(f"""<url>
     <loc>{site_url}/categories</loc>

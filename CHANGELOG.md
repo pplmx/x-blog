@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔎 **the sitemap stops advertising the noindex search page** — `/search` sends
+  `noindex, follow`, yet the sitemap listed it; the entry is gone so crawlers do
+  not spend budget on a URL they are told to drop.
 - 🌙 **home metadata stays readable in dark mode** — trending counts, card
   category/author lines, series progress and the home empty/error states used
   `text-gray-500` without a dark variant (about 4.2:1 on the dark surface);

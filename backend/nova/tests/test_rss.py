@@ -379,12 +379,14 @@ async def test_sitemap_returns_xml(client):
 
 
 async def test_sitemap_includes_static_pages(client):
-    """Sitemap should include static pages like home, about, search."""
+    """Sitemap should include indexable static pages like home and about."""
     response = await client.get("/sitemap.xml")
     assert response.status_code == 200
     content = response.text
     assert "/about" in content
-    assert "/search" in content
+    # /search is deliberately noindex, so listing it would spend crawl budget
+    # on a URL search engines are told to drop.
+    assert "/search</loc>" not in content
     assert "/categories" in content
     assert "/tags" in content
     # Browse indexes that list published content are indexable pages too.
