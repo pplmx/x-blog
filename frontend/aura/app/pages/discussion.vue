@@ -233,7 +233,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 							? 'cursor-default text-gray-400'
 							: pg === page
 								? 'bg-blue-600 text-white cursor-default'
-								: 'border hover:bg-gray-50',
+								: 'border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800',
 					]"
 					@click="pg !== '…' && pg !== page && goToPage(pg)"
 				>

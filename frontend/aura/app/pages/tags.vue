@@ -538,7 +538,7 @@ onUnmounted(() => {
 								? 'cursor-default text-gray-400'
 								: pg === posts.pagination.page
 									? 'bg-blue-600 text-white cursor-default'
-									: 'border hover:bg-gray-50',
+									: 'border dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800',
 						]"
 						@click="pg !== '…' && pg !== posts.pagination.page && goToPage(pg)"
 					>

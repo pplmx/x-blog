@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌗 **pagination buttons keep their border in dark mode** — the archive, tag, category, discussion
+  and follows pagers used a bare `border` that disappeared on a dark page and a light-only hover fill;
+  they now carry a `gray-700` border and `gray-800` hover, matching the search pager.
 - 🌗 **archive, tag and category post lists share the search card surface** — their filtered result
   rows still used a light-only `gray-100` outline with unthemed excerpts and metadata; they now match
   the raised white/gray-900 card, border and text tones used everywhere else.
