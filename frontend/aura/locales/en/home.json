@@ -13,6 +13,8 @@
 		},
 		"stats": {
 			"posts": "Posts",
+			"categories": "Categories",
+			"tags": "Tags",
 			"totalViews": "Total Views",
 			"totalLikes": "Total Likes",
 			"totalComments": "Total Comments",

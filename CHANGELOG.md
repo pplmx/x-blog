@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **the home sidebar counts what the archive holds** — its stats card
+  repeated the hero's views and likes verbatim; it now lists posts, categories,
+  tags and comments, so the two summaries complement each other.
 - 🗓 **archive month names follow the active language** — the formatter compared
   the locale *ref* itself with `"zh"` instead of its value, so the Chinese
   archive still listed "October"/"September"; it now shows 十月/九月.

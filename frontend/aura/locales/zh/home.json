@@ -13,6 +13,8 @@
 		},
 		"stats": {
 			"posts": "文章",
+			"categories": "分类",
+			"tags": "标签",
 			"totalViews": "总阅读量",
 			"totalLikes": "总点赞数",
 			"totalComments": "总评论数",

@@ -50,6 +50,8 @@ const { mockState } = vi.hoisted(() => ({
 			total_views: number;
 			total_likes: number;
 			total_comments: number;
+			total_categories?: number;
+			total_tags?: number;
 		},
 		recommended: [] as Array<{
 			id: number;
@@ -451,6 +453,26 @@ describe("Index Page", () => {
 			const statsCard = wrapper.find(".bg-gradient-to-br");
 			expect(statsCard.exists()).toBe(true);
 			expect(wrapper.text()).toContain("站点统计");
+		});
+
+		it("summarizes breadth in the sidebar instead of repeating the hero", async () => {
+			mockState.statsData = {
+				total_posts: 30,
+				total_views: 29080,
+				total_likes: 1200,
+				total_comments: 5,
+				total_categories: 4,
+				total_tags: 11,
+			};
+			const wrapper = await mountIndexPage();
+			const heading = wrapper.findAll("h3").find((h) => h.text().includes("站点统计"));
+			expect(heading).toBeTruthy();
+			const card = heading!.element.parentElement as HTMLElement;
+			// The hero already carries reach numbers; the sidebar names what the
+			// archive holds.
+			expect(card.textContent).toContain("分类");
+			expect(card.textContent).toContain("标签");
+			expect(card.textContent).not.toContain("总阅读量");
 		});
 
 		it("renders quick navigation links in sidebar", async () => {

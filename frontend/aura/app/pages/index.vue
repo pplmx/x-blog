@@ -341,6 +341,11 @@ watch(
 // not the current page's items. Summing the first page's 10 items presented a
 // per-page number as a site total and changed with pagination.
 const statsFailed = computed(() => Boolean(statsError.value));
+// Locale-grouped digits per the selected site language, not the browser's
+// (a de-DE browser would otherwise dot-group inside a zh/en UI).
+function formatCount(value: number): string {
+	return value.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US");
+}
 const stats = computed(() => {
 	// The stats endpoint is the source of the site-wide total. Falling back to
 	// `posts.pagination.total` under an ACTIVE filter (?category_id=X /
@@ -351,31 +356,27 @@ const stats = computed(() => {
 	const hasFilter = categoryId.value !== undefined || tagId.value !== undefined;
 	const total =
 		statsData.value?.total_posts ?? (hasFilter ? 0 : (posts.value?.pagination?.total ?? 0));
-	const totalViews = statsData.value?.total_views ?? 0;
-	const totalLikes = statsData.value?.total_likes ?? 0;
-	const totalComments = statsData.value?.total_comments ?? 0;
 	return [
-		// group per the selected site language, not the
-		// browser's (a de-DE browser would otherwise dot-group inside a zh/en
-		// UI). The date code elsewhere already passes the app locale.
-		{
-			labelKey: "home.stats.posts",
-			value: total.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
-		},
-		{
-			labelKey: "home.stats.totalViews",
-			value: totalViews.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
-		},
-		{
-			labelKey: "home.stats.totalLikes",
-			value: totalLikes.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
-		},
+		{ labelKey: "home.stats.posts", value: formatCount(total) },
+		{ labelKey: "home.stats.totalViews", value: formatCount(statsData.value?.total_views ?? 0) },
+		{ labelKey: "home.stats.totalLikes", value: formatCount(statsData.value?.total_likes ?? 0) },
 		{
 			labelKey: "home.stats.totalComments",
-			value: totalComments.toLocaleString(locale.value === "zh" ? "zh-CN" : "en-US"),
+			value: formatCount(statsData.value?.total_comments ?? 0),
 		},
 	];
 });
+// The sidebar summary deliberately covers breadth (what the archive holds)
+// instead of repeating the hero's reach numbers (views/likes) verbatim.
+const sidebarStats = computed(() => [
+	{ labelKey: "home.stats.posts", value: formatCount(statsData.value?.total_posts ?? 0) },
+	{ labelKey: "home.stats.categories", value: formatCount(statsData.value?.total_categories ?? 0) },
+	{ labelKey: "home.stats.tags", value: formatCount(statsData.value?.total_tags ?? 0) },
+	{
+		labelKey: "home.stats.totalComments",
+		value: formatCount(statsData.value?.total_comments ?? 0),
+	},
+]);
 </script>
 
 <template>
@@ -837,7 +838,7 @@ const stats = computed(() => {
 						</div>
 						<div v-else class="space-y-3">
 							<div
-								v-for="stat in stats"
+								v-for="stat in sidebarStats"
 								:key="stat.labelKey"
 								class="flex items-center justify-between text-sm"
 							>
