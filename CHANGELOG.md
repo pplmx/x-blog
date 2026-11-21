@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 👁 **article metadata clears WCAG AA in light mode** — reading time, view
+  count, publish/update dates and related-post meta used `text-gray-400`
+  (≈2.6:1 on white at 12–14px); they now use `text-gray-500` in light mode and
+  keep `dark:text-gray-400`.
 - 📐 **the 404 numeral fits small phones** — the oversized "404" was 10rem wide
   even at 320px and pushed the document 7px past the viewport; it now starts at
   7rem and still scales up on larger screens. The mobile overflow guard covers

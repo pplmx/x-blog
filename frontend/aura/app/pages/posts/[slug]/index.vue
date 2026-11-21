@@ -866,11 +866,11 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							}}</span>
 							<span v-else>{{ post.series.title }}</span>
 						</NuxtLink>
-						<span class="text-xs text-gray-400 flex items-center gap-1">
+						<span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
 							<Icon icon="lucide:clock" class="w-3 h-3" />
 							{{ t("post.readingTime", { count: readingTime }) }}
 						</span>
-						<span class="text-xs text-gray-400 flex items-center gap-1">
+						<span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
 							<Icon icon="lucide:eye" class="w-3 h-3" />
 							{{ t("post.views", { count: post.views }) }}
 						</span>
@@ -895,7 +895,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 						{{ post.title }}
 					</h1>
 
-					<div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+					<div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
 						<!-- Author byline: present only when the writing
                  admin chose a public pen name; links to their archive. The
                  inline follow control is the primary surface where
@@ -1146,7 +1146,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					<p
 						v-else
 						role="note"
-						class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-400 dark:text-gray-500 flex items-center gap-2"
+						class="mt-10 pt-8 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"
 					>
 						<Icon icon="lucide:message-square-off" class="w-4 h-4" />
 						{{ t("post.commentsClosed") }}
@@ -1180,7 +1180,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
 								{{ rp.excerpt }}
 							</p>
-							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
 								<span>{{ rp.category?.name }}</span>
 								<span>{{ t("post.views", { count: rp.views }) }}</span>
 							</div>
@@ -1230,7 +1230,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<p v-if="ap.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
 								{{ ap.excerpt }}
 							</p>
-							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
 								<span v-if="ap.category">{{ ap.category.name }}</span>
 								<span>{{ t("post.views", { count: ap.views }) }}</span>
 							</div>
@@ -1276,7 +1276,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<p v-if="rp.excerpt" class="text-sm text-gray-500 mt-2 line-clamp-2">
 								{{ rp.excerpt }}
 							</p>
-							<div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+							<div class="flex items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
 								<span>{{ rp.category?.name }}</span>
 								<span>{{ t("post.views", { count: rp.views }) }}</span>
 							</div>
