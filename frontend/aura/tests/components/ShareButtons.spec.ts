@@ -320,4 +320,32 @@ describe("ShareButtons", () => {
 			consoleSpy.mockRestore();
 		});
 	});
+
+	describe("native share", () => {
+		it("offers the OS share sheet when the browser supports it", async () => {
+			const shareSpy = vi.fn().mockResolvedValue(undefined);
+			Object.defineProperty(navigator, "share", { value: shareSpy, configurable: true });
+			try {
+				const wrapper = mountShareButtons();
+				await flushPromises();
+				const nativeButton = wrapper.find('button[aria-label="系统分享"]');
+				expect(nativeButton.exists()).toBe(true);
+
+				await nativeButton.trigger("click");
+				await flushPromises();
+
+				expect(shareSpy).toHaveBeenCalledWith({
+					title: "Test Post Title",
+					url: "https://example.com/test-post",
+				});
+			} finally {
+				Reflect.deleteProperty(navigator, "share");
+			}
+		});
+
+		it("stays hidden when the browser has no share sheet", () => {
+			const wrapper = mountShareButtons();
+			expect(wrapper.find('button[aria-label="系统分享"]').exists()).toBe(false);
+		});
+	});
 });

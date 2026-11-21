@@ -7,6 +7,18 @@
 			{{ t("components.share.shareTo") }}
 		</span>
 
+		<!-- Native share sheet (mobile) -->
+		<button
+			v-if="canNativeShare"
+			type="button"
+			@click="shareNative"
+			class="min-w-[44px] min-h-[44px] p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+			:title="t('components.share.native')"
+			:aria-label="t('components.share.native')"
+		>
+			<Icon icon="lucide:share" class="w-5 h-5" />
+		</button>
+
 		<!-- Weibo -->
 		<button
 			type="button"
@@ -107,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 interface Props {
 	title: string;
@@ -136,6 +148,23 @@ const currentUrl = computed(
 );
 const encodedUrl = computed(() => encodeURIComponent(currentUrl.value));
 const encodedTitle = computed(() => encodeURIComponent(props.title));
+
+// Phones and some desktops expose the OS share sheet; offering it avoids
+// making a reader pick a social network they may not use. Detected after
+// mount so the server-rendered button set stays stable.
+const canNativeShare = ref(false);
+onMounted(() => {
+	canNativeShare.value = typeof navigator !== "undefined" && typeof navigator.share === "function";
+});
+
+async function shareNative() {
+	if (typeof navigator === "undefined" || typeof navigator.share !== "function") return;
+	try {
+		await navigator.share({ title: props.title, url: currentUrl.value });
+	} catch {
+		// The reader dismissed the sheet (AbortError) — nothing to report.
+	}
+}
 
 function shareToWeibo() {
 	if (typeof window === "undefined") return;

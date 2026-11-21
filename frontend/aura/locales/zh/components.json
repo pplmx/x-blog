@@ -106,7 +106,8 @@
 			"linkedin": "分享到 LinkedIn",
 			"copyLink": "复制链接",
 			"linkCopied": "链接已复制",
-			"copyFailed": "复制链接失败"
+			"copyFailed": "复制链接失败",
+			"native": "系统分享"
 		},
 		"sidebar": {
 			"clearFilters": "清除筛选",

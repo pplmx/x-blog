@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 📤 **phones can hand an article to the system share sheet** — where
+  `navigator.share` exists, the share row now leads with a native share button
+  (localized label, 44px target) so readers are not forced through a social
+  network; the button is detected after mount and stays absent elsewhere.
 - 📡 **feeds describe the blog with the stack it actually runs** — the default site
   description still said "Next.js", which reached every RSS and Atom channel because no
   site-settings row overrides it. It now names Nuxt.

@@ -106,7 +106,8 @@
 			"linkedin": "Share to LinkedIn",
 			"copyLink": "Copy link",
 			"linkCopied": "Link copied",
-			"copyFailed": "Couldn't copy link"
+			"copyFailed": "Couldn't copy link",
+			"native": "Share"
 		},
 		"sidebar": {
 			"clearFilters": "Clear filters",
