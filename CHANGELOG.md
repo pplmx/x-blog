@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🧭 **the table of contents follows the reader** — each TOC link carries
   `aria-current="location"` while its heading is on screen, and choosing a
   section hands DOM focus to that heading (mobile sheet included) so screen
-  readers land on the text instead of staying in the navigation; the desktop
-  list is also a labelled landmark.
+  readers land on the text instead of staying in the navigation; following a
+  heading's own permalink does the same. The desktop list is also a labelled
+  landmark.
 - 🔢 **single items read naturally in English** — header search results, comment
   likes, sidebar views, series views, and the bookmark/like/follow/comment
   counters now use a singular form at count 1 instead of "1 posts".

@@ -143,6 +143,8 @@ describe("MarkdownContent", () => {
 			expect(anchors[1].attributes("href")).toBe("#setup");
 			// The "#" glyph is CSS-generated, so the heading text stays clean.
 			expect(wrapper.find("h2").text()).toBe("Intro");
+			// Focus can land on the section when its permalink is followed.
+			expect(wrapper.find("h2").attributes("tabindex")).toBe("-1");
 			expect(wrapper.find("h4").find(".heading-anchor").exists()).toBe(false);
 		});
 

@@ -140,6 +140,11 @@ function injectHeadingAnchors(): void {
 	const headings = root.querySelectorAll<HTMLElement>("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
 	for (const heading of headings) {
 		if (!heading.id) continue;
+		// A heading is not focusable by default, so following a permalink (or a
+		// TOC link) scrolls the viewport while leaving focus on the link that was
+		// clicked. tabindex="-1" makes the native fragment navigation hand focus
+		// to the section without adding every heading to the tab order.
+		if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
 		const existing = heading.querySelector<HTMLAnchorElement>(":scope > .heading-anchor");
 		if (existing) {
 			// Locale switches re-run this without replacing the v-html DOM.
