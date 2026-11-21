@@ -1789,6 +1789,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🐛 **the sitemap lists the archive and series indexes** — only their child URLs were submitted, so
   crawlers could reach `/archive` and `/series` solely by following links from other pages. Both
   browse indexes now appear in `/sitemap.xml` alongside the existing static entries.
+- 🎨 **auth cards get a hairline separator instead of a black rule** — the footer link row on
+  `/login`, `/forgot-password`, `/reset-password`, `/email-change` and the admin sign-in used a
+  bare `border-t`, which inherited the card's near-black text colour and read as a heavy rule. It
+  now uses the same light grey (and dark-mode) border as the rest of the site.
 
 ## [0.1.0] - 2026-09-09
 

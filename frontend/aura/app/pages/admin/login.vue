@@ -174,7 +174,7 @@ async function handleLogin() {
 					<span v-else>{{ t("admin.login.login") }}</span>
 				</button>
 			</form>
-			<div class="mt-6 pt-6 border-t text-center">
+			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
 				<NuxtLink to="/" class="text-sm text-gray-500 hover:text-blue-600 transition-colors">
 					← {{ t("admin.login.backToBlog") }}
 				</NuxtLink>

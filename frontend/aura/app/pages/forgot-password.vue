@@ -119,7 +119,7 @@ async function handleSubmit() {
 				</p>
 			</div>
 
-			<div class="mt-6 pt-6 border-t text-center">
+			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
 				<NuxtLink to="/login" class="text-sm text-gray-500 hover:text-blue-600 transition-colors">
 					← {{ t("reader.forgotPassword.backToLogin") }}
 				</NuxtLink>

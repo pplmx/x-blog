@@ -380,7 +380,7 @@ function cancel2fa() {
 				</button>
 			</form>
 
-			<div class="mt-6 pt-6 border-t text-center">
+			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
 				<NuxtLink
 					to="/bookmarks"
 					class="text-sm text-gray-500 hover:text-blue-600 transition-colors"

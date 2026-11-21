@@ -178,7 +178,7 @@ async function handleSubmit() {
 				</p>
 			</div>
 
-			<div class="mt-6 pt-6 border-t text-center">
+			<div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
 				<!-- The link is labeled "Back to login", so it must go to /login in every
              state — a token-bearing landing (form shown or spent-link 400) is still
              a login-page visit, not a re-request (reader-auth deep-dive finding).
