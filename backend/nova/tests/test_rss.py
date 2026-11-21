@@ -387,6 +387,9 @@ async def test_sitemap_includes_static_pages(client):
     assert "/search" in content
     assert "/categories" in content
     assert "/tags" in content
+    # Browse indexes that list published content are indexable pages too.
+    assert "http://localhost:3000/archive</loc>" in content
+    assert "http://localhost:3000/series</loc>" in content
 
 
 async def test_sitemap_includes_image_namespace(client):

@@ -802,6 +802,20 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     <priority>0.4</priority>
 </url>""")
 
+    # Archive and series browse pages: both list published content and are
+    # real indexable pages, but the sitemap only carried their child URLs.
+    urls.append(f"""<url>
+    <loc>{site_url}/archive</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+</url>""")
+
+    urls.append(f"""<url>
+    <loc>{site_url}/series</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
+</url>""")
+
     # Posts
     for post in posts:
         updated = (post.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%d")

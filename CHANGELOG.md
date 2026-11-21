@@ -1786,6 +1786,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   / "Category posts", so a reader arriving from a link could not tell which tag or category they
   were browsing. The heading now shows the selected name (`#React`, `技术分享`) with its article
   count underneath, falling back to the generic label while the taxonomy loads.
+- 🐛 **the sitemap lists the archive and series indexes** — only their child URLs were submitted, so
+  crawlers could reach `/archive` and `/series` solely by following links from other pages. Both
+  browse indexes now appear in `/sitemap.xml` alongside the existing static entries.
 
 ## [0.1.0] - 2026-09-09
 
