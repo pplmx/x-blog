@@ -157,6 +157,17 @@ describe("Default Layout", () => {
 			expect(rssLink.exists()).toBe(true);
 			expect(rssLink.attributes("type")).toBe("application/rss+xml");
 		});
+
+		it("scrolls back to the top from the footer", async () => {
+			const scrollTo = vi.fn();
+			vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+			vi.stubGlobal("scrollTo", scrollTo);
+			const wrapper = mountLayout();
+			const button = wrapper.findAll("button").find((b) => b.text().includes("回到顶部"));
+			expect(button).toBeTruthy();
+			await button!.trigger("click");
+			expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+		});
 	});
 
 	describe("Structure", () => {

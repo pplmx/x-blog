@@ -9,6 +9,12 @@ const isHome = computed(() => route.path === "/");
 // `logout` signs out from the same group.
 const { isAuthenticated, reader, logout } = useReaderAuth();
 
+/** Footer escape hatch for long pages; honour reduced-motion preferences. */
+function scrollToPageTop(): void {
+	const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+	window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+}
+
 // Site content navigation — always visible, identical for guests and signed-in
 // readers so the bar width is stable across auth states (top-nav
 // "My" menu redesign). Search is the ever-present HeaderSearch widget, so the
@@ -416,6 +422,14 @@ onMounted(initTheme);
 						<span>{{ t("common.footer.forDevelopers") }}</span>
 					</div>
 					<div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+						<button
+							type="button"
+							class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+							@click="scrollToPageTop"
+						>
+							<Icon icon="lucide:chevron-up" class="w-4 h-4" />
+							{{ t("common.footer.backToTop") }}
+						</button>
 						<NuxtLink
 							to="/"
 							class="hover:text-gray-700 dark:hover:text-gray-200 transition-colors"

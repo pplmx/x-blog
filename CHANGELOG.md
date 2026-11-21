@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧗 **the footer carries a back-to-top control** — long archive pages, result
+  sets and article footers end far from the header; the footer now scrolls
+  back up, jumping instantly when the reader prefers reduced motion.
 - 🧭 **the home sidebar counts what the archive holds** — its stats card
   repeated the hero's views and likes verbatim; it now lists posts, categories,
   tags and comments, so the two summaries complement each other.
