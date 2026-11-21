@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **the primary menu is a named landmark** — the desktop content nav now
+  carries `aria-label="主导航"`, so a screen reader's landmark list says which
+  navigation it is instead of an unnamed "navigation".
 - 🖼 **shared previews describe their image** — `og:image:alt` now carries the
   page title (Twitter already did), so link previews that read alt text out
   have something meaningful to say.

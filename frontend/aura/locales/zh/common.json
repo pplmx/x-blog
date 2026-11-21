@@ -8,7 +8,8 @@
 			"series": "系列",
 			"search": "搜索",
 			"github": "GitHub",
-			"archive": "归档"
+			"archive": "归档",
+			"primary": "主导航"
 		},
 		"passwordShow": "显示密码",
 		"passwordHide": "隐藏密码",

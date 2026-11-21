@@ -107,6 +107,13 @@ describe("Default Layout", () => {
 			expect(homeLink.length).toBeGreaterThanOrEqual(1);
 		});
 
+		it("labels the primary navigation landmark", () => {
+			const wrapper = mountLayout();
+			const primaryNav = wrapper.find('nav[aria-label="主导航"]');
+			expect(primaryNav.exists()).toBe(true);
+			expect(primaryNav.find('a[href="/"]').exists()).toBe(true);
+		});
+
 		it("renders a link to the about page", () => {
 			const wrapper = mountLayout();
 			const aboutLink = wrapper.find('a[href="/about"]');

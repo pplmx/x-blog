@@ -180,7 +180,10 @@ onMounted(initTheme);
                collapses to 0 on overflow so the group scrolls from its start.
                No nav item is ever unreachable at any width/locale/auth state. -->
 					<div class="hidden xl:flex flex-1 min-w-0 items-center justify-end gap-1">
-						<nav class="flex items-center gap-1 overflow-x-auto min-w-0">
+						<nav
+							:aria-label="t('common.nav.primary')"
+							class="flex items-center gap-1 overflow-x-auto min-w-0"
+						>
 							<NuxtLink
 								v-for="link in contentLinks"
 								:key="link.to"

@@ -8,7 +8,8 @@
 			"series": "Series",
 			"search": "Search",
 			"github": "GitHub",
-			"archive": "Archive"
+			"archive": "Archive",
+			"primary": "Primary navigation"
 		},
 		"passwordShow": "Show password",
 		"passwordHide": "Hide password",
