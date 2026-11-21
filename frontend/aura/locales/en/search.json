@@ -11,6 +11,10 @@
 			"hint": "Enter keywords to start searching"
 		},
 		"placeholder": "Enter keywords...",
+		"recent": {
+			"title": "Recent searches",
+			"clear": "Clear"
+		},
 		"error": "Failed to load",
 		"mode": {
 			"label": "What to search",

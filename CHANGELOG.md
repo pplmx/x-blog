@@ -1743,6 +1743,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   category/tag/series/user deletes purge their reader-follow rows (stale
   follows could otherwise re-point at an unrelated later row on SQLite id
   reuse). Regression tests cover each path.
+- ✨ **the bare search page remembers recent queries** — `/search` opened as a blank prompt, so a
+  returning reader retyped the same terms. Submitted terms are now kept device-locally
+  (`localStorage` key `xblog.search.recent`: newest first, case-insensitively deduped, capped at 5)
+  and shown as chips under the prompt; clicking one re-runs it, and one click clears the list.
+  Search history never leaves the browser.
 
 ## [0.1.0] - 2026-09-09
 

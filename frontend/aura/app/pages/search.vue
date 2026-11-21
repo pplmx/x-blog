@@ -16,11 +16,16 @@ import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
+import { useRecentSearches } from "~~/composables/useRecentSearches";
 import { useSeo } from "~~/composables/useSeo";
 // biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const { t, locale } = useLang();
+// Device-local last searches, shown under the bare landing's prompt. Read on
+// mount only (see the composable), so SSR output stays prompt-plus-input.
+const { recentSearches, remember: rememberSearch, clear: clearSearchHistory } =
+	useRecentSearches();
 // used in template v-html (Biome cannot see template usage)
 void sanitizeHtml;
 
@@ -526,6 +531,9 @@ function handleSearchInput() {
 		handleTermCleared();
 		return;
 	}
+	// Remember every submitted term (even one matching the current query, so a
+	// re-run promotes it back to the front of the list).
+	rememberSearch(q);
 	if (q !== query.value) {
 		// New term: merge into the existing filters (category/tag/sort/date)
 		// and search mode instead of replacing the whole query — dropping them
@@ -533,6 +541,15 @@ function handleSearchInput() {
 		// (deep-dive finding). Page resets to 1 for the fresh result set.
 		navigateTo({ query: pageQuery({ q, page: "1" }) });
 	}
+}
+
+/**
+ * Jump straight to a remembered term from the bare landing. Promotes it to the
+ * front of the list first, so the chip row reflects the new click order.
+ */
+function searchRecentTerm(term: string) {
+	rememberSearch(term);
+	navigateTo({ query: { q: term } });
 }
 
 /**
@@ -586,6 +603,34 @@ function goToPage(pg: number | string) {
 						icon="lucide:search"
 						class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
 					/>
+				</div>
+				<div v-if="recentSearches.length" class="mt-6">
+					<div class="mb-2 flex items-center justify-between">
+						<span
+							class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+						>
+							{{ t("search.recent.title") }}
+						</span>
+						<button
+							type="button"
+							class="text-xs text-gray-500 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+							@click="clearSearchHistory"
+						>
+							{{ t("search.recent.clear") }}
+						</button>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						<button
+							v-for="term in recentSearches"
+							:key="term"
+							type="button"
+							:title="term"
+							class="max-w-full truncate rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-blue-500 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-blue-400 dark:hover:text-blue-400"
+							@click="searchRecentTerm(term)"
+						>
+							{{ term }}
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>

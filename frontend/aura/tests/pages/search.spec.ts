@@ -14,6 +14,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computed, reactive, ref } from "vue";
 import type { SearchSuggestion } from "~~/api/public/search";
+import { RECENT_SEARCHES_KEY } from "../../composables/useRecentSearches";
 
 // Blocked-reader suppression: stub the composable so the
 // comment-search test can inject a blocked reader id and observe the hit vanish.
@@ -289,6 +290,40 @@ describe("Search Page", () => {
 			const input = wrapper.find('input[type="text"]');
 			expect(input.exists()).toBe(true);
 			expect(input.attributes("placeholder")).toContain("关键词");
+		});
+
+		it("lists the device's recent searches under the prompt", async () => {
+			window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(["fastapi", "nuxt"]));
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			expect(wrapper.text()).toContain("最近搜索");
+			const chipLabels = wrapper
+				.findAll("button")
+				.map((button) => button.text())
+				.filter((label) => label === "fastapi" || label === "nuxt");
+			expect(chipLabels).toEqual(["fastapi", "nuxt"]);
+			window.localStorage.clear();
+		});
+
+		it("searches a remembered term when its chip is clicked", async () => {
+			window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(["fastapi"]));
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			const navMock = vi.fn();
+			vi.stubGlobal("navigateTo", navMock);
+			const chip = wrapper.findAll("button").find((button) => button.text() === "fastapi");
+			expect(chip).toBeTruthy();
+			await chip?.trigger("click");
+			expect(navMock).toHaveBeenCalledWith({ query: { q: "fastapi" } });
+			window.localStorage.clear();
+		});
+
+		it("clears the remembered list from the landing", async () => {
+			window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(["fastapi"]));
+			const wrapper = await mountSearchPage({ routeQuery: {} });
+			const clearButton = wrapper.findAll("button").find((button) => button.text() === "清除");
+			expect(clearButton).toBeTruthy();
+			await clearButton?.trigger("click");
+			expect(wrapper.text()).not.toContain("最近搜索");
+			expect(window.localStorage.getItem(RECENT_SEARCHES_KEY)).toBeNull();
 		});
 
 		it("renders a search button inside the input area", async () => {

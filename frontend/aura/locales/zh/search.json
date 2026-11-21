@@ -11,6 +11,10 @@
 			"hint": "输入关键词开始搜索"
 		},
 		"placeholder": "输入关键词...",
+		"recent": {
+			"title": "最近搜索",
+			"clear": "清除"
+		},
 		"error": "加载失败",
 		"mode": {
 			"label": "搜索范围",
