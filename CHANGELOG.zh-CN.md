@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+- 🛡 **空文章 slug 与非正数作者 id 返回 404**——`/posts/%20` 会请求
+  `/api/posts/`（文章列表接口），SSR 读取 `post.tags` 时直接 500；
+  `/authors/-1` 则被传给要求 id ≥ 1 的 API，只剩无用的重试。现在两者都不发请求，
+  直接渲染“不存在”。
 - 🏷 **非正数分类/标签 id 回到索引页**——`/tags?tag_id=-1` 与
   `/categories?category_id=-1` 原先直接传给要求 id ≥ 1 的 API，页面只剩死重试；
   现在按“未选择”处理，展示标签/分类总览。

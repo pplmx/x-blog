@@ -15,7 +15,10 @@ const route = useRoute();
 // pattern); an id that is not a number is never a public author.
 const authorId = computed(() => {
 	const id = Number.parseInt(String(route.params.id), 10);
-	return Number.isFinite(id) ? id : undefined;
+	// Non-numeric and non-positive ids can never name a public author: the API
+	// validates path ids with ge=1, so a shared /authors/-1 link would 422 into
+	// a retry that can never succeed.
+	return Number.isFinite(id) && id >= 1 ? id : undefined;
 });
 
 const page = computed(() => (route.query.page ? Number.parseInt(String(route.query.page), 10) : 1));
@@ -64,9 +67,7 @@ const feedUrl = computed(() => (authorName.value ? `/rss/authors/${authorId.valu
 const authorMissing = computed(
 	() =>
 		!pending.value &&
-		(error.value?.statusCode === 404 ||
-			!authorId.value ||
-			(!error.value && !archive.value)),
+		(error.value?.statusCode === 404 || !authorId.value || (!error.value && !archive.value)),
 );
 if (import.meta.server && authorMissing.value) {
 	setResponseStatus(404);

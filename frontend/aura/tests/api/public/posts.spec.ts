@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { ref } from "vue";
 
 import {
 	likePost,
@@ -57,6 +58,17 @@ describe("public posts queries", () => {
 		expect(path()).toBe("/api/search?q=vue+%26+nuxt&page=1&limit=5&sort=views");
 		q = "fast api";
 		expect(path()).toBe("/api/search?q=fast+api&page=1&limit=5&sort=views");
+	});
+
+	it("skips the post request when the slug is blank", () => {
+		const slug = ref("   ");
+		usePost(() => slug.value);
+		const enabled = queryCalls[0].options.enabled as { value: boolean };
+		expect(enabled.value).toBe(false);
+		slug.value = "hello-world";
+		expect(enabled.value).toBe(true);
+		const path = queryCalls[0].path as () => string;
+		expect(path()).toBe("/api/posts/hello-world");
 	});
 
 	it("preserves post, archive, popular, related, and adjacent endpoints", () => {

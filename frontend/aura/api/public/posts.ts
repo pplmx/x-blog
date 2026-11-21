@@ -1,4 +1,4 @@
-import { type Ref, unref } from "vue";
+import { type Ref, computed, unref } from "vue";
 import type { PostList, PostListResponse } from "../contracts/shared";
 import {
 	type ApiQueryOptions,
@@ -86,9 +86,19 @@ export function usePost(
 	slugOrId: string | number | Getter<string | number>,
 	options: ApiQueryOptions<Post> = {},
 ) {
+	const read = () => (typeof slugOrId === "function" ? slugOrId() : unref(slugOrId));
 	const path =
-		typeof slugOrId === "function" ? () => `/api/posts/${slugOrId()}` : `/api/posts/${slugOrId}`;
-	return query<Post>(path, options);
+		typeof slugOrId === "function"
+			? () => `/api/posts/${encodeURIComponent(String(read()))}`
+			: `/api/posts/${encodeURIComponent(String(slugOrId))}`;
+	// A blank slug (e.g. /posts/%20) must never become `/api/posts/`, which
+	// resolves to the LIST endpoint and hands the page a pagination envelope
+	// where it expects a post. Skip the request so the page renders not-found.
+	const hasSlug = computed(() => {
+		const value = read();
+		return typeof value === "number" ? value >= 1 : String(value ?? "").trim().length > 0;
+	});
+	return query<Post>(path, { enabled: hasSlug, ...options });
 }
 
 export function usePostSearch(

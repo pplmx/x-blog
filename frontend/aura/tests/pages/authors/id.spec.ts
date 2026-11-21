@@ -226,6 +226,13 @@ describe("Author archive page (/authors/[id])", () => {
 		expect(wrapper.text()).toContain("作者不存在");
 	});
 
+	it("renders the not-found state for a non-positive id", async () => {
+		// The API's path id is ge=1; forwarding -1 would 422 into a dead Retry.
+		const wrapper = await mountAuthorsPage({ authorId: "-1", archive: null });
+		expect(wrapper.text()).toContain("作者不存在");
+		expect(wrapper.text()).not.toContain("加载失败");
+	});
+
 	it("surfaces a load failure with a retry instead of the empty state", async () => {
 		const wrapper = await mountAuthorsPage({
 			error: { message: "boom", statusCode: 500 },
