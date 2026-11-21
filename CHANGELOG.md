@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- 🛡 **blank post slugs and non-positive author ids answer 404** — `/posts/%20`
-  requested `/api/posts/` (the list endpoint) and crashed SSR reading
-  `post.tags`; `/authors/-1` was forwarded to an API that requires ids ≥ 1 and
-  showed a dead Retry. Both now skip the request and render not-found.
+- 🛡 **blank detail slugs and non-positive ids answer 404** — `/series/%20`,
+  `/pages/%20` and `/posts/%20` requested their list endpoints, handing detail
+  pages the wrong shape (the post page crashed SSR reading `post.tags`);
+  `/authors/-1` and `/readers/0` were forwarded to APIs requiring ids ≥ 1 and
+  showed retries that could never succeed. All now skip the request and render
+  not-found.
 - 🏷 **non-positive taxonomy ids fall back to the index** — `/tags?tag_id=-1`
   and `/categories?category_id=-1` were forwarded to an API that requires ids
   ≥ 1, so the page showed a dead Retry; both now treat them as no selection.

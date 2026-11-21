@@ -357,6 +357,15 @@ describe("Reader profile page", () => {
 		expect(wrapper.text()).not.toContain("readerProfile.loadFailed");
 	});
 
+	it.each(["0", "-1", "1.5"])("renders not-found for the invalid id %s", async (id) => {
+		// The profile route requires an integer id ≥ 1; forwarding these would
+		// 422 into the generic "couldn't load — retry" state.
+		mockReaderId = id;
+		const wrapper = await mountPage();
+		expect(wrapper.text()).toContain("readerProfile.notFoundTitle");
+		expect(wrapper.text()).not.toContain("readerProfile.loadFailed");
+	});
+
 	it("a slow stale profile response cannot overwrite a newer one ", async () => {
 		// Quick page-click + tab-switch fires overlapping load() calls. The
 		// older (stale) response must not clobber the newer data or flip the

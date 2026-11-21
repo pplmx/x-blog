@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
 
 import { useSeries, useSeriesBySlug } from "../../../api/public/series.ts";
 
@@ -30,13 +31,17 @@ describe("public series", () => {
 		expect(queryCalls[0].options.baseURL).toBe("https://api.example.test");
 	});
 
-	it("derives a nullable series path from a reactive slug getter", () => {
-		let slug: string | null = null;
-		useSeriesBySlug(() => slug);
+	it("skips the series request until the slug has content", () => {
+		const slug = ref<string | null>(null);
+		useSeriesBySlug(() => slug.value);
 
-		const path = queryCalls[0].path as () => string | null;
-		expect(path()).toBeNull();
-		slug = "nuxt-deep-dive";
+		const enabled = queryCalls[0].options.enabled as { value: boolean };
+		expect(enabled.value).toBe(false);
+		slug.value = "   ";
+		expect(enabled.value).toBe(false);
+		slug.value = "nuxt-deep-dive";
+		expect(enabled.value).toBe(true);
+		const path = queryCalls[0].path as () => string;
 		expect(path()).toBe("/api/series/nuxt-deep-dive");
 	});
 });

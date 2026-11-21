@@ -1,4 +1,4 @@
-import type { ApiQueryPath } from "../transport";
+import { computed } from "vue";
 import { query } from "../transport";
 
 type Getter<T> = () => T;
@@ -21,12 +21,14 @@ export function usePages() {
 }
 
 export function usePage(slug: string | Getter<string | null | undefined>) {
+	const read = () => (typeof slug === "function" ? slug() : slug);
+	// A blank slug (/pages/%20) must not become `/api/pages/`, which resolves to
+	// the LIST endpoint and hands the page an array where it expects a detail.
+	// Skip the request so the page renders its not-found state.
+	const hasSlug = computed(() => Boolean(read()?.trim()));
 	const path =
 		typeof slug === "function"
-			? ((() => {
-					const resolved = slug();
-					return resolved ? `/api/pages/${resolved}` : null;
-				}) as ApiQueryPath)
-			: `/api/pages/${slug}`;
-	return query<PagePublic>(path);
+			? () => `/api/pages/${encodeURIComponent(read() ?? "")}`
+			: `/api/pages/${encodeURIComponent(slug)}`;
+	return query<PagePublic>(path, { enabled: hasSlug });
 }

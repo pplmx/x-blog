@@ -148,10 +148,10 @@ async function load() {
 	loading.value = true;
 	loadFailed.value = false;
 	notFound.value = false;
-	// A non-numeric id (e.g. /readers/abc) is a broken link, not a server
-	// problem — rendering "not found" beats showing a retry for a 422 from
-	// `Path(ge=1)`.
-	if (Number.isNaN(readerId.value)) {
+	// A non-numeric or non-positive id (e.g. /readers/abc, /readers/0) is a
+	// broken link, not a server problem — rendering "not found" beats showing
+	// a retry for a 422 from `Path(ge=1)`.
+	if (!Number.isInteger(readerId.value) || readerId.value < 1) {
 		if (seq === loadSeq) {
 			notFound.value = true;
 			loading.value = false;
