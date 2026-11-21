@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🎨 **category cards carry a folder badge** — each card in the categories grid now leads with a tinted
+  folder icon, so a sparse grid reads as a deliberate list of sections instead of four empty boxes with
+  a distant arrow.
 - 🐛 **series cards/detail say "N posts", not "N series"** — `series/index.vue` and
   `series/[slug].vue` passed each series' `post_count` to `series.countLabel` ("{count} series in
   total"), so one series holding 3 posts advertised "3 series in total". Both now use the new

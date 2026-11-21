@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+- 🎨 **分类卡片加上文件夹徽标**——分类网格的每张卡片前新增淡紫色文件夹图标，稀疏的网格看起来像
+  一组明确的栏目，而不是四个空盒子加一个远处的箭头。
 - 🐛 **系列卡片/详情改为显示“N 篇文章”而不是“N 个系列”**——`series/index.vue` 与
   `series/[slug].vue` 把每个系列的 `post_count` 传给了 `series.countLabel`（“共 {count} 个系列”），
   于是只有 3 篇文章的单个系列被写成“共 3 个系列”。两处改用新增的 `series.postsCount` 文案

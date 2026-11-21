@@ -422,12 +422,19 @@ onUnmounted(() => {
 						:to="{ query: { category_id: String(category.id) } }"
 						class="group flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-purple-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-700"
 					>
-						<span class="min-w-0">
-							<span class="block truncate text-base font-semibold text-gray-900 dark:text-gray-100">
-								{{ category.name }}
+						<span class="flex min-w-0 items-center gap-3">
+							<span
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-300"
+							>
+								<Icon icon="lucide:folder" class="h-5 w-5" />
 							</span>
-							<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
-								{{ t("categories.postCount", { count: category.post_count ?? 0 }) }}
+							<span class="min-w-0">
+								<span class="block truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+									{{ category.name }}
+								</span>
+								<span class="mt-1 block text-sm text-gray-500 dark:text-gray-400">
+									{{ t("categories.postCount", { count: category.post_count ?? 0 }) }}
+								</span>
 							</span>
 						</span>
 						<Icon
