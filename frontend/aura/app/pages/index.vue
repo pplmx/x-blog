@@ -115,6 +115,7 @@ const recSignedIn = computed(
 		!!localStorage.getItem("reader_token"),
 );
 onMounted(async () => {
+	showContinueRow.value = true;
 	if (!recSignedIn.value) return;
 	recommending.value = true;
 	try {
@@ -288,6 +289,10 @@ const continueItems = computed(() =>
 	recSignedIn.value ? serverInProgress.value.slice(0, 6) : recentPosts.value.slice(0, 6),
 );
 const continueVisible = computed(() => continueItems.value.length > 0);
+// The guest trail lives in localStorage, so it must not decide SSR markup:
+// rendering it during hydration for a returning reader would insert nodes the
+// server never sent. Reveal the row only after the client has mounted.
+const showContinueRow = ref(false);
 
 async function loadInProgress() {
 	if (!recSignedIn.value) return;
@@ -447,7 +452,7 @@ const stats = computed(() => {
 		<!-- Continue reading (server trail):
          guests see the device-local recent row; signed-in readers see the
          server resume trail, newest-first -->
-		<section v-if="continueVisible" class="mb-10">
+		<section v-if="showContinueRow && continueVisible" class="mb-10">
 			<div class="flex items-center justify-between mb-4">
 				<h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
 					<Icon icon="lucide:history" class="w-5 h-5 text-violet-500" />

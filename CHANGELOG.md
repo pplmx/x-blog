@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🧭 **a visitor's reading trail no longer leaks into other visitors' pages** — the
+  recently-viewed store is a module singleton, and article pages recorded into it during
+  server rendering, so the home page could show the last post *someone else* had opened
+  and the browser then hit a hydration node mismatch. Recording is now client-only and the
+  local continue-reading row appears after mount.
 - 👁 **password fields can be revealed** — the reader sign-in and reset forms now carry an eye
   toggle (localized `aria-label`, `aria-pressed` state) so a typo on a phone keyboard can be spotted
   before submitting; the value itself is unchanged.

@@ -76,6 +76,10 @@ export function useRecentlyViewed() {
 	/** Record a post as just viewed: moves it to the front, dedups, caps. */
 	function record(post: { slug: string; title: string }): void {
 		if (!post?.slug || !post.title) return;
+		// `recent` is module-scoped: writing it during SSR would leave one
+		// visitor's trail in the server's singleton and leak it into the next
+		// visitor's HTML (and break hydration). Only the browser records.
+		if (typeof window === "undefined") return;
 		const now = Date.now();
 		const entries = read().filter((x) => x.slug !== post.slug);
 		entries.unshift({ slug: post.slug, title: post.title, viewedAt: now });

@@ -139,4 +139,15 @@ describe("useRecentlyViewed", () => {
 			Object.defineProperty(window, "localStorage", { value: originalLS, configurable: true });
 		}
 	});
+
+	it("ignores records during SSR so the server mirror never leaks a visitor trail", () => {
+		const { record, recent } = useRecentlyViewed();
+		vi.stubGlobal("window", undefined);
+		try {
+			record({ slug: "ssr-leak", title: "SSR Leak" });
+		} finally {
+			vi.unstubAllGlobals();
+		}
+		expect(recent.value.some((x) => x.slug === "ssr-leak")).toBe(false);
+	});
 });
