@@ -637,7 +637,7 @@ function lineNumbers(code: string): number[] {
 }
 
 .markdown-content :deep(table) {
-	@apply w-full my-6 border-collapse;
+	@apply w-full my-0 border-collapse;
 }
 
 .markdown-content :deep(th) {

@@ -49,6 +49,36 @@
 		outline-offset: 2px;
 	}
 
+	/* Markdown tables: the pipeline wraps each one in .md-table-scroll
+     (useMarkdown.ts wrapTables). A wide table cannot shrink below its
+     content width, so without a scroll port it either squashes cells or
+     spills past the article column on phones. Margins live on the wrapper
+     so posts and comments agree; the inner table drops its own. */
+	.md-table-scroll {
+		margin: 1.5rem 0;
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		-webkit-overflow-scrolling: touch;
+		border: 1px solid var(--color-gray-200);
+		border-radius: 0.75rem;
+	}
+
+	.dark .md-table-scroll {
+		border-color: var(--color-gray-800);
+	}
+
+	.md-table-scroll table {
+		margin: 0;
+	}
+
+	/* Printing must show the whole table, not a clipped scroll port. */
+	@media print {
+		.md-table-scroll {
+			overflow: visible;
+			border: 0;
+		}
+	}
+
 	::-webkit-scrollbar {
 		width: 8px;
 		height: 8px;

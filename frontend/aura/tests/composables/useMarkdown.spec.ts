@@ -638,3 +638,28 @@ describe("commentMarkdownToHtml ", () => {
 		expect(typeof out).toBe("string");
 	});
 });
+
+describe("table wrapping", () => {
+	const table = "| Name | Value |\n| --- | --- |\n| alpha | 1 |";
+
+	it("wraps a GFM table in a horizontal scroll port", () => {
+		const html = markdownToHtml(table);
+		expect(html).toContain('<div class="md-table-scroll"><table>');
+		expect(html).toContain("</table></div>");
+	});
+
+	it("wraps tables rendered through useMarkdown segments", () => {
+		const { segments } = useMarkdown(table);
+		const html = segments.map((s) => ("html" in s ? s.html : "")).join("");
+		expect(html).toContain("md-table-scroll");
+	});
+
+	it("wraps tables in comments so wide tables scroll there too", () => {
+		expect(commentMarkdownToHtml(table)).toContain("md-table-scroll");
+	});
+
+	it("leaves table-free content untouched", () => {
+		const html = markdownToHtml("Just a paragraph.");
+		expect(html).not.toContain("md-table-scroll");
+	});
+});

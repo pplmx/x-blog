@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Skip to content" link that moves focus to `<main id="main-content" tabindex="-1">`, and the
   article progress bar is exposed as a localized `role="progressbar"` (0–100) instead of a
   decorative strip.
+- 🐛 **wide tables scroll inside their own rounded frame instead of widening the page** — GFM tables
+  were emitted as bare `<table>` elements, so a table wider than the prose column forced the whole
+  article (and everything after it) to pan sideways on a phone. `convertMarkdownToHtml` and
+  `commentMarkdownToHtml` now wrap each table in `.md-table-scroll` (`overflow-x: auto`, touch
+  momentum, hairline border; print expands it), with the table's vertical margin moved to the
+  wrapper.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its

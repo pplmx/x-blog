@@ -485,10 +485,29 @@ marked.use({
  */
 function convertMarkdownToHtml(md: string): string {
 	try {
-		return String(marked.parse(md));
+		return wrapTables(String(marked.parse(md)));
 	} catch {
 		return md;
 	}
+}
+
+/**
+ * Wrap GFM tables in a horizontally scrollable container.
+ *
+ * A wide table (6+ columns, long identifiers) cannot shrink below its content
+ * width, so un-wrapped it either squashes cells to unreadable or spills past
+ * the article column on phones. The wrapper gives the browser a scroll port
+ * scoped to the table instead of the page. Wrapping happens here, in the
+ * pipeline, so SSR output is already wrapped and there is no layout flash on
+ * hydration. The pattern is a single non-nested replace: marked never emits
+ * nested tables, and a raw-HTML table arrives as an `html` segment that this
+ * function does not see.
+ */
+function wrapTables(html: string): string {
+	if (!html.includes("<table")) return html;
+	return html
+		.replace(/<table(\s[^>]*)?>/g, '<div class="md-table-scroll">$&')
+		.replace(/<\/table>/g, "$&</div>");
 }
 
 /**
@@ -519,7 +538,7 @@ export function commentMarkdownToHtml(md: string): string {
 	beginHeadingIds(); // per-document duplicate-heading counter (see convertMarkdownToHtml)
 	try {
 		const html = String(marked.parse(md || "", { breaks: true }));
-		return sanitizeHtml(html);
+		return sanitizeHtml(wrapTables(html));
 	} catch {
 		return sanitizeHtml(md || "");
 	}
