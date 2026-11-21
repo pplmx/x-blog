@@ -192,6 +192,12 @@ describe("Default Layout", () => {
 			expect(menuButton.exists()).toBe(true);
 		});
 
+		it("offers a one-tap search link in the mobile header", () => {
+			const wrapper = mountLayout();
+			const searchLink = wrapper.find('a[aria-label="搜索"][href="/search"]');
+			expect(searchLink.exists()).toBe(true);
+		});
+
 		it("opens mobile menu when menu button is clicked", async () => {
 			const wrapper = mountLayout();
 			const menuButton = wrapper.find('button[aria-label="打开菜单"]');

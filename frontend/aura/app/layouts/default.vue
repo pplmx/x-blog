@@ -228,6 +228,17 @@ onMounted(initTheme);
 						</button>
 					</div>
 
+					<!-- Mobile search shortcut: the search box lives inside the
+               hamburger panel, which cost two taps; this gives phones a
+               one-tap path to the search landing. -->
+					<NuxtLink
+						to="/search"
+						class="ml-auto xl:hidden p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+						:aria-label="t('common.nav.search')"
+					>
+						<Icon icon="lucide:search" class="w-5 h-5" />
+					</NuxtLink>
+
 					<!-- Mobile menu button (xl below: the desktop nav can't fit before
                ~1150px, so tablets/compact laptops use the menu instead) -->
 					<button

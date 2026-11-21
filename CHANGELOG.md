@@ -1793,6 +1793,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/login`, `/forgot-password`, `/reset-password`, `/email-change` and the admin sign-in used a
   bare `border-t`, which inherited the card's near-black text colour and read as a heavy rule. It
   now uses the same light grey (and dark-mode) border as the rest of the site.
+- ✨ **phones get a one-tap search shortcut** — the search box only lived inside the hamburger
+  panel, so searching from a phone took a menu open plus a tap. A search icon now sits beside the
+  menu button in the mobile header and lands on `/search` directly.
 
 ## [0.1.0] - 2026-09-09
 
