@@ -392,6 +392,9 @@ async def test_sitemap_includes_static_pages(client):
     # Browse indexes that list published content are indexable pages too.
     assert "http://localhost:3000/archive</loc>" in content
     assert "http://localhost:3000/series</loc>" in content
+    # Community feeds are public, canonical, and not noindex.
+    assert "http://localhost:3000/discussion</loc>" in content
+    assert "http://localhost:3000/comments</loc>" in content
 
 
 async def test_sitemap_includes_image_namespace(client):

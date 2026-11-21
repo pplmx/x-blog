@@ -809,6 +809,20 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
     <priority>0.4</priority>
 </url>""")
 
+    # Community feeds: public, canonical, and not noindex, so they belong in
+    # the sitemap like the other browse indexes.
+    urls.append(f"""<url>
+    <loc>{site_url}/discussion</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.4</priority>
+</url>""")
+
+    urls.append(f"""<url>
+    <loc>{site_url}/comments</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.3</priority>
+</url>""")
+
     # Posts
     for post in posts:
         updated = (post.updated_at or rss_service.utc_now_naive()).strftime("%Y-%m-%d")

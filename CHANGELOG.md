@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🗺 **the community feeds are in the sitemap** — `/discussion` and
+  `/comments` are public, canonical and indexable, but neither URL was being
+  submitted; both now appear so crawlers can find the threads.
 - 💬 **long articles jump straight to the thread** — the article meta row now
   links 评论 / Comments, landing on the discussion heading with focus, so a
   reader (or screen reader) no longer scrolls past the whole body to reply.
