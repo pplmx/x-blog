@@ -34,6 +34,7 @@ const mockSeries = {
 			tags: [],
 			series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
 			series_order: 0,
+			reading_time: 7,
 		},
 		{
 			id: 12,
@@ -48,6 +49,7 @@ const mockSeries = {
 			tags: [],
 			series: { id: 1, title: "FastAPI Deep Dive", slug: "fastapi-deep-dive" },
 			series_order: 1,
+			reading_time: 9,
 		},
 	],
 };
@@ -160,6 +162,14 @@ describe("Series Detail Page", () => {
 	it("renders post view counts", async () => {
 		const wrapper = await mountSeriesDetailPage();
 		expect(wrapper.text()).toContain("100 次阅读");
+	});
+
+	it("shows the reading budget for the series and each episode", async () => {
+		const wrapper = await mountSeriesDetailPage();
+		// 7 + 9 minutes across the two episodes.
+		expect(wrapper.text()).toContain("共约 16 分钟");
+		expect(wrapper.text()).toContain("7 分钟");
+		expect(wrapper.text()).toContain("9 分钟");
 	});
 
 	it("links each post to its detail page in order", async () => {

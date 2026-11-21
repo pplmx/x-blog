@@ -96,6 +96,11 @@ function isEpisodeNext(post: { slug: string }): boolean {
 
 // Scoped RSS feed: subscribe to just this series.
 const feedUrl = computed(() => (series.value?.slug ? `/rss/series/${series.value.slug}.xml` : ""));
+// Reading budget for the whole series, summed from the per-post estimates the
+// API already returns — lets a reader judge whether to start a long series.
+const totalReadingMinutes = computed(() =>
+	(series.value?.posts ?? []).reduce((sum, post) => sum + (post.reading_time ?? 0), 0),
+);
 useHead(() => ({
 	link: feedUrl.value
 		? [
@@ -313,6 +318,10 @@ onUnmounted(() => {
 						<Icon icon="lucide:layers" class="w-4 h-4" />
 						{{ t("series.postsCount", { count: series.post_count }) }}
 					</span>
+					<span v-if="totalReadingMinutes" class="inline-flex items-center gap-1">
+						<Icon icon="lucide:clock" class="w-4 h-4" />
+						{{ t("series.totalReadingTime", { count: totalReadingMinutes }) }}
+					</span>
 					<a
 						v-if="feedUrl"
 						:href="feedUrl"
@@ -481,6 +490,10 @@ onUnmounted(() => {
 							<span class="flex items-center gap-1">
 								<Icon icon="lucide:eye" class="w-3.5 h-3.5" />
 								{{ t("series.views", { count: post.views || 0 }) }}
+							</span>
+							<span v-if="post.reading_time" class="flex items-center gap-1">
+								<Icon icon="lucide:clock" class="w-3.5 h-3.5" />
+								{{ t("post.readingTime", { count: post.reading_time }) }}
 							</span>
 						</div>
 					</NuxtLink>

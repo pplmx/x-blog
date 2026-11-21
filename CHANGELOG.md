@@ -1779,6 +1779,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✨ **the archive reads as a timeline** — months were solid gradient pills with the post count in
   parentheses, so the busiest month looked the same as the quietest. Each month is now a row with a
   bar scaled to the busiest month, the count right-aligned, and the year's total beside its heading.
+- ✨ **series show their reading budget** — the detail header listed the episode count but not how
+  long the series takes. The header now sums the per-episode estimates ("共约 3 分钟") and each
+  episode shows its own reading time next to its views.
 
 ## [0.1.0] - 2026-09-09
 
