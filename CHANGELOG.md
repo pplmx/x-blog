@@ -1764,6 +1764,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `BlogPosting` JSON-LD, so results showed a bare URL. They now also emit a `BreadcrumbList`
   (Home › Category › Article, using the reader's localized Home label), with the category crumb
   linking to `/categories?category_id=…`.
+- 🐛 **month-only archive links are validated too** — `/archive?month=13` skirted the period guard
+  (it only ran when a year was present) and hit the API's 1–12 range check, so the page showed
+  "load failed" with a pointless Retry. Month is now validated on its own and lands on the
+  empty-period copy.
 
 ## [0.1.0] - 2026-09-09
 

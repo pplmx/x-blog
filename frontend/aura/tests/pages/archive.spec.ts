@@ -304,6 +304,18 @@ describe("Archive Page", () => {
 			expect(fetchCalls.every((call) => !call.enabled)).toBe(true);
 		});
 
+		it("treats a month-only out-of-range link as an empty period", async () => {
+			// `?month=13` (no year) used to skip validation because the guard
+			// bailed out when year was undefined, so it 422'd into "加载失败".
+			const wrapper = await mountArchivePage({
+				routeQuery: { month: "13" },
+				postsError: { message: "422 Unprocessable Content" },
+			});
+			expect(wrapper.text()).toContain("该时间段暂无文章");
+			expect(wrapper.text()).not.toContain("加载失败");
+			expect(fetchCalls.every((call) => !call.enabled)).toBe(true);
+		});
+
 		it("still enables the posts request for an in-range period", async () => {
 			await mountArchivePage({ routeQuery: { year: "2024", month: "3" } });
 			expect(fetchCalls).toHaveLength(1);

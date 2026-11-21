@@ -31,15 +31,15 @@ const hasPeriod = computed(() => !!year.value || !!month.value);
 const MIN_ARCHIVE_YEAR = 2000;
 const MAX_ARCHIVE_YEAR = 2100;
 const periodIsValid = computed(() => {
-	if (year.value === undefined) return true;
 	if (
-		!Number.isInteger(year.value) ||
-		year.value < MIN_ARCHIVE_YEAR ||
-		year.value > MAX_ARCHIVE_YEAR
+		year.value !== undefined &&
+		(!Number.isInteger(year.value) || year.value < MIN_ARCHIVE_YEAR || year.value > MAX_ARCHIVE_YEAR)
 	) {
 		return false;
 	}
 	if (month.value === undefined) return true;
+	// Month alone is a valid filter (`/archive?month=3`), so it must be validated
+	// independently — a month-only link previously skipped this guard and 422'd.
 	return Number.isInteger(month.value) && month.value >= 1 && month.value <= 12;
 });
 
