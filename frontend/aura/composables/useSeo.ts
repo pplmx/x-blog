@@ -282,7 +282,7 @@ export function useSiteUrl(): string {
  *
  * Generates:
  * - <title> and <meta name="description">
- * - OpenGraph tags (og:title, og:description, og:type, og:image, og:url, og:locale)
+ * - OpenGraph tags (og:title, og:description, og:type, og:site_name, og:image, og:url, og:locale)
  * - Twitter Card tags (twitter:card, twitter:title, twitter:description,
  *   twitter:image, twitter:image:alt, twitter:site)
  * - <link rel="canonical">
@@ -332,6 +332,7 @@ function buildHead(options: SeoOptions, siteUrl: string): Record<string, unknown
 		{ property: "og:title", content: options.title },
 		{ property: "og:description", content: description },
 		{ property: "og:type", content: isArticle ? "article" : "website" },
+		{ property: "og:site_name", content: siteConfig.name },
 		{ property: "og:image", content: imageUrl },
 		{ property: "og:url", content: canonicalUrl },
 		{ property: "og:locale", content: ogLocale },

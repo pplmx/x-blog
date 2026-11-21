@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔗 **shared links carry the site name** — every page now emits
+  `og:site_name`, so link previews label the source instead of showing a bare
+  title.
 - 🌙 **login helper links stay readable on dark cards** — the forgot-password,
   2FA-back and back-to-bookmarks links were `text-gray-500` without a dark
   variant; they now add `dark:text-gray-400`.
