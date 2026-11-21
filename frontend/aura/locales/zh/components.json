@@ -128,7 +128,8 @@
 			"lightboxNext": "下一张图片",
 			"lightboxCounter": "第 {current} / {total} 张图片",
 			"lightboxDialogAria": "图片查看器",
-			"permalink": "链接到本节"
+			"permalink": "链接到本节",
+			"tableRegion": "表格，可横向滚动"
 		},
 		"postCard": {
 			"pinned": "置顶",

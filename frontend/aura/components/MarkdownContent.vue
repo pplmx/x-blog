@@ -63,6 +63,7 @@ onMounted(async () => {
 	purifyReady.value = true;
 	await nextTick();
 	injectHeadingAnchors();
+	decorateTables();
 	void applyHighlighting();
 });
 
@@ -153,10 +154,31 @@ function injectHeadingAnchors(): void {
 	}
 }
 
+// A wide table scrolls inside `.md-table-scroll`, and a scroll container that
+// cannot take focus is unreachable for keyboard users: expose it as a labelled
+// region so tab moves into it and arrow keys scroll the columns.
+function decorateTables(): void {
+	const root = rootEl.value;
+	if (!root) return;
+	const label = t("components.markdown.tableRegion");
+	for (const region of root.querySelectorAll<HTMLElement>(".md-table-scroll")) {
+		region.setAttribute("tabindex", "0");
+		region.setAttribute("role", "region");
+		region.setAttribute("aria-label", label);
+	}
+}
+
 // Re-inject after any render that replaces the v-html segments (content swap,
 // sanitizer upgrade) and refresh the labels when the locale changes.
 // `flush: "post"` runs after Vue has patched the DOM.
-watch([segments, locale], injectHeadingAnchors, { flush: "post" });
+watch(
+	[segments, locale],
+	() => {
+		injectHeadingAnchors();
+		decorateTables();
+	},
+	{ flush: "post" },
+);
 
 // --- Image lightbox ---
 // All image segments become the lightbox's image set (order = in-post order),

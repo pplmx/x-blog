@@ -128,7 +128,8 @@
 			"lightboxNext": "Next image",
 			"lightboxCounter": "Image {current} of {total}",
 			"lightboxDialogAria": "Image viewer",
-			"permalink": "Link to this section"
+			"permalink": "Link to this section",
+			"tableRegion": "Table, scrollable horizontally"
 		},
 		"postCard": {
 			"pinned": "Pinned",

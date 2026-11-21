@@ -156,6 +156,16 @@ describe("MarkdownContent", () => {
 			expect(anchors[0].attributes("href")).toBe("#second");
 		});
 
+		it("makes table scroll ports keyboard-reachable regions", async () => {
+			const wrapper = mountMarkdown("| A | B |\n| - | - |\n| 1 | 2 |");
+			await flushPromises();
+			const region = wrapper.find(".md-table-scroll");
+			expect(region.exists()).toBe(true);
+			expect(region.attributes("tabindex")).toBe("0");
+			expect(region.attributes("role")).toBe("region");
+			expect(region.attributes("aria-label")).toBe("表格，可横向滚动");
+		});
+
 		it("renders links", async () => {
 			const wrapper = mountMarkdown('<a href="https://example.com">Link</a>');
 			await flushPromises();

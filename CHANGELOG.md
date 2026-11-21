@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the document to 570px at a 390px viewport. The header row now wraps, and the form stretches
   full-width below the 评论 heading with a flexible input that returns to a fixed width from `sm`
   up.
+- ♿ **table scroll ports are labelled, keyboard-reachable regions** — the horizontal wrapper around
+  a wide table now gets `tabindex="0"`, `role="region"` and a localized accessible name once mounted
+  (refreshed on a locale switch), so keyboard and screen-reader users can enter the region and
+  scroll the columns instead of losing the hidden ones.
 - 🐛 **Clear-all now prunes the offline cache so cleared bookmarks stop reading offline** — `handleClearAll`
   wiped the local mirror and (when signed in) the cloud copy, but never pruned the service-worker offline
   cache: every cleared post's document stayed cached, so it would still read offline and keep its
