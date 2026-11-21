@@ -33,7 +33,7 @@ const route = useRoute();
 // Reactive sources: SPA navigation that only changes query params (e.g.
 // /search?q=a → /search?q=b or page=2) must refetch. The computed URL below
 // is passed to useFetch, which re-runs when its URL changes.
-const query = computed(() => (route.query.q as string) || "");
+const query = computed(() => ((route.query.q as string) || "").trim());
 // clamp an invalid ?page= (non-numeric, zero, negative) to
 // page 1 at the computed — the search request must never carry NaN/0
 // (guaranteed 422), and the out-of-range clamp watcher below short-circuits
@@ -192,10 +192,10 @@ const searchParams = computed(() => ({
 // With no query there is nothing to search: `enabled: false` makes Nuxt skip
 // the request (reactively re-enabling on SPA nav to ?q=...). Without this the
 // empty URL fired a guaranteed-422 request per bare /search visit (the backend
-// requires q with min_length=1), burning a rate-limit slot on every hit. The
-// trim() also treats a whitespace-only ?q=%20 the same as a bare /search —
-// the backend rejects blank terms with 422, so a
-// space-only share link should show the idle prompt, not an error.
+// requires q with min_length=1), burning a rate-limit slot on every hit.
+// `query` is trimmed at the computed, so a whitespace-only ?q=%20 is the bare
+// landing: the backend rejects blank terms with 422, and a space-only share
+// link must show the idle prompt rather than an empty result page.
 const {
 	data: searchResult,
 	pending,

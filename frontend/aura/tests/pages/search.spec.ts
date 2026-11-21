@@ -332,6 +332,17 @@ describe("Search Page", () => {
 			expect(icon.exists()).toBe(true);
 		});
 
+		it("treats a whitespace-only query as the bare landing", async () => {
+			const wrapper = await mountSearchPage({ routeQuery: { q: "   " } });
+			expect(wrapper.text()).toContain("输入关键词开始搜索");
+			const mockFetch = vi.mocked(useFetch);
+			const [, options] = mockFetch.mock.calls[0] as [
+				unknown,
+				{ enabled?: import("vue").Ref<boolean> },
+			];
+			expect(options.enabled?.value).toBe(false);
+		});
+
 		it("skips the search request when there is no query", async () => {
 			// The backend requires q (min_length=1): an empty-query visit used
 			// to fire a guaranteed-422 request, burning a rate-limit slot.

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔍 **a space-only search link lands on the prompt** — `/search?q=%20`
+  rendered an empty results view and could fire a 422; the query is trimmed
+  before the landing/results split, so it now shows the prompt with no request.
 - 🔗 **shared links carry the site name** — every page now emits
   `og:site_name`, so link previews label the source instead of showing a bare
   title.
