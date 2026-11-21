@@ -867,8 +867,8 @@ function goToPage(pg: number | string) {
            Which result set renders is decided by the active mode. -->
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<div v-if="activePending" class="space-y-4">
-				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-				<div v-for="i in 3" :key="i" class="bg-gray-100 animate-pulse h-24 rounded-lg" />
+				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div v-for="i in 3" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-lg" />
 			</div>
 
 			<div v-else-if="activeError" role="alert" class="text-center py-12 text-gray-500">

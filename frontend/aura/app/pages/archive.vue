@@ -263,9 +263,9 @@ useSeo(() => ({
          year/month list mid-refetch). -->
 		<div v-if="!hasPeriod">
 			<div v-if="archivePending" class="space-y-4" role="status" aria-busy="true">
-				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
 				<div class="space-y-2">
-					<div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
+					<div v-for="i in 6" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3" />
 				</div>
 			</div>
 
@@ -427,9 +427,9 @@ useSeo(() => ({
            stays mounted while a year→month (or page) navigation refetches. -->
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<div v-if="postsPending" class="space-y-4">
-				<div class="bg-gray-100 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
+				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
 				<div class="space-y-2">
-					<div v-for="i in 6" :key="i" class="bg-gray-100 animate-pulse h-4 rounded w-2/3" />
+					<div v-for="i in 6" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3" />
 				</div>
 			</div>
 

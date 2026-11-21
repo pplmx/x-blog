@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌙 **loading skeletons stay legible in dark mode** — the archive, tags, categories and search
+  placeholders used a light `gray-100` block that flashed near-white on a dark page; they now pair it
+  with `dark:bg-gray-800`.
 - 🎨 **category cards carry a folder badge** — each card in the categories grid now leads with a tinted
   folder icon, so a sparse grid reads as a deliberate list of sections instead of four empty boxes with
   a distant arrow.
