@@ -179,6 +179,7 @@ onMounted(initTheme);
 								v-for="link in contentLinks"
 								:key="link.to"
 								:to="link.to"
+								:aria-current="route.path === link.to ? 'page' : undefined"
 								class="first:ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200"
 								:class="
 									route.path === link.to
@@ -270,6 +271,7 @@ onMounted(initTheme);
 							v-for="link in contentLinks"
 							:key="link.to"
 							:to="link.to"
+							:aria-current="route.path === link.to ? 'page' : undefined"
 							class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
 							:class="
 								route.path === link.to
@@ -321,6 +323,7 @@ onMounted(initTheme);
 								v-for="link in myLinks"
 								:key="link.to"
 								:to="link.to"
+								:aria-current="route.path === link.to ? 'page' : undefined"
 								class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
 								:class="
 									route.path === link.to

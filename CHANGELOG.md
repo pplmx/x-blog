@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ♿ **the active header link now announces itself** — the desktop and mobile navs only tinted the
+  current section; they also set `aria-current="page"`, so a screen reader hears which page the
+  navigation entry points at.
 - 🎴 **series cards lead with a badge and share the card surface** — the series index still used a
   flat hairline box; each card now carries a blue layers badge, a white/gray-900 raised surface and
   the same hover lift as category cards, so the two browse indexes read as one family.

@@ -343,11 +343,13 @@ describe("Default Layout", () => {
 			const aboutLink = wrapper.findAll('a[href="/about"]').find((a) => a.text().includes("关于"));
 			expect(aboutLink).toBeDefined();
 			expect(aboutLink?.classes().some((c) => c.includes("text-blue-600"))).toBe(true);
+			expect(aboutLink?.attributes("aria-current")).toBe("page");
 
 			// The home link is NOT active on /about.
 			const homeLink = wrapper.findAll('a[href="/"]').find((a) => a.text().includes("首页"));
 			expect(homeLink).toBeDefined();
 			expect(homeLink?.classes().some((c) => c.includes("text-blue-600"))).toBe(false);
+			expect(homeLink?.attributes("aria-current")).toBeUndefined();
 		});
 
 		it("closes the mobile menu when the route changes", async () => {
