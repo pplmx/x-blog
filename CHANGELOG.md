@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌙 **home metadata stays readable in dark mode** — trending counts, card
+  category/author lines, series progress and the home empty/error states used
+  `text-gray-500` without a dark variant (about 4.2:1 on the dark surface);
+  they now add `dark:text-gray-400`.
 - 👁 **quiet labels stay readable across browse pages** — sidebar group headings,
   the archive year total, series card and episode meta, empty taxonomy notes and
   the comment report action also used `text-gray-400` on white; they now use

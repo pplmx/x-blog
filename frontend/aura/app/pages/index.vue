@@ -461,7 +461,7 @@ const sidebarStats = computed(() => [
 				</h2>
 				<NuxtLink
 					to="/history"
-					class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-violet-500 transition-colors"
+					class="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-violet-500 transition-colors"
 				>
 					{{ t("reader.nav.history") }}
 					<Icon icon="lucide:chevron-right" class="w-3.5 h-3.5" />
@@ -513,7 +513,7 @@ const sidebarStats = computed(() => [
 					>
 						{{ post.title }}
 					</h3>
-					<div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+					<div class="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
 						<span v-if="post.category" class="inline-flex items-center gap-1">
 							<Icon icon="lucide:folder" class="w-3 h-3" />
 							{{ post.category.name }}
@@ -553,7 +553,7 @@ const sidebarStats = computed(() => [
 						{{ sf.title }}
 					</NuxtLink>
 					<div v-if="followedProgress[sf.slug]" class="mt-3">
-						<div class="flex items-center justify-between gap-2 text-xs text-gray-500">
+						<div class="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
 							<span>
 								{{
 									t("series.readCountLabel", {
@@ -621,7 +621,7 @@ const sidebarStats = computed(() => [
 					>
 						{{ post.title }}
 					</h3>
-					<div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+					<div class="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
 						<span v-if="post.author" class="inline-flex items-center gap-1">
 							<Icon icon="lucide:user" class="w-3 h-3" />
 							{{ post.author.display_name }}
@@ -669,7 +669,7 @@ const sidebarStats = computed(() => [
 									>
 										{{ post.title }}
 									</h3>
-									<p class="text-xs text-gray-500 mt-1">
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 										{{ t("home.posts.readsThisWeek", { count: post.views_window }) }}
 									</p>
 								</div>
@@ -705,7 +705,7 @@ const sidebarStats = computed(() => [
 									>
 										{{ post.title }}
 									</h3>
-									<p class="text-xs text-gray-500 mt-1">
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 										{{ post.views }} {{ t("home.posts.views") }}
 									</p>
 								</div>
@@ -756,7 +756,7 @@ const sidebarStats = computed(() => [
 					</div>
 				</div>
 
-				<div v-else-if="error" class="text-center py-16 text-gray-500">
+				<div v-else-if="error" class="text-center py-16 text-gray-500 dark:text-gray-400">
 					<Icon icon="lucide:alert-circle" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
 					<p class="mb-4">{{ t("common.state.loadFailed") }}</p>
 					<button
@@ -796,7 +796,7 @@ const sidebarStats = computed(() => [
 					</div>
 				</div>
 
-				<div v-else class="text-center py-16 text-gray-500">
+				<div v-else class="text-center py-16 text-gray-500 dark:text-gray-400">
 					<Icon icon="lucide:file-text" class="w-12 h-12 mx-auto mb-3 text-gray-300" />
 					<p>{{ t("home.empty.posts") }}</p>
 				</div>
