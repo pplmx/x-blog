@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🗓 **archive month names follow the active language** — the formatter compared
+  the locale *ref* itself with `"zh"` instead of its value, so the Chinese
+  archive still listed "October"/"September"; it now shows 十月/九月.
+- 🏷 **counts announce what they count** — archive month rows and tag-cloud
+  pills expose an accessible name ("十月 · 共 12 篇文章",
+  "Python · 共 11 篇文章") instead of a bare number next to the link.
 - ✍️ **utility pages stop claiming success before a token works** — the
   follow-confirm, follow-unsubscribe and reply-unsubscribe pages keep a neutral
   heading until their token actually succeeds, so an expired or unknown link no

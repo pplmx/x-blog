@@ -219,6 +219,14 @@ describe("Archive Page", () => {
 			expect(counts).toEqual(["1", "2", "1"]);
 		});
 
+		it("names each month link with its post count", async () => {
+			const wrapper = await mountArchivePage();
+			const labels = wrapper.findAll("a[aria-label]").map((node) => node.attributes("aria-label"));
+			// The visible row reads "十一月 1"; the label says 1 what.
+			expect(labels).toContain("十一月 · 共 1 篇文章");
+			expect(labels).toContain("三月 · 共 2 篇文章");
+		});
+
 		it("scales each month bar against the busiest month", async () => {
 			const wrapper = await mountArchivePage();
 			const widths = wrapper

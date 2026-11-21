@@ -216,6 +216,19 @@ describe("Tags Page", () => {
 			expect(positions).toEqual([0, 1, 2]);
 		});
 
+		it("names each tag pill with its post count", async () => {
+			const wrapper = await mountTagsPage({
+				tags: [
+					{ id: 1, name: "Busy", post_count: 12 },
+					{ id: 2, name: "Rare", post_count: 0 },
+				],
+			});
+			const pills = wrapper.findAll("a").filter((link) => link.text().startsWith("#"));
+			// "#Busy 12" reads as a bare number; the label says what it counts.
+			expect(pills[0].attributes("aria-label")).toBe("Busy · 共 12 篇文章");
+			expect(pills[1].attributes("aria-label")).toBe("Rare · 共 0 篇文章");
+		});
+
 		it("narrows the cloud via the filter box ", async () => {
 			const wrapper = await mountTagsPage();
 			// Filter input present on the all-tags view.

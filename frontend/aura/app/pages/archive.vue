@@ -116,6 +116,16 @@ function yearTotal(months: ArchiveEntry[]): number {
 	return months.reduce((sum, m) => sum + m.count, 0);
 }
 
+/** Localized month name; the year lives in the section heading above. */
+function monthName(month: number): string {
+	// locale is a Ref — comparing the ref itself to "zh" was always false and
+	// rendered English month names in the Chinese UI.
+	return new Date(Date.UTC(2000, month - 1, 1)).toLocaleString(
+		locale.value === "zh" ? "zh-CN" : "en-US",
+		{ month: "long" },
+	);
+}
+
 // Archive index narrowing filter (survey finding): on a multi-year blog the
 // year/month pill stack is long and unscannable with no way to jump — the
 // exact problem tags/categories fixed. Filter the month pills by
@@ -333,15 +343,11 @@ useSeo(() => ({
 								v-for="m in y.months"
 								:key="m.month"
 								:to="{ query: { year: String(m.year), month: String(m.month) } }"
+								:aria-label="`${monthName(m.month)} · ${t('archive.countLabel', { count: m.count })}`"
 								class="group flex items-center gap-4 rounded-xl border border-gray-100 px-4 py-3 transition-colors hover:border-purple-200 hover:bg-purple-50/60 dark:border-gray-800 dark:hover:border-purple-900 dark:hover:bg-purple-950/30"
 							>
 								<span class="w-16 shrink-0 text-sm font-medium text-gray-700 dark:text-gray-200">
-									{{
-										new Date(Date.UTC(m.year, m.month - 1, 1)).toLocaleString(
-											locale === "zh" ? "zh-CN" : "en-US",
-											{ month: "long" },
-										)
-									}}
+									{{ monthName(m.month) }}
 								</span>
 								<span
 									class="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"

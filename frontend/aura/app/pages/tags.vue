@@ -362,6 +362,7 @@ onUnmounted(() => {
 						v-for="tag in filteredTags"
 						:key="tag.id"
 						:to="{ query: { tag_id: String(tag.id) } }"
+						:aria-label="`${tag.name} · ${t('tags.postsCount', { count: tag.post_count ?? 0 })}`"
 						class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all"
 						:class="
 							(tag.post_count ?? 0) > 0
