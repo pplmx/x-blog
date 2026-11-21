@@ -1896,6 +1896,26 @@ describe("Post Detail Page", () => {
 			expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
 			expect(wrapper.find('[data-testid="mobile-toc-sheet"]').exists()).toBe(false);
 			expect(document.body.style.overflow).toBe("");
+			// Focus hands off to the section, not back to the floating trigger.
+			const heading = document.getElementById("getting-started");
+			expect(heading?.getAttribute("tabindex")).toBe("-1");
+			expect(document.activeElement).toBe(heading);
+			wrapper.unmount();
+		});
+
+		it("hands focus to the heading from the desktop outline too", async () => {
+			Element.prototype.scrollIntoView = vi.fn();
+			const wrapper = await mountPostPage({
+				post: { ...mockPost, content: multiHeadingContent },
+				attachToDoc: true,
+			});
+
+			await wrapper.find('nav[aria-label="目录"] a[href="#getting-started"]').trigger("click");
+			await flushPromises();
+
+			const heading = document.getElementById("getting-started");
+			expect(heading?.tabIndex).toBe(-1);
+			expect(document.activeElement).toBe(heading);
 			wrapper.unmount();
 		});
 

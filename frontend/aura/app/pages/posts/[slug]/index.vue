@@ -305,12 +305,14 @@ function openToc() {
 	nextTick(() => tocSheetEl.value?.focus());
 }
 
-function closeToc() {
+function closeToc(restoreFocus = true) {
 	if (!tocOpen.value) return;
 	tocOpen.value = false;
 	document.body.style.overflow = "";
 	// Return focus to the trigger so keyboard users resume where they left off.
-	tocFabEl.value?.focus();
+	// Selecting a section instead hands focus to that heading (see
+	// handleSheetTocSelect), so the sheet must not pull it back to the trigger.
+	if (restoreFocus) tocFabEl.value?.focus();
 }
 
 // Keep Tab inside the sheet (aria-modal dialog): without a trap, a keyboard
@@ -564,30 +566,43 @@ function scrollToHeadingHash(): void {
 	});
 }
 
-function scrollToHeading(event: MouseEvent) {
+// Native anchor scrolling moves the viewport but leaves DOM focus on the TOC
+// link, so screen readers keep announcing the navigation instead of the
+// section. Give the target heading programmatic focus (tabindex -1 keeps it
+// out of the tab order) once the browser has scrolled it into view.
+function focusHeading(id: string): void {
+	const el = document.getElementById(id);
+	if (!el) return;
+	if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+	el.focus({ preventScroll: true });
+}
+
+function scrollToHeading(event: MouseEvent): boolean {
 	// A real <a href="#id"> must behave like a link: Ctrl/Cmd/Shift/middle-
 	// click opens the heading URL in a new tab instead of only smooth-scrolling
 	// the current page. Let the browser's default action run for modified/
 	// auxiliary clicks; only plain left-clicks get the SPA scroll.
 	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
-		return;
+		return false;
 	}
 	event.preventDefault();
 	const href = (event.currentTarget as HTMLAnchorElement)?.getAttribute("href");
-	if (!href?.startsWith("#")) return;
+	if (!href?.startsWith("#")) return false;
 	const id = href.slice(1);
 	const el = document.getElementById(id);
-	if (el) {
-		el.scrollIntoView({ behavior: "smooth", block: "start" });
-		history.replaceState(null, "", `#${id}`);
-	}
+	if (!el) return false;
+	el.scrollIntoView({ behavior: "smooth", block: "start" });
+	history.replaceState(null, "", `#${id}`);
+	focusHeading(id);
+	return true;
 }
 
 // Tapping a section in the mobile sheet scrolls to it (shared smooth-scroll
-// logic with the desktop sidebar) then dismisses the sheet.
+// logic with the desktop sidebar) then dismisses the sheet. Focus moves to the
+// chosen heading rather than back to the floating trigger.
 function handleSheetTocSelect(event: MouseEvent) {
-	scrollToHeading(event);
-	closeToc();
+	const focused = scrollToHeading(event);
+	closeToc(!focused);
 }
 
 // Reading time (shared with the print/PDF view so they agree). The CJK-aware
@@ -691,13 +706,13 @@ function handleCommentSubmitted(created: Comment | undefined) {
 					aria-hidden="true"
 					class="absolute inset-0 w-full h-full bg-black/40 backdrop-blur-[2px] cursor-default"
 					data-testid="toc-backdrop"
-					@click="closeToc"
+					@click="closeToc()"
 				/>
 				<div
 					ref="tocSheetEl"
 					tabindex="-1"
 					class="toc-sheet-panel absolute bottom-0 inset-x-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl outline-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-					@keydown.esc="closeToc"
+					@keydown.esc="closeToc()"
 					@keydown="onSheetKeydown"
 				>
 					<div class="flex items-center justify-between mb-3">
@@ -712,7 +727,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
 							:aria-label="t('common.action.close')"
 							data-testid="toc-close"
-							@click="closeToc"
+							@click="closeToc()"
 						>
 							<Icon icon="lucide:x" class="w-5 h-5" />
 						</button>
