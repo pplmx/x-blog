@@ -191,7 +191,7 @@ const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: p
 			<div
 				v-for="item in feedItems"
 				:key="item.id"
-				class="border border-gray-100 dark:border-gray-800 rounded-xl p-5 hover:shadow-md transition-shadow"
+				class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
 			>
 				<NuxtLink
 					:to="item.post ? `/posts/${item.post.slug}#comment-${item.id}` : '#'"

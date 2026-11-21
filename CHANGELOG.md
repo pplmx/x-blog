@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🗂 **discussion cards match the other reading lists** — the global comment
+  feed sat directly on the page background with only a hairline border; it now
+  uses the same raised surface and dark-mode fill as search and archive rows.
 - 🧗 **the footer carries a back-to-top control** — long archive pages, result
   sets and article footers end far from the header; the footer now scrolls
   back up, jumping instantly when the reader prefers reduced motion.
