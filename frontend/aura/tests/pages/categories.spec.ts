@@ -336,9 +336,10 @@ describe("Categories Page", () => {
 			expect(backLink.text()).toContain("返回");
 		});
 
-		it("renders the category posts header", async () => {
+		it("names the selected category in the heading", async () => {
 			const wrapper = await mountCategoriesPage({ routeQuery: { category_id: "1" } });
-			expect(wrapper.text()).toContain("分类文章");
+			expect(wrapper.find("h1").text()).toContain("Tech");
+			expect(wrapper.text()).toContain("1 篇文章");
 		});
 
 		it("renders post titles", async () => {

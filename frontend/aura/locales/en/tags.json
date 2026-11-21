@@ -6,6 +6,7 @@
 		"empty": "No tags yet",
 		"backToAll": "Back to all tags",
 		"tagPosts": "Tag posts",
+		"postsCount": "{count} posts",
 		"postsEmpty": "No posts yet",
 		"views": "{count} views",
 		"allDesc": "Browse all tags on X-Blog",

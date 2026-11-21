@@ -295,9 +295,10 @@ describe("Tags Page", () => {
 			expect(backLink.text()).toContain("返回");
 		});
 
-		it("renders the tag posts header", async () => {
+		it("names the selected tag in the heading", async () => {
 			const wrapper = await mountTagsPage({ routeQuery: { tag_id: "1" } });
-			expect(wrapper.text()).toContain("标签文章");
+			expect(wrapper.find("h1").text()).toContain("#React");
+			expect(wrapper.text()).toContain("共 1 篇文章");
 		});
 
 		it("renders post titles", async () => {

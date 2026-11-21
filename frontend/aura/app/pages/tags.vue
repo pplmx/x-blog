@@ -406,11 +406,16 @@ onUnmounted(() => {
 					{{ t("tags.backToAll") }}
 				</NuxtLink>
 				<div class="flex flex-wrap items-center justify-between gap-4">
-					<h1
-						class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
-					>
-						{{ t("tags.tagPosts") }}
-					</h1>
+					<div class="min-w-0">
+						<h1
+							class="text-3xl font-bold bg-gradient-to-r from-gray-900 dark:from-gray-100 to-gray-600 dark:to-gray-400 bg-clip-text text-transparent"
+						>
+							<span v-if="tagName" class="text-blue-500">#</span>{{ tagName ?? t("tags.tagPosts") }}
+						</h1>
+						<p v-if="!postsPending && !postsError" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							{{ t("tags.postsCount", { count: posts?.pagination?.total ?? 0 }) }}
+						</p>
+					</div>
 					<div class="flex flex-wrap items-center gap-2">
 						<button
 							v-if="tagSignedIn && !sessionExpired"

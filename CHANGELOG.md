@@ -1782,6 +1782,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ✨ **series show their reading budget** — the detail header listed the episode count but not how
   long the series takes. The header now sums the per-episode estimates ("共约 3 分钟") and each
   episode shows its own reading time next to its views.
+- 🐛 **tag and category views name the selection** — both detail headers read the generic "Tag posts"
+  / "Category posts", so a reader arriving from a link could not tell which tag or category they
+  were browsing. The heading now shows the selected name (`#React`, `技术分享`) with its article
+  count underneath, falling back to the generic label while the taxonomy loads.
 
 ## [0.1.0] - 2026-09-09
 
