@@ -127,7 +127,9 @@ describe("PostCard", () => {
 			const chip = wrapper.findAll("a").find((a) => a.text().includes("Riki"));
 			const img = chip?.find("img");
 			expect(img?.attributes("src")).toBe("/static/avatars/a1.png");
-			expect(img?.attributes("alt")).toBe("Riki");
+			// The display name sits right beside the avatar, so the image is
+			// decorative and must not repeat it to assistive tech.
+			expect(img?.attributes("alt")).toBe("");
 		});
 
 		it("renders no author chip when the post has no public author", () => {

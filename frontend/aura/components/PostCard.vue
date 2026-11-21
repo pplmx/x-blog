@@ -121,7 +121,7 @@ const date = computed(
 					<img
 						v-if="post.author.avatar_url"
 						:src="post.author.avatar_url"
-						:alt="post.author.display_name"
+						alt=""
 						class="w-3.5 h-3.5 inline rounded-full object-cover mr-0.5 -mt-0.5"
 					/>
 					<Icon v-else icon="lucide:user" class="w-3 h-3 inline mr-0.5" />

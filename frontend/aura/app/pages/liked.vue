@@ -350,7 +350,7 @@ async function handleUnlike(post: PostList) {
 								<img
 									v-if="post.author.avatar_url"
 									:src="post.author.avatar_url"
-									:alt="post.author.display_name"
+									alt=""
 									class="w-3.5 h-3.5 rounded-full object-cover"
 								/>
 								<Icon v-else icon="lucide:user" class="w-3 h-3" />

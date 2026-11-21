@@ -199,7 +199,8 @@ describe("Author archive page (/authors/[id])", () => {
 		});
 		const img = wrapper.find("img");
 		expect(img.attributes("src")).toBe("/static/avatars/w1.png");
-		expect(img.attributes("alt")).toBe("Riki");
+		// The name is rendered beside the portrait, so the image is decorative.
+		expect(img.attributes("alt")).toBe("");
 	});
 
 	it("omits the bio block when the writer has none ", async () => {

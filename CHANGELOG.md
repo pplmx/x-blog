@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🖼 **the generated cover no longer repeats the title to screen readers** — the
   algorithmic cover embeds the H1 text and carried it as its `alt`, so assistive
   tech announced every article title twice; it is now marked decorative.
+- 👤 **author avatars no longer echo the adjacent name** — every byline, card,
+  liked row and author header shows the portrait next to the display name, so
+  the images are decorative instead of repeating the same name to assistive tech.
 - 📤 **phones can hand an article to the system share sheet** — where
   `navigator.share` exists, the share row now leads with a native share button
   (localized label, 44px target) so readers are not forced through a social

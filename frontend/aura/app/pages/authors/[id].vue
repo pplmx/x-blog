@@ -194,7 +194,7 @@ watch(
 					<img
 						v-if="archive?.author?.avatar_url"
 						:src="archive.author.avatar_url"
-						:alt="authorName"
+						alt=""
 						class="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
 					/>
 					<Icon v-else icon="lucide:user" class="w-8 h-8 text-gray-400" />

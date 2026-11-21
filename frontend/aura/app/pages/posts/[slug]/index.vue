@@ -904,7 +904,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 							<img
 								v-if="post.author.avatar_url"
 								:src="post.author.avatar_url"
-								:alt="post.author.display_name"
+								alt=""
 								class="w-4 h-4 rounded-full object-cover"
 							/>
 							<Icon v-else icon="lucide:user" class="w-3.5 h-3.5" />
@@ -1198,7 +1198,7 @@ function handleCommentSubmitted(created: Comment | undefined) {
 						<img
 							v-if="post.author.avatar_url"
 							:src="post.author.avatar_url"
-							:alt="post.author.display_name"
+							alt=""
 							class="w-6 h-6 rounded-full object-cover"
 						/>
 						<Icon v-else icon="lucide:user" class="w-5 h-5 text-fuchsia-500" />
