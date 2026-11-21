@@ -458,15 +458,15 @@ useSeo(() => ({
 				<div
 					v-for="post in posts.items"
 					:key="post.id"
-					class="border border-gray-100 rounded-lg p-6 hover:shadow-md transition-shadow"
+					class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
 				>
 					<NuxtLink :to="`/posts/${post.slug}`" class="text-xl font-bold hover:text-purple-600">
 						{{ post.title }}
 					</NuxtLink>
-					<p v-if="post.excerpt" class="text-gray-600 mt-2 line-clamp-2">
+					<p v-if="post.excerpt" class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-2">
 						{{ post.excerpt }}
 					</p>
-					<div class="flex gap-4 mt-3 text-sm text-gray-500">
+					<div class="flex gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
 						<span v-if="post.category">
 							{{ post.category.name }}
 						</span>

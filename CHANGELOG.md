@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🌗 **archive, tag and category post lists share the search card surface** — their filtered result
+  rows still used a light-only `gray-100` outline with unthemed excerpts and metadata; they now match
+  the raised white/gray-900 card, border and text tones used everywhere else.
 - 🌗 **search results read as cards in both themes** — the post, comment and combined result rows
   were a bare `gray-100` outline without dark variants; they now use the same raised surface
   (`bg-white dark:bg-gray-900`, `border-gray-200 dark:border-gray-800`) as the rest of the site,
