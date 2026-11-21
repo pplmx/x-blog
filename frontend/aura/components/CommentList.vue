@@ -189,9 +189,13 @@
 								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
 								<span class="sr-only">{{ t("components.commentList.verifiedReader") }}</span>
 							</span>
-							<span class="text-xs text-gray-500 dark:text-gray-400">{{
-								formatDate(comment.created_at)
-							}}</span>
+							<a
+								:href="`#comment-${comment.id}`"
+								class="text-xs text-gray-500 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
+								:title="t('components.commentList.permalink')"
+								:aria-label="t('components.commentList.permalink')"
+								>{{ formatDate(comment.created_at) }}</a
+							>
 						</div>
 						<!-- Comment markdown rendering: sanitized via the same
                  pipeline as post content, with line breaks preserved. -->
@@ -406,9 +410,13 @@
 								<Icon icon="lucide:badge-check" class="w-3.5 h-3.5" aria-hidden="true" />
 								<span class="sr-only">{{ t("components.commentList.verifiedReader") }}</span>
 							</span>
-							<span class="text-xs text-gray-500 dark:text-gray-400">{{
-								formatDate(reply.created_at)
-							}}</span>
+							<a
+								:href="`#comment-${reply.id}`"
+								class="text-xs text-gray-500 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
+								:title="t('components.commentList.permalink')"
+								:aria-label="t('components.commentList.permalink')"
+								>{{ formatDate(reply.created_at) }}</a
+							>
 						</div>
 						<div
 							class="comment-body text-sm text-gray-700 dark:text-gray-300"

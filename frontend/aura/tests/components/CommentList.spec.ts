@@ -296,6 +296,14 @@ describe("CommentList", () => {
 			expect(wrapper.text()).toContain("2024");
 		});
 
+		it("links each timestamp to its own comment so a reply can be shared", async () => {
+			const { wrapper } = await mountCommentList();
+			const link = wrapper.find('li[id="comment-1"] a[href="#comment-1"]');
+			expect(link.exists()).toBe(true);
+			expect(link.attributes("aria-label")).toBe("指向该评论的链接");
+			expect(link.text()).toContain("2024");
+		});
+
 		it("renders a #comment-<id> anchor on every comment ", async () => {
 			const { wrapper } = await mountCommentList();
 			expect(wrapper.find('li[id="comment-1"]').exists()).toBe(true);

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔗 **each comment timestamp is a permalink** — the date beside a comment or
+  reply now links to its own `#comment-<id>` anchor, using the deep-link scroll
+  and highlight the thread already had, so a single reply is shareable.
 - 🖼 **the generated cover no longer repeats the title to screen readers** — the
   algorithmic cover embeds the H1 text and carried it as its `alt`, so assistive
   tech announced every article title twice; it is now marked decorative.
