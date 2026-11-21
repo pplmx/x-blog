@@ -30,6 +30,9 @@ const token = computed(() => {
 
 const password = ref("");
 const confirm = ref("");
+// Weaker passwords are usually typos: let the reader eyeball each field.
+const showPassword = ref(false);
+const showConfirm = ref(false);
 const error = ref<string | null>(null);
 const done = ref(false);
 const isPending = ref(false);
@@ -117,16 +120,27 @@ async function handleSubmit() {
 						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
 						>{{ t("reader.resetPassword.password") }}
 					</label>
-					<input
-						id="reset-password-new"
-						v-model="password"
-						type="password"
-						autocomplete="new-password"
-						:placeholder="t('reader.resetPassword.passwordPlaceholder')"
-						required
-						:minlength="8"
-						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-					/>
+					<div class="relative">
+						<input
+							id="reset-password-new"
+							v-model="password"
+							:type="showPassword ? 'text' : 'password'"
+							autocomplete="new-password"
+							:placeholder="t('reader.resetPassword.passwordPlaceholder')"
+							required
+							:minlength="8"
+							class="w-full px-4 py-3 pr-11 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						/>
+						<button
+							type="button"
+							class="absolute inset-y-0 right-0 flex items-center px-3 rounded-r-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							:aria-label="t(showPassword ? 'common.passwordHide' : 'common.passwordShow')"
+							:aria-pressed="showPassword"
+							@click="showPassword = !showPassword"
+						>
+							<Icon :icon="showPassword ? 'lucide:eye-off' : 'lucide:eye'" class="w-4 h-4" />
+						</button>
+					</div>
 				</div>
 
 				<div>
@@ -135,16 +149,27 @@ async function handleSubmit() {
 						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
 						>{{ t("reader.resetPassword.confirm") }}
 					</label>
-					<input
-						id="reset-password-confirm"
-						v-model="confirm"
-						type="password"
-						autocomplete="new-password"
-						:placeholder="t('reader.resetPassword.confirmPlaceholder')"
-						required
-						:minlength="8"
-						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-					/>
+					<div class="relative">
+						<input
+							id="reset-password-confirm"
+							v-model="confirm"
+							:type="showConfirm ? 'text' : 'password'"
+							autocomplete="new-password"
+							:placeholder="t('reader.resetPassword.confirmPlaceholder')"
+							required
+							:minlength="8"
+							class="w-full px-4 py-3 pr-11 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						/>
+						<button
+							type="button"
+							class="absolute inset-y-0 right-0 flex items-center px-3 rounded-r-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							:aria-label="t(showConfirm ? 'common.passwordHide' : 'common.passwordShow')"
+							:aria-pressed="showConfirm"
+							@click="showConfirm = !showConfirm"
+						>
+							<Icon :icon="showConfirm ? 'lucide:eye-off' : 'lucide:eye'" class="w-4 h-4" />
+						</button>
+					</div>
 				</div>
 
 				<div

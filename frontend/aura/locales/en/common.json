@@ -10,6 +10,8 @@
 			"github": "GitHub",
 			"archive": "Archive"
 		},
+		"passwordShow": "Show password",
+		"passwordHide": "Hide password",
 		"theme": {
 			"light": "Light mode",
 			"dark": "Dark mode",

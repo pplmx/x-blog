@@ -74,6 +74,20 @@ describe("login page", () => {
 		expect(nameInput.attributes("maxlength")).toBe("50");
 	});
 
+	it("reveals the typing in the password field on demand", async () => {
+		const wrapper = mountLogin();
+		const input = wrapper.find("#reader-password");
+		expect(input.attributes("type")).toBe("password");
+
+		const toggle = wrapper.findAll("button").find((b) => b.attributes("aria-label") === "显示密码");
+		expect(toggle).toBeDefined();
+
+		await toggle!.trigger("click");
+		expect(input.attributes("type")).toBe("text");
+		expect(toggle!.attributes("aria-label")).toBe("隐藏密码");
+		expect(toggle!.attributes("aria-pressed")).toBe("true");
+	});
+
 	it("submits login with email + password", async () => {
 		loginMock.mockResolvedValue({
 			access_token: "token",

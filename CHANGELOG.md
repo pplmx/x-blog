@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 👁 **password fields can be revealed** — the reader sign-in and reset forms now carry an eye
+  toggle (localized `aria-label`, `aria-pressed` state) so a typo on a phone keyboard can be spotted
+  before submitting; the value itself is unchanged.
 - ♿ **the active header link now announces itself** — the desktop and mobile navs only tinted the
   current section; they also set `aria-current="page"`, so a screen reader hears which page the
   navigation entry points at.

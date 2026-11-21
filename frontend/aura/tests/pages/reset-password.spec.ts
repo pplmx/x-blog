@@ -40,6 +40,25 @@ describe("reset-password page", () => {
 		expect(wrapper.find("form").exists()).toBe(false);
 	});
 
+	it("lets the reader reveal each new password field", async () => {
+		const wrapper = mountPage({ token: "abc.def.ghi" });
+		const [first, second] = wrapper.findAll("input");
+		expect(first.attributes("type")).toBe("password");
+		expect(second.attributes("type")).toBe("password");
+
+		const toggles = wrapper
+			.findAll("button")
+			.filter((b) => b.attributes("aria-label") === "显示密码");
+		expect(toggles).toHaveLength(2);
+
+		await toggles[0].trigger("click");
+		expect(first.attributes("type")).toBe("text");
+		expect(second.attributes("type")).toBe("password");
+
+		await toggles[1].trigger("click");
+		expect(second.attributes("type")).toBe("text");
+	});
+
 	it("redeems the token with matching passwords and signs the reader in", async () => {
 		resetPassword.mockResolvedValue({ access_token: "x", reader: { email: "ana@example.test" } });
 		const wrapper = mountPage({ token: "abc.def.ghi" });

@@ -31,6 +31,9 @@ const { mergeLocalToCloud } = useBookmarkSync();
 const mode = ref<"login" | "register">("login");
 const email = ref("");
 const password = ref("");
+// Typing a long password on a phone keyboard is error-prone; the toggle lets
+// the reader verify what they typed without changing the submitted value.
+const showPassword = ref(false);
 const displayName = ref("");
 const error = ref<string | null>(null);
 const isPending = ref(false);
@@ -283,16 +286,27 @@ function cancel2fa() {
 						class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
 						>{{ t("reader.login.password") }}
 					</label>
-					<input
-						id="reader-password"
-						v-model="password"
-						type="password"
-						:autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
-						:placeholder="t('reader.login.passwordPlaceholder')"
-						required
-						:minlength="mode === 'register' ? 8 : undefined"
-						class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-					/>
+					<div class="relative">
+						<input
+							id="reader-password"
+							v-model="password"
+							:type="showPassword ? 'text' : 'password'"
+							:autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+							:placeholder="t('reader.login.passwordPlaceholder')"
+							required
+							:minlength="mode === 'register' ? 8 : undefined"
+							class="w-full px-4 py-3 pr-11 border border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						/>
+						<button
+							type="button"
+							class="absolute inset-y-0 right-0 flex items-center px-3 rounded-r-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+							:aria-label="t(showPassword ? 'common.passwordHide' : 'common.passwordShow')"
+							:aria-pressed="showPassword"
+							@click="showPassword = !showPassword"
+						>
+							<Icon :icon="showPassword ? 'lucide:eye-off' : 'lucide:eye'" class="w-4 h-4" />
+						</button>
+					</div>
 					<NuxtLink
 						v-if="mode === 'login'"
 						to="/forgot-password"
