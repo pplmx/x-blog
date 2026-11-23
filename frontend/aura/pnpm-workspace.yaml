@@ -21,13 +21,19 @@ minimumReleaseAgeExclude:
 overrides:
   ansi-regex@<6: ^5.0.1
   ansi-regex@5.0.0: 5.0.1
+  fflate@<0.8.3: 0.8.3
+  fflate@0.7.3: 0.8.3
+  glob@<14.0.2: 14.0.2
+  glob@13.0.6: 14.0.2
   ini@<2: ^1.3.6
   ini@1.3.4: 1.3.6
+  minimatch@<11.0.1: 11.0.1
+  minimatch@10.2.6: 11.0.1
   nanoid@<3.3.18: ^3.3.18
   nanoid@3.3.16: 3.3.18
   postcss: ^8.5.23
   postcss@8.5.22: 8.5.23
   # Vite+ toolchain: unify on its bundled Vite core + Vitest so plugins,
   # dependencies, and `vp test` all share a single copy (see viteplus.dev local-cli).
-  vite@*: npm:@voidzero-dev/vite-plus-core@1.1.0
-  vitest@*: 5.0.3
+  vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  vitest@*: 5.1.1
