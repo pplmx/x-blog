@@ -6,17 +6,20 @@ a tool finds implicitly stays where it is (see "What is deliberately not here").
 
 ## Contents
 
-| Path                      | Used by                                           | Notes                                                                                                                                             |
-| ------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `caddy/Caddyfile`         | host reverse proxy in front of the composed stack | Not part of `docker-compose.yml`; terminates TLS with ACME and proxies to the backend and frontend containers                                     |
-| `deploy/remote-deploy.sh` | `.github/workflows/deploy.yml`                    | Piped into `sh -s` on the server after five lines of positional data (`DEPLOY_SHA`, `BACKEND_IMAGE`, `FRONTEND_IMAGE`, `GHCR_USER`, `GHCR_TOKEN`) |
+- `caddy/Caddyfile` — the host reverse proxy in front of the composed stack.
+  Not part of `docker-compose.yml`; terminates TLS with ACME and proxies to the
+  backend and frontend containers.
+
+The remote half of the deploy (the shell script `.github/workflows/deploy.yml`
+pipes into `sh -s`) deliberately stays inline in that workflow: it has exactly
+one consumer, so a separate file would only add a hop that nothing lints.
 
 ## Deploy flow
 
 1. `.github/workflows/test.yml` runs the gate on every push.
 2. `.github/workflows/deploy.yml` builds both images on `main`, pushes them to
    GHCR by digest, then SSHes to the server.
-3. On the server, `deploy/remote-deploy.sh` fast-forwards to the deployed SHA,
+3. On the server, the piped inline script fast-forwards to the deployed SHA,
    pulls the two images by digest, and runs `docker compose up -d --wait` in
    `/opt/x-blog` (the repo checkout on the server — the compose file must stay
    at the repo root because that directory is the deploy working directory).
@@ -24,9 +27,7 @@ a tool finds implicitly stays where it is (see "What is deliberately not here").
 ## Checking a change
 
 ```bash
-sh -n infra/deploy/remote-deploy.sh   # syntax
-shellcheck infra/deploy/remote-deploy.sh
-caddy validate --config infra/caddy/Caddyfile   # needs the caddy binary
+just caddy-check   # caddy validate --config infra/caddy/Caddyfile
 ```
 
 The Caddy config replaces the former `nginx.conf`. One nginx feature has no

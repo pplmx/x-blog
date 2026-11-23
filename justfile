@@ -85,8 +85,10 @@ frontend-typecheck:
 frontend-build:
     cd frontend/aura && pnpm build
 
-# CI: run all checks (local mirror of CI's runnable gate)
-ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check test frontend-build
+# CI: run all checks (local mirror of CI's runnable gate). caddy-check needs the
+# global `caddy` binary (mise u -g caddy); the server-side proxy config is worth
+# validating before it ships.
+ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build
 
 # Run all tests
 test: test-backend test-nuxt
@@ -207,6 +209,17 @@ rumdl:
 # Check (no fix) all markdown per .rumdl.toml — mirrors CI
 rumdl-check:
     rumdl check .
+
+# Validate the host reverse-proxy config (skipped by nothing: install with
+# `mise u -g caddy`); a broken Caddyfile otherwise only fails on the server.
+caddy-check:
+    #!/bin/sh
+    set -eu
+    if ! command -v caddy >/dev/null 2>&1; then
+        echo "caddy not found — install it with: mise u -g caddy" >&2
+        exit 1
+    fi
+    caddy validate --config infra/caddy/Caddyfile --adapter caddyfile
 
 # Show help
 default:
