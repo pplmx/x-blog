@@ -28,22 +28,26 @@ All canonical commands go through `just` (see the root `justfile`):
 | `just test-nuxt`                  | `pnpm test` (vitest)                                                                                                                                                                                   |
 | `just test-nuxt-coverage`         | `pnpm test:coverage`                                                                                                                                                                                   |
 | `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) / `ruff format --check .` — use `just fix` for auto-fix.                                                                                                           |
-| `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `[tool.ty]` in `pyproject.toml`, runs on `app/` only)                                                                                           |
+| `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `backend/nova/ty.toml`, runs on `app/` only)                                                                                                    |
 | `just ci`                         | **`ci: fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build`** — the full local CI mirror (strict lint, audit, alembic drift check, rumdl, backend+frontend tests, Nuxt build) |
 | `just e2e`                        | Playwright against a live Nuxt dev server (auto-starts backend + Nuxt via `playwright.config.ts` webServer). Do NOT start a second Nuxt — it poisons the module cache and causes `nuxt.lock` conflicts |
 | `just migration` / `just migrate` | `alembic revision --autogenerate` / `alembic upgrade head`                                                                                                                                             |
 
 Gotchas:
 
-- **The coverage gate is enforced** — `--cov-fail-under=80` is in the recipe and
-  `fail_under` is configured in `[tool.coverage.report]`; both local run and CI
-  enforce the same 80% bar. Never weaken or skip it to make the suite pass.
+- **The coverage gate is enforced** — `--cov-fail-under=80` is in the recipe;
+  `source`/`report`/`exclude_lines` live in `backend/nova/.coveragerc.toml`.
+  Both local run and CI enforce the same 80% bar. Never weaken or skip it to
+  make the suite pass.
 - ty, ruff, format, and coverage must **all** pass — they are non-optional
   gates, not suggestions. `ty`, `ruff`, and `rumdl` are **global `uv tool`
   installs** (set up by `just hooks`), not project dependencies.
-- Ruff lint/format config is the single source of truth in `ruff.toml`; the
-  `[tool.ruff]` block in `pyproject.toml` is dead config and `[tool.pytest]`
-  `addopts = "--cov"` is what makes every local test run measure coverage.
+- Each tool owns one config file under `backend/nova/`: `pytest.toml` (pytest,
+  including `addopts = ["--cov"]`, which is what makes every local test run
+  measure coverage), `.coveragerc.toml` (coverage), `ty.toml` (ty), and
+  `ruff.toml` at the repo root (ruff lint/format — takes precedence over any
+  `[tool.ruff]`). `pyproject.toml` holds packaging metadata and dependencies
+  only; put new tool settings in the tool's own file.
 
 ## Git / commit conventions
 

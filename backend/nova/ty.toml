@@ -1,0 +1,18 @@
+# Python type checking (Astral `ty`, a global `uv tool` — not a project dep).
+# Runs on app/ only (tests/migrations/scripts excluded), matching the previous
+# pyright scope. `ty` discovers ty.toml automatically.
+[src]
+include = ["app"]
+
+[environment]
+python-version = "3.14"
+
+# RSS/feed handlers type `request: Request = None` (FastAPI injects it; pyright's
+# `type: ignore[assignment]` doesn't suppress ty's `invalid-parameter-default`
+# for this well-known FastAPI-injection workaround). Suppress that one rule for
+# this file only rather than scattering ty-ignore comments.
+[[overrides]]
+include = ["app/routers/rss.py"]
+
+[overrides.rules]
+invalid-parameter-default = "ignore"

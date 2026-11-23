@@ -38,70 +38,8 @@ dev = [
     "httpx>=0.28.1",
 ]
 
-[tool.ty]
-# Python type checking (Astral `ty`, a global `uv tool` — not a project dep).
-# Runs on app/ only (tests/migrations/scripts excluded), matching the previous
-# pyright scope. `ty` reads project context from this config.
-[tool.ty.src]
-include = ["app"]
-
-[tool.ty.environment]
-python-version = "3.14"
-
-# RSS/feed handlers type `request: Request = None` (FastAPI injects it; pyright's
-# `type: ignore[assignment]` doesn't suppress ty's `invalid-parameter-default`
-# for this well-known FastAPI-injection workaround). Suppress that one rule for
-# this file only rather than scattering ty-ignore comments.
-[[tool.ty.overrides]]
-include = ["app/routers/rss.py"]
-
-[tool.ty.overrides.rules]
-invalid-parameter-default = "ignore"
-
-# Ruff lint/format config lives in ruff.toml (single source of truth). The
-# [tool.ruff] block here was dead config — ruff.toml takes precedence, so the
-# pyproject copy silently drifted (line-length 100 vs 120).
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-# pytest-asyncio: the data layer is now async, so tests + fixtures are async.
-# auto mode discovers `async def test_*` without a per-test marker, and
-# fixture_loop_scope=function keeps each test's AsyncClient/AsyncSession on the
-# same (function-scoped) event loop as its assertions.
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
-asyncio_default_test_loop_scope = "function"
-# Measure app coverage on every local pytest run so `just test-backend` enforces
-# the same gate CI does; source and fail_under live in [tool.coverage.*] below.
-addopts = "--cov"
-filterwarnings = [
-    "ignore::DeprecationWarning:slowapi",
-    "ignore::DeprecationWarning:_pytest",
-]
-
-[tool.coverage.run]
-source = ["app"]
-
-[tool.coverage.report]
-precision = 2
-show_missing = true
-skip_covered = false
-# The 80% gate is enforced on full runs only (`just test-backend` and CI pass
-# --cov-fail-under=80); a filtered `pytest -k ...` iteration run measures but
-# must not fail on partial coverage.
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-    "type: ignore",
-    "pragma: no cover",
-    # Pydantic excluded patterns
-    "if field_value is ...:",
-    "raise ValueError",
-]
+# Tool configuration lives in dedicated files, not here:
+#   pytest.toml        pytest (testpaths, asyncio mode, addopts)
+#   .coveragerc.toml   coverage.py (source, report, exclude_lines)
+#   ruff.toml          ruff lint/format (repo root; takes precedence)
+#   ty.toml            ty type checker (src scope, overrides)

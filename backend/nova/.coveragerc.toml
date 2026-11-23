@@ -1,0 +1,24 @@
+# coverage.py configuration (.coveragerc.toml is discovered automatically).
+[run]
+source = ["app"]
+
+[report]
+precision = 2
+show_missing = true
+skip_covered = false
+# The 80% gate is enforced on full runs only (`just test-backend` and CI pass
+# --cov-fail-under=80); a filtered `pytest -k ...` iteration run measures but
+# must not fail on partial coverage.
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "type: ignore",
+    # Pydantic excluded patterns
+    "if field_value is ...:",
+    "raise ValueError",
+]

@@ -69,7 +69,7 @@ fix:
     cd frontend/aura && pnpm lint:fix
     rumdl fmt
 
-# Run Python type checking (ty, global uv tool; config in [tool.ty] in backend/nova/pyproject.toml)
+# Run Python type checking (ty, global uv tool; config in backend/nova/ty.toml)
 typecheck:
     cd backend/nova && ty check --python .venv
 

@@ -1,0 +1,22 @@
+# pytest configuration (pytest >= 9 reads pytest.toml natively, TOML types).
+# Kept out of pyproject.toml: packaging metadata stays about the package, and
+# each tool owns one config file (pytest.toml, .coveragerc.toml, ty.toml).
+[pytest]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+# pytest-asyncio: the data layer is async, so tests + fixtures are async.
+# auto mode discovers `async def test_*` without a per-test marker, and
+# fixture_loop_scope=function keeps each test's AsyncClient/AsyncSession on the
+# same (function-scoped) event loop as its assertions.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+# Measure app coverage on every local pytest run so `just test-backend` enforces
+# the same gate CI does; source/report settings live in .coveragerc.toml and the
+# 80% threshold comes from --cov-fail-under in the justfile recipe.
+addopts = ["--cov"]
+filterwarnings = [
+    "ignore::DeprecationWarning:slowapi",
+    "ignore::DeprecationWarning:_pytest",
+]
