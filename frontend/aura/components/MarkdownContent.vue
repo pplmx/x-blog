@@ -131,7 +131,9 @@ function injectHeadingAnchors(): void {
 	const root = rootEl.value;
 	if (!root) return;
 	const label = t("components.markdown.permalink");
-	const headings = root.querySelectorAll<HTMLElement>("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]");
+	const headings = root.querySelectorAll<HTMLElement>(
+		"h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]",
+	);
 	for (const heading of headings) {
 		if (!heading.id) continue;
 		// A heading is not focusable by default, so following a permalink (or a

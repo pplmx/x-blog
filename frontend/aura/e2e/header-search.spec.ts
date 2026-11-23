@@ -36,9 +36,7 @@ test.describe("Header search suggestions", () => {
 		await page.waitForURL(/\/search\?q=Python/);
 	});
 
-	test("pressing '/' anywhere focuses the header search ", async ({
-		page,
-	}) => {
+	test("pressing '/' anywhere focuses the header search ", async ({ page }) => {
 		// The reader is mid-page (focus on the main region, not the header) —
 		// the shortcut must reach the search box regardless of position.
 		await page.goto("/?page=1");

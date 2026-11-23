@@ -12,7 +12,11 @@ import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useArticleHighlights } from "../../composables/useArticleHighlights";
-import { createReaderHighlight, getReaderHighlights, type ReaderHighlight } from "../../api/reader/highlights";
+import {
+	createReaderHighlight,
+	getReaderHighlights,
+	type ReaderHighlight,
+} from "../../api/reader/highlights";
 
 vi.mock("~~/api/reader/highlights", () => ({
 	createReaderHighlight: vi.fn(),
@@ -69,7 +73,14 @@ describe("useArticleHighlights", () => {
 	it("does not render a highlight whose text is absent from the article", async () => {
 		vi.mocked(getReaderHighlights).mockResolvedValue({
 			items: [
-				{ id: 10, post_id: 1, text: "not present anywhere", note: null, created_at: null, post: null },
+				{
+					id: 10,
+					post_id: 1,
+					text: "not present anywhere",
+					note: null,
+					created_at: null,
+					post: null,
+				},
 			],
 			total: 1,
 		});
@@ -127,7 +138,14 @@ describe("useArticleHighlights", () => {
 		proseEl.value = newProse; // new post's prose node
 		// Resolve the save: it must bail — neither wrap the new post's prose nor
 		// prepend the stale highlight into the new post's list.
-		settled({ id: 99, post_id: 2, text: "Some passage to mark. And more.", note: null, created_at: null, post: null });
+		settled({
+			id: 99,
+			post_id: 2,
+			text: "Some passage to mark. And more.",
+			note: null,
+			created_at: null,
+			post: null,
+		});
 		await savePromise;
 
 		expect(newProse.querySelector("mark.reader-highlight")).toBeNull();
@@ -174,7 +192,16 @@ describe("useArticleHighlights", () => {
 		// loadExisting would render the stale <mark> into the new post's prose
 		// and drop it into the new list right now.
 		stale.resolve({
-			items: [{ id: 55, post_id: 1, text: "Some passage to mark.", note: null, created_at: null, post: null }],
+			items: [
+				{
+					id: 55,
+					post_id: 1,
+					text: "Some passage to mark.",
+					note: null,
+					created_at: null,
+					post: null,
+				},
+			],
 			total: 1,
 		});
 		await vi.waitFor(() => {

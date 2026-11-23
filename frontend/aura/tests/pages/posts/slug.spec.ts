@@ -566,15 +566,12 @@ describe("Post Detail Page", () => {
 			expect(wrapper.find('a[href="/"]').exists()).toBe(true);
 			// A soft 404 (200 + "not found" copy) gets indexed; the page must
 			// also ask crawlers to drop it.
-			const heads = useHeadSpy.mock.calls.map(([arg]) =>
-				typeof arg === "function" ? arg() : arg,
-			);
+			const heads = useHeadSpy.mock.calls.map(([arg]) => (typeof arg === "function" ? arg() : arg));
 			expect(
 				heads.some(
 					(head) =>
-						head?.meta?.some(
-							(meta) => meta.name === "robots" && meta.content === "noindex",
-						) === true,
+						head?.meta?.some((meta) => meta.name === "robots" && meta.content === "noindex") ===
+						true,
 				),
 			).toBe(true);
 		});

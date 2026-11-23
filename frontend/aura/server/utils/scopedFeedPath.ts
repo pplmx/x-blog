@@ -20,6 +20,7 @@ export function isScopedFeedPath(path: string): boolean {
 	if (parts.length !== 2) return false;
 	const [kind, name] = parts;
 	if (!kind || !name) return false;
-	if (kind.includes("..") || name.includes("..") || kind.includes("\\") || name.includes("\\")) return false;
+	if (kind.includes("..") || name.includes("..") || kind.includes("\\") || name.includes("\\"))
+		return false;
 	return (FEED_KINDS as readonly string[]).includes(kind);
 }

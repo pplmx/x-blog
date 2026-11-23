@@ -36,7 +36,11 @@ export function useReaderHighlights(page = 1, limit = 50, postId?: number) {
 }
 
 /** Imperative highlights list for handlers that need the data directly. */
-export function getReaderHighlights(page = 1, limit = 50, postId?: number): Promise<ReaderHighlightListResponse> {
+export function getReaderHighlights(
+	page = 1,
+	limit = 50,
+	postId?: number,
+): Promise<ReaderHighlightListResponse> {
 	return command<ReaderHighlightListResponse>("/api/reader/me/highlights", {
 		query: { page, limit, ...(postId != null ? { post_id: postId } : {}) },
 		headers: readerAuthHeaders(),

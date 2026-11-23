@@ -75,9 +75,7 @@ test.describe("Comment live preview ", () => {
 		expect(executed).toBeUndefined();
 	});
 
-	test("submitting a moderated comment does not page through the thread ", async ({
-		page,
-	}) => {
+	test("submitting a moderated comment does not page through the thread ", async ({ page }) => {
 		// On the default moderated config the create endpoint returns the
 		// PENDING comment (is_approved=false) and the list serves only approved
 		// rows, so post-submit surfacing has no row to find. Before the fix the

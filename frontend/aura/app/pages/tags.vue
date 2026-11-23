@@ -313,7 +313,11 @@ onUnmounted(() => {
 			<div v-if="tagsPending" class="space-y-4" role="status" aria-busy="true">
 				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
 				<div class="flex flex-wrap gap-3">
-					<div v-for="i in 5" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-10 rounded-xl w-20" />
+					<div
+						v-for="i in 5"
+						:key="i"
+						class="bg-gray-100 dark:bg-gray-800 animate-pulse h-10 rounded-xl w-20"
+					/>
 				</div>
 			</div>
 
@@ -416,7 +420,10 @@ onUnmounted(() => {
 						>
 							<span v-if="tagName" class="text-blue-500">#</span>{{ tagName ?? t("tags.tagPosts") }}
 						</h1>
-						<p v-if="!postsPending && !postsError" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						<p
+							v-if="!postsPending && !postsError"
+							class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+						>
 							{{ t("tags.postsCount", { count: posts?.pagination?.total ?? 0 }) }}
 						</p>
 					</div>
@@ -489,7 +496,11 @@ onUnmounted(() => {
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<div v-if="postsPending" class="space-y-4">
 				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-				<div v-for="i in 3" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-lg" />
+				<div
+					v-for="i in 3"
+					:key="i"
+					class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-lg"
+				/>
 			</div>
 
 			<!-- Posts load failed — distinct from "empty": never tell the reader this

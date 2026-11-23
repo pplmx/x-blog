@@ -66,10 +66,7 @@ test.describe("Reader accounts + cloud bookmarks", () => {
 		await expect(page.locator(`a[href="${href}"]`).first()).toBeVisible({ timeout: 5000 });
 	});
 
-	test("guest on an auth-scoped page returns there after sign-in ", async ({
-		page,
-		request,
-	}) => {
+	test("guest on an auth-scoped page returns there after sign-in ", async ({ page, request }) => {
 		// The page is auth-scoped: as a guest, /liked hands off to /login with a
 		// return path carrying this route, so signing in lands back on the
 		// fraudulent prompt page instead of the default /bookmarks.

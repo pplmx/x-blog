@@ -115,10 +115,7 @@ test.describe("Reader-attributed comments", () => {
 			.toBe(true);
 	});
 
-	test("a jump from /comments deep-links to the exact comment ", async ({
-		page,
-		request,
-	}) => {
+	test("a jump from /comments deep-links to the exact comment ", async ({ page, request }) => {
 		// /comments (and the reader profile) used to link to the post headline;
 		// the jump must now carry the #comment-<id> anchor and land on the
 		// comment itself (the comment list's landOnDeepLink scroll machinery).

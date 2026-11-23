@@ -51,7 +51,9 @@ const editNote = ref("");
 let loadSeq = 0;
 
 // Windowed, ellipsis-aware pagination buttons (home/search/follows pattern).
-const paginationTokens = computed(() => paginationPages(pagination.value?.total_pages ?? 0, page.value));
+const paginationTokens = computed(() =>
+	paginationPages(pagination.value?.total_pages ?? 0, page.value),
+);
 // Screen-reader announcement: the list swaps in place when paging (home/archive pattern).
 const pageAnnouncement = computed(() => t("common.state.pageAnnounce", { page: page.value }));
 
@@ -175,7 +177,9 @@ watch(isAuthenticated, (authed) => {
 <template>
 	<div class="mx-auto max-w-3xl px-4 py-12">
 		<header class="mb-8">
-			<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ t("highlights.title") }}</h1>
+			<h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+				{{ t("highlights.title") }}
+			</h1>
 			<p class="mt-2 text-gray-500 dark:text-gray-400">{{ t("highlights.subtitle") }}</p>
 		</header>
 
@@ -211,67 +215,69 @@ watch(isAuthenticated, (authed) => {
 			</p>
 
 			<ul class="space-y-4">
-			<li
-				v-for="hl in items"
-				:key="hl.id"
-				class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-			>
-				<div class="flex items-start justify-between gap-3">
-					<div>
-						<NuxtLink
-							:to="hl.post ? `/posts/${hl.post.slug}` : undefined"
-							class="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
+				<li
+					v-for="hl in items"
+					:key="hl.id"
+					class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+				>
+					<div class="flex items-start justify-between gap-3">
+						<div>
+							<NuxtLink
+								:to="hl.post ? `/posts/${hl.post.slug}` : undefined"
+								class="text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
+							>
+								{{ hl.post?.title ?? t("highlights.unknownPost") }}
+							</NuxtLink>
+							<p
+								class="mt-2 border-l-2 border-yellow-300 pl-3 text-sm italic text-gray-700 dark:border-yellow-800 dark:text-gray-200"
+							>
+								{{ hl.text }}
+							</p>
+							<p class="mt-2 text-xs text-gray-400">{{ formatDate(hl.created_at) }}</p>
+						</div>
+						<button
+							type="button"
+							class="shrink-0 rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+							@click="remove(hl)"
 						>
-							{{ hl.post?.title ?? t("highlights.unknownPost") }}
-						</NuxtLink>
-						<p class="mt-2 border-l-2 border-yellow-300 pl-3 text-sm italic text-gray-700 dark:border-yellow-800 dark:text-gray-200">
-							{{ hl.text }}
-						</p>
-						<p class="mt-2 text-xs text-gray-400">{{ formatDate(hl.created_at) }}</p>
+							{{ t("highlights.delete") }}
+						</button>
 					</div>
-					<button
-						type="button"
-						class="shrink-0 rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-						@click="remove(hl)"
-					>
-						{{ t("highlights.delete") }}
-					</button>
-				</div>
 
-				<div v-if="editingId === hl.id" class="mt-3 flex items-center gap-2">
-					<input
-						v-model="editNote"
-						type="text"
-						maxlength="1000"
-						:placeholder="t('highlights.notePlaceholder')"
-						class="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-					/>
-					<button
-						type="button"
-						class="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
-						@click="saveNote(hl)"
-					>
-						{{ t("highlights.save") }}
-					</button>
-					<button
-						type="button"
-						class="px-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-						@click="editingId = null"
-					>
-						{{ t("highlights.cancel") }}
-					</button>
-				</div>
-				<div v-else class="mt-2 flex items-center gap-2 text-sm">
-					<span v-if="hl.note" class="text-gray-600 dark:text-gray-300">{{ hl.note }}</span>
-					<button
-						type="button"
-						class="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-						@click="startEdit(hl)"
-					>
-						{{ hl.note ? t("highlights.editNote") : t("highlights.addNote") }}
-					</button>
-				</div>
-			</li>
+					<div v-if="editingId === hl.id" class="mt-3 flex items-center gap-2">
+						<input
+							v-model="editNote"
+							type="text"
+							maxlength="1000"
+							:placeholder="t('highlights.notePlaceholder')"
+							class="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+						/>
+						<button
+							type="button"
+							class="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
+							@click="saveNote(hl)"
+						>
+							{{ t("highlights.save") }}
+						</button>
+						<button
+							type="button"
+							class="px-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+							@click="editingId = null"
+						>
+							{{ t("highlights.cancel") }}
+						</button>
+					</div>
+					<div v-else class="mt-2 flex items-center gap-2 text-sm">
+						<span v-if="hl.note" class="text-gray-600 dark:text-gray-300">{{ hl.note }}</span>
+						<button
+							type="button"
+							class="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+							@click="startEdit(hl)"
+						>
+							{{ hl.note ? t("highlights.editNote") : t("highlights.addNote") }}
+						</button>
+					</div>
+				</li>
 			</ul>
 
 			<!-- Pagination (windowed with ellipsis, matching home/search/follows) -->

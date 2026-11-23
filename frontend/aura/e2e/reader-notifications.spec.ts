@@ -137,10 +137,7 @@ test.describe("Reader notification inbox ", () => {
 		expect(afterData.unread).toBe(0);
 	});
 
-	test("deletes a single notification row and the list updates ", async ({
-		page,
-		request,
-	}) => {
+	test("deletes a single notification row and the list updates ", async ({ page, request }) => {
 		const adminTok = await adminToken(request);
 		const adminH = { Authorization: `Bearer ${adminTok}` };
 

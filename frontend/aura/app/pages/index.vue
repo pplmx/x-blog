@@ -553,7 +553,9 @@ const sidebarStats = computed(() => [
 						{{ sf.title }}
 					</NuxtLink>
 					<div v-if="followedProgress[sf.slug]" class="mt-3">
-						<div class="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+						<div
+							class="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400"
+						>
 							<span>
 								{{
 									t("series.readCountLabel", {

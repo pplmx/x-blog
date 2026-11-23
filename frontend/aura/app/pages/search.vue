@@ -22,8 +22,7 @@ import { commentAuthorName } from "~~/utils/commentAuthorName";
 const { t, locale } = useLang();
 // Device-local last searches, shown under the bare landing's prompt. Read on
 // mount only (see the composable), so SSR output stays prompt-plus-input.
-const { recentSearches, remember: rememberSearch, clear: clearSearchHistory } =
-	useRecentSearches();
+const { recentSearches, remember: rememberSearch, clear: clearSearchHistory } = useRecentSearches();
 // used in template v-html (Biome cannot see template usage)
 void sanitizeHtml;
 
@@ -80,7 +79,14 @@ function sanitizeDateFilter(raw: unknown): string {
 	if (!match) return "";
 	const [, year, month, day, hour = "0", minute = "0", second = "0"] = match;
 	const probe = new Date(
-		Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second)),
+		Date.UTC(
+			Number(year),
+			Number(month) - 1,
+			Number(day),
+			Number(hour),
+			Number(minute),
+			Number(second),
+		),
 	);
 	const sameWallClock =
 		probe.getUTCFullYear() === Number(year) &&
@@ -907,7 +913,11 @@ function goToPage(pg: number | string) {
 			<span role="status" aria-live="polite" class="sr-only">{{ pageAnnouncement }}</span>
 			<div v-if="activePending" class="space-y-4">
 				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
-				<div v-for="i in 3" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-lg" />
+				<div
+					v-for="i in 3"
+					:key="i"
+					class="bg-gray-100 dark:bg-gray-800 animate-pulse h-24 rounded-lg"
+				/>
 			</div>
 
 			<div v-else-if="activeError" role="alert" class="text-center py-12 text-gray-500">
@@ -1059,7 +1069,9 @@ function goToPage(pg: number | string) {
 							class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3"
 							v-html="sanitizeHtml(comment.snippet)"
 						/>
-						<p v-else class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">{{ comment.content }}</p>
+						<p v-else class="text-gray-600 dark:text-gray-300 mt-2 line-clamp-3">
+							{{ comment.content }}
+						</p>
 						<div class="flex flex-wrap gap-4 mt-3 text-sm text-gray-500 dark:text-gray-400">
 							<span class="inline-flex items-center gap-1">
 								<Icon icon="lucide:user" class="w-3.5 h-3.5" aria-hidden="true" />

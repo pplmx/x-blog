@@ -231,7 +231,9 @@ describe("Archive Page", () => {
 			const wrapper = await mountArchivePage();
 			const widths = wrapper
 				.findAll(".archive-count")
-				.map((node) => node.element.parentElement?.querySelector("span span")?.getAttribute("style"));
+				.map((node) =>
+					node.element.parentElement?.querySelector("span span")?.getAttribute("style"),
+				);
 			// March 2024 (count 2) is the busiest bucket, so its bar is full width;
 			// the single-post months render at half of that.
 			expect(widths).toEqual(["width: 50%;", "width: 100%;", "width: 50%;"]);

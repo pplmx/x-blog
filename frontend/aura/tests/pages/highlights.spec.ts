@@ -95,7 +95,10 @@ describe("Highlights page", () => {
 	it("redirects guests to /login", async () => {
 		mockAuth.value = { isAuthenticated: false };
 		await mountPage();
-		expect(mockReplace).toHaveBeenCalledWith({ path: "/login", query: { redirect: "/highlights" } });
+		expect(mockReplace).toHaveBeenCalledWith({
+			path: "/login",
+			query: { redirect: "/highlights" },
+		});
 	});
 
 	it("shows the empty state when the reader has no highlights", async () => {

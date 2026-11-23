@@ -32,7 +32,9 @@ const MAX_ARCHIVE_YEAR = 2100;
 const periodIsValid = computed(() => {
 	if (
 		year.value !== undefined &&
-		(!Number.isInteger(year.value) || year.value < MIN_ARCHIVE_YEAR || year.value > MAX_ARCHIVE_YEAR)
+		(!Number.isInteger(year.value) ||
+			year.value < MIN_ARCHIVE_YEAR ||
+			year.value > MAX_ARCHIVE_YEAR)
 	) {
 		return false;
 	}
@@ -274,7 +276,11 @@ useSeo(() => ({
 			<div v-if="archivePending" class="space-y-4" role="status" aria-busy="true">
 				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
 				<div class="space-y-2">
-					<div v-for="i in 6" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3" />
+					<div
+						v-for="i in 6"
+						:key="i"
+						class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3"
+					/>
 				</div>
 			</div>
 
@@ -354,7 +360,9 @@ useSeo(() => ({
 								>
 									<span
 										class="block h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500"
-										:style="{ width: `${Math.max(4, Math.round((m.count / maxMonthCount) * 100))}%` }"
+										:style="{
+											width: `${Math.max(4, Math.round((m.count / maxMonthCount) * 100))}%`,
+										}"
 									/>
 								</span>
 								<span
@@ -434,7 +442,11 @@ useSeo(() => ({
 			<div v-if="postsPending" class="space-y-4">
 				<div class="bg-gray-100 dark:bg-gray-800 animate-pulse h-8 rounded-lg mb-4 w-1/3" />
 				<div class="space-y-2">
-					<div v-for="i in 6" :key="i" class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3" />
+					<div
+						v-for="i in 6"
+						:key="i"
+						class="bg-gray-100 dark:bg-gray-800 animate-pulse h-4 rounded w-2/3"
+					/>
 				</div>
 			</div>
 
