@@ -26,13 +26,15 @@ test.describe("Category follow ", () => {
 	}) => {
 		const cats = await request.get("/api/categories");
 		expect(cats.status()).toBe(200);
-		const list = (await cats.json()) as Array<{ id: number }>;
+		const list = (await cats.json()) as Array<{ id: number; name: string }>;
 		if (!list.length) {
 			test.skip();
 			return;
 		}
 		await page.goto(`/categories?category_id=${list[0].id}`);
-		await expect(page.locator("body")).toContainText("分类文章");
+		// The filtered view heads itself with the category's name, so assert that
+		// rather than a generic label that the heading only falls back to.
+		await expect(page.getByRole("heading", { level: 1 })).toContainText(list[0].name);
 		await expect(page.getByRole("button", { name: /关注分类|已关注分类/ })).toHaveCount(0);
 	});
 

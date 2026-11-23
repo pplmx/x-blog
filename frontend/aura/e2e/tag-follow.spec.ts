@@ -24,13 +24,15 @@ test.describe("Tag follow ", () => {
 	test("guests see no reader-level follow control on the tag page", async ({ page, request }) => {
 		const tags = await request.get("/api/tags");
 		expect(tags.status()).toBe(200);
-		const list = (await tags.json()) as Array<{ id: number }>;
+		const list = (await tags.json()) as Array<{ id: number; name: string }>;
 		if (!list.length) {
 			test.skip();
 			return;
 		}
 		await page.goto(`/tags?tag_id=${list[0].id}`);
-		await expect(page.locator("body")).toContainText("标签文章");
+		// The filtered view heads itself with the tag's name, so assert that
+		// rather than a generic label that the heading only falls back to.
+		await expect(page.getByRole("heading", { level: 1 })).toContainText(list[0].name);
 		await expect(page.getByRole("button", { name: /关注标签|已关注/ })).toHaveCount(0);
 	});
 
