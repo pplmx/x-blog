@@ -32,9 +32,8 @@ jobs:
           uvx ruff check .
           uvx ruff format --check .
           cd ../..
-          # rumdl gates the maintained markdown docs (superpowers plans/specs are
-          # excluded via .rumdl.toml). Run from the repo root so .rumdl.toml and
-          # the tracked docs are scanned.
+          # rumdl gates every tracked markdown doc; run from the repo root so
+          # .rumdl.toml and the docs are scanned.
           uvx rumdl check .
 
       - name: Backend type check (ty)
