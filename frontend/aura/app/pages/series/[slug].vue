@@ -24,7 +24,7 @@ const {
 	refresh: refreshSeries,
 } = await useSeriesBySlug(() => route.params.slug as string);
 // Slug-change redirect: a re-slugged series' old URL must 301.
-useSlugRedirect(error.value);
+const slugRedirect = useSlugRedirect(error.value);
 function retryLoad() {
 	void refreshSeries();
 }
@@ -46,7 +46,8 @@ useSeo(() => ({
 
 // A deleted series slug must answer 404, not 200 with an in-page notice
 // (soft 404s get indexed). Only SSR can write the status.
-if (import.meta.server && seriesNotFound.value) {
+// A re-slugged series already emitted its 301; writing 404 here would clobber it.
+if (import.meta.server && seriesNotFound.value && !slugRedirect) {
 	setResponseStatus(404);
 }
 useHead(() =>
@@ -497,7 +498,9 @@ onUnmounted(() => {
 						>
 							{{ post.excerpt }}
 						</div>
-						<div class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+						<div
+							class="mt-2 ml-11 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400"
+						>
 							<span class="flex items-center gap-1">
 								<Icon icon="lucide:calendar" class="w-3.5 h-3.5" />
 								{{ formatPostDate(effectivePublishTs(post), locale) }}

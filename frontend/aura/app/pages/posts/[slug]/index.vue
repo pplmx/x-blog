@@ -36,7 +36,7 @@ const {
 
 // Slug-change redirect: a re-slugged post's old shared/indexed
 // URL must 301 to the canonical new one (emitted during SSR), not dead-end.
-useSlugRedirect(error.value);
+const slugRedirect = useSlugRedirect(error.value);
 
 // A failed load/page-miss must not dead-end a reader arriving via a share
 // link — offer Retry and a way back home.
@@ -166,11 +166,13 @@ watchEffect(() => {
 
 // A deleted/renamed post must answer 404, not 200 with an in-page notice:
 // search engines index soft 404s. On the server the status is writable; SPA
-// navigation reuses the mounted page, so only SSR sets it.
+// navigation reuses the mounted page, so only SSR sets it. A re-slugged post
+// already emitted its 301 in useSlugRedirect — writing 404 afterwards would
+// overwrite it, so the redirect wins.
 const postMissing = computed(
 	() => !pending.value && (error.value?.statusCode === 404 || (!error.value && !post.value)),
 );
-if (import.meta.server && postMissing.value) {
+if (import.meta.server && postMissing.value && !slugRedirect) {
 	setResponseStatus(404);
 }
 useHead(() =>
@@ -1036,7 +1038,11 @@ function handleCommentSubmitted(created: Comment | undefined) {
 						</button>
 					</div>
 				</Teleport>
-				<p v-if="highlight.saved" role="status" class="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
+				<p
+					v-if="highlight.saved"
+					role="status"
+					class="mt-2 text-sm text-emerald-600 dark:text-emerald-400"
+				>
 					{{ t("post.highlight.saved") }}
 				</p>
 				<p v-if="highlight.error" role="alert" class="mt-2 text-sm text-red-500">

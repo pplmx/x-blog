@@ -22,7 +22,7 @@ const {
 	refresh: refreshPage,
 } = await usePage(() => (slug.value ? slug.value : null));
 
-useSlugRedirect(error.value);
+const slugRedirect = useSlugRedirect(error.value);
 
 function retry() {
 	void refreshPage();
@@ -44,11 +44,10 @@ useSeo(() => ({
 const pageMissing = computed(
 	() =>
 		!pending.value &&
-		(error.value?.statusCode === 404 ||
-			!slug.value ||
-			(!error.value && !page.value)),
+		(error.value?.statusCode === 404 || !slug.value || (!error.value && !page.value)),
 );
-if (import.meta.server && pageMissing.value) {
+// A re-slugged page already emitted its 301; writing 404 here would clobber it.
+if (import.meta.server && pageMissing.value && !slugRedirect) {
 	setResponseStatus(404);
 }
 useHead(() =>
