@@ -45,9 +45,9 @@ Gotchas:
 - Each tool owns one config file under `backend/nova/`: `pytest.toml` (pytest,
   including `addopts = ["--cov"]`, which is what makes every local test run
   measure coverage), `.coveragerc.toml` (coverage), `ty.toml` (ty), and
-  `ruff.toml` at the repo root (ruff lint/format — takes precedence over any
-  `[tool.ruff]`). `pyproject.toml` holds packaging metadata and dependencies
-  only; put new tool settings in the tool's own file.
+  `ruff.toml` (ruff lint/format — the nearest config, so it governs every run
+  started inside the backend). `pyproject.toml` holds packaging metadata and
+  dependencies only; put new tool settings in the tool's own file.
 
 ## Git / commit conventions
 

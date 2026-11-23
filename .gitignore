@@ -49,6 +49,7 @@ coverage/
 .idea/
 # Cache
 .ruff_cache/
+.rumdl_cache/
 .cache/
 **/core.*
 # Core dumps
