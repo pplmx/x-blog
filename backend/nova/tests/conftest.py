@@ -270,6 +270,28 @@ async def db_session(test_engine) -> AsyncIterator[AsyncSession]:
             await connection.rollback()  # undo everything this test did
 
 
+@pytest.fixture(autouse=True)
+async def _purge_committed_rows(test_engine: AsyncEngine | None):
+    """Start every test from an empty database.
+
+    ``db_session`` rolls its transaction back, but any endpoint that calls
+    ``db.commit()`` ends that transaction first, so the rows it wrote survive
+    the rollback and leak into every later test served by the same worker
+    database. Table-wide assertions then depend on test order: with --cov the
+    run failed only under ``-n 8``, where
+    tests/test_reader_account_delete.py saw the PushSubscription row committed
+    by an earlier push test in its worker ("leftover PushSubscription rows").
+    Deleting in ``sorted_tables`` reverse order keeps FK-enforced SQLite and
+    PostgreSQL happy.
+    """
+    yield
+    if test_engine is None:
+        return
+    async with test_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+
+
 @pytest.fixture
 async def pg_scratch_engine(worker_id: str) -> AsyncEngine | None:
     """Dedicated per-worker engine for PG-only tests that create/drop whole

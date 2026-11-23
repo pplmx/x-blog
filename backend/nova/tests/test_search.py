@@ -3,21 +3,6 @@
 import pytest
 
 
-@pytest.fixture(scope="module")
-async def search_post(client, auth_headers):
-    """Create a post for search tests."""
-    await client.post(
-        "/api/posts",
-        json={
-            "title": "Python Tutorial",
-            "slug": "python-tutorial",
-            "content": "Learn Python programming",
-            "published": True,
-        },
-        headers=auth_headers,
-    )
-
-
 async def test_search_posts(client, auth_headers):
     await client.post(
         "/api/posts",
