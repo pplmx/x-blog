@@ -77,12 +77,16 @@ typecheck:
 audit:
     cd backend/nova && uv audit
 
+# Type-check the Nuxt app (vue-tsc over the .nuxt tsconfigs; mirrors CI's `pnpm typecheck`)
+frontend-typecheck:
+    cd frontend/aura && pnpm typecheck
+
 # Build the Nuxt app (mirrors CI's `pnpm build`)
 frontend-build:
     cd frontend/aura && pnpm build
 
 # CI: run all checks (local mirror of CI's runnable gate)
-ci: fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build
+ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check test frontend-build
 
 # Run all tests
 test: test-backend test-nuxt
