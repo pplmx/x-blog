@@ -11,7 +11,6 @@ import {
 } from "~~/api/public/posts";
 import { useSeriesBySlug } from "~~/api/public/series";
 import { getReaderRecommendations, recordReaderHistory } from "~~/api/reader/history";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { parseApiDate } from "~~/composables/apiDate";
 import { coverImageSrc } from "~~/composables/useCoverImage";
 import { markdownToHtml } from "~~/composables/useMarkdown";

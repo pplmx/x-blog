@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
 import { useAuthorPosts } from "~~/api/public/authors";
-// biome-ignore lint/correctness/noUnusedImports: used in <template> (biome can't resolve template bindings)
 import AuthorFollowButton from "~~/components/AuthorFollowButton.vue";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";

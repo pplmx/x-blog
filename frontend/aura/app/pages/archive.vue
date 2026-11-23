@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { type ArchiveEntry, usePostArchive, usePosts } from "~~/api/public/posts";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";

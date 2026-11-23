@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { usePost } from "~~/api/public/posts";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { readingMinutes } from "~~/composables/useReadingTime";
 

@@ -8,7 +8,6 @@ import {
 	setCategoryFollowNotify,
 	unfollowReaderCategory,
 } from "~~/api/reader/follows";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";

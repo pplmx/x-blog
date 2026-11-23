@@ -10,7 +10,6 @@ import {
 	useAllSearch,
 	useCommentSearch,
 } from "~~/api/public/search";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
@@ -18,7 +17,6 @@ import { loadPurify, sanitizeHtml } from "~~/composables/useMarkdown";
 import { paginationPages } from "~~/composables/usePagination";
 import { useRecentSearches } from "~~/composables/useRecentSearches";
 import { useSeo } from "~~/composables/useSeo";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const { t, locale } = useLang();

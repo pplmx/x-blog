@@ -14,7 +14,6 @@ import {
 } from "~~/api/admin/media";
 import type { UploadFileInfo } from "~~/api/contracts/media";
 import { apiErrorMessage } from "~~/api/errors";
-// parseApiDate is script-side (formatDate below), so it needs no biome-ignore.
 import { parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });

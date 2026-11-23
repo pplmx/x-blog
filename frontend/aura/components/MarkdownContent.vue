@@ -26,13 +26,7 @@ import { loadPurify, sanitizeHtml, sanitizeUrl, useMarkdown } from "~~/composabl
 // renders becomes a click target for MarkdownLightbox, so readers can inspect
 // tall diagrams / screenshots / photos at full resolution (a column-width
 // image can't be scrutinised on mobile).
-// biome-ignore lint/correctness/noUnusedImports: rendered as <MarkdownLightbox> in the template — biome cannot resolve Vue template bindings (vue-tsc verifies).
 import MarkdownLightbox, { type LightboxImage } from "./MarkdownLightbox.vue";
-
-// sanitizeUrl and escapeHtml are referenced in template bindings; keep the
-// helpers "used" for Biome (it cannot see template usage).
-void sanitizeUrl;
-void escapeHtml;
 
 export interface MarkdownContentProps {
 	/** Raw HTML content string from the backend. */

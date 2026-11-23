@@ -19,7 +19,6 @@ import {
 	getReaderPublicBookmarks,
 	getReaderPublicLikes,
 } from "~~/api/public/readers";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { formatPostDate } from "~~/composables/apiDate";
 import { scrollToPageTop } from "~~/composables/scrollToTop";
 import { paginationPages } from "~~/composables/usePagination";

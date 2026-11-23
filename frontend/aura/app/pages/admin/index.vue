@@ -11,7 +11,6 @@ import type { AdminPost, AdminPostListResponse } from "~~/api/admin/posts";
 import type { Category, Tag } from "~~/api/contracts/shared";
 import { apiErrorMessage } from "~~/api/errors";
 import type { BlogStats } from "~~/api/public/stats";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { effectivePublishTs, formatPostDate, parseApiDate } from "~~/composables/apiDate";
 
 definePageMeta({ layout: "admin" });

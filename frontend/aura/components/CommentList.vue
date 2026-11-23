@@ -624,9 +624,7 @@ import { commentMarkdownToHtml, loadPurify, sanitizeUrl } from "~~/composables/u
 import { paginationPages } from "~~/composables/usePagination";
 import { useReaderAuth } from "~~/composables/useReaderAuth";
 import { commentAuthorName } from "~~/utils/commentAuthorName";
-// biome-ignore lint/correctness/noUnusedImports: CommentForm is rendered in the SFC <template> (lines 59/105).
 import CommentForm from "./CommentForm.vue";
-// biome-ignore lint/correctness/noUnusedImports: rendered as <MarkdownLightbox> in the template — biome cannot resolve Vue template bindings (vue-tsc verifies).
 import MarkdownLightbox, { type LightboxImage } from "./MarkdownLightbox.vue";
 
 // Upgrade the comments already on screen to DOMPurify once it finishes loading

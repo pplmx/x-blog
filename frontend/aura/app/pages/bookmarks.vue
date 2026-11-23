@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-// biome-ignore lint/correctness/noUnusedImports: used from the template — biome cannot resolve Vue script-setup template bindings (vue-tsc verifies).
 import { formatPostDate } from "~~/composables/apiDate";
 import { useBookmarkFolders } from "~~/composables/useBookmarkFolders";
 import { useBookmarkSync } from "~~/composables/useBookmarkSync";
