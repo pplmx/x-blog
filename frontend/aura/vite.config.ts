@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import vue from "@vitejs/plugin-vue";
@@ -41,6 +42,13 @@ export default defineConfig({
 		globals: true,
 		setupFiles: ["./tests/setup.ts"],
 		exclude: ["e2e/**", "node_modules/**", "playwright.config.ts"],
+		// Vitest defaults to one worker per core, and every worker builds its own
+		// happy-dom environment. On a 128-core box that is 128 concurrent
+		// environments, which starved the workers: 38 tests timed out at the 5 s
+		// default while each file passed on its own (capping at 8 workers: full
+		// suite green in 37 s). Same rationale as the backend's
+		// min(cpu_count, 8) xdist cap.
+		maxWorkers: Math.min(availableParallelism(), 8),
 		// Persist transformed modules across runs (node_modules/.vitest-cache): the
 		// suite is transform-dominated, and without this every `vp test` re-transforms
 		// the whole module graph from scratch (Vitest's own diagnostic flags it).
