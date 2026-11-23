@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Engineering conventions for X-Blog. Complements `CLAUDE.md` (agent skill
-metadata) — this file is the working knowledge a landed agent needs to be
-productive. Do not duplicate or contradict either.
+Engineering conventions for X-Blog — the working knowledge a landed agent needs
+to be productive. Workflow notes live in `docs/agents/` (`issue-tracker.md`,
+`triage-labels.md`, `domain.md`); do not duplicate or contradict them.
 
 ## Repo layout & run commands
 
