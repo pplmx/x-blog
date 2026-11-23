@@ -77,9 +77,16 @@ repos:
             entry: bash -c 'cd frontend/aura && pnpm lint'
             language: system
             types_or: [javascript, ts, vue]
+            pass_filenames: false
           - id: ci-gate
             name: full CI gate (just ci)
             entry: bash -c 'cd "$(git rev-parse --show-toplevel)" && just ci'
             language: system
             stages: [pre-push]
             always_run: true
+            # `just ci` checks the whole repo, so filenames are irrelevant. Without
+            # this, prek hands the push's whole changed-file list to the hook in
+            # batches and runs one *complete* CI (8 pytest workers, Nuxt build)
+            # per batch — a 75-commit push spawned 21 concurrent `just ci` runs
+            # that starved each other instead of finishing.
+            pass_filenames: false
