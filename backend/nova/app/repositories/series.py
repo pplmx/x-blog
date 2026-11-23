@@ -49,7 +49,12 @@ async def visible_series_post_counts(db: AsyncSession) -> dict[int, int]:
             .group_by(models.Post.series_id)
         )
     ).all()
-    return {row[0]: row[1] for row in rows}
+    counts: dict[int, int] = {}
+    for series_id, count in rows:
+        if series_id is None:  # pragma: no cover - the WHERE clause excludes NULLs
+            continue
+        counts[series_id] = count
+    return counts
 
 
 async def get_series_visible_posts(db: AsyncSession, series: models.Series) -> list[models.Post]:

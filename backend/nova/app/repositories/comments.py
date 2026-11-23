@@ -447,6 +447,8 @@ async def bulk_delete_comments(db: AsyncSession, ids: list[int]) -> int:
     ).all()
     children_by_parent: dict[int, list[int]] = {}
     for cid, pid in child_rows:
+        if pid is None:  # pragma: no cover - the WHERE clause excludes NULL parents
+            continue
         children_by_parent.setdefault(pid, []).append(cid)
     for c in comments:
         survivor_ids = children_by_parent.get(c.id, [])

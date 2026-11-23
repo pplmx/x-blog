@@ -482,6 +482,8 @@ async def reader_history_stats(
     counts: dict = {}
     dates: set = set()
     for (viewed_at,) in (await db.execute(viewed_rows)).all():
+        if viewed_at is None:  # pragma: no cover - the WHERE clause excludes NULLs
+            continue
         d = _read_local_date(viewed_at, tz)
         counts[d] = counts.get(d, 0) + 1
         dates.add(d)

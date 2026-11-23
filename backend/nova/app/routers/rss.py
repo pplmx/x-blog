@@ -900,7 +900,7 @@ async def get_sitemap(request: Request = None, db: AsyncSession = Depends(get_db
                 .group_by(models.Post.author_id)
             )
         ).all()
-        author_lastmod = {int(author_id): lastmod for author_id, lastmod in author_lastmod_rows}
+        author_lastmod = {author_id: lastmod for author_id, lastmod in author_lastmod_rows if author_id is not None}
         for writer in writers:
             # The admin User has no updated_at column; a writer with no published
             # post yet falls back to "now" (their archive is still a real page).
