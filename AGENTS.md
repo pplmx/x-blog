@@ -29,9 +29,8 @@ All canonical commands go through `just` (see the root `justfile`):
 | `just test-backend`               | `uv run pytest -n auto --cov-fail-under=80` — **enforces the 80% app-coverage gate; the suite fails if coverage drops below it**                                                                                                                                                                           |
 | `just test-backend-seq`           | sequential pytest (debug)                                                                                                                                                                                                                                                                                  |
 | `just test-backend-postgres <N>`  | pytest against a real PostgreSQL (`TEST_DATABASE_URL`); conftest gives each xdist worker its own schema. Workers default to 8, not `-n auto` (auto can exceed the server's `max_connections`)                                                                                                              |
-| `just test-nuxt`                  | `pnpm test` (vitest)                                                                                                                                                                                                                                                                                       |
-| `just test-nuxt-coverage`         | `pnpm test:coverage`                                                                                                                                                                                                                                                                                       |
-| `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) / `ruff format --check .` — use `just fix` for auto-fix.                                                                                                                                                                                                               |
+| `just test-nuxt`                  | `pnpm test:coverage` (`vp test --coverage`) — coverage is always on: the provider must match the vitest vite-plus bundles, and a plain `pnpm test` would never check that                                                                                                                                  |
+| `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) + `vp lint` / `ruff format --check .` + `vp fmt --check` — use `just fix` (`ruff --fix`, `vp check --fix`) for auto-fix.                                                                                                                                               |
 | `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `backend/nova/ty.toml`, runs on `app/` only)                                                                                                                                                                                                        |
 | `just ci`                         | **`ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build`** — the full local CI mirror (strict lint, backend `ty` + frontend `vue-tsc` type checks, audit, alembic drift check, rumdl, Caddyfile validation, backend+frontend tests, Nuxt build) |
 | `just e2e`                        | Playwright against a live Nuxt dev server (auto-starts backend + Nuxt via `playwright.config.ts` webServer). Do NOT start a second Nuxt — it poisons the module cache and causes `nuxt.lock` conflicts                                                                                                     |
@@ -106,8 +105,13 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
 - **Backend:** `pytest -n auto` enforces an **80% app-coverage gate** on the
   full suite (`source = ["app"]`). Dialect parity verified by running the suite
   against PostgreSQL. Never delete or weaken tests to make the suite pass.
-- **Frontend unit tests:** `just test-nuxt` (`pnpm test` → `vp test`, Vitest 5 bundled
-  with Vite+); run `pnpm lint` (`vp lint`, Oxlint) and `nuxt typecheck` as part of the
+- **Frontend unit tests:** `just test-nuxt` (`pnpm test:coverage` → `vp test
+  --coverage`, Vitest 5 bundled with Vite+). Coverage is on in the gate on
+  purpose: `vite-plus` asserts that `@vitest/coverage-v8` matches the vitest it
+  bundles (5.1.0), so pin both to that version — a plain `pnpm test` never
+  loads the provider and hides the mismatch. Run `pnpm format:check` (`vp fmt
+  --check`, Oxfmt), `pnpm lint` (`vp lint`, Oxlint) and `pnpm typecheck`
+  (`nuxt typecheck`, vue-tsc) as part of the
   gate. The frontend toolchain is **Vite+** (`vite-plus`, the unified `vp` CLI) as the
   outer command: `vp` manages the package manager (`vp install`) and owns
   `test`/`lint`/`check`/`fmt`. Nuxt-owned commands (`build`, `dev`, `generate`,

@@ -55,10 +55,12 @@ lint:
 # Format code
 format:
     cd backend/nova && uv run ruff format .
+    cd frontend/aura && pnpm format
 
 # Format check (CI style)
 fmt-check:
     cd backend/nova && ruff format --check .
+    cd frontend/aura && pnpm format:check
     cd frontend/aura && pnpm lint
     rumdl check .
 
@@ -66,7 +68,7 @@ fmt-check:
 fix:
     cd backend/nova && ruff check . --fix
     cd backend/nova && ruff format .
-    cd frontend/aura && pnpm lint:fix
+    cd frontend/aura && pnpm check --fix
     rumdl fmt
 
 # Run Python type checking (ty, global uv tool; config in backend/nova/ty.toml)
@@ -117,25 +119,11 @@ test-backend-seq:
 test-backend-postgres WORKERS='8':
     cd backend/nova && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-$$DATABASE_URL}" uv run pytest -n {{WORKERS}}
 
-# Run frontend tests (alias for test-nuxt)
-test-frontend:
-    cd frontend/aura && pnpm test
-
-# Run frontend tests with coverage (alias for test-nuxt-coverage)
-test-frontend-coverage:
-    cd frontend/aura && pnpm test:coverage
-
-# Run Nuxt tests
+# Run Nuxt unit tests with coverage (mirrors CI's `pnpm test --coverage`: the
+# coverage provider must match the vitest vite-plus bundles, so CI exercises a
+# path a plain `pnpm test` never touches).
 test-nuxt:
-    cd frontend/aura && pnpm test
-
-# Run Nuxt tests with coverage
-test-nuxt-coverage:
     cd frontend/aura && pnpm test:coverage
-
-# Run e2e tests (alias for e2e-nuxt)
-test-e2e:
-    cd frontend/aura && pnpm test:e2e
 
 # Run e2e tests against live Nuxt dev server (auto-starts backend + Nuxt).
 # Playwright's webServer (playwright.config.ts) starts the Nuxt dev server

@@ -90,22 +90,22 @@ just e2e       # 针对实时 Nuxt 服务器运行 Playwright e2e（自动启动
 
 ## 🛠️ 常用命令
 
-| 命令                                                      | 说明                                          |
-| --------------------------------------------------------- | --------------------------------------------- |
-| `just install` / `just hooks`                             | 安装依赖 / git hooks                          |
-| `just backend` / `just nuxt`（`dev`）                     | 开发服务器（:18888 / :34567）                 |
-| `just init-db`                                            | 初始化开发库（admin/admin123）                |
-| `just e2e`                                                | 针对实时服务器运行 Playwright e2e             |
-| `just test-backend` / `just test-nuxt`                    | 后端（80% 覆盖率门槛）/ 前端测试              |
-| `just lint` / `just fmt-check` / `fix`                    | Ruff 检查 / 格式检查 / 自动修复               |
-| `just typecheck`                                          | `ty` 类型检查                                 |
-| `just audit`                                              | `uv audit` — 依赖漏洞扫描                     |
-| `just migration` / `just migrate` / `just migrate-check`  | Alembic 自动生成 / 升级 / 漂移检查            |
-| `just rumdl` / `just rumdl-check`                         | 格式化 / 检查 Markdown                        |
-| `just frontend-build`                                     | Nuxt `pnpm build`                             |
-| `just ci`                                                 | 完整的本地 CI 门槛                            |
+| 命令                                                     | 说明                                              |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| `just install` / `just hooks`                            | 安装依赖 / git hooks                              |
+| `just backend` / `just nuxt`（`dev`）                    | 开发服务器（:18888 / :34567）                     |
+| `just init-db`                                           | 初始化开发库（admin/admin123）                    |
+| `just e2e`                                               | 针对实时服务器运行 Playwright e2e                 |
+| `just test-backend` / `just test-nuxt`                   | 后端（80% 覆盖率门槛）/ 前端测试（含覆盖率）      |
+| `just lint` / `just fmt-check` / `fix`                   | Ruff+Oxlint 检查 / Ruff+Oxfmt 格式检查 / 自动修复 |
+| `just typecheck`                                         | `ty` 类型检查                                     |
+| `just audit`                                             | `uv audit` — 依赖漏洞扫描                         |
+| `just migration` / `just migrate` / `just migrate-check` | Alembic 自动生成 / 升级 / 漂移检查                |
+| `just rumdl` / `just rumdl-check`                        | 格式化 / 检查 Markdown                            |
+| `just frontend-build`                                    | Nuxt `pnpm build`                                 |
+| `just ci`                                                | 完整的本地 CI 门槛                                |
 
-另有 `just test-nuxt-coverage`、`just test-backend-postgres [N]`、
+另有 `just test-backend-postgres [N]`、
 `just test-backend-seq`、`just clean`、`just migration-history`。运行 `just --list`
 查看全部命令。
 

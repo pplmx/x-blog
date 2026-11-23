@@ -92,22 +92,22 @@ just e2e       # Playwright e2e against a live Nuxt server (auto-starts backend 
 
 ## 🛠️ Common Commands
 
-| Command                                                  | Description                                  |
-| -------------------------------------------------------- | -------------------------------------------- |
-| `just install` / `just hooks`                            | Install deps / git hooks                     |
-| `just backend` / `just nuxt` (`dev`)                     | Dev servers (:18888 / :34567)                |
-| `just init-db`                                           | Seed dev DB (admin/admin123)                 |
-| `just e2e`                                               | Playwright e2e against a live server         |
-| `just test-backend` / `just test-nuxt`                   | Backend (80% coverage gate) / frontend tests |
-| `just lint` / `just fmt-check` / `fix`                   | Ruff lint / format-check / auto-fix          |
-| `just typecheck`                                         | `ty` type checking                           |
-| `just audit`                                             | `uv audit` — dependency vulnerabilities      |
-| `just migration` / `just migrate` / `just migrate-check` | Alembic autogenerate / upgrade / drift check |
-| `just rumdl` / `just rumdl-check`                        | Format / check markdown                      |
-| `just frontend-build`                                    | Nuxt `pnpm build`                            |
-| `just ci`                                                | Full local CI gate                           |
+| Command                                                  | Description                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| `just install` / `just hooks`                            | Install deps / git hooks                                     |
+| `just backend` / `just nuxt` (`dev`)                     | Dev servers (:18888 / :34567)                                |
+| `just init-db`                                           | Seed dev DB (admin/admin123)                                 |
+| `just e2e`                                               | Playwright e2e against a live server                         |
+| `just test-backend` / `just test-nuxt`                   | Backend (80% coverage gate) / frontend tests (with coverage) |
+| `just lint` / `just fmt-check` / `fix`                   | Ruff+Oxlint lint / Ruff+Oxfmt format-check / auto-fix        |
+| `just typecheck`                                         | `ty` type checking                                           |
+| `just audit`                                             | `uv audit` — dependency vulnerabilities                      |
+| `just migration` / `just migrate` / `just migrate-check` | Alembic autogenerate / upgrade / drift check                 |
+| `just rumdl` / `just rumdl-check`                        | Format / check markdown                                      |
+| `just frontend-build`                                    | Nuxt `pnpm build`                                            |
+| `just ci`                                                | Full local CI gate                                           |
 
-Also available: `just test-nuxt-coverage`, `just test-backend-postgres [N]`,
+Also available: `just test-backend-postgres [N]`,
 `just test-backend-seq`, `just clean`, `just migration-history`. Run `just --list`
 for everything.
 
