@@ -36,4 +36,4 @@ overrides:
   # Vite+ toolchain: unify on its bundled Vite core + Vitest so plugins,
   # dependencies, and `vp test` all share a single copy (see viteplus.dev local-cli).
   vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
-  vitest@*: 5.1.1
+  vitest@*: 5.1.0
