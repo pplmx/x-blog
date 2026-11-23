@@ -109,7 +109,7 @@ test-backend-seq:
 # the server's max_connections on many-core boxes, e.g. 128 workers × 8 pooled
 # connections vs a 100-connection PostgreSQL. Override: just test-backend-postgres 16
 test-backend-postgres WORKERS='8':
-    cd backend/nova && TEST_DATABASE_URL=$$DATABASE_URL uv run pytest -n {{WORKERS}}
+    cd backend/nova && TEST_DATABASE_URL="$${TEST_DATABASE_URL:-$$DATABASE_URL}" uv run pytest -n {{WORKERS}}
 
 # Run frontend tests (alias for test-nuxt)
 test-frontend:
