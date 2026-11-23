@@ -152,15 +152,15 @@ describe("API proxy", () => {
 		expect(options.headers["x-real-ip"]).toBe("203.0.113.9");
 	});
 
-	it("forwards the REAL client through a trusted proxy (nginx topology)", async () => {
-		// deploy/nginx.conf proxies location / → the Nuxt container, so the
-		// socket peer is nginx (loopback) and the original client rides in
-		// X-Forwarded-For. Forwarding only the peer would collapse every user
-		// into that one loopback IP and the backend's per-IP rate-limit buckets
-		// all shared one slot. With the peer listed as a trusted proxy
-		// (FRONTEND_TRUSTED_PROXIES, same trust model as the frontend's own
-		// limiters), the proxy must forward the leftmost
-		// XFF entry — the REAL client — not the nginx peer.
+	it("forwards the REAL client through a trusted proxy (reverse-proxy topology)", async () => {
+		// The proxy in infra/caddy/Caddyfile forwards the rest to the Nuxt
+		// container, so the socket peer is the proxy (loopback) and the original
+		// client rides in X-Forwarded-For. Forwarding only the peer would
+		// collapse every user into that one loopback IP and the backend's per-IP
+		// rate-limit buckets all shared one slot. With the peer listed as a
+		// trusted proxy (FRONTEND_TRUSTED_PROXIES, same trust model as the
+		// frontend's own limiters), the proxy must forward the leftmost
+		// XFF entry — the REAL client — not the proxy peer.
 		vi.stubEnv("FRONTEND_TRUSTED_PROXIES", "127.0.0.1");
 		// loadHandler re-stubs FRONTEND_TRUSTED_PROXIES to "" — set the trust
 		// var AFTER loading so it isn't wiped.

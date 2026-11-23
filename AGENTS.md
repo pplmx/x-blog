@@ -13,6 +13,11 @@ Monorepo with two apps:
 - `frontend/aura` — Nuxt 4 + Vue (pnpm). App in `app/`, e2e in `e2e/`, unit
   tests in `tests/`, static assets in `public/` (service worker lives at
   `public/sw.js`).
+- `infra` — deployment-side files that nothing discovers by path: the host
+  reverse proxy (`caddy/Caddyfile`) and the server half of the deploy workflow
+  (`deploy/remote-deploy.sh`). Its `README.md` lists what must stay outside
+  (workflows, justfile, compose file, Dockerfiles, per-tool configs) because
+  moving those breaks discovery rather than tidying the tree.
 
 All canonical commands go through `just` (see the root `justfile`):
 

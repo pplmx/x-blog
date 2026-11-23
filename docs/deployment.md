@@ -264,7 +264,7 @@ TRUSTED_PROXIES=*
 
 - 不设置时保持默认安全行为：忽略上游 `X-Forwarded-For`，直接访客无法伪造新桶。
 - docker-compose 默认不设置（保持默认安全行为）；若你部署在单网关后且后端端口未公开，可在 `.env` 中设置 `TRUSTED_PROXIES=*` 恢复按客户端的限流桶。
-- 部署在 nginx 后时，把 nginx 的 IP（或 `*`，后端不公开时）填入以恢复按客户端限流。nginx 已透传 `X-Forwarded-For`。
+- 部署在反向代理后时，把代理的 IP（或 `*`，后端不公开时）填入以恢复按客户端限流。仓库自带的 Caddy 配置（`infra/caddy/Caddyfile`）已透传 `X-Forwarded-For`。
 - **读者认证端点**：默认 compose 拓扑下所有浏览器请求都经 Nuxt 代理到达后端，若未配置
   `TRUSTED_PROXIES`，读者注册/登录会共享**同一个**代理级桶（注册 5/min、登录 10/min 全站共享）——
   一个攻击者即可耗尽桶导致全站读者注册/登录被限流。要在生产恢复按客户端桶，必须把代理 IP 填入

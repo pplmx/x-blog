@@ -6,9 +6,10 @@
  * per-IP rate limit must key on the REAL client — not the socket peer.
  *
  * Problem: `getRequestIP(event)` with no configured
- * trustProxy returns the immediate TCP peer. In the nginx deployment
- * (deploy/nginx.conf proxies `location /` → frontend) that peer is nginx for
- * every request, so every client collapsed into ONE shared rate-limit bucket —
+ * trustProxy returns the immediate TCP peer. In the reverse-proxy deployment
+ * (infra/caddy/Caddyfile proxies everything else → the frontend) that peer is
+ * the proxy for every request, so every client collapsed into ONE shared
+ * rate-limit bucket —
  * one user's burst 429'd the whole site and the per-IP protection was null.
  *
  * This resolver reuses the exact trust-verification model from the backend:

@@ -41,7 +41,8 @@ services:
       RATE_LIMIT_SEARCH_PER_MINUTE: ${RATE_LIMIT_SEARCH_PER_MINUTE:-60}
       RATE_LIMIT_COMMENT_PER_MINUTE: ${RATE_LIMIT_COMMENT_PER_MINUTE:-20}
       RATE_LIMIT_EXPORT_PER_MINUTE: ${RATE_LIMIT_EXPORT_PER_MINUTE:-10}
-      # Deployments behind a trusted proxy (this compose's frontend, or nginx)
+      # Deployments behind a trusted proxy (this compose's frontend, or the
+      # Caddy proxy in infra/caddy/Caddyfile)
       # must list that proxy's IP here to keep per-client rate-limit buckets
       # (see app/limiter.py client_rate_key + docs/deployment.md). Empty =>
       # default-safe peer-key behavior. Use "*" only when the backend port is
@@ -96,7 +97,8 @@ services:
       # at runtime via the NUXT_PUBLIC_<key> convention. The URL-dependent head
       # tags (og:url / og:image / WebSite JSON-LD, app.vue) read this.
       NUXT_PUBLIC_SITE_URL: ${NUXT_PUBLIC_SITE_URL:-http://localhost:34567}
-      # Set only when the frontend sits BEHIND a trusted proxy (e.g. nginx) so
+      # Set only when the frontend sits BEHIND a trusted proxy (e.g. the Caddy
+      # proxy in infra/caddy/Caddyfile) so
       # its own rate limiters (public og/cover image endpoints) key on the real
       # client IP via X-Forwarded-For rather than collapsing every user into one
       # shared bucket. Comma-separated proxy IPs, or exactly "*" (dev topology)

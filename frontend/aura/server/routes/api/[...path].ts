@@ -72,8 +72,9 @@ export default defineEventHandler(async (event) => {
 	// else the socket peer) follows the trust model, not a raw header.
 	//
 	// The browser talks to Nuxt, and the backend sees the Nuxt container as its
-	// peer. In the nginx topology (deploy/nginx.conf), nginx sits in front with
-	// the real client in X-Forwarded-For and the socket peer is nginx itself —
+	// peer. In the reverse-proxy topology (infra/caddy/Caddyfile), the proxy
+	// sits in front with the real client in X-Forwarded-For and the socket peer
+	// is the proxy itself —
 	// forwarding the peer alone (getRequestIP with xForwardedFor:false) would
 	// collapse EVERY client into that one loopback IP, so the backend's per-IP
 	// registrations/rates all shared a single bucket. resolveClientIp applies

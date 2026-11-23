@@ -1,0 +1,80 @@
+# Caddy reverse proxy in front of the composed stack (host-level, not part of
+# docker-compose.yml). Replaces the previous nginx.conf: automatic HTTPS via
+# ACME, no certificate paths, no separate http→https server block.
+#
+# Validate before reloading:  caddy validate --config infra/caddy/Caddyfile
+# Apply:                      caddy reload  --config infra/caddy/Caddyfile
+{
+	# Operator: set this to the address ACME should blame for expiring certs.
+	email ops@example.com
+}
+
+x-blog.example.com {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		# X-XSS-Protection is deliberately NOT set: the legacy auditor it enables
+		# was removed from every modern browser and could itself be abused in old
+		# Edge (OWASP/MDN now recommend omitting it).
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Admin uploads: the backend caps content at 5MB (app/routers/upload.py
+	# MAX_SIZE) and the Nuxt proxy allows 6MB, so reject anything larger here
+	# rather than buffering it. 6MB = 5MB content plus multipart framing.
+	request_body {
+		max_size 6MB
+	}
+
+	# Uploaded files are served from disk, not through the backend.
+	handle_path /static/uploads/* {
+		root * /var/www/x-blog/uploads
+		header Cache-Control "public, max-age=2592000, immutable"
+		file_server
+	}
+
+	# FastAPI's auto-generated docs (/docs, /redoc, /openapi.json) expose the
+	# whole admin schema. They are dev aids: never serve them at the public
+	# edge (the backend's own 127.0.0.1:18888 bind keeps them usable there).
+	@apiDocs path /docs /redoc /openapi.json
+	respond @apiDocs 404
+
+	# Backend API.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:18888 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Backend health, feeds and crawler files.
+	handle /health {
+		reverse_proxy 127.0.0.1:18888 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle /rss/* {
+		reverse_proxy 127.0.0.1:18888 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle /robots.txt {
+		reverse_proxy 127.0.0.1:18888 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle /sitemap.xml {
+		reverse_proxy 127.0.0.1:18888 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Everything else → Nuxt (WebSocket upgrades are proxied automatically).
+	handle {
+		reverse_proxy 127.0.0.1:34567 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
