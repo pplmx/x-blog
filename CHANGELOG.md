@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- 🔗 **a renamed slug keeps its redirect** — the soft-404 guard added for
+  detail pages answered 404 before the slug redirect could set its 301, so
+  posts, pages and series whose slug had changed stopped reaching their
+  canonical URL; the guard now yields to a redirect.
+- 🛡 **the edge proxy is Caddy** — the shipped nginx config is replaced by
+  `infra/caddy/Caddyfile` carrying the same 6 MB body cap, static-upload
+  serving, blocked API docs, per-route timeouts and security headers; nginx's
+  one-minute SSR micro-cache has no Caddy core equivalent and is dropped.
+- 🔒 **dependency advisories are clear** — pillow 13.0.0, certifi 2026.11.20
+  and psycopg 3.3.9 in the backend lock, plus overrides pinning fflate 0.8.3,
+  glob 14.0.2, minimatch 11.0.1, shell-quote 1.12.0 and node-forge 1.4.3 in
+  the frontend graph; the registry reports no open alerts.
 - 🔒 **private and token pages stay out of search** — notifications, bookmarks,
   history, likes, highlights, follows, and the newsletter/comment token pages
   now send `noindex, follow`; crawlers only ever saw their signed-out shells.
