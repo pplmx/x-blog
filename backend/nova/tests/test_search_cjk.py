@@ -187,7 +187,7 @@ class TestSearchSnippet:
 
 @pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
-    reason="requires TEST_DATABASE_URL pointing at PostgreSQL (e.g. dev host 10.112.9.49:13310)",
+    reason="requires TEST_DATABASE_URL pointing at PostgreSQL (see `just test-backend-postgres`)",
 )
 class TestTsvectorGinIndexPostgres:
     """The tsvector GIN index (migration a8c9d0e1f2a3) must actually drive the
@@ -283,13 +283,13 @@ class TestTsvectorGinIndexPostgres:
 
 @pytest.mark.skipif(
     not os.getenv("TEST_DATABASE_URL", "").startswith("postgresql"),
-    reason="requires TEST_DATABASE_URL pointing at PostgreSQL (e.g. dev host 10.112.9.49:13310)",
+    reason="requires TEST_DATABASE_URL pointing at PostgreSQL (see `just test-backend-postgres`)",
 )
 class TestChineseSearchPostgres:
-    """Runs the CJK branch against a REAL PostgreSQL. Skipped by default — the
-    operator runs it with TEST_DATABASE_URL pointing at the dev pg host (see
-    backend/nova/run_pg_search_tests.sh). On the OLD tsvector code this test
-    fails (the original bug); with the ILIKE fallback it passes."""
+    """Runs the CJK branch against a REAL PostgreSQL. Skipped by default — run it
+    with `TEST_DATABASE_URL=postgresql://… just test-backend-postgres 8`. On the
+    OLD tsvector code this test fails (the original bug); with the ILIKE
+    fallback it passes."""
 
     async def test_chinese_partial_prefix_matches_on_postgres(self, pg_scratch_engine):
         from sqlalchemy.ext.asyncio import AsyncSession
