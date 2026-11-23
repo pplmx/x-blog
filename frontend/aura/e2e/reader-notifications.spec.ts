@@ -154,7 +154,6 @@ test.describe("Reader notification inbox ", () => {
 		expect(reg.status()).toBe(201);
 		const token = ((await reg.json()) as { access_token: string }).access_token;
 		const readerH = { Authorization: `Bearer ${token}` };
-		const readerId = ((await reg.json()) as { reader: { id: number } }).reader.id;
 
 		const uid = Date.now();
 		const catRes = await request.post("/api/categories", {

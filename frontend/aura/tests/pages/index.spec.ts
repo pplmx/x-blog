@@ -766,7 +766,7 @@ describe("Index Page", () => {
 			// Mount with an empty feed first (so the clamp watch starts with no
 			// total_pages), then land real pagination to trigger the clamp.
 			mockState.posts = null;
-			const wrapper = await mountIndexPage({ query: { page: "999" } });
+			await mountIndexPage({ query: { page: "999" } });
 			const navigateToMock = vi.fn();
 			vi.stubGlobal("navigateTo", navigateToMock);
 

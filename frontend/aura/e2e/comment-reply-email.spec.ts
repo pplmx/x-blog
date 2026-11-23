@@ -18,7 +18,6 @@ import { type APIRequestContext, expect, test } from "@playwright/test";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
-const password = "e2epass123";
 
 const SINK_FILE = "/tmp/x-blog-smtp-sink.jsonl";
 

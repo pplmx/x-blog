@@ -780,7 +780,7 @@ describe("Tags Page", () => {
 					"<template #fallback>Loading...</template>" +
 					"</Suspense>",
 			};
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },

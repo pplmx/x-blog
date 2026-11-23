@@ -260,7 +260,7 @@ describe("MarkdownContent", () => {
 		});
 
 		it("does not call the highlighter for plaintext code blocks", async () => {
-			const wrapper = mountMarkdown("```\nplain code\n```");
+			mountMarkdown("```\nplain code\n```");
 			await flushPromises();
 			await new Promise((r) => setTimeout(r, 10));
 			await flushPromises();
@@ -269,7 +269,7 @@ describe("MarkdownContent", () => {
 		});
 
 		it("does not call the highlighter for unknown/plain language aliases", async () => {
-			const wrapper = mountMarkdown("```text\nhello\n```");
+			mountMarkdown("```text\nhello\n```");
 			await flushPromises();
 			await new Promise((r) => setTimeout(r, 10));
 			await flushPromises();

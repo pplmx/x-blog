@@ -1264,7 +1264,6 @@ describe("Admin Post Editor Page", () => {
 			const wrapper = await mountWithSuspense(PostEditor);
 			await flushPromises();
 
-			const previewBtn = wrapper.find('button[type="button"]');
 			const buttons = wrapper.findAll('button[type="button"]');
 			const toggleBtn = buttons.find((b) => b.text().includes("预览"));
 			expect(toggleBtn).toBeDefined();
@@ -1382,7 +1381,7 @@ describe("Admin Post Editor Page", () => {
 		}
 
 		it("does NOT confirm on leave when the form is untouched", async () => {
-			const wrapper = await freshGuard();
+			await freshGuard();
 			expect(typeof capturedRouteLeave).toBe("function");
 			const allowed = await (capturedRouteLeave as () => boolean | Promise<boolean>)();
 			expect(globalThis.confirm as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();

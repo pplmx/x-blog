@@ -889,7 +889,7 @@ describe("Admin Comments Page", () => {
 			globalThis.$fetch = vi.fn(async () => ({ role: "superuser" }));
 			try {
 				const CommentsPage = await loadPage();
-				const wrapper = await mountWithSuspense(CommentsPage);
+				await mountWithSuspense(CommentsPage);
 				await flushPromises();
 				const headers = (
 					vi.mocked(globalThis.$fetch).mock.calls[0]?.[1] as

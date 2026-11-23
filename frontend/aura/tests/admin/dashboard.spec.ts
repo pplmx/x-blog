@@ -21,14 +21,12 @@ const {
 	mockUseCategories,
 	mockUseTags,
 	mockFetchAdminComments,
-	mockUseBlogStats,
 	mockApproveAdminComment,
 } = vi.hoisted(() => ({
 	mockUsePosts: vi.fn(),
 	mockUseCategories: vi.fn(),
 	mockUseTags: vi.fn(),
 	mockFetchAdminComments: vi.fn(),
-	mockUseBlogStats: vi.fn(),
 	mockApproveAdminComment: vi.fn(),
 }));
 
@@ -1362,7 +1360,7 @@ describe("Admin Dashboard Page", () => {
 			localStorage.setItem("admin_token", "tok-123");
 			try {
 				const DashboardPage = await loadPage();
-				const wrapper = await mountWithSuspense(DashboardPage);
+				await mountWithSuspense(DashboardPage);
 				await flushPromises();
 				const calls = vi.mocked($fetch).mock.calls;
 				const authed = calls.some((c) => {
@@ -1444,7 +1442,7 @@ describe("Admin Dashboard Page", () => {
 		it("sends requests without an Authorization header when no token is stored", async () => {
 			localStorage.removeItem("admin_token");
 			const DashboardPage = await loadPage();
-			const wrapper = await mountWithSuspense(DashboardPage);
+			await mountWithSuspense(DashboardPage);
 			await flushPromises();
 			const calls = vi.mocked($fetch).mock.calls;
 			expect(

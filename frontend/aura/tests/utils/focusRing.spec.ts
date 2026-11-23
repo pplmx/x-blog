@@ -66,7 +66,7 @@ describe("nextFocusable", () => {
 	});
 
 	it("excludes every focusable inside the popover, not just the first", () => {
-		const { trigger, popover, item1, item2 } = setup();
+		const { popover, item1, item2 } = setup();
 		// Forward from the LAST popover item must land on the after-control, so
 		// both item1 and item2 are skipped.
 		expect(nextFocusable(item2, { exclude: popover }).textContent).toBe("after");

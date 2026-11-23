@@ -3,8 +3,6 @@ import { expect, test } from "@playwright/test";
 test.describe("Pagination", () => {
 	test("pagination renders on homepage", async ({ page }) => {
 		await page.goto("/");
-		// Look for pagination elements
-		const pagination = page.locator('nav, [class*="pagination"], [class*="Pagination"]');
 		// Pagination may or may not be visible depending on number of posts
 	});
 
@@ -32,7 +30,6 @@ test.describe("Pagination", () => {
 
 		// Get first page content
 		await page.goto("/");
-		const page1Content = await page.locator("article").count();
 
 		// Go to page 2
 		await nextButton.click();

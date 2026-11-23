@@ -580,13 +580,13 @@ describe("Search Page", () => {
 			const wrapper = await mountSearchPage({
 				routeQuery: { q: "test query", date_to: "2026-08-31" },
 			});
-			const [fromInput, toInput] = wrapper.findAll('input[type="date"]');
+			const [fromInput] = wrapper.findAll('input[type="date"]');
 			expect(fromInput.attributes("max")).toBe("2026-08-31");
 
 			const other = await mountSearchPage({
 				routeQuery: { q: "test query", date_from: "2026-01-01" },
 			});
-			const [otherFrom, otherTo] = other.findAll('input[type="date"]');
+			const [, otherTo] = other.findAll('input[type="date"]');
 			expect(otherTo.attributes("min")).toBe("2026-01-01");
 		});
 
@@ -1047,7 +1047,7 @@ describe("Search Page", () => {
 					"<template #fallback>Loading...</template>" +
 					"</Suspense>",
 			};
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: { template: '<a :href="to"><slot/></a>', props: ["to"] },

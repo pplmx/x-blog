@@ -340,7 +340,7 @@ describe("Post Detail Page", () => {
 					"</Suspense>",
 			};
 
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: {
@@ -414,7 +414,7 @@ describe("Post Detail Page", () => {
 					"</Suspense>",
 			};
 
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: {
@@ -495,7 +495,7 @@ describe("Post Detail Page", () => {
 					"</Suspense>",
 			};
 
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: {
@@ -1360,7 +1360,7 @@ describe("Post Detail Page", () => {
 					"</Suspense>",
 			};
 
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: {
@@ -1436,7 +1436,7 @@ describe("Post Detail Page", () => {
 					"</Suspense>",
 			};
 
-			const wrapper = mount(SuspenseWrapper, {
+			mount(SuspenseWrapper, {
 				global: {
 					stubs: {
 						NuxtLink: {

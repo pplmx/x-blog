@@ -374,7 +374,7 @@ describe("CommentList", () => {
 				limit: 20,
 			};
 			try {
-				const { wrapper } = await mountCommentList({
+				await mountCommentList({
 					comments: p1,
 					attachToBody: true,
 					getCommentsImpl: () => Promise.resolve(p2),
@@ -397,7 +397,7 @@ describe("CommentList", () => {
 				scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
 			window.history.replaceState(null, "", "/posts/x#some-other-anchor");
 			try {
-				const { wrapper } = await mountCommentList({ attachToBody: true });
+				await mountCommentList({ attachToBody: true });
 				expect(scrollIntoView).not.toHaveBeenCalled();
 			} finally {
 				Element.prototype.scrollIntoView = original;

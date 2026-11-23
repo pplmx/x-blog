@@ -199,7 +199,7 @@ describe("ThreadSubscribeButton", () => {
 		mockStatus(false);
 		status.value = "denied";
 		const w = await mountButton();
-		expect((w.find("button").attributes("disabled") ?? "") !== undefined).toBe(true);
+		expect(w.find("button").attributes("disabled")).not.toBeUndefined();
 	});
 
 	it("shows a persistent inline explanation when push is pre-denied ", async () => {

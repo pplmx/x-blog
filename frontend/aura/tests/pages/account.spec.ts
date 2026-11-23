@@ -2340,7 +2340,6 @@ describe("two-factor authentication section ", () => {
 
 		const wrapper = await mountPage();
 		expect(wrapper.text()).toContain("已开启");
-		const passwordInput = wrapper.findAll('input[type="password"]');
 		// The password section has its own fields; the 2FA disable row is the
 		// one sibling to the one-time-code field — scope via the section.
 		const twoFactorSection = wrapper.findAll("section").find((s) => s.text().includes("两步验证"));

@@ -150,7 +150,8 @@ export function useLikeSync() {
 			// page or this page) is live intent that the push must not re-create
 			// and the pull must not resurrect.
 			const startedWith = new Set(store.liked.value);
-			for (const id of [...store.liked.value]) {
+			const snapshot = [...store.liked.value];
+			for (const id of snapshot) {
 				// Re-check current membership per push (the iterator holds the
 				// array captured when the loop STARTED): an unlike landed mid-push
 				// wipes the id from the live set — pushing it again would re-create

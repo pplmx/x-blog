@@ -115,8 +115,6 @@ function uniqueEndpoint(): string {
 	return `https://push.e2e.test.invalid/wpush/v2/e2e-${Date.now()}-${pushEndpointSeq}`;
 }
 
-const subscribeBtn = (page: Page) =>
-	page.locator('button[aria-label="订阅新文章通知"], button[aria-label="已订阅新文章通知"]');
 const subscribedBtn = (page: Page) => page.locator('button[aria-label="已订阅新文章通知"]');
 
 test.describe("Web Push reader opt-in", () => {
