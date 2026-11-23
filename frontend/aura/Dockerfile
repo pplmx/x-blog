@@ -22,11 +22,11 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 FROM base AS deps
 WORKDIR /app
 
-# Copy dependency files first for better caching. pnpm-workspace.yaml +
-# pnpm-approved.json are required: without them pnpm 11 treats the project
-# as a non-workspace and never runs the approved esbuild postinstall, so
+# Copy dependency files first for better caching. pnpm-workspace.yaml carries
+# the `allowBuilds` allow-list; without it pnpm treats the project as a
+# non-workspace and never runs the approved esbuild postinstall, so
 # `nuxt build` fails with a missing esbuild binary.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml pnpm-approved.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install all dependencies (build needs dev deps for nuxt build).
 # --ignore-scripts: the postinstall would run `nuxt prepare`, but
@@ -73,7 +73,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/assets/fonts ./assets/fonts
 
 # Also copy package.json + pnpm files for any runtime-only deps
 # (--frozen-lockfile needs the lockfile and workspace config)
-COPY --from=builder --chown=nextjs:nodejs /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/pnpm-approved.json ./
+COPY --from=builder --chown=nextjs:nodejs /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 
 # Install production dependencies for the Nitro server. --ignore-scripts:
 # the postinstall would run `nuxt prepare`, which needs the app source
