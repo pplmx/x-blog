@@ -144,6 +144,19 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
   in language-tools v4 (`@vue/content-mapper`, which hands `.vue` files to
   TS 7's own `tsc`). Keep the exact `6.0.3` pin — `pnpm up --latest` will
   otherwise move it to 7 and break the typecheck gate.
+- **No `typeAware`/`typeCheck` in `vp check`, measured, not assumed.** Oxlint's
+  TypeScript 7 backend (`tsrs` 7.1.0-beta in Vite+ 1.7.0, `tsgolint` before it)
+  is fast but blind to this project: on `vp check` with both flags on it
+  reported 746 diagnostics in 194 of 462 files in 0.8 s, of which 293 were
+  `TS2307 Cannot find module '~~/…'`, 58 `TS2304 Cannot find name 'useFetch'`,
+  29 `TS2593 beforeEach` — the Nuxt aliases and auto-import globals simply do
+  not resolve. Passing `--tsconfig .nuxt/tsconfig.app.json` (or a hand-written
+  tsconfig whose `paths` plain `tsc` resolves) changes nothing, so it is not a
+  config mistake we can fix. Worse, it never type-checks `.vue` at all: the
+  same `const bad: number = "…"` yields `TS2322` in a `.ts` file and silence in
+  an SFC, and 31.5 k of the ~42 k app-side lines live in `.vue`. `vue-tsc`
+  (`pnpm typecheck`, 13 s) stays the type gate; revisit when Vue Language Tools
+  v4 (`@vue/content-mapper`) gives the type-aware backends SFC types.
 - **Service-worker behaviour** is tested by loading `public/sw.js` in a **fake
   `self` scope** inside vitest (`frontend/aura/tests/sw.spec.ts`), exercising
   its pure helpers with a stubbed CacheStorage. When you change `sw.js`, extend
