@@ -25,7 +25,7 @@ vi.mock("~/components/Icon.vue", () => ({
 	},
 }));
 
-import MarkdownLightbox from "../../components/MarkdownLightbox.vue";
+import MarkdownLightbox from "~~/components/MarkdownLightbox.vue";
 
 const images = [
 	{ src: "/static/uploads/a.png", alt: "Diagram A" },

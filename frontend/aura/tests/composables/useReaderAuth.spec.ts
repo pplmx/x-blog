@@ -20,7 +20,7 @@ vi.mock("~~/api/reader/auth", async (importOriginal) => {
 	};
 });
 
-import { useReaderAuth } from "../../composables/useReaderAuth";
+import { useReaderAuth } from "~~/composables/useReaderAuth";
 
 const session = {
 	access_token: "reader.jwt.token",

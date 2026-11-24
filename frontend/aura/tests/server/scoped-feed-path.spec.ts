@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { isScopedFeedPath } from "../../server/utils/scopedFeedPath";
+import { isScopedFeedPath } from "~~/server/utils/scopedFeedPath";
 
 describe("isScopedFeedPath", () => {
 	it("accepts the three legitimate scoped feed shapes", () => {

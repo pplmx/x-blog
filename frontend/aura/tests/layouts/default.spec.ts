@@ -2,9 +2,9 @@ import { mount } from "@vue/test-utils";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { reactive } from "vue";
 
-import DefaultLayout from "../../app/layouts/default.vue";
-import ReaderMenu from "../../components/ReaderMenu.vue";
-import { useTheme } from "../../composables/useTheme";
+import DefaultLayout from "~/layouts/default.vue";
+import ReaderMenu from "~~/components/ReaderMenu.vue";
+import { useTheme } from "~~/composables/useTheme";
 
 // The unread badge + poll lifecycle are mocked so tests can drive the badge
 // count directly and assert the layout's start/stop-poll wiring (the real
@@ -17,7 +17,7 @@ const badgeMocks = vi.hoisted(() => ({
 	unreadCount: { value: 0 } as { value: number },
 }));
 
-vi.mock("../../composables/useNotificationBadge", async () => {
+vi.mock("~~/composables/useNotificationBadge", async () => {
 	const { ref } = await import("vue");
 	const unreadCount = ref(0);
 	badgeMocks.unreadCount = unreadCount;

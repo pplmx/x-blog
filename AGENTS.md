@@ -131,6 +131,12 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
   peer-declare `vitest` from pulling a second copy. `pnpm install` stays the
   bootstrap (the `vp` binary lives in `node_modules`; the docs sanction
   `pnpm exec vp …`), and `vp install` is the entry point once it exists.
+- **Import paths.** Nuxt owns three aliases — `~/` and `@/` for `app/`, `~~/`
+  for the project root — and `frontend/aura/vite.config.ts` mirrors them under
+  `resolve.alias` so `vp test` resolves the same specifiers. Specs import app
+  code as `~/pages/…`, `~~/api/…`, `~~/composables/…`, never as `../../app/…`:
+  depth-coded paths break as soon as a spec moves, and a `../../../` climb hides
+  which layer is under test. Sibling imports inside one directory stay relative.
 - **TypeScript stays on 6.x until Vue Language Tools v4.** `vue-tsc` resolves
   `typescript/lib/tsc` and patches the compiler's internals; TypeScript 7 ships
   only a launcher for the native (Go) compiler plus `./unstable/*` APIs, so

@@ -9,7 +9,7 @@
 
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { DENSITY_STEPS, useReadingDensity } from "../../composables/useReadingDensity";
+import { DENSITY_STEPS, useReadingDensity } from "~~/composables/useReadingDensity";
 
 describe("useReadingDensity", () => {
 	beforeEach(() => {

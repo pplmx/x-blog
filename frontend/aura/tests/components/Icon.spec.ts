@@ -11,7 +11,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vite-plus/test";
 
-import Icon from "../../components/Icon.vue";
+import Icon from "~~/components/Icon.vue";
 
 describe("Icon (offline lucide)", () => {
 	it("renders a known lucide icon as an inline <svg> with no network fetch", () => {

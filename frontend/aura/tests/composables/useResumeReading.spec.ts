@@ -27,11 +27,11 @@ vi.mock("~~/api/reader/history", () => ({
 	},
 }));
 
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: authRef }),
 }));
 
-import { useResumeReading } from "../../composables/useResumeReading";
+import { useResumeReading } from "~~/composables/useResumeReading";
 
 /** Mount the composable inside a tiny component so onUnmounted (flush +
  * restore cleanup) actually runs on wrapper.unmount(). */

@@ -17,7 +17,7 @@ const listMock = vi.fn();
 const deactivateMock = vi.fn();
 const activateMock = vi.fn();
 
-vi.mock("../../api/admin/readers", () => ({
+vi.mock("~~/api/admin/readers", () => ({
 	// useAdminReaders returns an AsyncData-like object the page destructures
 	// as { data, pending, error }.
 	useAdminReaders: (...args: unknown[]) => listMock(...args),
@@ -50,7 +50,7 @@ function fakeListing(items: unknown[]) {
 
 let ReadersPage: unknown;
 async function mountPage() {
-	ReadersPage = ReadersPage ?? (await import("../../app/pages/admin/readers.vue")).default;
+	ReadersPage = ReadersPage ?? (await import("~/pages/admin/readers.vue")).default;
 	return mountWithSuspense(ReadersPage as never);
 }
 

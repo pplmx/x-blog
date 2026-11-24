@@ -11,12 +11,12 @@ import { defineComponent, h, ref, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { useArticleHighlights } from "../../composables/useArticleHighlights";
+import { useArticleHighlights } from "~~/composables/useArticleHighlights";
 import {
 	createReaderHighlight,
 	getReaderHighlights,
 	type ReaderHighlight,
-} from "../../api/reader/highlights";
+} from "~~/api/reader/highlights";
 
 vi.mock("~~/api/reader/highlights", () => ({
 	createReaderHighlight: vi.fn(),

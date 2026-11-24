@@ -11,7 +11,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vite-plus/test";
 
-import ReaderAvatar from "../../components/ReaderAvatar.vue";
+import ReaderAvatar from "~~/components/ReaderAvatar.vue";
 
 function mountAvatar(props: Record<string, unknown>) {
 	return mount(ReaderAvatar, { props });

@@ -10,7 +10,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import ShareButtons from "../../components/ShareButtons.vue";
+import ShareButtons from "~~/components/ShareButtons.vue";
 
 function mountShareButtons({
 	title = "Test Post Title",

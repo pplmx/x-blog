@@ -15,8 +15,8 @@
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
-import type { ReaderProfile } from "../../api/reader/auth";
-import type { ReaderPushSubscription } from "../../api/reader/notifications";
+import type { ReaderProfile } from "~~/api/reader/auth";
+import type { ReaderPushSubscription } from "~~/api/reader/notifications";
 
 const isAuthenticated = ref(false);
 const reader = ref<ReaderProfile | null>(null);
@@ -114,7 +114,7 @@ vi.mock("~~/api/reader/blocks", () => ({
 	getBlockedReaders: mockFetchReaderBlocks,
 	unblockReader: mockUnblockReader,
 }));
-vi.mock("../../api/reader/account", () => ({
+vi.mock("~~/api/reader/account", () => ({
 	changeReaderPassword: mockChangeMyPassword,
 	deleteReaderAccount: mockDeleteReaderAccount,
 	getReaderDataExport: mockFetchReaderDataExport,
@@ -132,19 +132,19 @@ vi.mock("../../api/reader/account", () => ({
 vi.mock("qrcode", () => ({
 	default: { toDataURL: vi.fn(() => Promise.resolve("data:image/png;base64,QUJD")) },
 }));
-vi.mock("../../api/reader/auth", () => ({
+vi.mock("~~/api/reader/auth", () => ({
 	requestEmailChange: mockRequestEmailChange,
 }));
-vi.mock("../../api/reader/notifications", () => ({
+vi.mock("~~/api/reader/notifications", () => ({
 	getMyPushSubscriptions: mockFetchPushSubscriptions,
 	revokeMyPushSubscription: mockRevokePushSubscription,
 	updateMyPushSubscriptionPrefs: mockUpdatePushSubscriptionPrefs,
 }));
-vi.mock("../../api/reader/subscriptions", () => ({
+vi.mock("~~/api/reader/subscriptions", () => ({
 	getMyPostSubscriptions: mockFetchMyPostSubscriptions,
 	unsubscribeFromPostThread: mockUnsubscribeFromPostThread,
 }));
-vi.mock("../../api/public/taxonomy", () => ({
+vi.mock("~~/api/public/taxonomy", () => ({
 	getCategories: mockFetchCategories,
 }));
 
@@ -161,7 +161,7 @@ const stubs = {
 let Account: unknown;
 
 async function mountPage() {
-	Account = Account ?? (await import("../../app/pages/account.vue")).default;
+	Account = Account ?? (await import("~/pages/account.vue")).default;
 	const wrapper = mount(Account as never, { global: { stubs } });
 	await flushPromises();
 	return wrapper;

@@ -21,7 +21,7 @@ vi.stubGlobal("useRoute", () => ({ query: routeQuery }));
 let confirmImpl: () => boolean = () => true;
 vi.stubGlobal("confirm", () => confirmImpl());
 
-import CommentManage from "../../app/pages/comment-manage.vue";
+import CommentManage from "~/pages/comment-manage.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

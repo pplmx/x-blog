@@ -1,8 +1,8 @@
 import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import BookmarkButton from "../../components/BookmarkButton.vue";
-import { syncIssue } from "../../composables/useBookmarkSync";
+import BookmarkButton from "~~/components/BookmarkButton.vue";
+import { syncIssue } from "~~/composables/useBookmarkSync";
 
 const mockBookmark = {
 	id: 1,

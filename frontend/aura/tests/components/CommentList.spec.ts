@@ -59,7 +59,7 @@ vi.mock("~~/composables/useBlockedReaderIds", () => ({
 	}),
 }));
 
-import CommentList from "../../components/CommentList.vue";
+import CommentList from "~~/components/CommentList.vue";
 
 // Mock comment data
 const mockComments = {

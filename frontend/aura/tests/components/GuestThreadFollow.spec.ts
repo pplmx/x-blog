@@ -27,7 +27,7 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 const subscribeGuestThread = vi.fn();
 vi.mock("~~/api/public/comments", () => ({ subscribeGuestThread }));
 
-import GuestThreadFollow from "../../components/GuestThreadFollow.vue";
+import GuestThreadFollow from "~~/components/GuestThreadFollow.vue";
 
 const iconStub = {
 	name: "Icon",

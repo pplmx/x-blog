@@ -10,7 +10,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
-import type { MyComment, MyCommentListResponse } from "../../api/reader/comments";
+import type { MyComment, MyCommentListResponse } from "~~/api/reader/comments";
 
 // Fixtures referenced by the deferred (test-time) page import, so the mock
 // factories below can close over module-level state without a TDZ error. The
@@ -42,7 +42,7 @@ vi.mock("../../composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
 
-vi.mock("../../api/reader/comments", () => ({
+vi.mock("~~/api/reader/comments", () => ({
 	getMyComments: mockFetchMyComments,
 	deleteMyComment: mockDeleteMyComment,
 }));
@@ -67,7 +67,7 @@ const stubs = {
 let MyComments: Awaited<ReturnType<typeof importPage>>;
 
 async function importPage() {
-	return (await import("../../app/pages/comments.vue")).default;
+	return (await import("~/pages/comments.vue")).default;
 }
 
 async function mountPage() {

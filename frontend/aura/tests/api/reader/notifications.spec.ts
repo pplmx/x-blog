@@ -9,7 +9,7 @@ import {
 	revokeMyPushSubscription,
 	updateMyPushSubscriptionPrefs,
 	updateReaderNotificationPref,
-} from "../../../api/reader/notifications.ts";
+} from "~~/api/reader/notifications.ts";
 
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
 

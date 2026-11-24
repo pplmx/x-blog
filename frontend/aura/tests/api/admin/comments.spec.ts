@@ -7,7 +7,7 @@ import {
 	deleteAdminComment,
 	dismissAdminCommentFlags,
 	getAdminComments,
-} from "../../../api/admin/comments";
+} from "~~/api/admin/comments";
 
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
 

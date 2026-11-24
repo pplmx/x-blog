@@ -27,11 +27,11 @@ vi.mock("~~/api/reader/history", () => ({
 	importReaderHistory: (...a: unknown[]) => importHistoryApi(...a),
 }));
 
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: authRef }),
 }));
 
-vi.mock("../../composables/useRecentlyViewed", () => ({
+vi.mock("~~/composables/useRecentlyViewed", () => ({
 	useRecentlyViewed: () => ({
 		recent: localRecent,
 		record: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock("../../composables/useRecentlyViewed", () => ({
 	}),
 }));
 
-import { useReadingHistory } from "../../composables/useReadingHistory";
+import { useReadingHistory } from "~~/composables/useReadingHistory";
 
 describe("useReadingHistory ", () => {
 	beforeEach(() => {

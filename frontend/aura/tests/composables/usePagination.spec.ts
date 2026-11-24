@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { paginationPages } from "../../composables/usePagination.ts";
+import { paginationPages } from "~~/composables/usePagination.ts";
 
 describe("paginationPages", () => {
 	it("returns empty for a single page or fewer", () => {

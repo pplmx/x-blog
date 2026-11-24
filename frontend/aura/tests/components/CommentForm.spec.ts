@@ -22,7 +22,7 @@ vi.mock("~~/api/public/readers", () => ({
 	suggestMentionReaders: mockSuggest,
 }));
 
-import CommentForm from "../../components/CommentForm.vue";
+import CommentForm from "~~/components/CommentForm.vue";
 
 async function mountCommentForm({
 	postId = 1,

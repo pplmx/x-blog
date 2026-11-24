@@ -19,7 +19,7 @@ const mockToReadCount = computed(() => mockBookmarks.value.filter((b) => !b.done
 const mockDoneCount = computed(() => mockBookmarks.value.filter((b) => b.done).length);
 const mockSetDone = vi.fn();
 
-vi.mock("../../composables/useBookmarks", () => ({
+vi.mock("~~/composables/useBookmarks", () => ({
 	useBookmarks: () => ({
 		bookmarks: mockBookmarks,
 		removeBookmark: mockRemoveBookmark,
@@ -35,7 +35,7 @@ vi.mock("../../composables/useBookmarks", () => ({
 const mockSyncing = ref(false);
 const mockSyncIssue = ref<"auth" | null>(null);
 const mockClearSyncIssue = vi.fn();
-vi.mock("../../composables/useBookmarkSync", () => ({
+vi.mock("~~/composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		bookmarks: mockBookmarks,
 		add: mockAddBookmark,
@@ -54,7 +54,7 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 // the prune call verifies the offline set stays in sync with the saved set.
 const mockPrune = vi.fn(async () => {});
 const mockRefreshOfflineStatus = vi.fn(async () => {});
-vi.mock("../../composables/useOfflineBookmarks", () => ({
+vi.mock("~~/composables/useOfflineBookmarks", () => ({
 	useOfflineBookmarks: () => ({
 		isAvailable: () => false,
 		precache: vi.fn(),
@@ -70,13 +70,13 @@ afterEach(() => {
 });
 
 // Mock useSeo composable
-vi.mock("../../composables/useSeo", () => ({
+vi.mock("~~/composables/useSeo", () => ({
 	useSeo: vi.fn(),
 }));
 
 // Reactive reader-auth so the page's sign-out watcher can be driven in-test.
 const mockIsAuthenticated = ref(true);
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: mockIsAuthenticated, logout: vi.fn() }),
 }));
 
@@ -87,7 +87,7 @@ const mockFolders = ref<{ id: number; name: string; count: number }[]>([]);
 const mockCreateFolder = vi.fn(async () => false);
 const mockAssignFolder = vi.fn(async () => true);
 const mockLoadFolders = vi.fn(async () => {});
-vi.mock("../../composables/useBookmarkFolders", () => ({
+vi.mock("~~/composables/useBookmarkFolders", () => ({
 	useBookmarkFolders: () => ({
 		folders: mockFolders,
 		loading: ref(false),
@@ -99,8 +99,8 @@ vi.mock("../../composables/useBookmarkFolders", () => ({
 	}),
 }));
 
-import Bookmarks from "../../app/pages/bookmarks.vue";
-import type { Bookmark } from "../../composables/useBookmarks";
+import Bookmarks from "~/pages/bookmarks.vue";
+import type { Bookmark } from "~~/composables/useBookmarks";
 
 const stubs = {
 	Icon: {

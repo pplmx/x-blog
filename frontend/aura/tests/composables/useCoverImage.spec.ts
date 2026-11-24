@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { coverImageSrc } from "../../composables/useCoverImage";
+import { coverImageSrc } from "~~/composables/useCoverImage";
 
 describe("coverImageSrc", () => {
 	it("returns a data URI for a plain title", () => {

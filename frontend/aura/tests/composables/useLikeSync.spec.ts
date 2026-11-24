@@ -18,7 +18,7 @@ vi.mock("~~/api/reader/likes", async (importOriginal) => {
 	};
 });
 
-import { clearLikeSyncIssue, likeSyncIssue, useLikeSync } from "../../composables/useLikeSync";
+import { clearLikeSyncIssue, likeSyncIssue, useLikeSync } from "~~/composables/useLikeSync";
 
 // useLikes uses a Nuxt useState singleton; stub it to one shared set so the
 // composable and the test observe the same state (same as useBookmarkSync).

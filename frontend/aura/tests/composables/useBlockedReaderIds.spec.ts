@@ -18,11 +18,11 @@ vi.mock("~~/api/reader/blocks", () => ({
 	getBlockedReaders: (...a: unknown[]) => getBlockedReaders(...a),
 }));
 
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: authRef }),
 }));
 
-import { useBlockedReaderIds } from "../../composables/useBlockedReaderIds";
+import { useBlockedReaderIds } from "~~/composables/useBlockedReaderIds";
 
 describe("useBlockedReaderIds ", () => {
 	beforeEach(() => {

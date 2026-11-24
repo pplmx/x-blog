@@ -5,7 +5,7 @@ import {
 	subscribeToPostThread,
 	unsubscribeFromPostThread,
 	usePostSubscription,
-} from "../../../api/reader/subscriptions.ts";
+} from "~~/api/reader/subscriptions.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

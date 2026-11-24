@@ -4,7 +4,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import { scrollToPageTop } from "../../composables/scrollToTop";
+import { scrollToPageTop } from "~~/composables/scrollToTop";
 
 describe("scrollToPageTop", () => {
 	let scrollToSpy: ReturnType<typeof vi.fn>;

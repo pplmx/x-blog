@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { getCategories, useCategories, useTags } from "../../../api/public/taxonomy.ts";
+import { getCategories, useCategories, useTags } from "~~/api/public/taxonomy.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

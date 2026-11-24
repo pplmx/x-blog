@@ -1,7 +1,7 @@
 import { flushPromises } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
-import { resetAdminPostListState } from "../../composables/adminPostListState";
+import { resetAdminPostListState } from "~~/composables/adminPostListState";
 import { mountWithSuspense } from "./helpers.ts";
 
 const { mockFetchAdminPosts, mockDeleteAdminPost, mockCloneAdminPost } = vi.hoisted(() => ({

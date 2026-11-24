@@ -12,7 +12,7 @@ import {
 	useAdminPost,
 	useAdminPosts,
 	usePostRevisions,
-} from "../../../api/admin/posts";
+} from "~~/api/admin/posts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

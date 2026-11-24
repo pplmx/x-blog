@@ -15,7 +15,7 @@ const deleteMock = vi.fn();
 const overviewMock = vi.fn();
 const triggerMock = vi.fn();
 
-vi.mock("../../api/admin/newsletter", () => ({
+vi.mock("~~/api/admin/newsletter", () => ({
 	// useAdminNewsletterSubscribers returns an AsyncData-like object the page
 	// destructures as { data, pending, error, refresh }.
 	useAdminNewsletterSubscribers: (...args: unknown[]) => listMock(...args),
@@ -50,7 +50,7 @@ function fakeListing(items: unknown[]) {
 
 let NewsletterPage: unknown;
 async function mountPage() {
-	NewsletterPage = NewsletterPage ?? (await import("../../app/pages/admin/newsletter.vue")).default;
+	NewsletterPage = NewsletterPage ?? (await import("~/pages/admin/newsletter.vue")).default;
 	return mountWithSuspense(NewsletterPage as never);
 }
 

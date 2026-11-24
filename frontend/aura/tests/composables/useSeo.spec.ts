@@ -10,7 +10,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { buildSiteJsonLd } from "../../composables/seo-jsonld.ts";
+import { buildSiteJsonLd } from "~~/composables/seo-jsonld.ts";
 import {
 	buildAbsoluteImageUrl,
 	buildArticleJsonLd,
@@ -23,7 +23,7 @@ import {
 	usePostSeo,
 	useSeo,
 	useSiteUrl,
-} from "../../composables/useSeo.ts";
+} from "~~/composables/useSeo.ts";
 
 // ─── Mock post data (matches SeoPostData interface) ──────────────────
 

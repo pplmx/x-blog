@@ -22,7 +22,7 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReaderTag: (...a: unknown[]) => unfollowTag(...a),
 }));
 
-import { useTagFollowStore } from "../../composables/useTagFollowStore";
+import { useTagFollowStore } from "~~/composables/useTagFollowStore";
 
 const TOKEN = "test-reader-token";
 

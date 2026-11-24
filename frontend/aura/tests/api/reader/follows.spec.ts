@@ -20,7 +20,7 @@ import {
 	useReaderFollowsFeed,
 	useReaderSeriesFollows,
 	useReaderTagFollows,
-} from "../../../api/reader/follows.ts";
+} from "~~/api/reader/follows.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

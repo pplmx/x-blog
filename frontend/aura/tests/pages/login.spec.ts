@@ -23,7 +23,7 @@ vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 
 vi.stubGlobal("useRoute", () => ({ query: {} }));
 
-import Login from "../../app/pages/login.vue";
+import Login from "~/pages/login.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

@@ -29,7 +29,7 @@ vi.mock("~~/composables/useLang", () => ({
 	useLang: () => ({ t: (k: string) => k, locale: ref("zh") }),
 }));
 
-import PreviewPage from "../../app/pages/preview/posts/[id].vue";
+import PreviewPage from "~/pages/preview/posts/[id].vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

@@ -12,7 +12,7 @@ import {
 	setBookmarkDone,
 	useReaderBookmarkFolders,
 	useReaderBookmarks,
-} from "../../../api/reader/bookmarks.ts";
+} from "~~/api/reader/bookmarks.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

@@ -12,7 +12,7 @@ vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 let routeQuery: Record<string, unknown> = {};
 vi.stubGlobal("useRoute", () => ({ query: routeQuery }));
 
-import ReplyUnsubscribe from "../../app/pages/comment-reply-unsubscribe.vue";
+import ReplyUnsubscribe from "~/pages/comment-reply-unsubscribe.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

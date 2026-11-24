@@ -14,14 +14,14 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const mockLogout = vi.fn();
 const mockIsStaleSession = vi.fn();
 
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({
 		logout: mockLogout,
 		isStaleSession: mockIsStaleSession,
 	}),
 }));
 
-import { useFollowSessionGuard } from "../../composables/useFollowSessionGuard";
+import { useFollowSessionGuard } from "~~/composables/useFollowSessionGuard";
 
 describe("useFollowSessionGuard", () => {
 	beforeEach(() => {

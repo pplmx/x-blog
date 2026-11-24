@@ -35,7 +35,7 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated }),
 }));
 
-import SubscribeButton from "../../components/SubscribeButton.vue";
+import SubscribeButton from "~~/components/SubscribeButton.vue";
 
 const iconStub = {
 	name: "Icon",

@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { DEFAULT_LOCALE, getAllKeys, parityGap, translate } from "../../composables/i18n";
+import { DEFAULT_LOCALE, getAllKeys, parityGap, translate } from "~~/composables/i18n";
 
 describe("translate", () => {
 	it("returns the Chinese value for zh", () => {
@@ -89,7 +89,7 @@ describe("locale key parity (zh <-> en)", () => {
 
 import { afterEach, beforeEach, vi } from "vite-plus/test";
 import { ref } from "vue";
-import { useLang } from "../../composables/useLang";
+import { useLang } from "~~/composables/useLang";
 
 describe("useLang", () => {
 	// In vitest there is no Nuxt useState/useCookie, so useLang falls back to a

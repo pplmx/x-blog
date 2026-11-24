@@ -9,7 +9,7 @@ import {
 	updateAdminTag,
 	useAdminCategories,
 	useAdminTags,
-} from "../../../api/admin/taxonomy";
+} from "~~/api/admin/taxonomy";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { getSiteSetting, updateSiteSetting, useSiteSetting } from "../../../api/admin/settings";
+import { getSiteSetting, updateSiteSetting, useSiteSetting } from "~~/api/admin/settings";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

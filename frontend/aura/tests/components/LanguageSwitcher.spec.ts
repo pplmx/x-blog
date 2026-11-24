@@ -53,7 +53,7 @@ vi.mock("~~/composables/useLang", () => ({
 	}),
 }));
 
-import LanguageSwitcher from "../../components/LanguageSwitcher.vue";
+import LanguageSwitcher from "~~/components/LanguageSwitcher.vue";
 
 const iconStub = {
 	name: "Icon",

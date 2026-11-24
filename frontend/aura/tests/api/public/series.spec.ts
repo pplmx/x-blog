@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
-import { useSeries, useSeriesBySlug } from "../../../api/public/series.ts";
+import { useSeries, useSeriesBySlug } from "~~/api/public/series.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 

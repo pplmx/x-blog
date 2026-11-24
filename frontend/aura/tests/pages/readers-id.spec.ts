@@ -10,7 +10,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { reactive, ref } from "vue";
 
-import ReaderProfilePage from "../../app/pages/readers/[id].vue";
+import ReaderProfilePage from "~/pages/readers/[id].vue";
 
 // The page fetches profile data inside a top-level `await` (SSR-style), so its
 // setup is async — wrap it in a <Suspense> boundary like the other page specs.

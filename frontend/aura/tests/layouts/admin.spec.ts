@@ -11,7 +11,7 @@ import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { nextTick, reactive, ref } from "vue";
 
-import { useTheme } from "../../composables/useTheme";
+import { useTheme } from "~~/composables/useTheme";
 
 const mockIsAuthenticated = ref(true);
 const mockLogout = vi.fn();
@@ -21,7 +21,7 @@ const mockRoutePath = ref("/admin");
 // first load (see admin.vue redirect comment).
 const mockLocationReplace = vi.fn();
 
-vi.mock("../../composables/useAdminAuth", () => ({
+vi.mock("~~/composables/useAdminAuth", () => ({
 	useAdminAuth: () => ({
 		isAuthenticated: mockIsAuthenticated,
 		logout: mockLogout,
@@ -59,7 +59,7 @@ vi.stubGlobal("localStorage", {
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-import AdminLayout from "../../app/layouts/admin.vue";
+import AdminLayout from "~/layouts/admin.vue";
 
 const stubs = {
 	Icon: {
@@ -509,7 +509,7 @@ describe("Admin Layout", () => {
 	});
 
 	it("module loads successfully", async () => {
-		const mod = await import("../../app/layouts/admin.vue");
+		const mod = await import("~/layouts/admin.vue");
 		expect(mod).toBeDefined();
 		expect(mod.default).toBeDefined();
 	});

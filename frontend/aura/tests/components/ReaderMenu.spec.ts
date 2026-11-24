@@ -11,7 +11,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { nextTick, ref } from "vue";
 
-import type { ReaderProfile } from "../../api/reader/auth";
+import type { ReaderProfile } from "~~/api/reader/auth";
 
 // t returns the key so assertions pin labels to their source key; the layout
 // test (untampered useLang, zh) covers the real locale strings.
@@ -40,7 +40,7 @@ vi.mock("~~/utils/focusRing", () => ({
 	nextFocusable: vi.fn(() => null),
 }));
 
-import ReaderMenu from "../../components/ReaderMenu.vue";
+import ReaderMenu from "~~/components/ReaderMenu.vue";
 
 const links = [
 	{ to: "/bookmarks", labelKey: "reader.nav.bookmarks", icon: "lucide:bookmark" },

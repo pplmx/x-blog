@@ -15,7 +15,7 @@ vi.stubGlobal("useRuntimeConfig", () => ({
 	},
 }));
 
-import AboutPage from "../../app/pages/about.vue";
+import AboutPage from "~/pages/about.vue";
 
 function mountAboutPage() {
 	return mount(AboutPage, {

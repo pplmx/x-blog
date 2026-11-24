@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
-import { type Bookmark, useBookmarks } from "../../composables/useBookmarks.ts";
+import { type Bookmark, useBookmarks } from "~~/composables/useBookmarks.ts";
 
 const mockBookmark: Bookmark = {
 	id: 1,

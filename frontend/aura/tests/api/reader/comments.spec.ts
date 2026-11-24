@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { deleteMyComment, getMyComments, updateMyComment } from "../../../api/reader/comments.ts";
+import { deleteMyComment, getMyComments, updateMyComment } from "~~/api/reader/comments.ts";
 
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
 

@@ -5,7 +5,7 @@ import {
 	readerLogin,
 	readerRegister,
 	requestPasswordReset,
-} from "../../../api/reader/auth.ts";
+} from "~~/api/reader/auth.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 

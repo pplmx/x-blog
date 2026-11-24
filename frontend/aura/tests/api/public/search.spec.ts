@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { ref } from "vue";
 
-import { useAllSearch, useCommentSearch } from "../../../api/public/search.ts";
+import { useAllSearch, useCommentSearch } from "~~/api/public/search.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 

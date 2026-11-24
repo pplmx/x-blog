@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { ref } from "vue";
 
-import { extractToc, useToc } from "../../composables/useToc";
+import { extractToc, useToc } from "~~/composables/useToc";
 
 describe("extractToc", () => {
 	it("returns empty array for empty input", () => {

@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { commentAuthorName } from "../../utils/commentAuthorName";
+import { commentAuthorName } from "~~/utils/commentAuthorName";
 
 const READER_LABEL = "读者";
 

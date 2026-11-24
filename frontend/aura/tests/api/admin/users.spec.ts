@@ -5,7 +5,7 @@ import {
 	deleteAdminUser,
 	useAdminUsers,
 	useCurrentAdmin,
-} from "../../../api/admin/users";
+} from "~~/api/admin/users";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

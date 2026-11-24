@@ -69,7 +69,7 @@ const h = vi.hoisted(() => {
 	};
 });
 
-vi.mock("../../../api/public/series", () => ({
+vi.mock("~~/api/public/series", () => ({
 	useSeriesBySlug: () => ({
 		data: h.seriesRef,
 		pending: ref(false),
@@ -80,19 +80,19 @@ vi.mock("../../../api/public/series", () => ({
 // Must be assigned before the page import below (which first triggers the mock
 // factory); the ref is what the tests mutate to drive the page's series watch.
 h.seriesRef = ref(h.mockSeries);
-vi.mock("../../../api/reader/history", () => ({
+vi.mock("~~/api/reader/history", () => ({
 	getReaderSeriesProgress: h.fetchProgress,
 }));
-vi.mock("../../../api/reader/follows", () => ({
+vi.mock("~~/api/reader/follows", () => ({
 	getReaderSeriesFollows: h.fetchFollows,
 	followReaderSeries: h.followSeries,
 	unfollowReaderSeries: h.unfollowSeries,
 	setSeriesFollowNotify: h.setNotify,
 }));
 
-vi.mock("../../../composables/useSeo", () => ({ useSeo: vi.fn() }));
+vi.mock("~~/api/useSeo", () => ({ useSeo: vi.fn() }));
 
-import SeriesPage from "../../../app/pages/series/[slug].vue";
+import SeriesPage from "~/pages/series/[slug].vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" :data-icon="icon" />', props: ["icon"] },

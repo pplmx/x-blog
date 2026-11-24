@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { __lastPruneAt, isRateLimited } from "../../server/utils/simpleRateLimit";
+import { __lastPruneAt, isRateLimited } from "~~/server/utils/simpleRateLimit";
 
 describe("isRateLimited", () => {
 	beforeEach(() => {

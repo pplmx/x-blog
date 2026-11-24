@@ -22,8 +22,8 @@ vi.mock("~~/api/reader/bookmarks", async (importOriginal) => {
 	};
 });
 
-import { syncIssue, useBookmarkSync } from "../../composables/useBookmarkSync";
-import { useBookmarks } from "../../composables/useBookmarks";
+import { syncIssue, useBookmarkSync } from "~~/composables/useBookmarkSync";
+import { useBookmarks } from "~~/composables/useBookmarks";
 
 const cloudItem = {
 	id: 9,

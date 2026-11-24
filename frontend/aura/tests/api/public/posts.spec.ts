@@ -11,7 +11,7 @@ import {
 	usePostSearch,
 	usePosts,
 	useRelatedPosts,
-} from "../../../api/public/posts.ts";
+} from "~~/api/public/posts.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

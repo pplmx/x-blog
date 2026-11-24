@@ -6,7 +6,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vite-plus/test";
 
-import PostCard from "../../components/PostCard.vue";
+import PostCard from "~~/components/PostCard.vue";
 
 const mockPost = {
 	id: 1,

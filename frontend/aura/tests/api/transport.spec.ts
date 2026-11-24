@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { command, query, withQuery } from "../../api/transport.ts";
-import { useRateLimitNotice } from "../../composables/useRateLimitNotice";
+import { command, query, withQuery } from "~~/api/transport.ts";
+import { useRateLimitNotice } from "~~/composables/useRateLimitNotice";
 
 let useFetchCalls: Array<{
 	path: unknown;

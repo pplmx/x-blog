@@ -29,8 +29,8 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReaderTag: mockUnfollow,
 }));
 
-import TagFollowButton from "../../components/TagFollowButton.vue";
-import { useTagFollowStore } from "../../composables/useTagFollowStore";
+import TagFollowButton from "~~/components/TagFollowButton.vue";
+import { useTagFollowStore } from "~~/composables/useTagFollowStore";
 
 const iconStub = {
 	name: "Icon",

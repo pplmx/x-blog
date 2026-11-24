@@ -69,7 +69,7 @@ vi.mock("~/components/Icon.vue", () => ({
 	},
 }));
 
-import MarkdownContent from "../../components/MarkdownContent.vue";
+import MarkdownContent from "~~/components/MarkdownContent.vue";
 
 // --- Helper: mount component with given content ---
 function mountMarkdown(content: string) {

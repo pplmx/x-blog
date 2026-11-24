@@ -7,7 +7,7 @@ import {
 	likeComment,
 	useComments,
 	useDiscussionFeed,
-} from "../../../api/public/comments.ts";
+} from "~~/api/public/comments.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

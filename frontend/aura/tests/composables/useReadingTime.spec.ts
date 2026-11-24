@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { readingMinutes } from "../../composables/useReadingTime";
+import { readingMinutes } from "~~/composables/useReadingTime";
 
 describe("readingMinutes", () => {
 	it("returns the 1-minute floor for empty / missing content", () => {

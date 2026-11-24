@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { adminAuthHeaders, readerAuthHeaders } from "../../api/auth.ts";
+import { adminAuthHeaders, readerAuthHeaders } from "~~/api/auth.ts";
 
 afterEach(() => {
 	vi.unstubAllGlobals();

@@ -11,8 +11,8 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { computed, ref } from "vue";
-import type { BookmarkFolder } from "../../api/reader/bookmarks";
-import type { Bookmark } from "../../composables/useBookmarks";
+import type { BookmarkFolder } from "~~/api/reader/bookmarks";
+import type { Bookmark } from "~~/composables/useBookmarks";
 
 const READER_TOKEN_KEY = "reader_token";
 
@@ -32,7 +32,7 @@ const mockRenameFolder = vi.fn();
 const mockRemoveFolder = vi.fn();
 const mockAssignFolder = vi.fn(() => Promise.resolve(true));
 
-vi.mock("../../composables/useBookmarks", () => ({
+vi.mock("~~/composables/useBookmarks", () => ({
 	useBookmarks: () => ({
 		bookmarks: mockBookmarks,
 		removeBookmark: mockRemove,
@@ -41,7 +41,7 @@ vi.mock("../../composables/useBookmarks", () => ({
 	}),
 }));
 
-vi.mock("../../composables/useBookmarkSync", () => ({
+vi.mock("~~/composables/useBookmarkSync", () => ({
 	useBookmarkSync: () => ({
 		remove: mockRemove,
 		mergeLocalToCloud: mockMerge,
@@ -53,7 +53,7 @@ vi.mock("../../composables/useBookmarkSync", () => ({
 	}),
 }));
 
-vi.mock("../../composables/useBookmarkFolders", () => ({
+vi.mock("~~/composables/useBookmarkFolders", () => ({
 	useBookmarkFolders: () => ({
 		folders: mockFolders,
 		loading: ref(false),
@@ -65,9 +65,9 @@ vi.mock("../../composables/useBookmarkFolders", () => ({
 	}),
 }));
 
-vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
+vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 
-import BookmarksPage from "../../app/pages/bookmarks.vue";
+import BookmarksPage from "~/pages/bookmarks.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

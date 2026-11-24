@@ -7,7 +7,7 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import NotFoundPage from "../../app/pages/[...slug].vue";
+import NotFoundPage from "~/pages/[...slug].vue";
 
 // The page applies SEO via useHead; stub it so mounting doesn't throw.
 beforeEach(() => {

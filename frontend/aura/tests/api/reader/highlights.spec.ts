@@ -6,7 +6,7 @@ import {
 	getReaderHighlights,
 	updateReaderHighlightNote,
 	useReaderHighlights,
-} from "../../../api/reader/highlights.ts";
+} from "~~/api/reader/highlights.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

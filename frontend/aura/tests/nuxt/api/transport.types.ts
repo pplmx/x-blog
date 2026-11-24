@@ -1,6 +1,6 @@
 import { expectTypeOf } from "vite-plus/test";
 
-import { query } from "../../../api/transport";
+import { query } from "~~/api/transport";
 
 interface PostFixture {
 	id: number;

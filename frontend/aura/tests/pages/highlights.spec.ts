@@ -12,7 +12,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { computed, ref } from "vue";
 
-import HighlightsPage from "../../app/pages/highlights.vue";
+import HighlightsPage from "~/pages/highlights.vue";
 
 const mockReplace = vi.fn();
 let mockRouteQuery: Record<string, string> = {};

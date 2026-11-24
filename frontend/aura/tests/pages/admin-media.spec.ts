@@ -16,7 +16,7 @@ const listMock = vi.fn();
 const deleteMock = vi.fn();
 const batchDeleteMock = vi.fn();
 
-vi.mock("../../api/admin/media", () => ({
+vi.mock("~~/api/admin/media", () => ({
 	// useAdminMedia returns an AsyncData-like object the page destructures as
 	// { data, pending, error, refresh }.
 	useAdminMedia: (page: number, pageSize: number) => listMock(page, pageSize),
@@ -61,7 +61,7 @@ function fakeListing(items: unknown[], refreshImpl?: () => Promise<void>) {
 
 let MediaPage: unknown;
 async function mountPage() {
-	MediaPage = MediaPage ?? (await import("../../app/pages/admin/media.vue")).default;
+	MediaPage = MediaPage ?? (await import("~/pages/admin/media.vue")).default;
 	return mountWithSuspense(MediaPage as never);
 }
 

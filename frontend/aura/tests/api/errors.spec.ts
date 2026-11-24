@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { apiErrorMessage } from "../../api/errors";
+import { apiErrorMessage } from "~~/api/errors";
 
 const FALLBACK = "操作失败，请重试";
 

@@ -6,7 +6,7 @@ import {
 	getReaderDataExport,
 	updateReaderProfile,
 	useCurrentReader,
-} from "../../../api/reader/account.ts";
+} from "~~/api/reader/account.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

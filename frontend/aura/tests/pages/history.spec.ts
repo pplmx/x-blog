@@ -10,7 +10,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
-import type { HistoryEntry, ReadingStats } from "../../composables/useReadingHistory";
+import type { HistoryEntry, ReadingStats } from "~~/composables/useReadingHistory";
 
 const mockHistory = ref<HistoryEntry[]>([]);
 const mockStats = ref<ReadingStats | null>(null);
@@ -35,7 +35,7 @@ const mockLoadMoreError = ref(false);
 const mockPendingDeviceCount = ref(0);
 const mockImportLocalTrail = vi.fn();
 
-vi.mock("../../composables/useReadingHistory", () => ({
+vi.mock("~~/composables/useReadingHistory", () => ({
 	useReadingHistory: () => ({
 		history: mockHistory,
 		stats: mockStats,
@@ -53,7 +53,7 @@ vi.mock("../../composables/useReadingHistory", () => ({
 	}),
 }));
 
-vi.mock("../../composables/useSeo", () => ({ useSeo: vi.fn() }));
+vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 
 // Reading insights: page-level best-effort fetch, driven
 // only for signed-in (serverEnabled) readers. Tests flip the payload/reject.
@@ -67,7 +67,7 @@ vi.mock("~~/api/reader/history", () => ({
 	getReaderHistoryInsights: () => mockGetInsights(),
 }));
 
-import HistoryPage from "../../app/pages/history.vue";
+import HistoryPage from "~/pages/history.vue";
 
 const stubs = {
 	Icon: {

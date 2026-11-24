@@ -12,8 +12,8 @@ import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import { nextTick } from "vue";
 
-import RateLimitNotice from "../../components/RateLimitNotice.vue";
-import { useRateLimitNotice } from "../../composables/useRateLimitNotice";
+import RateLimitNotice from "~~/components/RateLimitNotice.vue";
+import { useRateLimitNotice } from "~~/composables/useRateLimitNotice";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

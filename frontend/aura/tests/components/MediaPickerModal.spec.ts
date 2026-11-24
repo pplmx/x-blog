@@ -29,7 +29,7 @@ vi.mock("../../api/admin/media", () => ({
 	},
 }));
 
-import MediaPickerModal from "../../components/MediaPickerModal.vue";
+import MediaPickerModal from "~~/components/MediaPickerModal.vue";
 
 const image = {
 	url: "/static/uploads/2026/07/11111111-2222-4444-8888-000000000001.png",

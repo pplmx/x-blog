@@ -15,7 +15,7 @@ vi.mock("nuxt/app", () => ({
 	useRequestEvent: () => undefined,
 }));
 
-import { useSlugRedirect } from "../../composables/useSlugRedirect";
+import { useSlugRedirect } from "~~/composables/useSlugRedirect";
 
 function headerError(header: string | null) {
 	return {

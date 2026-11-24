@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { getAdminCalendar } from "../../../api/admin/calendar";
+import { getAdminCalendar } from "~~/api/admin/calendar";
 
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
 

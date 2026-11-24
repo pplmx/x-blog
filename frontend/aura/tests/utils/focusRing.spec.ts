@@ -12,7 +12,7 @@
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { nextFocusable } from "../../utils/focusRing";
+import { nextFocusable } from "~~/utils/focusRing";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {

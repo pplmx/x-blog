@@ -11,7 +11,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { computed, ref } from "vue";
 
-import FollowsPage from "../../app/pages/follows.vue";
+import FollowsPage from "~/pages/follows.vue";
 
 const mockReplace = vi.fn();
 let mockRouteQuery: Record<string, string> = {};

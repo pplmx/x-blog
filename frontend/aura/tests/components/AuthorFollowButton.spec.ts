@@ -30,7 +30,7 @@ vi.mock("~~/api/reader/follows", () => ({
 	unfollowReaderAuthor: mockUnfollow,
 }));
 
-import AuthorFollowButton from "../../components/AuthorFollowButton.vue";
+import AuthorFollowButton from "~~/components/AuthorFollowButton.vue";
 
 const iconStub = {
 	name: "Icon",

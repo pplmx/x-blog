@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
-import { notifyPushSubscribers } from "../../../api/admin/push";
+import { notifyPushSubscribers } from "~~/api/admin/push";
 
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;
 

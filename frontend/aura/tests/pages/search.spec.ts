@@ -14,7 +14,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { computed, reactive, ref } from "vue";
 import type { SearchSuggestion } from "~~/api/public/search";
-import { RECENT_SEARCHES_KEY } from "../../composables/useRecentSearches";
+import { RECENT_SEARCHES_KEY } from "~~/composables/useRecentSearches";
 
 // Blocked-reader suppression: stub the composable so the
 // comment-search test can inject a blocked reader id and observe the hit vanish.
@@ -235,7 +235,7 @@ async function mountSearchPage({
 		}),
 	);
 
-	const { default: SearchPage } = await import("../../app/pages/search.vue");
+	const { default: SearchPage } = await import("~/pages/search.vue");
 
 	// Template-based Suspense wrapper
 	const SuspenseWrapper: any = {
@@ -903,7 +903,7 @@ describe("Search Page", () => {
 				vi.fn(() => Promise.reject(new Error("offline"))),
 			);
 
-			const { default: SearchPage } = await import("../../app/pages/search.vue");
+			const { default: SearchPage } = await import("~/pages/search.vue");
 			const SuspenseWrapper: any = {
 				components: { SearchPage },
 				template:
@@ -1038,7 +1038,7 @@ describe("Search Page", () => {
 				})),
 			);
 
-			const { default: SearchPage } = await import("../../app/pages/search.vue");
+			const { default: SearchPage } = await import("~/pages/search.vue");
 			const SuspenseWrapper: any = {
 				components: { SearchPage },
 				template:

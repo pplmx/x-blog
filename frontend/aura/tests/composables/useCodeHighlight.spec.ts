@@ -14,7 +14,7 @@ import {
 	type Highlighter,
 	highlightCode,
 	loadHighlighter,
-} from "../../composables/useCodeHighlight";
+} from "~~/composables/useCodeHighlight";
 
 describe("escapeHtml", () => {
 	it("escapes HTML special characters", () => {

@@ -16,11 +16,7 @@ vi.mock("~~/api/admin/auth", () => ({
 	adminLogin: (...a: unknown[]) => adminLoginMock(...a),
 }));
 
-import {
-	adminLoginRequest,
-	isAdminAuthenticated,
-	useAdminAuth,
-} from "../../composables/useAdminAuth";
+import { adminLoginRequest, isAdminAuthenticated, useAdminAuth } from "~~/composables/useAdminAuth";
 
 /** Build a fake JWT with the given `exp` (seconds since epoch). */
 function jwt(payload: unknown): string {

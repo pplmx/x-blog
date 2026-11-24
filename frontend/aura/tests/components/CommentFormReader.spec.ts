@@ -17,7 +17,7 @@ vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: isAuth, reader }),
 }));
 
-import CommentForm from "../../components/CommentForm.vue";
+import CommentForm from "~~/components/CommentForm.vue";
 
 async function mountForm() {
 	mockCreateComment.mockReset().mockResolvedValue({});

@@ -25,7 +25,7 @@ vi.mock("~~/composables/useAdminPushSubscription", () => ({
 	useAdminPushSubscription: () => ({ status, init, subscribe, unsubscribe }),
 }));
 
-import AdminPushToggle from "../../components/AdminPushToggle.vue";
+import AdminPushToggle from "~~/components/AdminPushToggle.vue";
 
 const iconStub = {
 	name: "Icon",

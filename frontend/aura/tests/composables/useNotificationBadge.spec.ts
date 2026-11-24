@@ -16,11 +16,11 @@ vi.mock("~~/api/reader/notifications", () => ({
 	getReaderNotifications: (...a: unknown[]) => fetchNotifications(...a),
 }));
 
-vi.mock("../../composables/useReaderAuth", () => ({
+vi.mock("~~/composables/useReaderAuth", () => ({
 	useReaderAuth: () => ({ isAuthenticated: authRef }),
 }));
 
-import { useNotificationBadge } from "../../composables/useNotificationBadge";
+import { useNotificationBadge } from "~~/composables/useNotificationBadge";
 
 /** The vitest env here is node — no DOM — so the hidden-tab guard needs a
  * stubbed document for the polling tests. */

@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { clientRateIp, resolveClientIp } from "../../server/utils/clientIp";
+import { clientRateIp, resolveClientIp } from "~~/server/utils/clientIp";
 
 describe("resolveClientIp (pure core)", () => {
 	it("returns the peer when there is no X-Forwarded-For", () => {

@@ -7,7 +7,7 @@ import {
 	reorderAdminSeriesEpisodes,
 	updateAdminSeries,
 	useAdminSeries,
-} from "../../../api/admin/series";
+} from "~~/api/admin/series";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

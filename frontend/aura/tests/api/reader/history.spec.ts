@@ -10,7 +10,7 @@ import {
 	recordReaderHistory,
 	useReaderRecommendations,
 	useReaderSeriesProgress,
-} from "../../../api/reader/history.ts";
+} from "~~/api/reader/history.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 let commandCalls: Array<{ path: string; options: Record<string, unknown> }>;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { useBlogStats } from "../../../api/public/stats.ts";
+import { useBlogStats } from "~~/api/public/stats.ts";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 

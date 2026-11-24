@@ -16,7 +16,7 @@ import {
 	readRecentSearches,
 	rememberSearchTerm,
 	useRecentSearches,
-} from "../../composables/useRecentSearches";
+} from "~~/composables/useRecentSearches";
 
 beforeEach(() => {
 	window.localStorage.clear();

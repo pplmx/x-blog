@@ -8,7 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { useRecentlyViewed } from "../../composables/useRecentlyViewed";
+import { useRecentlyViewed } from "~~/composables/useRecentlyViewed";
 
 /** 31 days in ms — used to build entries older than the prune window. */
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -86,12 +86,12 @@ describe("useRecentlyViewed", () => {
 			vi.resetModules();
 			localStorage.clear();
 			localStorage.setItem("recently-viewed", "not json");
-			let mod = await import("../../composables/useRecentlyViewed");
+			let mod = await import("~~/composables/useRecentlyViewed");
 			expect(mod.useRecentlyViewed().recent.value).toEqual([]);
 
 			vi.resetModules();
 			localStorage.setItem("recently-viewed", JSON.stringify({ slug: "not-an-array" }));
-			mod = await import("../../composables/useRecentlyViewed");
+			mod = await import("~~/composables/useRecentlyViewed");
 			expect(mod.useRecentlyViewed().recent.value).toEqual([]);
 		});
 
@@ -107,7 +107,7 @@ describe("useRecentlyViewed", () => {
 					null,
 				]),
 			);
-			const { useRecentlyViewed } = await import("../../composables/useRecentlyViewed");
+			const { useRecentlyViewed } = await import("~~/composables/useRecentlyViewed");
 			expect(useRecentlyViewed().recent.value.map((x) => x.slug)).toEqual(["ok"]);
 		});
 
@@ -119,7 +119,7 @@ describe("useRecentlyViewed", () => {
 			const fresh = { slug: "fresh", title: "Fresh", viewedAt: Date.now() };
 			localStorage.setItem("recently-viewed", JSON.stringify([stale, legacy, fresh]));
 
-			const { useRecentlyViewed } = await import("../../composables/useRecentlyViewed");
+			const { useRecentlyViewed } = await import("~~/composables/useRecentlyViewed");
 			const { recent } = useRecentlyViewed();
 			expect(recent.value.map((x) => x.slug)).toEqual(["legacy", "fresh"]);
 		});

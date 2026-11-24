@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { adminLogin } from "../../../api/admin/auth";
+import { adminLogin } from "~~/api/admin/auth";
 
 let queryCalls: Array<{ path: unknown; options: Record<string, unknown> }>;
 

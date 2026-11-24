@@ -18,7 +18,7 @@ vi.mock("~~/composables/useLang", () => ({
 const subscribeNewsletter = vi.fn();
 vi.mock("~~/api/public/newsletter", () => ({ subscribeNewsletter }));
 
-import NewsletterSubscribe from "../../components/NewsletterSubscribe.vue";
+import NewsletterSubscribe from "~~/components/NewsletterSubscribe.vue";
 
 const iconStub = {
 	name: "Icon",

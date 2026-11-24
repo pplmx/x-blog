@@ -9,7 +9,7 @@ import {
 	addNonceToInlineScripts,
 	buildCspPolicy,
 	HTML_SECURITY_HEADERS,
-} from "../../server/utils/csp";
+} from "~~/server/utils/csp";
 
 describe("addNonceToInlineScripts", () => {
 	const NONCE = "abc-123_final==";

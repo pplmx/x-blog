@@ -14,7 +14,7 @@ vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 let routeQuery: Record<string, unknown> = {};
 vi.stubGlobal("useRoute", () => ({ query: routeQuery }));
 
-import ReserPassword from "../../app/pages/reset-password.vue";
+import ReserPassword from "~/pages/reset-password.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

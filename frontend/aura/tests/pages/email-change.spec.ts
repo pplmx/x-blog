@@ -15,7 +15,7 @@ vi.mock("~~/composables/useSeo", () => ({ useSeo: vi.fn() }));
 let routeQuery: Record<string, unknown> = {};
 vi.stubGlobal("useRoute", () => ({ query: routeQuery }));
 
-import EmailChange from "../../app/pages/email-change.vue";
+import EmailChange from "~/pages/email-change.vue";
 
 const stubs = {
 	Icon: { template: '<svg class="icon-stub" />' },

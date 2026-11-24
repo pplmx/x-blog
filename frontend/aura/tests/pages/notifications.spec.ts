@@ -11,7 +11,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
-import type { ReaderNotification, ReaderNotificationPrefs } from "../../api/reader/notifications";
+import type { ReaderNotification, ReaderNotificationPrefs } from "~~/api/reader/notifications";
 
 const isAuthenticated = ref(false);
 const mockLogout = vi.fn();
@@ -73,7 +73,7 @@ const mockUpdatePref = vi.fn(
 	}),
 );
 
-vi.mock("../../api/reader/notifications", () => ({
+vi.mock("~~/api/reader/notifications", () => ({
 	getReaderNotifications: mockFetch,
 	markReaderNotificationRead: mockMarkRead,
 	markAllReaderNotificationsRead: mockMarkAllRead,
@@ -91,8 +91,7 @@ let NotificationsPage: unknown;
 async function mountPage() {
 	isAuthenticated.value = true;
 	vi.stubGlobal("useRouter", () => ({ replace: mockReplace }));
-	NotificationsPage =
-		NotificationsPage ?? (await import("../../app/pages/notifications.vue")).default;
+	NotificationsPage = NotificationsPage ?? (await import("~/pages/notifications.vue")).default;
 	const wrapper = mount(NotificationsPage as never, {
 		global: {
 			stubs,

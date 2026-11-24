@@ -58,7 +58,7 @@ vi.mock("~~/api/reader/subscriptions", () => ({
 //; the components reads route.path/query so its tests stub useRoute.
 vi.stubGlobal("useRoute", () => ({ path: "/posts/demo", query: {} }));
 
-import ThreadSubscribeButton from "../../components/ThreadSubscribeButton.vue";
+import ThreadSubscribeButton from "~~/components/ThreadSubscribeButton.vue";
 
 const iconStub = {
 	name: "Icon",

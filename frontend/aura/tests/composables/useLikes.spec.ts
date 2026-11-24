@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { useLikes } from "../../composables/useLikes.ts";
+import { useLikes } from "~~/composables/useLikes.ts";
 
 beforeEach(() => {
 	localStorage.clear();

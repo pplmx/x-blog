@@ -7,7 +7,7 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import App from "../app/app.vue";
+import App from "~/app.vue";
 
 // app.vue syncs <html lang> via useHead; stub it so mounting doesn't throw.
 beforeEach(() => {
