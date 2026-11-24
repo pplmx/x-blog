@@ -81,6 +81,24 @@ test.describe("Admin weekly-digest panel ", () => {
 		expect(confirm.status()).toBe(200);
 
 		await loginAdmin(page);
+
+		// The dry-run summary counts only recipients that have a post inside
+		// their rolling seven-day window — everyone else lands in "跳过". Seeded
+		// posts age out of that window, so publish one now (created_at is inside
+		// the window when publish_at is unset) and the count below stops
+		// depending on which sibling spec happened to publish something today.
+		const token = (await page.evaluate(() => localStorage.getItem("admin_token"))) ?? "";
+		const seeded = await request.post("/api/admin/posts", {
+			data: {
+				title: `Digest window probe ${Date.now()}`,
+				slug: `digest-window-probe-${Date.now()}`,
+				content: "# Digest window probe",
+				published: true,
+			},
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		expect(seeded.ok()).toBe(true);
+
 		await page.goto("/admin/newsletter");
 
 		// The digest panel renders with the confirmed guest counted — the
@@ -102,7 +120,7 @@ test.describe("Admin weekly-digest panel ", () => {
 			timeout: 10000,
 		});
 		// The summary reports the just-confirmed guest among the dry-run
-		// recipients (>= 1: a parallel run may confirm more). Note it is a
+		// recipients (>= 1 holds because the probe post above sits inside the window). Note it is a
 		// different quantity than the panel's overview count: the overview
 		// guest figure is the opt-in base (all confirmed digest_weekly
 		// addresses), while the dry-run "游客订阅" line counts only recipients
