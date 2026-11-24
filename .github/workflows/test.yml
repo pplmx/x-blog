@@ -18,7 +18,7 @@ jobs:
           python-version: '3.14'
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: backend/nova/uv.lock
@@ -93,7 +93,7 @@ jobs:
           python-version: '3.14'
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: backend/nova/uv.lock
@@ -175,7 +175,7 @@ jobs:
           cache-dependency-path: frontend/aura/pnpm-lock.yaml
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           cache-dependency-glob: backend/nova/uv.lock
