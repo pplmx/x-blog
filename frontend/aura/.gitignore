@@ -33,3 +33,6 @@ core*
 # Playwright artifacts
 playwright-report/
 test-results/
+
+# Vitest module cache (`test.fsModuleCache` in vite.config.ts)
+.vitest/

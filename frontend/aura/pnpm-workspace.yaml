@@ -35,5 +35,23 @@ overrides:
   postcss@8.5.22: 8.5.23
   # Vite+ toolchain: unify on its bundled Vite core + Vitest so plugins,
   # dependencies, and `vp test` all share a single copy (see viteplus.dev local-cli).
-  vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
-  vitest@*: 5.1.0
+  # The versions live in the `catalog` block below, which `vp migrate` owns.
+  vite@*: "catalog:"
+  vitest@*: "catalog:"
+
+# One version per Vite+ tool, referenced as "catalog:" from package.json and the
+# overrides above — the shape `vp migrate` generates, so a toolchain bump is a
+# single-line change here instead of three files drifting apart.
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
+  vitest: 5.1.0
+  vite-plus: 1.7.0
+  "@vitest/coverage-v8": 5.1.0
+
+# Nuxt plugins peer-declare `vitest`, while the runner is vite-plus' bundled copy
+# at the catalog version; allow that mismatch instead of installing a second copy.
+peerDependencyRules:
+  allowAny:
+    - vitest
+  allowedVersions:
+    vitest: "*"

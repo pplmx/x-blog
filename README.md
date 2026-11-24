@@ -80,7 +80,7 @@ just e2e       # Playwright e2e against a live Nuxt server (auto-starts backend 
 ## 🔒 Development & Quality Gates
 
 - **`just ci`** is the local mirror of CI's runnable gate:
-  `fmt-check lint typecheck audit migrate-check rumdl-check test frontend-build`.
+  `fmt-check typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build`.
 - The backend suite is gated at **80% app coverage** (`just test-backend` →
   `pytest -n auto --cov-fail-under=80`); don't weaken it.
 - Git hooks (`just hooks`): **pre-commit** runs ruff / ty / rumdl / uv-lock /
@@ -99,7 +99,7 @@ just e2e       # Playwright e2e against a live Nuxt server (auto-starts backend 
 | `just init-db`                                           | Seed dev DB (admin/admin123)                                 |
 | `just e2e`                                               | Playwright e2e against a live server                         |
 | `just test-backend` / `just test-nuxt`                   | Backend (80% coverage gate) / frontend tests (with coverage) |
-| `just lint` / `just fmt-check` / `fix`                   | Ruff+Oxlint lint / Ruff+Oxfmt format-check / auto-fix        |
+| `just lint` / `just fmt-check` / `fix`                   | Ruff+Oxlint lint / Ruff+Oxfmt+Oxlint check / auto-fix        |
 | `just typecheck`                                         | `ty` type checking                                           |
 | `just audit`                                             | `uv audit` — dependency vulnerabilities                      |
 | `just migration` / `just migrate` / `just migrate-check` | Alembic autogenerate / upgrade / drift check                 |

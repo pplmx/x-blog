@@ -20,21 +20,21 @@ Monorepo with two apps:
 
 All canonical commands go through `just` (see the root `justfile`):
 
-| Command                           | Meaning / gotchas                                                                                                                                                                                                                                                                                          |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `just install`                    | `cd backend/nova && uv sync`; also installs git hooks                                                                                                                                                                                                                                                      |
-| `just backend`                    | uvicorn dev server on :18888 (`APP_ENV=development`)                                                                                                                                                                                                                                                       |
-| `just nuxt`                       | Nuxt dev server on :34567 (Windows: run the two in separate terminals)                                                                                                                                                                                                                                     |
-| `just init-db`                    | seeds dev DB with sample data (admin/admin123)                                                                                                                                                                                                                                                             |
-| `just test-backend`               | `uv run pytest -n auto --cov-fail-under=80` — **enforces the 80% app-coverage gate; the suite fails if coverage drops below it**                                                                                                                                                                           |
-| `just test-backend-seq`           | sequential pytest (debug)                                                                                                                                                                                                                                                                                  |
-| `just test-backend-postgres <N>`  | pytest against a real PostgreSQL (`TEST_DATABASE_URL`); conftest gives each xdist worker its own schema. Workers default to 8, not `-n auto` (auto can exceed the server's `max_connections`)                                                                                                              |
-| `just test-nuxt`                  | `pnpm test:coverage` (`vp test --coverage`) — coverage is always on: the provider must match the vitest vite-plus bundles, and a plain `pnpm test` would never check that                                                                                                                                  |
-| `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) + `vp lint` / `ruff format --check .` + `vp fmt --check` — use `just fix` (`ruff --fix`, `vp check --fix`) for auto-fix.                                                                                                                                               |
-| `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `backend/nova/ty.toml`, runs on `app/` only)                                                                                                                                                                                                        |
-| `just ci`                         | **`ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build`** — the full local CI mirror (strict lint, backend `ty` + frontend `vue-tsc` type checks, audit, alembic drift check, rumdl, Caddyfile validation, backend+frontend tests, Nuxt build) |
-| `just e2e`                        | Playwright against a live Nuxt dev server (auto-starts backend + Nuxt via `playwright.config.ts` webServer). Do NOT start a second Nuxt — it poisons the module cache and causes `nuxt.lock` conflicts                                                                                                     |
-| `just migration` / `just migrate` | `alembic revision --autogenerate` / `alembic upgrade head`                                                                                                                                                                                                                                                 |
+| Command                           | Meaning / gotchas                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `just install`                    | `cd backend/nova && uv sync`; also installs git hooks                                                                                                                                                                                                                                                                                                       |
+| `just backend`                    | uvicorn dev server on :18888 (`APP_ENV=development`)                                                                                                                                                                                                                                                                                                        |
+| `just nuxt`                       | Nuxt dev server on :34567 (Windows: run the two in separate terminals)                                                                                                                                                                                                                                                                                      |
+| `just init-db`                    | seeds dev DB with sample data (admin/admin123)                                                                                                                                                                                                                                                                                                              |
+| `just test-backend`               | `uv run pytest -n auto --cov-fail-under=80` — **enforces the 80% app-coverage gate; the suite fails if coverage drops below it**                                                                                                                                                                                                                            |
+| `just test-backend-seq`           | sequential pytest (debug)                                                                                                                                                                                                                                                                                                                                   |
+| `just test-backend-postgres <N>`  | pytest against a real PostgreSQL (`TEST_DATABASE_URL`); conftest gives each xdist worker its own schema. Workers default to 8, not `-n auto` (auto can exceed the server's `max_connections`)                                                                                                                                                               |
+| `just test-nuxt`                  | `pnpm test:coverage` (`vp test --coverage`) — coverage is always on: the provider must match the vitest vite-plus bundles, and a plain `pnpm test` would never check that                                                                                                                                                                                   |
+| `just lint` / `just fmt-check`    | `ruff check .` (strict, no `--fix`) + `vp lint` + `rumdl check .` / `ruff format --check .` + `vp check` (Oxfmt **and** Oxlint in one pass) + `rumdl check .` — use `just fix` (`ruff --fix`, `vp check --fix`) for auto-fix. Because the frontend half is `vp check`, `just fmt-check` lints too, which is why `just ci` no longer runs `lint` separately. |
+| `just typecheck`                  | `ty` (Astral type checker, global `uv tool`; config in `backend/nova/ty.toml`, runs on `app/` only)                                                                                                                                                                                                                                                         |
+| `just ci`                         | **`ci: fmt-check typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build`** — the full local CI mirror (format+lint, backend `ty` + frontend `vue-tsc` type checks, audit, alembic drift check, rumdl, Caddyfile validation, backend+frontend tests, Nuxt build)                                                       |
+| `just e2e`                        | Playwright against a live Nuxt dev server (auto-starts backend + Nuxt via `playwright.config.ts` webServer). Do NOT start a second Nuxt — it poisons the module cache and causes `nuxt.lock` conflicts                                                                                                                                                      |
+| `just migration` / `just migrate` | `alembic revision --autogenerate` / `alembic upgrade head`                                                                                                                                                                                                                                                                                                  |
 
 Gotchas:
 
@@ -108,10 +108,8 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
 - **Frontend unit tests:** `just test-nuxt` (`pnpm test:coverage` → `vp test
   --coverage`, Vitest 5 bundled with Vite+). Coverage is on in the gate on
   purpose: `vite-plus` asserts that `@vitest/coverage-v8` matches the vitest it
-  bundles (5.1.0), so pin both to that version — a plain `pnpm test` never
-  loads the provider and hides the mismatch. Run `pnpm format:check` (`vp fmt
-  --check`, Oxfmt), `pnpm lint` (`vp lint`, Oxlint) and `pnpm typecheck`
-  (`nuxt typecheck`, vue-tsc) as part of the
+  bundles. Run `pnpm check` (`vp check`: Oxfmt format + Oxlint lint in one
+  pass) and `pnpm typecheck` (`nuxt typecheck`, vue-tsc) as part of the
   gate. The frontend toolchain is **Vite+** (`vite-plus`, the unified `vp` CLI) as the
   outer command: `vp` manages the package manager (`vp install`) and owns
   `test`/`lint`/`check`/`fmt`. Nuxt-owned commands (`build`, `dev`, `generate`,
@@ -120,8 +118,19 @@ Hard-won rules — respect them or you'll reintroduce known bugs:
   build stays Nuxt's. Config lives in one standalone `vite.config.ts` (Nuxt's build stays
   in `nuxt.config.ts`). Oxlint lints `.vue` `<script>` only — it does **not** lint Vue
   templates (accepted tradeoff of the Biome→Oxlint switch). Dev/build/test scripts live
-  in `package.json`; CI runs `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+  in `package.json`; CI runs `pnpm check`, `pnpm typecheck`, `pnpm build`,
   `pnpm test --coverage`.
+- **Follow the Vite+ shapes, not a hand-rolled equivalent.** Tests import from
+  `vite-plus/test` (never `vitest`) — that is what the bundled runner is, and
+  what `vp migrate` rewrites. Toolchain versions live once in the `catalog:`
+  block of `frontend/aura/pnpm-workspace.yaml`
+  (`vite: npm:@voidzero-dev/vite-plus-core@8.3.8000`, `vitest`, `vite-plus`,
+  `@vitest/coverage-v8`), referenced as `"catalog:"` from `package.json` and
+  from the `vite@*` / `vitest@*` overrides; bump a tool by editing the catalog
+  line only. `peerDependencyRules.allowAny: [vitest]` keeps Nuxt plugins that
+  peer-declare `vitest` from pulling a second copy. `pnpm install` stays the
+  bootstrap (the `vp` binary lives in `node_modules`; the docs sanction
+  `pnpm exec vp …`), and `vp install` is the entry point once it exists.
 - **TypeScript stays on 6.x until Vue Language Tools v4.** `vue-tsc` resolves
   `typescript/lib/tsc` and patches the compiler's internals; TypeScript 7 ships
   only a launcher for the native (Go) compiler plus `./unstable/*` APIs, so

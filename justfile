@@ -57,11 +57,12 @@ format:
     cd backend/nova && uv run ruff format .
     cd frontend/aura && pnpm format
 
-# Format check (CI style)
+# Format check (CI style). The frontend half is `vp check`: Oxfmt and Oxlint in
+# one pass, which is the Vite+ gate command, so `just fmt-check` cannot check
+# formatting without also linting.
 fmt-check:
     cd backend/nova && ruff format --check .
-    cd frontend/aura && pnpm format:check
-    cd frontend/aura && pnpm lint
+    cd frontend/aura && pnpm check
     rumdl check .
 
 # Auto-fix issues
@@ -90,7 +91,7 @@ frontend-build:
 # CI: run all checks (local mirror of CI's runnable gate). caddy-check needs the
 # global `caddy` binary (mise u -g caddy); the server-side proxy config is worth
 # validating before it ships.
-ci: fmt-check lint typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build
+ci: fmt-check typecheck frontend-typecheck audit migrate-check rumdl-check caddy-check test frontend-build
 
 # Run all tests
 test: test-backend test-nuxt
