@@ -14,8 +14,10 @@
 # deploy fix).
 FROM node:26.13.1-alpine3.24 AS base
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm. node:26 no longer ships corepack — it left the Node
+# distribution in v25 — so `corepack enable` exits 127 here. Install the exact
+# version frontend/aura/package.json pins in `packageManager`.
+RUN npm install -g pnpm@12.21.0
 
 # -----------------------------------------------------------------------------
 # Stage 2: Dependencies - Install node_modules

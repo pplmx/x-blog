@@ -71,6 +71,7 @@ jobs:
           context: ./backend/nova
           push: true
           tags: ghcr.io/${{ github.repository }}/backend:${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=backend
 
       - name: Build and push frontend
         id: frontend
