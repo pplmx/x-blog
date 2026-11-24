@@ -6,12 +6,13 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Base - Node.js with pnpm
 # -----------------------------------------------------------------------------
-# Pinned to the current node 24 line on Alpine 3.24 (verified against
-# docker-library/official-images). The previous node:24.8.1-alpine3.20 tag was
-# pruned from Docker Hub — buildx failed "node:24.8.1-alpine3.20: not found" —
-# so the exact-version tag must track the live official-images manifest
-# (Mystvio, Sept-09-2026 deploy fix).
-FROM node:24.20.0-alpine3.24 AS base
+# Pinned to the node 26 line on Alpine 3.24, matching CI's `node-version: '26'`
+# and the toolchain the gates run on (verified against
+# docker-library/official-images). Keep the exact-version tag on a live
+# official-images manifest: node:24.8.1-alpine3.20 was pruned from Docker Hub
+# once and buildx failed "node:24.8.1-alpine3.20: not found" (Sept-09-2026
+# deploy fix).
+FROM node:26.13.1-alpine3.24 AS base
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
