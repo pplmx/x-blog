@@ -151,6 +151,7 @@ docker compose down -v
 - 在 `/opt/x-blog` 放置此仓库的 Git clone，并允许部署用户执行 `git fetch`。
 - 安装 Git、Docker 和支持 `docker compose up --wait` 的 Docker Compose。
 - 在仓库 Actions secrets 中配置 `SERVER_HOST`、`SERVER_USER`、`SSH_KEY` 和 `SERVER_KNOWN_HOSTS`。
+  这四项缺任意一项时，`Deploy` 的 `preflight` job 会判定不可部署，`build-and-push` 与 `deploy` 直接跳过——不会先花十分钟把镜像推进 GHCR 再在 ssh 处失败。
 - 创建受保护的 `production` environment，并限制为 `main` 分支；建议配置 required reviewers。
 - 为 `main` 启用分支保护，要求 `Test` 状态检查通过。
 

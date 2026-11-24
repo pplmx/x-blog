@@ -10,12 +10,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-push:
+  # Decide whether a deployment can happen at all before spending ten minutes
+  # building and pushing images. `secrets` cannot be read from a job-level
+  # `if`, so the answer is computed in a step and handed down as an output.
+  preflight:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      deployable: ${{ steps.credentials.outputs.deployable }}
+    steps:
+      - name: Check the deploy credentials are configured
+        id: credentials
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] \
+            || [ -z "$SSH_KEY" ] || [ -z "$SERVER_KNOWN_HOSTS" ]; then
+            echo "::notice::Deploy skipped: SERVER_HOST, SERVER_USER, SSH_KEY and SERVER_KNOWN_HOSTS must all be set"
+            echo "deployable=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deployable=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    needs: preflight
+    if: needs.preflight.outputs.deployable == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
