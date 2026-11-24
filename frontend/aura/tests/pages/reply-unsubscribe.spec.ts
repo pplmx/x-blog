@@ -1,7 +1,7 @@
 /** Reader /comment-reply-unsubscribe page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // The page dynamic-imports the API helper; mock it to observe the token call.
 const unsubscribeGuestReplyNotify = vi.fn();

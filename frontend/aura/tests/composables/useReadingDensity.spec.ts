@@ -7,7 +7,7 @@
  * CSS variable that scales MarkdownContent's em-based body font.
  */
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { DENSITY_STEPS, useReadingDensity } from "../../composables/useReadingDensity";
 

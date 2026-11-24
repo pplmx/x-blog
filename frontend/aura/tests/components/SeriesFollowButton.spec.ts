@@ -11,7 +11,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const t = vi.fn((key: string) => key);
 vi.mock("~~/composables/useLang", () => ({

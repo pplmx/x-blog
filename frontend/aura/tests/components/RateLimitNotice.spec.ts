@@ -9,7 +9,7 @@
  * aria-live="polite" only.
  */
 import { mount, type VueWrapper } from "@vue/test-utils";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import { nextTick } from "vue";
 
 import RateLimitNotice from "../../components/RateLimitNotice.vue";

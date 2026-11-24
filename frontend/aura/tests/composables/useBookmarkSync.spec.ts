@@ -1,7 +1,7 @@
 /** useBookmarkSync tests. */
 
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
 const addReaderBookmarkMock = vi.fn();

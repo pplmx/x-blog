@@ -1,7 +1,7 @@
 /** Reader /forgot-password page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // The page dynamic-imports "../../api/reader/auth" at submit time; a module
 // mock intercepts that import so the form can be driven without a backend.

@@ -1,7 +1,7 @@
 /** apiErrorMessage tests — the shared backend-error surfacing used
  *  by the reader-auth composables and every admin list page. */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { apiErrorMessage } from "../../api/errors";
 

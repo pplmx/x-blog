@@ -7,7 +7,7 @@
  * breaking pagination/search/filters for every client using the proxy.
  */
 
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
 // Stub Nuxt globals before any route imports
 vi.stubGlobal("defineEventHandler", (fn: (event: any) => any) => fn);

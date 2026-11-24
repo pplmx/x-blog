@@ -7,7 +7,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { NuxtLinkStub } from "./helpers.ts";
 
 const { mockGetAdminPost, mockGetAdminCategories, mockGetAdminTags } = vi.hoisted(() => ({

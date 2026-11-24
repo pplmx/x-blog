@@ -11,7 +11,7 @@
  * modules are imported statically so vite can transform them; each test reloads
  * via `vi.resetModules()` where a fresh module matters.
  */
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
 // Stub Nuxt/h3 globals before any (runtime) route-module imports.
 vi.stubGlobal(

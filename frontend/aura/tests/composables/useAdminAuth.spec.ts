@@ -8,7 +8,7 @@
  * validates it and the 401 guard catches rejection.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const adminLoginMock = vi.fn();
 

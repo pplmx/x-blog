@@ -3,7 +3,7 @@
  * image-generation endpoints (issue #20).
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { __lastPruneAt, isRateLimited } from "../../server/utils/simpleRateLimit";
 

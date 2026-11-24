@@ -6,7 +6,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
 vi.stubGlobal("definePageMeta", vi.fn());

@@ -9,7 +9,7 @@
 
 import { defineComponent, h, ref, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { useArticleHighlights } from "../../composables/useArticleHighlights";
 import {

@@ -6,7 +6,7 @@
  * nav count immediately. Guests are a no-op; polling skips hidden tabs.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
 const authRef = ref(false);

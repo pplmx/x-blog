@@ -10,7 +10,7 @@
  * path; these tests drive the helper directly with the popover PRESENT.
  */
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { nextFocusable } from "../../utils/focusRing";
 

@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { reactive } from "vue";
 
 import DefaultLayout from "../../app/layouts/default.vue";

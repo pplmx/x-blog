@@ -9,7 +9,7 @@
  * The composables use vi.stubGlobal to mock useRuntimeConfig and useHead.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { buildSiteJsonLd } from "../../composables/seo-jsonld.ts";
 import {
 	buildAbsoluteImageUrl,

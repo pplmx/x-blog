@@ -3,7 +3,7 @@
  * behaviour used by archive/search/category/tag feeds (matching the home feed).
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { scrollToPageTop } from "../../composables/scrollToTop";
 
 describe("scrollToPageTop", () => {

@@ -12,7 +12,7 @@
  * Uses the real composable (not a mock) with the setup-file localStorage.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { isAdminAuthenticated, useAdminAuth } from "~/composables/useAdminAuth";
 
 const ADMIN_TOKEN_KEY = "admin_token";

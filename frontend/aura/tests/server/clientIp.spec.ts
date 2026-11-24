@@ -8,7 +8,7 @@
  * bucket by sending its own X-Forwarded-For header.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { clientRateIp, resolveClientIp } from "../../server/utils/clientIp";
 

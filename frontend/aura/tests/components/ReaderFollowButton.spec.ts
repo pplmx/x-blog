@@ -11,7 +11,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Interpolate {count} so tests can assert the visible follower number.
 const t = vi.fn((key: string, params?: Record<string, string | number>) =>

@@ -1,7 +1,7 @@
 /** Reader /reset-password page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // The page calls useReaderAuth().resetPassword() (dynamic-imported API behind it).
 const resetPassword = vi.fn();

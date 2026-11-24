@@ -10,7 +10,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import HeaderSearch from "../../components/HeaderSearch.vue";
 
 const mockSearchResponse = {

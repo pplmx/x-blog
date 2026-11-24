@@ -10,7 +10,7 @@
  * or half-translated namespace would surface here.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { DEFAULT_LOCALE, getAllKeys, parityGap, translate } from "../../composables/i18n";
 
@@ -87,7 +87,7 @@ describe("locale key parity (zh <-> en)", () => {
 // Covers the Nuxt-side wrapper: cookie-based init, locale switching, DOM lang
 // sync, and the ref fallback when Nuxt primitives are absent (vitest).
 
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vite-plus/test";
 import { ref } from "vue";
 import { useLang } from "../../composables/useLang";
 

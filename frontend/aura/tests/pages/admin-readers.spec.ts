@@ -8,7 +8,7 @@
  */
 
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { mockFetchResult, mountWithSuspense, stubNuxtGlobals } from "../admin/helpers";
 
 vi.stubGlobal("definePageMeta", vi.fn());

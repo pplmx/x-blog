@@ -10,7 +10,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { nextTick, ref } from "vue";
 
 // We need to use a module-level ref for authentication state

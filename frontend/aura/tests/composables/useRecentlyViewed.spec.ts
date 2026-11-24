@@ -7,7 +7,7 @@
  * browseable trail while the home row still slices to a small subset.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { useRecentlyViewed } from "../../composables/useRecentlyViewed";
 
 /** 31 days in ms — used to build entries older than the prune window. */

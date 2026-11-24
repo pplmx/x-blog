@@ -4,7 +4,7 @@
  */
 
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // Stub Nuxt composables since about.vue uses useSeo (which calls useHead and useRuntimeConfig)
 vi.stubGlobal("useHead", vi.fn());

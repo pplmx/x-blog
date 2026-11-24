@@ -5,7 +5,7 @@
  * tag stripping, and edge cases.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ref } from "vue";
 
 import { extractToc, useToc } from "../../composables/useToc";

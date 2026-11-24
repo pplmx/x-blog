@@ -8,7 +8,7 @@
  * effort — a failure must never break a public comment surface.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 
 const authRef = ref(false);

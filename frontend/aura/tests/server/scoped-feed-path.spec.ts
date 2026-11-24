@@ -10,7 +10,7 @@
  * else.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { isScopedFeedPath } from "../../server/utils/scopedFeedPath";
 

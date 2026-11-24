@@ -10,7 +10,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { nextTick, ref } from "vue";
 
 // A stale in-flight follow-state GET must not overwrite a follow the reader

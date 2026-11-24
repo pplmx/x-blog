@@ -6,7 +6,7 @@
  * collapsed to a 1-minute read and empty content never reads as 0 minutes.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { readingMinutes } from "../../composables/useReadingTime";
 
 describe("readingMinutes", () => {

@@ -1,6 +1,6 @@
 // Test setup - any global test configuration
 
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 // i18n: the site defaults to zh and auto-detects from the browser language.
 // Tests assert deterministic Chinese UI text, so pin the detect source to

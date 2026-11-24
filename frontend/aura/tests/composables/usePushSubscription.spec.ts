@@ -7,7 +7,7 @@
  * happy path (registers the SW and persists to the backend), and unsubscribe.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // A structurally valid base64url VAPID public key: 87 chars (65-byte
 // uncompressed EC point, first byte 0x04) decode cleanly with one "=" pad.

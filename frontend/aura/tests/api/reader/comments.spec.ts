@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 
 import { deleteMyComment, getMyComments, updateMyComment } from "../../../api/reader/comments.ts";
 

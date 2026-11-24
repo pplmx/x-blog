@@ -7,7 +7,7 @@
  */
 
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { mockFetchResult, mountWithSuspense, stubNuxtGlobals } from "../admin/helpers";
 
 const listMock = vi.fn();

@@ -12,7 +12,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { type Ref, nextTick, ref } from "vue";
 
 import CommentForm from "~~/components/CommentForm.vue";

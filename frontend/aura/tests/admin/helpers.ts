@@ -10,7 +10,7 @@
  */
 
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 import { type Ref, ref } from "vue";
 
 export interface FetchMockState {

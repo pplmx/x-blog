@@ -1,7 +1,7 @@
 /** Reader /email-change page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // The page calls useReaderAuth().confirmEmailChange() (dynamic-imported API
 // behind it) on mount with the ?token= link.

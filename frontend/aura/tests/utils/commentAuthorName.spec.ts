@@ -8,7 +8,7 @@
  * are safe to show verbatim.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { commentAuthorName } from "../../utils/commentAuthorName";
 

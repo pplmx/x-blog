@@ -9,7 +9,7 @@
  * shape) or `.response` (client shape) — and the no-op contracts.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("nuxt/app", () => ({
 	useRequestEvent: () => undefined,

@@ -1,7 +1,7 @@
 /** Reader /comment-manage page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // The page dynamic-imports the API helpers; mock them to observe the calls.
 const getGuestCommentManage = vi.fn();

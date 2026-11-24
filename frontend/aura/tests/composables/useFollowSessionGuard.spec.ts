@@ -9,7 +9,7 @@
  * the page keeps its normal error surface.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockLogout = vi.fn();
 const mockIsStaleSession = vi.fn();

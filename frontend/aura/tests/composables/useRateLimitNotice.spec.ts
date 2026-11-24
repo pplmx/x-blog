@@ -1,6 +1,6 @@
 /** useRateLimitNotice tests. */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Use fake timers so the 6s auto-dismiss can be asserted without waiting.
 beforeEach(() => {

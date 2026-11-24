@@ -7,7 +7,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { reactive, ref } from "vue";
 
 import ReaderProfilePage from "../../app/pages/readers/[id].vue";

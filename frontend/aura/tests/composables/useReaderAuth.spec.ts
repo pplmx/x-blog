@@ -1,6 +1,6 @@
 /** useReaderAuth composable tests. */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const readerLoginMock = vi.fn();
 const readerLogin2FAMock = vi.fn();

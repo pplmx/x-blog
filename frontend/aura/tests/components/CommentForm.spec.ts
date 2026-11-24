@@ -8,7 +8,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Mock the API module before importing the component.
 const { mockCreateComment, mockSuggest } = vi.hoisted(() => ({

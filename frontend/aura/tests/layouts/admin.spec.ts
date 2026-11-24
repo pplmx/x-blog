@@ -8,7 +8,7 @@
  */
 
 import { DOMWrapper, flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { nextTick, reactive, ref } from "vue";
 
 import { useTheme } from "../../composables/useTheme";

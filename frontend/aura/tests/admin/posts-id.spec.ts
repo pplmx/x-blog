@@ -10,7 +10,7 @@
  */
 
 import { flushPromises, type VueWrapper } from "@vue/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 import MarkdownContent from "~~/components/MarkdownContent.vue";
 import { mountWithSuspense as baseMountWithSuspense } from "./helpers.ts";

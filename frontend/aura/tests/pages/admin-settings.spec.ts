@@ -6,7 +6,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Nuxt-only macros (`definePageMeta`, `useHead`) aren't defined under vitest;
 // stub them as no-ops for this page test.

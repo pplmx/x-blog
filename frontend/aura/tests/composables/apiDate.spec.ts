@@ -9,7 +9,7 @@
  * same regardless of the host process timezone, and that zone-marked values
  * pass through untouched.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { parseApiDate, toIsoUtc } from "~~/composables/apiDate";
 
 const NAIVE = "2026-08-31T13:52:19";

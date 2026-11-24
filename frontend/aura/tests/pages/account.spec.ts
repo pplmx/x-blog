@@ -13,7 +13,7 @@
  */
 
 import { flushPromises, mount, type VueWrapper } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ref } from "vue";
 import type { ReaderProfile } from "../../api/reader/auth";
 import type { ReaderPushSubscription } from "../../api/reader/notifications";

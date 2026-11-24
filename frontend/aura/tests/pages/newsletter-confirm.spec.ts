@@ -1,7 +1,7 @@
 /** Reader /newsletter/confirm page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // The page dynamic-imports the API helpers; mock them to observe the calls.
 const confirmNewsletter = vi.fn();

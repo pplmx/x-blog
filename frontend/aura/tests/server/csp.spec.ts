@@ -3,7 +3,7 @@
  * The nitro plugin wiring itself is exercised by the e2e CSP journey.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import {
 	addNonceToInlineScripts,

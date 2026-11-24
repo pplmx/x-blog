@@ -1,7 +1,7 @@
 /** Reader /newsletter/unsubscribe page tests. */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // The page dynamic-imports the API helper; mock it to observe the token call.
 const unsubscribeNewsletter = vi.fn();

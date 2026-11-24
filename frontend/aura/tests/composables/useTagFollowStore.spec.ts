@@ -8,7 +8,7 @@
  * would keep serving the pre-change follow state for the whole session.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const getTagFollows = vi.fn();
 const followTag = vi.fn();

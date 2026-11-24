@@ -19,7 +19,7 @@
  */
 
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 // --- Mock DOMPurify (lazy-loaded in useMarkdown) ---
 // vi.hoisted ensures the mock factory runs before vi.mock (which is hoisted to top).

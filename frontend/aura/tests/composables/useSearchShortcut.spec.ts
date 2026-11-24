@@ -9,7 +9,7 @@
  */
 
 import { mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { handleGlobalSearchShortcut, useSearchShortcut } from "../../composables/useSearchShortcut";
 
 /** Append a `[data-header-search]` input. The visibility filter uses

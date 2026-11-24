@@ -5,7 +5,7 @@
  */
 
 import { mount } from "@vue/test-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import NotFoundPage from "../../app/pages/[...slug].vue";
 
