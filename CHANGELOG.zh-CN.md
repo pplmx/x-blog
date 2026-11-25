@@ -19,6 +19,11 @@
   psycopg 3.3.9，前端用 overrides 固定 fflate 0.8.3、glob 14.0.2、
   minimatch 11.0.1、shell-quote 1.12.0、node-forge 1.4.3 等；仓库已无
   未处理的告警。
+- 🚀 **工具链升到 Node 26**——CI 与前端镜像统一用 node 26.13.1（Alpine
+  3.24）；corepack 在 v25 已移出发行版，镜像改为用 npm 安装 pnpm；`Test`
+  现在也会构建两个镜像（不推送），Dockerfile 坏了会在 `Deploy` 之前暴露。
+- ⚡ **前端工具链统一到 Vite+**——依赖版本集中在一个 `catalog:` 区块，测试
+  从 `vite-plus/test` 引入运行库，格式与 lint 合成一次 `vp check` 进门槛。
 - 🔒 **私有页面与令牌页不参与搜索**——通知、收藏、历史、点赞、划线、关注，以及
   评论/订阅的令牌操作页现在都发送 `noindex, follow`；爬虫原本只能看到未登录
   的空壳页面。

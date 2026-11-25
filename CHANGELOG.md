@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and psycopg 3.3.9 in the backend lock, plus overrides pinning fflate 0.8.3,
   glob 14.0.2, minimatch 11.0.1, shell-quote 1.12.0 and node-forge 1.4.3 in
   the frontend graph; the registry reports no open alerts.
+- 🚀 **the toolchain runs on Node 26** — CI and the frontend image share
+  node 26.13.1 on Alpine 3.24; the image installs pnpm from npm because
+  corepack left the Node distribution in v25, and `Test` now builds both
+  images (without pushing) so a broken Dockerfile fails before `Deploy`.
+- ⚡ **the frontend toolchain is Vite+ end to end** — dependency versions live
+  in a single `catalog:` block, tests import the harness from `vite-plus/test`,
+  and formatting plus linting run as one `vp check` in the gate.
 - 🔒 **private and token pages stay out of search** — notifications, bookmarks,
   history, likes, highlights, follows, and the newsletter/comment token pages
   now send `noindex, follow`; crawlers only ever saw their signed-out shells.

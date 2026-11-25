@@ -146,7 +146,7 @@ docker compose down -v
 
 ### GitHub Actions 自动部署
 
-`Test` 工作流在 `main` 的 push 上全部通过后，`Deploy` 工作流会构建并推送后端、前端镜像，再按镜像 digest 部署该次测试对应的 commit。服务器需要：
+`Test` 工作流在 `main` 的 push 上全部通过后，`Deploy` 工作流会构建并推送后端、前端镜像，再按镜像 digest 部署该次测试对应的 commit。两个镜像同时由 `Test` 的 `docker-build` job 构建（`push: false`），所以 Dockerfile 出问题会在测试阶段就失败，而不是等到部署。服务器需要：
 
 - 在 `/opt/x-blog` 放置此仓库的 Git clone，并允许部署用户执行 `git fetch`。
 - 安装 Git、Docker 和支持 `docker compose up --wait` 的 Docker Compose。
